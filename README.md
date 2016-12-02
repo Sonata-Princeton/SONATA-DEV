@@ -21,12 +21,12 @@ To get started install these softwares on your ```host``` machine:
 
 * Clone the ```Sonata``` repository from Github:
 ```bash 
-$ git clone https://github.com/agupta13/Sonata.git
+$ git clone https://github.com/Sonata-Princeton/SONATA-DEV.git
 ```
 
 * Change the directory to ```Sonata```:
 ```bash
-$ cd Sonata/dev
+$ cd SONATA-DEV
 ```
 
 * Now run the vagrant up command. This will read the Vagrantfile from the current directory and provision the VM accordingly:
@@ -41,8 +41,8 @@ $ vagrant ssh
 
 Inside the VM, 
 ```bash
-$ cd ~/dev/examples/distinct_only/
+$ cd examples/distinct_only/
 ```
 
 Now follow the instructions in that directory, i.e. 
-https://github.com/agupta13/Sonata/tree/master/dev/examples/distinct_only
+https://github.com/Sonata-Princeton/SONATA-DEV/tree/master/examples/distinct_only
