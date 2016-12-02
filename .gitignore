@@ -1,0 +1,14 @@
+*.json
+*.bz2
+*.pyc
+*.bak
+*.log
+*.aux
+*.pptx
+*.pdf
+*.out
+*.blg
+*.bbl
+*.pcap
+*.checkpoint*
+*.DS_Store
