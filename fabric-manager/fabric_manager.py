@@ -10,7 +10,23 @@ class FabricManagerConfig(object):
     def add_query(self, q):
         self.queries.append(q)
 
-    def compile_dp(self):
+    def process_init_config(self):
+        # Process initial config from RT
+        return 0
+
+    def process_delta_config(self):
+        # Process delta config from RT
+        return 0
+
+    def receive_configs(self):
+        # Receive configs from Runtime
+        return 0
+
+    def compile_delta_config(self):
+        return 0
+
+    def compile_init_config(self):
+        # Compile the initial config to P4 source code and json output
         out = ''
         for q in self.queries:
             q.compile_dp()
@@ -48,7 +64,6 @@ q2 = PacketStream(2).reduce(keys= ('dIP',))
 #q3 = PacketStream(fm.gc).distinct(keys = ('sIP', 'dIP')).reduce(keys= ('dIP',))
 
 
-
 #fm.add_query(q1)
 fm.add_query(q2)
-fm.compile_dp()
+fm.compile_init_config()

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 #  Author:
 #  Arpit Gupta (arpitg@cs.princeton.edu)
+
 from __future__ import print_function
 
 import sys
