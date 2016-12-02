@@ -1,0 +1,5 @@
+eventlet==0.18.4
+msgpack-python==0.4.7
+oslo.config==3.8.0
+webob
+routes

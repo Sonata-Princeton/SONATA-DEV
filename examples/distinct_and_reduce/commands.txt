@@ -1,0 +1,10 @@
+table_set_default copy_to_cpu do_copy_to_cpu
+table_set_default set_count set_to_one
+table_set_default encap do_encap
+table_set_default start_reduce do_reduce_hashes
+table_set_default start_distinct do_distinct_hashes
+table_set_default update_distinct_counts update_distinct_regs
+table_set_default update_reduce_counts update_reduce_regs
+table_set_default skip1 _nop
+table_set_default skip2 _nop
+mirroring_add 250 12
