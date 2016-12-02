@@ -42,7 +42,6 @@ class FabricManagerConfig(object):
         self.p4_src = out
         return out
 
-#
 fm = FabricManagerConfig()
 q1 = PacketStream(1).distinct(keys = ('sIP', 'dIP'))
 q2 = PacketStream(2).reduce(keys= ('dIP',))

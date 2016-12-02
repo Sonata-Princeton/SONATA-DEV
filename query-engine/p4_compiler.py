@@ -343,20 +343,3 @@ class PacketStream(object):
 
     def compile_dp(self):
         self.update_p4_src()
-
-
-
-#print [x.p4_invariants for x in fm.queries]
-#print fm.p4_src
-
-#gc = GlobalCounts()
-#d = Distinct(1, TABLE_WIDTH, TABLE_SIZE, DISTINCT, gc,
-#            keys = ('sIP', 'dIP'))
-
-#r = Reduce(2, TABLE_WIDTH, TABLE_SIZE, THRESHOLD, gc,
-#            keys = ('dIP',))
-
-#d.compile_dp()
-#print d.p4_state
-#r.compile_dp()
-#print d.p4_state+r.p4_state
