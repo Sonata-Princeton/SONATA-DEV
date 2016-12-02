@@ -41,7 +41,7 @@ $ vagrant ssh
 
 Inside the VM, 
 ```bash
-$ cd examples/distinct_only/
+$ cd ~/dev/examples/distinct_only/
 ```
 
 Now follow the instructions in that directory, i.e. 
