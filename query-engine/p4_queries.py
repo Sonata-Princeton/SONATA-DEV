@@ -295,6 +295,7 @@ class Reduce(Register):
         return out
 
 class PacketStream(object):
+    '''Multiple packet streams can exist for a switch'''
     def __init__(self,id):
         self.qid = id
         self.mirror_id = 200+self.qid
@@ -341,5 +342,5 @@ class PacketStream(object):
 
         self.p4_control += '\tapply(copy_to_cpu_'+str(self.qid)+');'
 
-    def compile_dp(self):
+    def compile_pipeline(self):
         self.update_p4_src()
