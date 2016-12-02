@@ -1,3 +1,4 @@
+*.vagrant
 *.json
 *.bz2
 *.pyc
