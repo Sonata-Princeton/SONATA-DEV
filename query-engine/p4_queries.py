@@ -4,12 +4,14 @@ DISTINCT = 0
 THRESHOLD = 2
 
 header_map = {"sIP":"ipv4.srcAddr", "dIP":"ipv4.dstAddr",
+            "dIP/16":"ipv4.dstAddr", "dIP/32":"ipv4.dstAddr",
             "sPort": "tcp.srcPort", "dPort": "tcp.dstPort",
             "nBytes": "ipv4.totalLen", "proto": "ipv4.protocol",
             "sMac": "ethernet.srcAddr", "dMac":"ethernet.dstAddr"}
 
 header_size = {"sIP":32, "dIP":32, "sPort": 16, "dPort": 16,
-            "nBytes": 16, "proto": 8, "sMac": 48, "dMac":48}
+                "dIP/16":16, "dIP/32":32,
+                "nBytes": 16, "proto": 8, "sMac": 48, "dMac":48}
 
 class GlobalCounts(object):
     # maintain global counts for skip and drop actions

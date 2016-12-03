@@ -14,6 +14,7 @@ class Query(object):
     """
     basic_headers = ["ts", "te","sIP", "sPort","dIP", "dPort", "nBytes",
                           "proto", "sMac", "dMac"]
+                          
     def __init__(self, *args, **kwargs):
         self.fields = []
         self.keys = []
@@ -30,17 +31,6 @@ class Query(object):
         """
         return self.expr
 
-    def compile_dp(self):
-        """
-        compile this policy for data plane
-        """
-        return 0
-
-    def compile_sp(self):
-        """
-        compile this policy for stream processor
-        """
-        return 0
 
 class Map(Query):
     def __init__(self, *args, **kwargs):
@@ -67,16 +57,6 @@ class Map(Query):
         #print(self.keys, self.values)
         self.fields = self.keys + self.values
 
-    def compile_sp(self):
-        if len(self.values) != 0:
-            expr = ('map(lambda ('+','.join(str(x) for x in self.prev_fields)+
-                    '): (('+','.join(str(x) for x in self.keys)+
-                    '),('+','.join(str(x) for x in self.values)+')))')
-        else:
-            expr = ('map(lambda ('+','.join(str(x) for x in self.prev_fields)+
-                    '): (('+','.join(str(x) for x in self.keys)+
-                    ')))')
-        return expr
 
 class Reduce(Query):
     def __init__(self, *args, **kwargs):
@@ -89,22 +69,15 @@ class Reduce(Query):
         self.fields = self.prev_fields[:-1] + self.values
         #self.fields = tuple(set(self.fields).difference(set("1")))
 
-    def compile_sp(self):
-        expr = ''
-        if self.func == 'sum':
-            expr += 'reduceByKey(lambda x,y: x+y)'
-        return expr
 
 class Distinct(Query):
     def __init__(self, *args, **kwargs):
         super(Distinct, self).__init__(*args, **kwargs)
+        self.name = 'Distinct'
         map_dict = dict(*args, **kwargs)
         self.prev_fields = map_dict['prev_fields']
         self.fields = self.prev_fields
 
-    def compile_sp(self):
-        expr = 'distinct()'
-        return expr
 
 class Filter(Query):
     def __init__(self, *args, **kwargs):
@@ -115,11 +88,6 @@ class Filter(Query):
         self.fields = self.prev_fields
         self.expr = map_dict['expr']
 
-    def compile_sp(self):
-        expr = ('filter(lambda ('
-                +','.join(str(x) for x in self.prev_fields)
-                +'): '+self.expr+')')
-        return expr
 
 class PacketStream(Query):
     def __init__(self, training_data_fname = '', isInput = True, *args, **kwargs):
@@ -174,6 +142,7 @@ class PacketStream(Query):
             return new_operator
 
         if self.isInput == True:
+            # TODO: automate generation of the refinement levels and reduction keys
             refinement_levels = [16, 32]
             reduction_key = 'dIP'
 
@@ -227,13 +196,12 @@ class PacketStream(Query):
         if self.isInput != True:
             if self.partition_plan_final != None:
                 dp_query = self.partition_plan_final[0]
-                p4_query = p4.PacketStream()
+                p4_query = p4.PacketStream(1)
                 for operator in dp_query.operators:
                     if operator.name == 'Reduce':
-                        p4_query.reduce(keys=operator.prev_fields)
-                    elif operator.name == 'Distinct']:
-                        p4_query.distinct(keys=operator.prev_fields)
-
+                        p4_query = p4_query.reduce(keys = operator.prev_fields)
+                    elif operator.name == 'Distinct':
+                        p4_query = p4_query.distinct(keys = operator.prev_fields)
                 self.dp_query = p4_query
             else:
                 raise NotImplementedError
@@ -246,16 +214,15 @@ class PacketStream(Query):
             if self.partition_plan_final != None:
                 sp_query = self.partition_plan_final[1]
                 spark_query = spark.PacketStream()
-                for operator in dp_query.operators:
+                for operator in sp_query.operators:
                     new_operator = copy.deepcopy(operator)
-
+                    spark_query.operators.append(new_operator)
+                self.sp_query = spark_query
             else:
                 raise NotImplementedError
 
         else:
             raise NotImplementedError
-
-
 
     def compile_dp_query(self):
         # compile the data plane query
@@ -276,14 +243,6 @@ class PacketStream(Query):
                 self.sp_query.compile_delta()
         else:
             raise NotImplementedError
-        """
-        expr_sp = ''
-        for operator in self.operators:
-            #print type(operator), operator.compile_sp()
-            expr_sp += '.'+operator.compile_sp()
-
-        return expr_sp[1:]
-        """
 
     def get_prev_fields(self):
         if len(self.operators) > 0:
@@ -321,9 +280,13 @@ query = (PacketStream()
         .filter(expr='count > 20')
         .map(keys=('dIP',))
         )
+
 query.get_refinement_plan()
 for refined_query in query.refined_queries:
     refined_query.get_partitioning_plan(4)
     refined_query.partition_plan_final = refined_query.partition_plans[0]
     refined_query.generate_dp_query()
-    #refined_query.generate_sp_query()
+    refined_query.generate_sp_query()
+    refined_query.dp_query.compile_pipeline()
+    print refined_query.dp_query.p4_control
+    print refined_query.sp_query.compile()

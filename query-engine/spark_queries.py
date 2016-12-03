@@ -5,9 +5,9 @@
 import json, time
 from multiprocessing.connection import Client
 
-class Query(object):
+class SparkQuery(object):
     """
-    Abstract Query Class
+    Abstract SparkQuery Class
     """
     def __init__(self):
         self.fields = []
@@ -24,19 +24,13 @@ class Query(object):
         """
         return self.expr
 
-    def compile_dp(self):
-        """
-        compile this policy for data plane
-        """
-        return 0
-
-    def compile_sp(self):
+    def compile(self):
         """
         compile this policy for stream processor
         """
         return 0
 
-class Map(Query):
+class Map(SparkQuery):
     def __init__(self, *args, **kwargs):
         map_dict = dict(*args, **kwargs)
         self.prev_fields = map_dict['prev_fields']
@@ -53,7 +47,7 @@ class Map(Query):
         #print(self.keys, self.values)
         self.fields = self.keys + self.values
 
-    def compile_sp(self):
+    def compile(self):
         if len(self.values) != 0:
             expr = ('map(lambda ('+','.join(str(x) for x in self.prev_fields)+
                     '): (('+','.join(str(x) for x in self.keys)+
@@ -64,7 +58,7 @@ class Map(Query):
                     ')))')
         return expr
 
-class Reduce(Query):
+class Reduce(SparkQuery):
     def __init__(self, *args, **kwargs):
         map_dict = dict(*args, **kwargs)
         self.prev_fields = map_dict['prev_fields']
@@ -73,36 +67,36 @@ class Reduce(Query):
         self.fields = self.prev_fields[:-1] + self.values
         #self.fields = tuple(set(self.fields).difference(set("1")))
 
-    def compile_sp(self):
+    def compile(self):
         expr = ''
         if self.func == 'sum':
             expr += 'reduceByKey(lambda x,y: x+y)'
         return expr
 
-class Distinct(Query):
+class Distinct(SparkQuery):
     def __init__(self, *args, **kwargs):
         map_dict = dict(*args, **kwargs)
         self.prev_fields = map_dict['prev_fields']
         self.fields = self.prev_fields
 
-    def compile_sp(self):
+    def compile(self):
         expr = 'distinct()'
         return expr
 
-class Filter(Query):
+class Filter(SparkQuery):
     def __init__(self, *args, **kwargs):
         map_dict = dict(*args, **kwargs)
         self.prev_fields = map_dict['prev_fields']
         self.fields = self.prev_fields
         self.expr = map_dict['expr']
 
-    def compile_sp(self):
+    def compile(self):
         expr = ('filter(lambda ('
                 +','.join(str(x) for x in self.prev_fields)
                 +'): '+self.expr+')')
         return expr
 
-class PacketStream(Query):
+class PacketStream(SparkQuery):
     def __init__(self):
         self.basic_headers = ["ts", "te","sIP", "sPort","dIP", "dPort", "nBytes",
                               "proto", "sMac", "dMac"]
@@ -112,11 +106,11 @@ class PacketStream(Query):
         self.fields = self.keys + self.values
         self.operators = []
 
-    def compile_sp(self):
+    def compile(self):
         expr_sp = ''
         for operator in self.operators:
-            #print type(operator), operator.compile_sp()
-            expr_sp += '.'+operator.compile_sp()
+            #print type(operator), operator.compile()
+            expr_sp += '.'+operator.compile()
 
         return expr_sp[1:]
 
