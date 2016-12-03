@@ -1,5 +1,5 @@
 from runtime import *
-from query-engine.sonata_queries import *
+from query_engine.p4_queries import *
 
 
 conf = {'dp':'p4', 'sp':'spark', 'sm_socket':('localhost', 7777),

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 #  Author:
 #  Arpit Gupta (arpitg@cs.princeton.edu)
+from query_engine.p4_queries import PacketStream
 
 class FabricManagerConfig(object):
     def __init__(self):
@@ -29,7 +30,7 @@ class FabricManagerConfig(object):
         # Compile the initial config to P4 source code and json output
         out = ''
         for q in self.queries:
-            q.compile_dp()
+            q.compile_pipeline()
 
         out += self.queries[0].p4_invariants
 
@@ -67,3 +68,5 @@ q2 = PacketStream(2).reduce(keys= ('dIP',))
 #fm.add_query(q1)
 fm.add_query(q2)
 fm.compile_init_config()
+
+print fm.p4_src
