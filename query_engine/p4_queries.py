@@ -52,7 +52,7 @@ class Register(object):
         self.p4_control = ''
         self.p4_egress = ''
         self.p4_invariants = ''
-        self.p4_init_commands = ''
+        self.p4_init_commands = []
 
         self.skip_id = 1
         self.drop_id = 1
@@ -97,7 +97,7 @@ class Register(object):
         out = 'table update_'+self.register_name+'_counts {\n\t'
         out += 'actions {update_'+self.register_name+'_regs;}\n\t'
         out += 'size : 1;\n}\n\n'
-        self.p4_init_commands += 'table_set_default update_'+self.register_name+'_counts update_'+self.register_name+'_regs\n'
+        self.p4_init_commands.append('table_set_default update_'+self.register_name+'_counts update_'+self.register_name+'_regs')
         return out
 
     def add_table_start(self):
@@ -112,19 +112,19 @@ class Register(object):
         out = 'table start_'+self.register_name+' {\n\t'
         out += 'actions {do_'+self.register_name+'_hashes;}\n\t'
         out += 'size : 1;\n}\n\n'
-        self.p4_init_commands += 'table_set_default start_'+self.register_name+' do_'+self.register_name+'_hashes\n'
+        self.p4_init_commands.append('table_set_default start_'+self.register_name+' do_'+self.register_name+'_hashes')
         return out
 
     def add_drop_action(self, id):
         out = 'table drop_'+self.register_name+'_'+str(id)+' {\n\t'
         out += 'actions {_drop;}\n\tsize : 1;\n}\n\n'
-        self.p4_init_commands += 'table_set_default drop_'+self.register_name+'_'+str(id)+' _drop\n'
+        self.p4_init_commands.append('table_set_default drop_'+self.register_name+'_'+str(id)+' _drop')
         return out
 
     def add_skip_action(self, id):
         out = 'table skip_'+self.register_name+'_'+str(id)+' {\n\t'
         out += 'actions {_nop;}\n\tsize : 1;\n}\n\n'
-        self.p4_init_commands += 'table_set_default skip_'+self.register_name+'_'+str(id)+' _nop\n'
+        self.p4_init_commands.append('table_set_default skip_'+self.register_name+'_'+str(id)+' _nop')
         return out
 
     def add_cond_actions(self, mode, ind):
@@ -191,7 +191,7 @@ class Register(object):
     def add_table_set(self):
         out = 'table set_'+self.register_name+'_count {\n\tactions {set_'+self.register_name+'_count;}\n\
         size: 1;\n}\n\n'
-        self.p4_init_commands += 'table_set_default set_'+self.register_name+'_count set_'+self.register_name+'_count\n'
+        self.p4_init_commands.append('table_set_default set_'+self.register_name+'_count set_'+self.register_name+'_count')
         return out
 
     def update_p4_state(self):
@@ -329,6 +329,7 @@ class PacketStream(object):
         self.p4_egress = ''
         self.p4_invariants = ''
         self.operators = []
+        self.p4_init_commands = []
 
     def reduce(self, *args, **kwargs):
         id = len(self.operators)
@@ -345,6 +346,8 @@ class PacketStream(object):
         return self
 
     def update_p4_src(self):
+
+
         for operator in self.operators:
             operator.compile_dp()
 
@@ -365,6 +368,10 @@ class PacketStream(object):
             self.p4_control += operator.p4_control
 
         self.p4_control += '\tapply(copy_to_cpu_'+str(self.qid)+');'
+
+        # Update all the initial commands
+        for operator in self.operators:
+            self.p4_init_commands += operator.p4_init_commands
 
     def compile_pipeline(self):
         self.update_p4_src()
