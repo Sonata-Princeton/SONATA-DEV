@@ -11,7 +11,8 @@ header_map = {"sIP":"ipv4.srcAddr", "dIP":"ipv4.dstAddr",
 
 header_size = {"sIP":32, "dIP":32, "sPort": 16, "dPort": 16,
                 "dIP/16":16, "dIP/32":32,
-                "nBytes": 16, "proto": 8, "sMac": 48, "dMac":48}
+                "nBytes": 16, "proto": 8, "sMac": 48, "dMac":48,
+                "qid":8, "count": 12}
 
 class GlobalCounts(object):
     # maintain global counts for skip and drop actions
@@ -21,15 +22,14 @@ class GlobalCounts(object):
         self.drop_id = 1
 
 class MetaData(object):
-    def __init__(self, name, fields, sizes):
+    def __init__(self, name, fields):
         self.name = name
         self.fields = fields
-        self.sizes = sizes
 
     def add_metadata(self):
         out = 'header_type '+self.name+'_t {\n\tfields {\n\t\t'
-        for id in range(len(self.fields)):
-            out += self.fields[id]+' : '+str(self.sizes[id])+';\n\t\t'
+        for fld in self.fields:
+            out += fld+' : '+str(self.fields[fld])+';\n\t\t'
         out = out[:-1]
         out += '}\n}\n\n'
         out += 'metadata '+self.name+'_t '+self.name+';\n\n'
@@ -40,12 +40,12 @@ class Register(object):
         (self.id, self.qid, self.mirror_id, self.width,
         self.instance_count, self.thresh) = args
 
-        self.register_name = 'register_'+str(self.id)+'_'+str(self.qid)
         self.metadata_name = 'meta_'+self.register_name
         self.field_list_name = self.register_name+'_fields'
 
         map_dict = dict(**kwargs)
         self.keys = map_dict['keys']
+        self.out_headers = tuple(['qid']+list(self.keys))
 
         self.p4_state = ''
         self.p4_utils = ''
@@ -57,10 +57,15 @@ class Register(object):
         self.skip_id = 1
         self.drop_id = 1
 
+        self.qid_width = 8
+
     def add_metadata(self):
+        # TODO: better set the size of value field in metadat
         self.metadata = MetaData(name = self.metadata_name,
-                                fields = ('idx', 'val'),
-                                sizes = (self.width , self.width))
+                                fields = {'qid':self.qid_width,
+                                        'idx': self.width,
+                                        'val': self.width}
+                                )
         return self.metadata.add_metadata()
 
     def add_field_list(self):
@@ -84,8 +89,8 @@ class Register(object):
 
     def add_action_update(self):
         out = 'action update_'+self.register_name+'_regs() {\n\t'
-        out += 'bit_or('+self.metadata.name+'.'+self.metadata.fields[1]+','+self.metadata.name+'.'+self.metadata.fields[1]+', 1);\n\t'
-        out += 'register_write('+self.register_name+','+self.metadata.name+'.'+self.metadata.fields[0]+','+self.metadata.name+'.'+self.metadata.fields[1]+');\n}\n\n'
+        out += 'bit_or('+self.metadata.name+'.'+self.metadata.fields.keys()[1]+','+self.metadata.name+'.'+self.metadata.fields.keys()[1]+', 1);\n\t'
+        out += 'register_write('+self.register_name+','+self.metadata.name+'.'+self.metadata.fields.keys()[2]+','+self.metadata.name+'.'+self.metadata.fields.keys()[1]+');\n}\n\n'
         return out
 
     def add_table_update(self):
@@ -97,9 +102,9 @@ class Register(object):
 
     def add_table_start(self):
         out = 'action do_'+self.register_name+'_hashes() {\n\t'
-        out += 'modify_field_with_hash_based_offset('+self.metadata.name+'.'+self.metadata.fields[1]+', 0,'
+        out += 'modify_field_with_hash_based_offset('+self.metadata.name+'.'+self.metadata.fields.keys()[0]+', 0,'
         out += self.register_name+'_fields_hash , '+str(self.instance_count)+');\n\t'
-        out += 'register_read('+self.metadata.name+'.'+self.metadata.fields[1]+', '+self.register_name+', '+self.metadata.name+'.'+self.metadata.fields[0]+');\n'
+        out += 'register_read('+self.metadata.name+'.'+self.metadata.fields.keys()[1]+', '+self.register_name+', '+self.metadata.name+'.'+self.metadata.fields.keys()[2]+');\n'
         out += '}\n\n'
         return out
 
@@ -146,10 +151,10 @@ class Register(object):
         out = ''
         if self.pre_actions.count('fwd') < 3:
             # then only we need to add condition
-            out += '\t'+'if('+self.metadata.name+'.'+self.metadata.fields[1]+' > '+str(self.thresh)+') {\n\t'
+            out += '\t'+'if('+self.metadata.name+'.'+self.metadata.fields.keys()[1]+' > '+str(self.thresh)+') {\n\t'
             out += '\t'+self.add_cond_actions(0, 0)
             out += '\t'+'}\n'
-            out += '\t'+'else if('+self.metadata.name+'.'+self.metadata.fields[1]+' == '+str(self.thresh)+') {\n\t'
+            out += '\t'+'else if('+self.metadata.name+'.'+self.metadata.fields.keys()[1]+' == '+str(self.thresh)+') {\n\t'
             out += '\t'+self.add_cond_actions(0, 1)
             out += '\t'+'}\n'
             out += '\t'+'else {\n\t'
@@ -162,10 +167,10 @@ class Register(object):
         out = ''
         if self.post_actions.count('fwd') < 3:
             # then only we need to add condition
-            out += '\t'+'if('+self.metadata.name+'.'+self.metadata.fields[1]+' > '+str(self.thresh)+') {\n\t'
+            out += '\t'+'if('+self.metadata.name+'.'+self.metadata.fields.keys()[1]+' > '+str(self.thresh)+') {\n\t'
             out += '\t'+self.add_cond_actions(1, 0)
             out += '\t'+'}\n'
-            out += '\t'+'else if('+self.metadata.name+'.'+self.metadata.fields[1]+' == '+str(self.thresh)+') {\n\t'
+            out += '\t'+'else if('+self.metadata.name+'.'+self.metadata.fields.keys()[1]+' == '+str(self.thresh)+') {\n\t'
             out += '\t'+self.add_cond_actions(1, 1)
             out += '\t'+'}\n'
             out += '\t'+'else {\n\t'
@@ -180,7 +185,7 @@ class Register(object):
         return out
 
     def add_action_set(self):
-        out = 'action set_'+self.register_name+'_count() {\n\tmodify_field('+self.metadata.name+'.'+self.metadata.fields[1]+', 1);\n}\n\n'
+        out = 'action set_'+self.register_name+'_count() {\n\tmodify_field('+self.metadata.name+'.'+self.metadata.fields.keys()[0]+', 1);\n}\n\n'
         return out
 
     def add_table_set(self):
@@ -208,7 +213,8 @@ class Register(object):
 
     def add_out_header(self):
         out = 'header_type out_header_'+str(self.qid)+'_t {\n\tfields {\n\t\t'
-        for fld in self.keys:
+
+        for fld in self.out_headers:
             out += fld+' : '+str(header_size[fld])+';\n\t\t'
         out = out [:-1]
         out += '}\n}\n\n'
@@ -216,8 +222,8 @@ class Register(object):
         return out
 
     def add_copy_fields(self):
-        out = 'field_list copy_to_cpu_fields_'+str(self.qid)+' \
-                {\n\tstandard_metadata;\n\t'+self.metadata.name+';\n}\n\n'
+        out = 'field_list copy_to_cpu_fields_'+str(self.qid)
+        out += '{\n\tstandard_metadata;\n\t'+self.metadata.name+';\n}\n\n'
 
         out += 'action do_copy_to_cpu_'+str(self.qid)+'() {\n\tclone_ingress_pkt_to_egress('+str(self.mirror_id)+', copy_to_cpu_fields_'+str(self.qid)+');\n}\n\n'
         out += 'table copy_to_cpu_'+str(self.qid)+' {\n\tactions {do_copy_to_cpu_'+str(self.qid)+';}\n\tsize : 1;\n}\n\n'
@@ -229,8 +235,11 @@ class Register(object):
 
     def add_encap_action(self):
         out = 'action do_encap_'+str(self.qid)+'() {\n\tadd_header(out_header_'+str(self.qid)+');\n\t'
-        for fld in self.keys:
-            out += 'modify_field(out_header_'+str(self.qid)+'.'+fld+', '+header_map[fld]+');\n\t'
+        for fld in self.out_headers:
+            if fld in header_map:
+                out += 'modify_field(out_header_'+str(self.qid)+'.'+fld+', '+header_map[fld]+');\n\t'
+            elif fld in self.metadata.fields:
+                out += 'modify_field(out_header_'+str(self.qid)+'.'+fld+', '+self.metadata.name+'.'+fld+');\n\t'
         out = out [:-1]
         out += '}\n\n'
         return out
@@ -259,29 +268,39 @@ class Register(object):
 
 class Distinct(Register):
     def __init__(self, *args, **kwargs):
+        (self.id, self.qid, self.mirror_id, self.width,
+        self.instance_count, self.thresh) = args
+        self.register_name = 'distinct_'+str(self.id)+'_'+str(self.qid)
+        super(Distinct, self).__init__(*args, **kwargs)
         self.pre_actions = ('drop', 'fwd', 'drop')
         self.post_actions = ('fwd', 'fwd', 'fwd')
-        super(Distinct, self).__init__(*args, **kwargs)
+
+
 
 class Reduce(Register):
     def __init__(self, *args, **kwargs):
+        (self.id, self.qid, self.mirror_id, self.width,
+        self.instance_count, self.thresh) = args
+        self.register_name = 'reduce_'+str(self.id)+'_'+str(self.qid)
+        super(Reduce, self).__init__(*args, **kwargs)
         self.pre_actions = ('fwd', 'fwd', 'fwd')
         self.post_actions = ('set', 'fwd', 'drop')
-        super(Reduce, self).__init__(*args, **kwargs)
+        self.out_headers = tuple(['count']+list(self.out_headers))
+
 
     def add_action_update(self):
         out = 'action update_'+self.register_name+'_regs() {\n\t'
-        out += 'add_to_field('+self.metadata.name+'.'+self.metadata.fields[1]+', 1);\n\t'
-        out += 'register_write('+self.register_name+','+self.metadata.name+'.'+self.metadata.fields[0]+','+self.metadata.name+'.'+self.metadata.fields[1]+');\n}\n\n'
+        out += 'add_to_field('+self.metadata.name+'.'+self.metadata.fields.keys()[1]+', 1);\n\t'
+        out += 'register_write('+self.register_name+','+self.metadata.name+'.'+self.metadata.fields.keys()[2]+','+self.metadata.name+'.'+self.metadata.fields.keys()[1]+');\n}\n\n'
         return out
 
     def add_out_header(self):
         out = 'header_type out_header_'+str(self.qid)+'_t {\n\tfields {\n\t\t'
-        for fld in self.keys:
+        for fld in self.out_headers:
             out += fld+' : '+str(header_size[fld])+';\n\t\t'
 
         # for reduce add the count value as part of out header
-        out += 'count : '+str(8)+';\n\t\t'
+        #out += 'count : '+str(8)+';\n\t\t'
         out = out [:-1]
         out += '}\n}\n\n'
         out += 'header out_header_'+str(self.qid)+'_t out_header_'+str(self.qid)+';\n\n'
@@ -289,9 +308,12 @@ class Reduce(Register):
 
     def add_encap_action(self):
         out = 'action do_encap_'+str(self.qid)+'() {\n\tadd_header(out_header_'+str(self.qid)+');\n\t'
-        for fld in self.keys:
-            out += 'modify_field(out_header_'+str(self.qid)+'.'+fld+', '+header_map[fld]+');\n\t'
-        out += 'modify_field(out_header_'+str(self.qid)+'.count, '+self.metadata.name+'.'+self.metadata.fields[1]+');\n\t'
+        for fld in self.out_headers:
+            if fld in header_map:
+                out += 'modify_field(out_header_'+str(self.qid)+'.'+fld+', '+header_map[fld]+');\n\t'
+            elif fld in self.metadata.fields:
+                out += 'modify_field(out_header_'+str(self.qid)+'.'+fld+', '+self.metadata.name+'.'+fld+');\n\t'
+        out += 'modify_field(out_header_'+str(self.qid)+'.count, '+self.metadata.name+'.'+self.metadata.fields.keys()[1]+');\n\t'
         out = out [:-1]
         out += '}\n\n'
         return out
