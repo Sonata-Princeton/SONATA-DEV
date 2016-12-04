@@ -24,7 +24,7 @@ class GlobalCounts(object):
         self.drop_id = 1
 
 class MetaData(object):
-    def __init__(self, name, fields):
+    def __init__(self, name, fields = {}):
         self.name = name
         self.fields = fields
 
@@ -43,7 +43,10 @@ class Register(object):
         self.instance_count, self.thresh) = args
 
         self.metadata_name = 'meta_'+self.register_name
+        self.hash_metadata_name = 'hash_meta_'+self.register_name
         self.field_list_name = self.register_name+'_fields'
+
+
 
         map_dict = dict(**kwargs)
         self.keys = map_dict['keys']
@@ -61,8 +64,22 @@ class Register(object):
 
         self.qid_width = 8
 
+        self.set_count = False
+
+    def add_hash_metadata(self):
+        self.hash_metadata = MetaData(name = self.hash_metadata_name)
+        for fld in self.keys:
+            if '/' in fld:
+                hdr = fld.split('/')[0]
+                mask = fld.split('/')[1]
+            else:
+                hdr = fld
+                mask = header_size[hdr]
+            self.hash_metadata.fields[hdr] = mask
+        return self.hash_metadata.add_metadata()
+
     def add_metadata(self):
-        # TODO: better set the size of value field in metadat
+        # TODO: better set the size of value field in metadata
         self.metadata = MetaData(name = self.metadata_name,
                                 fields = {'qid':self.qid_width,
                                         'idx': self.width,
@@ -72,10 +89,11 @@ class Register(object):
 
     def add_field_list(self):
         out = 'field_list '+self.register_name+'_fields {\n\t'
-        for elem in self.keys:
-            out += header_map[elem]+';\n\t'
+        for elem in self.hash_metadata.fields:
+            out += self.hash_metadata.name+'.'+elem+';\n\t'
         out = out[:-1]
         out += '}\n\n'
+        print out
         return out
 
     def add_field_list_calculation(self):
@@ -104,11 +122,15 @@ class Register(object):
 
     def add_table_start(self):
         out = 'action do_'+self.register_name+'_hashes() {\n\t'
+        for fld in self.hash_metadata.fields:
+            # TODO: Check if setting field size to mask value is sufficient
+            out += 'modify_field('+self.hash_metadata.name+'.'+fld+', '+str(header_map[fld])+');\n\t'
         out += 'modify_field('+self.metadata.name+'.'+self.metadata.fields.keys()[0]+', '+str(self.qid)+');\n\t'
-        out += 'modify_field_with_hash_based_offset('+self.metadata.name+'.'+self.metadata.fields.keys()[2]+', 0,'
-        out += self.register_name+'_fields_hash , '+str(self.instance_count)+');\n\t'
+        out += 'modify_field_with_hash_based_offset('+self.metadata.name+'.'+self.metadata.fields.keys()[2]+', 0, '
+        out += self.register_name+'_fields_hash, '+str(self.instance_count)+');\n\t'
         out += 'register_read('+self.metadata.name+'.'+self.metadata.fields.keys()[1]+', '+self.register_name+', '+self.metadata.name+'.'+self.metadata.fields.keys()[2]+');\n'
         out += '}\n\n'
+        print out
         return out
 
     def add_action_start(self):
@@ -146,9 +168,9 @@ class Register(object):
             self.p4_utils += self.add_skip_action(self.skip_id)
             self.skip_id += 1
         else:
+            self.set_count = True
             out += 'apply(set_'+self.register_name+'_count);'
         return out
-
 
     def add_register_preprocessing(self):
         out = ''
@@ -200,6 +222,7 @@ class Register(object):
 
     def update_p4_state(self):
         self.p4_state += self.add_metadata()
+        self.p4_state += self.add_hash_metadata()
         self.p4_state += self.add_field_list()
         self.p4_state += self.add_field_list_calculation()
         self.p4_state += self.add_register()
@@ -207,8 +230,9 @@ class Register(object):
         self.p4_state += self.add_table_update()
         self.p4_state += self.add_table_start()
         self.p4_state += self.add_action_start()
-        self.p4_state += self.add_action_set()
-        self.p4_state += self.add_table_set()
+        if self.set_count == True:
+            self.p4_state += self.add_action_set()
+            self.p4_state += self.add_table_set()
 
     def update_p4_control(self):
         self.p4_control += self.add_register_preprocessing()
@@ -219,6 +243,8 @@ class Register(object):
         out = 'header_type out_header_'+str(self.qid)+'_t {\n\tfields {\n\t\t'
 
         for fld in self.out_headers:
+            if '/' in fld:
+                fld = fld.split('/')[0]
             out += fld+' : '+str(header_size[fld])+';\n\t\t'
         out = out [:-1]
         out += '}\n}\n\n'
@@ -238,12 +264,17 @@ class Register(object):
         return out
 
     def add_encap_action(self):
-        out = 'action do_encap_'+str(self.qid)+'() {\n\tadd_header(out_header_'+str(self.qid)+');\n\t'
+        out = 'action do_encap_'+str(self.qid)
+        out += '() {\n\tadd_header(out_header_'+str(self.qid)+');\n\t'
         for fld in self.out_headers:
+            if '/' in fld:
+                fld = fld.split('/')[0]
             if fld in header_map:
-                out += 'modify_field(out_header_'+str(self.qid)+'.'+fld+', '+header_map[fld]+');\n\t'
+                out += 'modify_field(out_header_'+str(self.qid)+'.'+fld+', '
+                out += self.hash_metadata.name+'.'+fld+');\n\t'
             elif fld in self.metadata.fields:
-                out += 'modify_field(out_header_'+str(self.qid)+'.'+fld+', '+self.metadata.name+'.'+fld+');\n\t'
+                out += 'modify_field(out_header_'+str(self.qid)+'.'+fld
+                out += ', '+self.metadata.name+'.'+fld+');\n\t'
         out = out [:-1]
         out += '}\n\n'
         return out

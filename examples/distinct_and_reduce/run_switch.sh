@@ -57,7 +57,7 @@ sysctl net.ipv6.conf.$intf2.disable_ipv6=1
 sysctl net.ipv6.conf.$intf3.disable_ipv6=1
 
 
-$P4C_BM_SCRIPT p4src/dnr.p4 --json dnr.json
+$P4C_BM_SCRIPT p4src/test.p4 --json dnr.json
 # This gives libtool the opportunity to "warm-up"
 $SWITCH_PATH >/dev/null 2>&1
 PYTHONPATH=$PYTHONPATH:$BMV2_PATH/mininet/ python topo.py \

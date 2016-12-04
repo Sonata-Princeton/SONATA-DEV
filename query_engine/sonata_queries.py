@@ -14,7 +14,7 @@ class Query(object):
     """
     basic_headers = ["ts", "te","sIP", "sPort","dIP", "dPort", "nBytes",
                           "proto", "sMac", "dMac"]
-                          
+
     def __init__(self, *args, **kwargs):
         self.fields = []
         self.keys = []
@@ -162,10 +162,6 @@ class PacketStream(Query):
                                     refinement_level, reduction_key)
                     refined_query.operators.append(new_operator)
 
-                expr_sp = ''
-                for operator in refined_query.operators:
-                    expr_sp += '.'+operator.compile_sp()
-                #print refinement_level, expr_sp[1:]
                 self.refined_queries.append(refined_query)
         else:
             raise NotImplementedError
@@ -289,4 +285,4 @@ for refined_query in query.refined_queries:
     refined_query.generate_sp_query()
     refined_query.dp_query.compile_pipeline()
     print refined_query.dp_query.p4_control
-    print refined_query.sp_query.compile()
+    #print refined_query.sp_query.compile()

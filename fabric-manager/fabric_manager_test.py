@@ -6,6 +6,7 @@ from query_engine.p4_queries import PacketStream
 class FabricManagerConfig(object):
     def __init__(self):
         self.p4_src = ''
+        self.p4_init_commands = []
         self.queries = []
 
     def add_query(self, q):
@@ -62,12 +63,15 @@ class FabricManagerConfig(object):
 
         out += '\n}\n\n'
         self.p4_src = out
-        return out
+
+        # Update the initial P4 commands
+        for q in self.queries:
+            self.p4_init_commands += q.p4_init_commands
 
 fm = FabricManagerConfig()
-q1 = PacketStream(1).distinct(keys = ('sIP', 'dIP'))
-q2 = PacketStream(2).reduce(keys= ('dIP',))
-q3 = PacketStream(3).distinct(keys = ('sIP', 'dIP')).reduce(keys= ('dIP',))
+q1 = PacketStream(1).distinct(keys = ('sIP', 'dIP/16'))
+#q2 = PacketStream(2).reduce(keys= ('dIP',))
+#q3 = PacketStream(3).distinct(keys = ('sIP', 'dIP')).reduce(keys= ('dIP',))
 
 
 fm.add_query(q1)
@@ -75,4 +79,17 @@ fm.add_query(q1)
 #fm.add_query(q3)
 fm.compile_init_config()
 
-print fm.p4_src
+#print fm.p4_src
+example_dir = '/home/vagrant/dev/examples/distinct_and_reduce'
+
+with open(example_dir+'/commands.txt', 'w') as f:
+    line = ''
+    for cmd in fm.p4_init_commands:
+        line += cmd+'\n'
+    line = line[:-1]
+    f.write(line)
+
+with open(example_dir+'/p4src/test.p4', 'w') as f:
+    line = fm.p4_src
+    line = line[:-1]
+    f.write(line)
