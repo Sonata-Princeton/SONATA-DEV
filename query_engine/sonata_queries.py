@@ -276,17 +276,3 @@ query = (PacketStream()
         .map(keys=('dIP',))
         )
 
-"""
-query.get_refinement_plan()
-for refined_query in query.refined_queries:
-    refined_query.get_partitioning_plan(4)
-    refined_query.partition_plan_final = refined_query.partition_plans[0]
-    refined_query.generate_dp_query()
-    refined_query.generate_sp_query()
-    refined_query.dp_query.compile_pipeline()
-    print refined_query.dp_query.p4_control
-    #print refined_query.sp_query.compile()
-<<<<<<< 8844cee35f45316f7b73d49c56d374158f966e84
-=======
-"""
->>>>>>> fabric manager <--> runtime
