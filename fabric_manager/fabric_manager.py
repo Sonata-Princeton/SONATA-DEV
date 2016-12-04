@@ -2,18 +2,14 @@
 #  Author:
 #  Arpit Gupta (arpitg@cs.princeton.edu)
 
-
 import logging
-
 logging.getLogger(__name__)
 from multiprocessing.connection import Listener
-import pickle
-
 from switch_config.utils import *
 from switch_config.interfaces import Interfaces
 from switch_config.compile_p4 import compile_p4_2_json
 from switch_config.initialize_switch import initialize_switch
-
+import pickle
 
 
 class FabricManagerConfig(object):
@@ -22,11 +18,14 @@ class FabricManagerConfig(object):
         self.queries = []
         self.p4_commands = []
         self.fm_socket = fm_socket
+        self.interfaces = {'reciever': ['m-veth-1', 'out-veth-1'],
+                           'sender': ['m-veth-2', 'out-veth-2']}
 
     def start(self):
         logging.info("fm_manager: Starting")
         self.fm_listener = Listener(self.fm_socket)
         while True:
+            logging.debug("Listening again...")
             conn = self.fm_listener.accept()
             raw_data = conn.recv()
             message = pickle.loads(raw_data)
@@ -34,25 +33,23 @@ class FabricManagerConfig(object):
                 if key == "init":
                     for query in message[key]:
                         self.add_query(query)
-                self.compile_init_config()
-                logging.info("query compiled")
-                logging.info("commands generated")
+                    self.compile_init_config()
+                    logging.info("query compiled")
 
-                with open(P4_COMPILED, 'w') as fp:
-                    fp.write(self.p4_src)
+                    write_to_file(P4_COMPILED, self.p4_src)
+                    compile_p4_2_json()
+                    self.create_interfaces()
+                    initialize_switch(SWITCH_PATH, JSON_P4_COMPILED, THRIFTPORT,
+                                      CLI_PATH, self.p4_commands)
+                elif key == "delta":
+                    self.process_delta_config()
+                else:
+                    logging.error("Unsupported Command: " + key)
 
-                interfaces = { 'reciever': ['m-veth-1','out-veth-1'],
-                               'sender': ['m-veth-2','out-veth-2']}
-
-                for key in interfaces.keys():
-                    inter = Interfaces(interfaces[key][0],interfaces[key][1])
-                    inter.setup()
-
-                compile_p4_2_json()
-
-                initialize_switch(SWITCH_PATH, JSON_P4_COMPILED, THRIFTPORT,
-                                  CLI_PATH, self.p4_commands)
-
+    def create_interfaces(self):
+        for key in self.interfaces.keys():
+            inter = Interfaces(self.interfaces[key][0], self.interfaces[key][1])
+            inter.setup()
 
     def add_query(self, q):
         self.queries.append(q)
@@ -62,7 +59,8 @@ class FabricManagerConfig(object):
         return 0
 
     def process_delta_config(self):
-        # Process delta config from RT
+        logging.info("Sending deltas to Data Plane")
+        send_commands_to_dp(CLI_PATH, JSON_P4_COMPILED, THRIFTPORT, self.p4_commands)
         return 0
 
     def receive_configs(self):
@@ -108,35 +106,3 @@ class FabricManagerConfig(object):
             self.p4_commands.extend(q.p4_init_commands)
 
         return out
-
-
-"""
-fm = FabricManagerConfig()
-q1 = PacketStream(1).distinct(keys = ('sIP', 'dIP'))
-q2 = PacketStream(2).reduce(keys= ('dIP',))
-#q3 = PacketStream(fm.gc).distinct(keys = ('sIP', 'dIP')).reduce(keys= ('dIP',))
-
-
-fm.add_query(q1)
-fm.add_query(q2)
-queries = fm.compile_init_config()
-
-
-
-print str(fm.p4_commands)
-
-
-with open(P4_COMPILED, 'w') as fp:
-    fp.write(fm.p4_src)
-
-interfaces = { 'reciever': ['m-veth-1','out-veth-1'],
-               'sender': ['m-veth-2','out-veth-2']}
-
-for key in interfaces.keys():
-    inter = Interfaces(interfaces[key][0],interfaces[key][1])
-    inter.setup()
-
-compile_p4_2_json()
-
-initialize_switch(SWITCH_PATH, JSON_P4_COMPILED, THRIFTPORT, CLI_PATH, fm.p4_commands)
-"""

@@ -24,19 +24,23 @@ class Runtime(object):
         self.fm_thread.start()
         time.sleep(1)
 
+        self.dp_qid = 1
         for query in self.queries:
             logging.debug("runtime: going thru queries")
             query.get_refinement_plan()
             for refined_query in query.refined_queries:
                 refined_query.get_partitioning_plan(4)
                 refined_query.partition_plan_final = refined_query.partition_plans[0]
-                refined_query.generate_dp_query()
+                refined_query.generate_dp_query(self.dp_qid)
+                self.dp_qid += 1
                 refined_query.generate_sp_query()
                 self.dp_queries.append(refined_query.dp_query)
 
+        time.sleep(2)
         if self.dp_queries:
             self.send_to_fm("init", self.dp_queries)
 
+        self.send_to_fm("delta", self.dp_queries)
         self.fm_thread.join()
 
     def start_fabric_managers(self):

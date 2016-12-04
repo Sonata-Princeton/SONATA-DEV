@@ -52,24 +52,18 @@ def initialize_switch(behavioral_exe, p4_json_path, thrift_port, cli_path, p4_co
 
     Intf("m-veth-1", net.get('s1'), 11)
     Intf("m-veth-2", net.get('s1'), 12)
-
     net.start()
-
     sleep(1)
 
-    cmd = [cli_path, p4_json_path, str(thrift_port)]
-    logging.info(" ".join(cmd))
-    P4_COMMANDS = "\n".join(p4_commands)
-    logging.info(P4_COMMANDS)
-    get_in(cmd, P4_COMMANDS)
+    send_commands_to_dp(cli_path, p4_json_path, thrift_port, p4_commands)
 
     sleep(1)
 
     logging.debug("SWITCH Ready !")
 
-    CLI(net)
-    net.stop()
+    #CLI(net)
+    #net.stop()
 
 if __name__ == '__main__':
-    setLogLevel( 'info' )
+    setLogLevel('info')
     initialize_switch(SWITCH_PATH, JSON_P4_COMPILED, THRIFTPORT, CLI_PATH)

@@ -187,11 +187,11 @@ class PacketStream(Query):
         else:
             raise NotImplementedError
 
-    def generate_dp_query(self):
+    def generate_dp_query(self, qid):
         if self.isInput != True:
             if self.partition_plan_final != None:
                 dp_query = self.partition_plan_final[0]
-                p4_query = p4.PacketStream(1)
+                p4_query = p4.PacketStream(qid)
                 for operator in dp_query.operators:
                     if operator.name == 'Reduce':
                         p4_query = p4_query.reduce(keys = operator.prev_fields)

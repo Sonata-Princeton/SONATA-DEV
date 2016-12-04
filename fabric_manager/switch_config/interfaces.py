@@ -49,7 +49,3 @@ class Interfaces(object):
         base = "sysctl net.ipv6.conf.%s.disable_ipv6=1"%(interface)
         (returncode, error) = get_out(base)
         return returncode
-
-
-inter = Interfaces("m-veth-1","out-veth-1")
-inter.setup()
