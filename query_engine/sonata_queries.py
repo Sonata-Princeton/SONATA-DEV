@@ -161,7 +161,6 @@ class PacketStream(Query):
                     new_operator = generate_new_operator(operator,
                                     refinement_level, reduction_key)
                     refined_query.operators.append(new_operator)
-
                 self.refined_queries.append(refined_query)
         else:
             raise NotImplementedError
@@ -277,6 +276,7 @@ query = (PacketStream()
         .map(keys=('dIP',))
         )
 
+"""
 query.get_refinement_plan()
 for refined_query in query.refined_queries:
     refined_query.get_partitioning_plan(4)
@@ -286,3 +286,7 @@ for refined_query in query.refined_queries:
     refined_query.dp_query.compile_pipeline()
     print refined_query.dp_query.p4_control
     #print refined_query.sp_query.compile()
+<<<<<<< 8844cee35f45316f7b73d49c56d374158f966e84
+=======
+"""
+>>>>>>> fabric manager <--> runtime

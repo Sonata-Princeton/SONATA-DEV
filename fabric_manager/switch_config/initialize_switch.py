@@ -14,6 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
+
+logging.getLogger(__name__)
+
 from utils import *
 from mininet.net import Mininet
 from mininet.topo import Topo
@@ -22,14 +26,13 @@ from mininet.cli import CLI
 from mininet.link import TCLink, Intf
 from p4_mininet import P4Switch, P4Host
 from time import sleep
-import subprocess
 
 
 class MyTopo(Topo):
     def __init__(self, sw_path, json_path, thrift_port, **opts):
         # Initialize topology and default options
         Topo.__init__(self, **opts)
-
+        logging.debug("Topology created")
         switch = self.addSwitch('s1',
                                 sw_path = sw_path,
                                 json_path = json_path,
@@ -37,7 +40,7 @@ class MyTopo(Topo):
                                 pcap_dump = True)
 
 
-def main(behavioral_exe, p4_json_path, thrift_port, cli_path):
+def initialize_switch(behavioral_exe, p4_json_path, thrift_port, cli_path, p4_commands):
     topo = MyTopo(behavioral_exe,
                   p4_json_path,
                   thrift_port)
@@ -55,22 +58,18 @@ def main(behavioral_exe, p4_json_path, thrift_port, cli_path):
     sleep(1)
 
     cmd = [cli_path, p4_json_path, str(thrift_port)]
-    with open(P4_COMMANDS, "r") as f:
-        print " ".join(cmd)
-        try:
-            output = subprocess.check_output(cmd, stdin = f, shell=False)
-            print output
-        except subprocess.CalledProcessError as e:
-            print e
-            print e.output
+    logging.info(" ".join(cmd))
+    P4_COMMANDS = "\n".join(p4_commands)
+    logging.info(P4_COMMANDS)
+    get_in(cmd, P4_COMMANDS)
 
     sleep(1)
 
-    print "Ready !"
+    logging.debug("SWITCH Ready !")
 
     CLI(net)
     net.stop()
 
 if __name__ == '__main__':
     setLogLevel( 'info' )
-    main(SWITCH_PATH, JSON_P4_COMPILED, THRIFTPORT, CLI_PATH)
+    initialize_switch(SWITCH_PATH, JSON_P4_COMPILED, THRIFTPORT, CLI_PATH)

@@ -358,7 +358,7 @@ class Reduce(Register):
 
 class PacketStream(object):
     '''Multiple packet streams can exist for a switch'''
-    def __init__(self,id):
+    def __init__(self, id):
         self.qid = id
         self.mirror_id = 200+self.qid
         self.p4_state = ''
