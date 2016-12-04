@@ -2,6 +2,10 @@
 #  Author:
 #  Arpit Gupta (arpitg@cs.princeton.edu)
 from query_engine.p4_queries import PacketStream
+from switch_config.utils import *
+from switch_config.interfaces import Interfaces
+from switch_config.compile_p4 import compile_p4_2_json
+from switch_config.initialize_switch import main
 
 class FabricManagerConfig(object):
     def __init__(self):
@@ -69,4 +73,13 @@ q2 = PacketStream(2).reduce(keys= ('dIP',))
 fm.add_query(q2)
 fm.compile_init_config()
 
-print fm.p4_src
+with open(P4_COMPILED, 'w') as fp:
+    fp.write(fm.p4_src)
+
+
+inter = Interfaces("m-veth-1","out-veth-1")
+inter.setup()
+
+compile_p4_2_json()
+
+main(SWITCH_PATH, JSON_P4_COMPILED, THRIFTPORT, CLI_PATH)
