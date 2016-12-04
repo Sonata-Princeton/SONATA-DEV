@@ -4,12 +4,14 @@ DISTINCT = 0
 THRESHOLD = 2
 
 header_map = {"sIP":"ipv4.srcAddr", "dIP":"ipv4.dstAddr",
+            # TODO: Get rid of this hardcoding
             "dIP/16":"ipv4.dstAddr", "dIP/32":"ipv4.dstAddr",
             "sPort": "tcp.srcPort", "dPort": "tcp.dstPort",
             "nBytes": "ipv4.totalLen", "proto": "ipv4.protocol",
             "sMac": "ethernet.srcAddr", "dMac":"ethernet.dstAddr"}
 
 header_size = {"sIP":32, "dIP":32, "sPort": 16, "dPort": 16,
+                # TODO: Get rid of this hardcoding
                 "dIP/16":16, "dIP/32":32,
                 "nBytes": 16, "proto": 8, "sMac": 48, "dMac":48,
                 "qid":8, "count": 12}
@@ -102,7 +104,8 @@ class Register(object):
 
     def add_table_start(self):
         out = 'action do_'+self.register_name+'_hashes() {\n\t'
-        out += 'modify_field_with_hash_based_offset('+self.metadata.name+'.'+self.metadata.fields.keys()[0]+', 0,'
+        out += 'modify_field('+self.metadata.name+'.'+self.metadata.fields.keys()[0]+', '+str(self.qid)+');\n\t'
+        out += 'modify_field_with_hash_based_offset('+self.metadata.name+'.'+self.metadata.fields.keys()[2]+', 0,'
         out += self.register_name+'_fields_hash , '+str(self.instance_count)+');\n\t'
         out += 'register_read('+self.metadata.name+'.'+self.metadata.fields.keys()[1]+', '+self.register_name+', '+self.metadata.name+'.'+self.metadata.fields.keys()[2]+');\n'
         out += '}\n\n'
@@ -151,15 +154,15 @@ class Register(object):
         out = ''
         if self.pre_actions.count('fwd') < 3:
             # then only we need to add condition
-            out += '\t'+'if('+self.metadata.name+'.'+self.metadata.fields.keys()[1]+' > '+str(self.thresh)+') {\n\t'
-            out += '\t'+self.add_cond_actions(0, 0)
-            out += '\t'+'}\n'
-            out += '\t'+'else if('+self.metadata.name+'.'+self.metadata.fields.keys()[1]+' == '+str(self.thresh)+') {\n\t'
-            out += '\t'+self.add_cond_actions(0, 1)
-            out += '\t'+'}\n'
-            out += '\t'+'else {\n\t'
-            out += '\t'+self.add_cond_actions(0, 2)
-            out += '\t'+'}\n\n'
+            out += '\t\t'+'if('+self.metadata.name+'.'+self.metadata.fields.keys()[1]+' > '+str(self.thresh)+') {\n\t'
+            out += '\t\t'+self.add_cond_actions(0, 0)
+            out += '\t\t'+'}\n'
+            out += '\t\t'+'else if('+self.metadata.name+'.'+self.metadata.fields.keys()[1]+' == '+str(self.thresh)+') {\n\t'
+            out += '\t\t'+self.add_cond_actions(0, 1)
+            out += '\t\t'+'}\n'
+            out += '\t\t'+'else {\n\t'
+            out += '\t\t'+self.add_cond_actions(0, 2)
+            out += '\t\t'+'}\n\n'
         #print out
         return out
 
@@ -167,25 +170,26 @@ class Register(object):
         out = ''
         if self.post_actions.count('fwd') < 3:
             # then only we need to add condition
-            out += '\t'+'if('+self.metadata.name+'.'+self.metadata.fields.keys()[1]+' > '+str(self.thresh)+') {\n\t'
-            out += '\t'+self.add_cond_actions(1, 0)
-            out += '\t'+'}\n'
-            out += '\t'+'else if('+self.metadata.name+'.'+self.metadata.fields.keys()[1]+' == '+str(self.thresh)+') {\n\t'
-            out += '\t'+self.add_cond_actions(1, 1)
-            out += '\t'+'}\n'
-            out += '\t'+'else {\n\t'
-            out += '\t'+self.add_cond_actions(1, 2)
-            out += '\t'+'}\n\n'
+            out += '\t\t'+'if('+self.metadata.name+'.'+self.metadata.fields.keys()[1]+' > '+str(self.thresh)+') {\n\t'
+            out += '\t\t'+self.add_cond_actions(1, 0)
+            out += '\t\t'+'}\n'
+            out += '\t\t'+'else if('+self.metadata.name+'.'+self.metadata.fields.keys()[1]+' == '+str(self.thresh)+') {\n\t'
+            out += '\t\t'+self.add_cond_actions(1, 1)
+            out += '\t\t'+'}\n'
+            out += '\t\t'+'else {\n\t'
+            out += '\t\t'+self.add_cond_actions(1, 2)
+            out += '\t\t'+'}\n\n'
         #print out
         return out
 
     def add_register_action(self):
-        out = '\t'+'apply(update_'+self.register_name+'_counts);\n'
+        out = '\t\t'+'apply(update_'+self.register_name+'_counts);\n'
         #print out
         return out
 
     def add_action_set(self):
-        out = 'action set_'+self.register_name+'_count() {\n\tmodify_field('+self.metadata.name+'.'+self.metadata.fields.keys()[0]+', 1);\n}\n\n'
+        out = 'action set_'+self.register_name+'_count() {\n'
+        out += '\tmodify_field('+self.metadata.name+'.'+self.metadata.fields.keys()[1]+', 1);\n}\n\n'
         return out
 
     def add_table_set(self):
@@ -326,6 +330,7 @@ class PacketStream(object):
         self.p4_state = ''
         self.p4_utils = ''
         self.p4_control = ''
+        self.p4_ingress_start = ''
         self.p4_egress = ''
         self.p4_invariants = ''
         self.operators = []
@@ -361,13 +366,14 @@ class PacketStream(object):
             self.p4_state += operator.p4_state
 
         for operator in self.operators:
-            self.p4_control += 'apply(start_'+operator.register_name+');\n\t'
+            self.p4_ingress_start += '\tapply(start_'+operator.register_name+');\n'
+
         self.p4_control = self.p4_control[:-1]
 
         for operator in self.operators:
             self.p4_control += operator.p4_control
 
-        self.p4_control += '\tapply(copy_to_cpu_'+str(self.qid)+');'
+        self.p4_control += '\t\tapply(copy_to_cpu_'+str(self.qid)+');'
 
         # Update all the initial commands
         for operator in self.operators:
