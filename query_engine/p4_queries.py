@@ -230,9 +230,8 @@ class Register(object):
         self.p4_state += self.add_table_update()
         self.p4_state += self.add_table_start()
         self.p4_state += self.add_action_start()
-        if self.set_count == True:
-            self.p4_state += self.add_action_set()
-            self.p4_state += self.add_table_set()
+        self.p4_state += self.add_action_set()
+        self.p4_state += self.add_table_set()
 
     def update_p4_control(self):
         self.p4_control += self.add_register_preprocessing()
@@ -332,6 +331,8 @@ class Reduce(Register):
     def add_out_header(self):
         out = 'header_type out_header_'+str(self.qid)+'_t {\n\tfields {\n\t\t'
         for fld in self.out_headers:
+            if '/' in fld:
+                fld = fld.split('/')[0]
             out += fld+' : '+str(header_size[fld])+';\n\t\t'
 
         # for reduce add the count value as part of out header
@@ -344,6 +345,8 @@ class Reduce(Register):
     def add_encap_action(self):
         out = 'action do_encap_'+str(self.qid)+'() {\n\tadd_header(out_header_'+str(self.qid)+');\n\t'
         for fld in self.out_headers:
+            if '/' in fld:
+                fld = fld.split('/')[0]
             if fld in header_map:
                 out += 'modify_field(out_header_'+str(self.qid)+'.'+fld+', '+header_map[fld]+');\n\t'
             elif fld in self.metadata.fields:
