@@ -35,6 +35,10 @@ class FabricManagerConfig(object):
 
         out += self.queries[0].p4_invariants
 
+        # Update the initial P4 commands
+        for q in self.queries:
+            self.p4_init_commands += q.p4_init_commands
+
         out += 'parser parse_out_header {\n\t'
         for q in self.queries:
             out += 'extract(out_header_'+str(q.qid)+');\n\t'
@@ -48,34 +52,65 @@ class FabricManagerConfig(object):
         for q in self.queries:
             out += q.p4_state
 
-        out += 'control ingress {\n'
+        out += 'header_type meta_fm_t {\n\tfields {\n'
         for q in self.queries:
-            out += q.p4_ingress_start
-            out += '\tif ('+q.operators[0].metadata_name+'.qid == '+str(q.qid)+'){\n'
-            out += q.p4_control+'\n'
-            out += '\t}\n\n'
+            out += '\t\tqid_'+str(q.qid)+' : 1;\n'
+        out += '\t}\n}\n\nmetadata meta_fm_t meta_fm;\n\n'
+
+        out += 'action init_meta_fm() {\n'
+        for q in self.queries:
+            out += '\tmodify_field(meta_fm.qid_'+str(q.qid)+', 0);\n'
+        out += '}\n\n'
+
+        out += 'table init_meta_fm {\n'
+        out += '\tactions {init_meta_fm;}\n'
+        out += '\tsize: 1;\n}\n\n'
+        self.p4_init_commands.append('table_set_default init_meta_fm init_meta_fm')
+
+        for q0 in self.queries:
+            out += 'action set_meta_fm_'+str(q0.qid)+'(){\n'
+            for q1 in self.queries:
+                if q0.qid == q1.qid:
+                    out += '\tmodify_field(meta_fm.qid_'+str(q1.qid)+', 1);\n'
+                else:
+                    out += '\tmodify_field(meta_fm.qid_'+str(q1.qid)+', 0);\n'
+            out += '}\n\n'
+
+            out += 'table filter_'+str(q0.qid)+'{\n'
+            out += '\treads {\n'
+            out += '\t\tipv4.protocol: exact;\n\t\tipv4.dstAddr: lpm;\n'
+            out += '\t}\n\tactions{\n\t\tset_meta_fm_'+str(q0.qid)+';\n\t\t_nop;\n\t}\n}\n\n'
+            self.p4_init_commands.append('table_set_default filter_'+str(q0.qid)+' _nop')
+
+        out += 'control ingress {\n'
+        out += '\tapply(init_meta_fm);\n'
+        for q in self.queries:
+            out += '\tapply(filter_'+str(q.qid)+');\n'
+            out += '\tif (meta_fm.qid_'+str(q.qid)+' == 1){\n'
+            out += '\t\tapply(copy_to_cpu_'+str(q.qid)+');\n\t}\n'
+
         out += '}\n\n'
         out += 'control egress {\n'
         for q in self.queries:
-            out += '\tif ('+q.operators[0].metadata_name+'.qid == '+str(q.qid)+'){\n'
+            out += '\tif (meta_fm.qid_'+str(q.qid)+' == 1){\n'
+            out += '\t'+q.p4_ingress_start
+            out += q.p4_control+'\n'
             out += '\t\tapply(encap_'+str(q.qid)+');\n'
             out += '\t}\n'
 
         out += '\n}\n\n'
         self.p4_src = out
 
-        # Update the initial P4 commands
-        for q in self.queries:
-            self.p4_init_commands += q.p4_init_commands
+
 
 fm = FabricManagerConfig()
+#q1 = PacketStream(1).filter(keys = ('proto',),values = ('17',)).distinct(keys = ('sIP', 'dIP/16'))
 q1 = PacketStream(1).distinct(keys = ('sIP', 'dIP/16'))
-#q2 = PacketStream(2).reduce(keys= ('dIP',))
-#q3 = PacketStream(3).distinct(keys = ('sIP', 'dIP')).reduce(keys= ('dIP',))
-
+q2 = PacketStream(2).reduce(keys= ('dIP/16',))
+q3 = PacketStream(3).distinct(keys = ('sIP', 'dIP')).reduce(keys= ('dIP',))
 
 fm.add_query(q1)
-#fm.add_query(q2)
+fm.add_query(q2)
 #fm.add_query(q3)
 fm.compile_init_config()
 

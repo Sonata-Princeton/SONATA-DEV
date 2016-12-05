@@ -42,9 +42,9 @@ class Register(object):
         (self.id, self.qid, self.mirror_id, self.width,
         self.instance_count, self.thresh) = args
 
-        self.metadata_name = 'meta_'+self.register_name
-        self.hash_metadata_name = 'hash_meta_'+self.register_name
-        self.field_list_name = self.register_name+'_fields'
+        self.metadata_name = 'meta_'+self.operator_name
+        self.hash_metadata_name = 'hash_meta_'+self.operator_name
+        self.field_list_name = self.operator_name+'_fields'
 
 
 
@@ -88,7 +88,7 @@ class Register(object):
         return self.metadata.add_metadata()
 
     def add_field_list(self):
-        out = 'field_list '+self.register_name+'_fields {\n\t'
+        out = 'field_list '+self.operator_name+'_fields {\n\t'
         for elem in self.hash_metadata.fields:
             out += self.hash_metadata.name+'.'+elem+';\n\t'
         out = out[:-1]
@@ -97,59 +97,59 @@ class Register(object):
         return out
 
     def add_field_list_calculation(self):
-        out = 'field_list_calculation '+self.register_name+'_fields_hash {\n\t'
+        out = 'field_list_calculation '+self.operator_name+'_fields_hash {\n\t'
         out += 'input {\n\t\t'+self.field_list_name+';\n\t}\n\t'
         out += 'algorithm : crc32;\n\toutput_width : '+str(self.width)+';\n}\n\n'
         return out
 
     def add_register(self):
-        out = 'register '+self.register_name+'{\n\t'
+        out = 'register '+self.operator_name+'{\n\t'
         out += 'width : '+str(self.width)+';\n\tinstance_count : '+str(self.instance_count)+';\n}\n\n'
         return out
 
     def add_action_update(self):
-        out = 'action update_'+self.register_name+'_regs() {\n\t'
+        out = 'action update_'+self.operator_name+'_regs() {\n\t'
         out += 'bit_or('+self.metadata.name+'.'+self.metadata.fields.keys()[1]+','+self.metadata.name+'.'+self.metadata.fields.keys()[1]+', 1);\n\t'
-        out += 'register_write('+self.register_name+','+self.metadata.name+'.'+self.metadata.fields.keys()[2]+','+self.metadata.name+'.'+self.metadata.fields.keys()[1]+');\n}\n\n'
+        out += 'register_write('+self.operator_name+','+self.metadata.name+'.'+self.metadata.fields.keys()[2]+','+self.metadata.name+'.'+self.metadata.fields.keys()[1]+');\n}\n\n'
         return out
 
     def add_table_update(self):
-        out = 'table update_'+self.register_name+'_counts {\n\t'
-        out += 'actions {update_'+self.register_name+'_regs;}\n\t'
+        out = 'table update_'+self.operator_name+'_counts {\n\t'
+        out += 'actions {update_'+self.operator_name+'_regs;}\n\t'
         out += 'size : 1;\n}\n\n'
-        self.p4_init_commands.append('table_set_default update_'+self.register_name+'_counts update_'+self.register_name+'_regs')
+        self.p4_init_commands.append('table_set_default update_'+self.operator_name+'_counts update_'+self.operator_name+'_regs')
         return out
 
     def add_table_start(self):
-        out = 'action do_'+self.register_name+'_hashes() {\n\t'
+        out = 'action do_'+self.operator_name+'_hashes() {\n\t'
         for fld in self.hash_metadata.fields:
             # TODO: Check if setting field size to mask value is sufficient
             out += 'modify_field('+self.hash_metadata.name+'.'+fld+', '+str(header_map[fld])+');\n\t'
         out += 'modify_field('+self.metadata.name+'.'+self.metadata.fields.keys()[0]+', '+str(self.qid)+');\n\t'
         out += 'modify_field_with_hash_based_offset('+self.metadata.name+'.'+self.metadata.fields.keys()[2]+', 0, '
-        out += self.register_name+'_fields_hash, '+str(self.instance_count)+');\n\t'
-        out += 'register_read('+self.metadata.name+'.'+self.metadata.fields.keys()[1]+', '+self.register_name+', '+self.metadata.name+'.'+self.metadata.fields.keys()[2]+');\n'
+        out += self.operator_name+'_fields_hash, '+str(self.instance_count)+');\n\t'
+        out += 'register_read('+self.metadata.name+'.'+self.metadata.fields.keys()[1]+', '+self.operator_name+', '+self.metadata.name+'.'+self.metadata.fields.keys()[2]+');\n'
         out += '}\n\n'
         print out
         return out
 
     def add_action_start(self):
-        out = 'table start_'+self.register_name+' {\n\t'
-        out += 'actions {do_'+self.register_name+'_hashes;}\n\t'
+        out = 'table start_'+self.operator_name+' {\n\t'
+        out += 'actions {do_'+self.operator_name+'_hashes;}\n\t'
         out += 'size : 1;\n}\n\n'
-        self.p4_init_commands.append('table_set_default start_'+self.register_name+' do_'+self.register_name+'_hashes')
+        self.p4_init_commands.append('table_set_default start_'+self.operator_name+' do_'+self.operator_name+'_hashes')
         return out
 
     def add_drop_action(self, id):
-        out = 'table drop_'+self.register_name+'_'+str(id)+' {\n\t'
+        out = 'table drop_'+self.operator_name+'_'+str(id)+' {\n\t'
         out += 'actions {_drop;}\n\tsize : 1;\n}\n\n'
-        self.p4_init_commands.append('table_set_default drop_'+self.register_name+'_'+str(id)+' _drop')
+        self.p4_init_commands.append('table_set_default drop_'+self.operator_name+'_'+str(id)+' _drop')
         return out
 
     def add_skip_action(self, id):
-        out = 'table skip_'+self.register_name+'_'+str(id)+' {\n\t'
+        out = 'table skip_'+self.operator_name+'_'+str(id)+' {\n\t'
         out += 'actions {_nop;}\n\tsize : 1;\n}\n\n'
-        self.p4_init_commands.append('table_set_default skip_'+self.register_name+'_'+str(id)+' _nop')
+        self.p4_init_commands.append('table_set_default skip_'+self.operator_name+'_'+str(id)+' _nop')
         return out
 
     def add_cond_actions(self, mode, ind):
@@ -160,16 +160,16 @@ class Register(object):
             act = self.post_actions[ind]
 
         if act == 'drop':
-            out += 'apply(drop_'+self.register_name+'_'+str(self.drop_id)+');\n'
+            out += 'apply(drop_'+self.operator_name+'_'+str(self.drop_id)+');\n'
             self.p4_utils += self.add_drop_action(self.drop_id)
             self.drop_id += 1
         elif act == 'fwd':
-            out += 'apply(skip_'+self.register_name+'_'+str(self.skip_id)+');\n'
+            out += 'apply(skip_'+self.operator_name+'_'+str(self.skip_id)+');\n'
             self.p4_utils += self.add_skip_action(self.skip_id)
             self.skip_id += 1
         else:
             self.set_count = True
-            out += 'apply(set_'+self.register_name+'_count);'
+            out += 'apply(set_'+self.operator_name+'_count);'
         return out
 
     def add_register_preprocessing(self):
@@ -205,19 +205,19 @@ class Register(object):
         return out
 
     def add_register_action(self):
-        out = '\t\t'+'apply(update_'+self.register_name+'_counts);\n'
+        out = '\t\t'+'apply(update_'+self.operator_name+'_counts);\n'
         #print out
         return out
 
     def add_action_set(self):
-        out = 'action set_'+self.register_name+'_count() {\n'
+        out = 'action set_'+self.operator_name+'_count() {\n'
         out += '\tmodify_field('+self.metadata.name+'.'+self.metadata.fields.keys()[1]+', 1);\n}\n\n'
         return out
 
     def add_table_set(self):
-        out = 'table set_'+self.register_name+'_count {\n\tactions {set_'+self.register_name+'_count;}\n\
+        out = 'table set_'+self.operator_name+'_count {\n\tactions {set_'+self.operator_name+'_count;}\n\
         size: 1;\n}\n\n'
-        self.p4_init_commands.append('table_set_default set_'+self.register_name+'_count set_'+self.register_name+'_count')
+        self.p4_init_commands.append('table_set_default set_'+self.operator_name+'_count set_'+self.operator_name+'_count')
         return out
 
     def update_p4_state(self):
@@ -300,11 +300,26 @@ class Register(object):
         self.update_p4_control()
         self.update_p4_encap()
 
+class Filter(object):
+    def __init__(self, *args, **kwargs):
+        (self.id, self.qid) = args
+        self.operator_name = 'filter_'+str(self.id)+'_'+str(self.qid)
+        self.p4_state = ''
+        self.p4_utils = ''
+        self.p4_control = ''
+        self.p4_egress = ''
+        self.p4_invariants = ''
+        self.p4_init_commands = []
+
+    def compile_dp(self):
+        return 0
+
+
 class Distinct(Register):
     def __init__(self, *args, **kwargs):
         (self.id, self.qid, self.mirror_id, self.width,
         self.instance_count, self.thresh) = args
-        self.register_name = 'distinct_'+str(self.id)+'_'+str(self.qid)
+        self.operator_name = 'distinct_'+str(self.id)+'_'+str(self.qid)
         super(Distinct, self).__init__(*args, **kwargs)
         self.pre_actions = ('drop', 'fwd', 'drop')
         self.post_actions = ('fwd', 'fwd', 'fwd')
@@ -315,7 +330,7 @@ class Reduce(Register):
     def __init__(self, *args, **kwargs):
         (self.id, self.qid, self.mirror_id, self.width,
         self.instance_count, self.thresh) = args
-        self.register_name = 'reduce_'+str(self.id)+'_'+str(self.qid)
+        self.operator_name = 'reduce_'+str(self.id)+'_'+str(self.qid)
         super(Reduce, self).__init__(*args, **kwargs)
         self.pre_actions = ('fwd', 'fwd', 'fwd')
         self.post_actions = ('set', 'fwd', 'drop')
@@ -323,9 +338,9 @@ class Reduce(Register):
 
 
     def add_action_update(self):
-        out = 'action update_'+self.register_name+'_regs() {\n\t'
+        out = 'action update_'+self.operator_name+'_regs() {\n\t'
         out += 'add_to_field('+self.metadata.name+'.'+self.metadata.fields.keys()[1]+', 1);\n\t'
-        out += 'register_write('+self.register_name+','+self.metadata.name+'.'+self.metadata.fields.keys()[2]+','+self.metadata.name+'.'+self.metadata.fields.keys()[1]+');\n}\n\n'
+        out += 'register_write('+self.operator_name+','+self.metadata.name+'.'+self.metadata.fields.keys()[2]+','+self.metadata.name+'.'+self.metadata.fields.keys()[1]+');\n}\n\n'
         return out
 
     def add_out_header(self):
@@ -384,8 +399,15 @@ class PacketStream(object):
         self.operators.append(operator)
         return self
 
-    def update_p4_src(self):
+    def filter(self, *args, **kwargs):
+        id = len(self.operators)
+        new_args = (id, self.qid)+args
+        operator = Filter(*new_args, **kwargs)
+        self.operators.append(operator)
+        return self
 
+
+    def update_p4_src(self):
 
         for operator in self.operators:
             operator.compile_dp()
@@ -400,14 +422,14 @@ class PacketStream(object):
             self.p4_state += operator.p4_state
 
         for operator in self.operators:
-            self.p4_ingress_start += '\tapply(start_'+operator.register_name+');\n'
+            self.p4_ingress_start += '\tapply(start_'+operator.operator_name+');\n'
 
         self.p4_control = self.p4_control[:-1]
 
         for operator in self.operators:
             self.p4_control += operator.p4_control
 
-        self.p4_control += '\t\tapply(copy_to_cpu_'+str(self.qid)+');'
+        #self.p4_control += '\t\tapply(copy_to_cpu_'+str(self.qid)+');'
 
         # Update all the initial commands
         for operator in self.operators:
