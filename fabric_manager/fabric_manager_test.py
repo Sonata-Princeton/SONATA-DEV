@@ -39,6 +39,7 @@ class FabricManagerConfig(object):
         for q in self.queries:
             self.p4_init_commands += q.p4_init_commands
 
+
         out += 'parser parse_out_header {\n\t'
         for q in self.queries:
             out += 'extract(out_header_'+str(q.qid)+');\n\t'
@@ -77,10 +78,11 @@ class FabricManagerConfig(object):
             out += '}\n\n'
 
             out += 'table filter_'+str(q0.qid)+'{\n'
-            out += '\treads {\n'
-            out += '\t\tipv4.protocol: exact;\n\t\tipv4.dstAddr: lpm;\n'
-            out += '\t}\n\tactions{\n\t\tset_meta_fm_'+str(q0.qid)+';\n\t\t_nop;\n\t}\n}\n\n'
-            self.p4_init_commands.append('table_set_default filter_'+str(q0.qid)+' _nop')
+            #out += '\treads {\n'
+            #ut += '\t\tipv4.protocol: exact;\n'
+            #out += '\t\tipv4.dstAddr: lpm;\n\t}\n'
+            out += '\tactions{\n\t\tset_meta_fm_'+str(q0.qid)+';\n\t\t_nop;\n\t}\n}\n\n'
+            self.p4_init_commands.append('table_set_default filter_'+str(q0.qid)+' set_meta_fm_'+str(q0.qid))
 
         out += 'control ingress {\n'
         out += '\tapply(init_meta_fm);\n'
@@ -88,6 +90,7 @@ class FabricManagerConfig(object):
             out += '\tapply(filter_'+str(q.qid)+');\n'
             out += '\tif (meta_fm.qid_'+str(q.qid)+' == 1){\n'
             out += '\t\tapply(copy_to_cpu_'+str(q.qid)+');\n\t}\n'
+            self.p4_init_commands.append('table_set_default copy_to_cpu_'+str(q.qid)+' do_copy_to_cpu_'+str(q.qid))
 
         out += '}\n\n'
         out += 'control egress {\n'
@@ -97,19 +100,23 @@ class FabricManagerConfig(object):
             out += q.p4_control+'\n'
             out += '\t\tapply(encap_'+str(q.qid)+');\n'
             out += '\t}\n'
+            self.p4_init_commands.append('table_set_default encap_'+str(q.qid)+' do_encap_'+str(q.qid))
 
         out += '\n}\n\n'
+
+        for q in self.queries:
+            self.p4_init_commands.append('mirroring_add '+str(q.mirror_id)+' 12')
         self.p4_src = out
 
 
 
 fm = FabricManagerConfig()
 #q1 = PacketStream(1).filter(keys = ('proto',),values = ('17',)).distinct(keys = ('sIP', 'dIP/16'))
-q1 = PacketStream(1).distinct(keys = ('sIP', 'dIP/16'))
-q2 = PacketStream(2).reduce(keys= ('dIP/16',))
+q1 = PacketStream(1).distinct(keys = ('sIP', 'dIP'))
+q2 = PacketStream(2).reduce(keys= ('dIP',))
 q3 = PacketStream(3).distinct(keys = ('sIP', 'dIP')).reduce(keys= ('dIP',))
 
-fm.add_query(q1)
+#fm.add_query(q1)
 fm.add_query(q2)
 #fm.add_query(q3)
 fm.compile_init_config()

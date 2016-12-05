@@ -91,16 +91,9 @@ table skip1 {
 
 
 control ingress {
+	apply(copy_to_cpu);
 
-	apply(start);
 
-  if(imd.distinctVal == DISTINCT) {
-    apply(update_counts);
-    apply(copy_to_cpu);
-	}
-	else {
-	  apply(skip1);
-	}
 }
 
 action do_cpu_encap() {
@@ -116,5 +109,13 @@ table redirect {
 }
 
 control egress {
+	apply(start);
+	if(imd.distinctVal == DISTINCT) {
+		apply(update_counts);
+
+	}
+	else {
+		apply(skip1);
+	}
     apply(redirect);
 }

@@ -252,10 +252,15 @@ class Register(object):
 
     def add_copy_fields(self):
         out = 'field_list copy_to_cpu_fields_'+str(self.qid)
-        out += '{\n\tstandard_metadata;\n\t'+self.metadata.name+';\n}\n\n'
+        out += '{\n'
+        out += '\tstandard_metadata;\n'
+        out += '\t'+self.metadata.name+';\n'
+        out += '\tmeta_fm;\n'
+        out += '}\n\n'
 
         out += 'action do_copy_to_cpu_'+str(self.qid)+'() {\n\tclone_ingress_pkt_to_egress('+str(self.mirror_id)+', copy_to_cpu_fields_'+str(self.qid)+');\n}\n\n'
         out += 'table copy_to_cpu_'+str(self.qid)+' {\n\tactions {do_copy_to_cpu_'+str(self.qid)+';}\n\tsize : 1;\n}\n\n'
+
         return out
 
     def add_encap_table(self):
@@ -387,7 +392,7 @@ class PacketStream(object):
 
     def reduce(self, *args, **kwargs):
         id = len(self.operators)
-        new_args = (id, self.qid, self.mirror_id, TABLE_WIDTH, TABLE_SIZE, DISTINCT)+args
+        new_args = (id, self.qid, self.mirror_id, TABLE_WIDTH, TABLE_SIZE, THRESHOLD)+args
         operator = Reduce(*new_args, **kwargs)
         self.operators.append(operator)
         return self

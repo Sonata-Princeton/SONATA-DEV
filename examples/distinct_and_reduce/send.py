@@ -5,9 +5,6 @@ import glob
 import math, time
 import pickle
 
-
-
-
 def load_data():
     print "load_data called"
     data = {}
