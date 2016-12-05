@@ -161,7 +161,6 @@ class PacketStream(Query):
                     new_operator = generate_new_operator(operator,
                                     refinement_level, reduction_key)
                     refined_query.operators.append(new_operator)
-
                 self.refined_queries.append(refined_query)
         else:
             raise NotImplementedError
@@ -188,11 +187,11 @@ class PacketStream(Query):
         else:
             raise NotImplementedError
 
-    def generate_dp_query(self):
+    def generate_dp_query(self, qid):
         if self.isInput != True:
             if self.partition_plan_final != None:
                 dp_query = self.partition_plan_final[0]
-                p4_query = p4.PacketStream(1)
+                p4_query = p4.PacketStream(qid)
                 for operator in dp_query.operators:
                     if operator.name == 'Reduce':
                         p4_query = p4_query.reduce(keys = operator.prev_fields)
@@ -277,12 +276,3 @@ query = (PacketStream()
         .map(keys=('dIP',))
         )
 
-query.get_refinement_plan()
-for refined_query in query.refined_queries:
-    refined_query.get_partitioning_plan(4)
-    refined_query.partition_plan_final = refined_query.partition_plans[0]
-    refined_query.generate_dp_query()
-    refined_query.generate_sp_query()
-    refined_query.dp_query.compile_pipeline()
-    print refined_query.dp_query.p4_control
-    #print refined_query.sp_query.compile()

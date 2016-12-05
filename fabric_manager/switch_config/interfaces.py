@@ -1,4 +1,7 @@
+import logging
 from utils import get_out
+
+logging.getLogger(__name__)
 
 class Interfaces(object):
     inName = ""
@@ -29,28 +32,20 @@ class Interfaces(object):
     def set_peer(self):
         base = "ip link add name %s type veth peer name %s"%(self.inName, self.outName)
         print base
-        cmd = [i for i in base.split()]
         (returncode, error) = get_out(base)
         return returncode
 
     def put_link_up(self, interface):
         base = "ip link set dev %s up"%(interface)
-        cmd = [i for i in base.split()]
         (returncode, error) = get_out(base)
         return returncode
 
     def put_toe_option_off(self, interface, toe_option):
         base = "/sbin/ethtool --offload %s \"%s\" off"%(interface, toe_option)
-        cmd = [i for i in base.split()]
         (returncode, error) = get_out(base)
         return returncode
 
     def disable_ipv6(self, interface):
         base = "sysctl net.ipv6.conf.%s.disable_ipv6=1"%(interface)
-        cmd = [i for i in base.split()]
         (returncode, error) = get_out(base)
         return returncode
-
-
-inter = Interfaces("m-veth-1","out-veth-1")
-inter.setup()
