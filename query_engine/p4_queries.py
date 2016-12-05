@@ -1,5 +1,5 @@
-TABLE_WIDTH = 16
-TABLE_SIZE = 4096
+TABLE_WIDTH = 32
+TABLE_SIZE = 16
 DISTINCT = 0
 THRESHOLD = 2
 
@@ -14,7 +14,7 @@ header_size = {"sIP":32, "dIP":32, "sPort": 16, "dPort": 16,
                 # TODO: Get rid of this hardcoding
                 "dIP/16":16, "dIP/32":32,
                 "nBytes": 16, "proto": 8, "sMac": 48, "dMac":48,
-                "qid":8, "count": 12}
+                "qid":8, "count": 8}
 
 class GlobalCounts(object):
     # maintain global counts for skip and drop actions
@@ -239,12 +239,13 @@ class Register(object):
         self.p4_control += self.add_register_postprocessing()
 
     def add_out_header(self):
-        out = 'header_type out_header_'+str(self.qid)+'_t {\n\tfields {\n\t\t'
+        out = 'header_type out_header_'+str(self.qid)+'_t {\n'
+        out += '\tfields {\n'
 
         for fld in self.out_headers:
             if '/' in fld:
                 fld = fld.split('/')[0]
-            out += fld+' : '+str(header_size[fld])+';\n\t\t'
+            out += '\t\t'+fld+' : '+str(header_size[fld])+';\n'
         out = out [:-1]
         out += '}\n}\n\n'
         out += 'header out_header_'+str(self.qid)+'_t out_header_'+str(self.qid)+';\n\n'
@@ -339,7 +340,7 @@ class Reduce(Register):
         super(Reduce, self).__init__(*args, **kwargs)
         self.pre_actions = ('fwd', 'fwd', 'fwd')
         self.post_actions = ('set', 'fwd', 'drop')
-        self.out_headers = tuple(['count']+list(self.out_headers))
+        self.out_headers = tuple(list(self.out_headers)+['count'])
 
 
     def add_action_update(self):

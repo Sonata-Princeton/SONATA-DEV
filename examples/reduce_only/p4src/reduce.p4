@@ -77,18 +77,6 @@ table skip1 {
     size : 1;
 }
 
-control ingress {
-
-	apply(start);
-	apply(update_counts);
-
-  if(meta.reduceVal >= THRESHOLD) {
-    apply(copy_to_cpu);
-	}
-	else {
-	  apply(skip1);
-	}
-}
 
 action do_cpu_encap_val() {
     add_header(reduce_header);
@@ -113,12 +101,20 @@ table redirect1 {
     size : 1;
 }
 
+control ingress {
+
+
+	apply(copy_to_cpu);
+}
+
 control egress {
-		if (meta.reduceVal == THRESHOLD){
+		apply(start);
+		apply(update_counts);
+		if (meta.reduceVal >= THRESHOLD){
 			apply(redirect0);
 		}
 		else{
-			apply(redirect1);
+			apply(skip1);
 		}
 
 }

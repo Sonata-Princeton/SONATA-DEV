@@ -89,14 +89,15 @@ class FabricManagerConfig(object):
         for q in self.queries:
             out += '\tapply(filter_'+str(q.qid)+');\n'
             out += '\tif (meta_fm.qid_'+str(q.qid)+' == 1){\n'
-            out += '\t\tapply(copy_to_cpu_'+str(q.qid)+');\n\t}\n'
+            out += '\t\t'+q.p4_ingress_start
+            out += '\t\tapply(copy_to_cpu_'+str(q.qid)+');\n'
+            out += '\t}\n'
             self.p4_init_commands.append('table_set_default copy_to_cpu_'+str(q.qid)+' do_copy_to_cpu_'+str(q.qid))
 
         out += '}\n\n'
         out += 'control egress {\n'
         for q in self.queries:
             out += '\tif (meta_fm.qid_'+str(q.qid)+' == 1){\n'
-            out += '\t'+q.p4_ingress_start
             out += q.p4_control+'\n'
             out += '\t\tapply(encap_'+str(q.qid)+');\n'
             out += '\t}\n'

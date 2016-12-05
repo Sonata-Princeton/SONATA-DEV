@@ -70,8 +70,8 @@ table drop_reduce_0_2_1 {
 header_type meta_reduce_0_2_t {
 	fields {
 		qid : 8;
-		val : 8;
-		idx : 16;
+		val : 32;
+		idx : 32;
 	}
 }
 
@@ -94,12 +94,12 @@ field_list_calculation reduce_0_2_fields_hash {
 		reduce_0_2_fields;
 	}
 	algorithm : crc32;
-	output_width : 16;
+	output_width : 32;
 }
 
 register reduce_0_2{
-	width : 16;
-	instance_count : 4096;
+	width : 32;
+	instance_count : 16;
 }
 
 action update_reduce_0_2_regs() {
@@ -115,7 +115,7 @@ table update_reduce_0_2_counts {
 action do_reduce_0_2_hashes() {
 	modify_field(hash_meta_reduce_0_2.dIP, ipv4.dstAddr);
 	modify_field(meta_reduce_0_2.qid, 2);
-	modify_field_with_hash_based_offset(meta_reduce_0_2.idx, 0, reduce_0_2_fields_hash, 4096);
+	modify_field_with_hash_based_offset(meta_reduce_0_2.idx, 0, reduce_0_2_fields_hash, 16);
 	register_read(meta_reduce_0_2.val, reduce_0_2, meta_reduce_0_2.idx);
 }
 
@@ -165,13 +165,13 @@ control ingress {
 	apply(init_meta_fm);
 	apply(filter_2);
 	if (meta_fm.qid_2 == 1){
+			apply(start_reduce_0_2);
 		apply(copy_to_cpu_2);
 	}
 }
 
 control egress {
 	if (meta_fm.qid_2 == 1){
-		apply(start_reduce_0_2);
 		apply(update_reduce_0_2_counts);
 		if(meta_reduce_0_2.val > 2) {
 			apply(set_reduce_0_2_count);		}
