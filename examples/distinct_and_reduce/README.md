@@ -16,6 +16,34 @@ victimIPs =
     .filter((dIP, count) => count >T2)
     .map((dIP,count)=>dIP)
 ```
+Topology:
+```
+   +--------------------------------------------------------+
+   |                         Mininet                        |
+   |                +----------------------+                |
+   |                |                      |                |
+   |                |                      |                |
+   |                |    +------------+    |                |
+   |                |    |            |    |                |
+   | m-veth-1+----------+11    S1   12+-----------+m-veth-2 |
+   |     +          |    |            |    |          +     |
+   |     |          |    +------------+    |          |     |
+   |     |          |                      |          |     |
+   |     |          |                      |          |     |
+   |     | ip link  +----------------------+  ip link |     |
+   |     |                                            |     |
+   |     |                                            |     |
+   |     |                                            |     |
+   |     +                                            +     |
+   | out-veth-1                                  out-veth-2 |
+   |     +                                            +     |
+   |     |                                            |     |
+   |     |                                            |     |
+   |     +                                            +     |
+   |  send.py            Vagrant VM              receive.py |
+   |                                                        |
+   +--------------------------------------------------------+
+```
 
 Instructions:
 To run the demo:
@@ -25,3 +53,5 @@ To run the demo:
   ./run_switch.sh`
 - Send packets with `sudo python send.py`.
 - For cleanup run these two commands: `ps -ef | grep streaming |  grep -v grep | awk '{print $2}' | xargs kill -9` & `sudo ./cleanup.sh`
+
+
