@@ -22,6 +22,8 @@ fi
 killall lt-simple_switch &> /dev/null
 mn -c &> /dev/null
 intf="cpu-veth-0"
-if ip link show $intf &> /dev/null; then
-  ip link delete $intf type veth
-fi
+for intf in "m-veth-1" "m-veth-2" "out-veth-1" "out-veth-2"; do
+	if ip link show $intf &> /dev/null; then
+	  ip link delete $intf type veth
+	fi
+done
