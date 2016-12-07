@@ -33,14 +33,15 @@ class spark_source(object):
         callback function executed for each capture packet
         '''
         p_str = str(raw_packet)
-        #hexdump(raw_packet)
+        hexdump(raw_packet)
         qid = str(self.count_struct.unpack(p_str[0])[0])
+        print qid
         if qid == '1':
             # TODO: Generalize the logic for parsing packet's metadata
             sIP = ".".join([str(x) for x in list(self.ip_struct.unpack(p_str[1:5]))])
             dIP = ".".join([str(x) for x in list(self.ip_struct.unpack(p_str[5:9]))])
             output_tuple = (sIP, dIP)
-            send_tuple = ",".join([dIP, sIP])+"\n"
+            send_tuple = ",".join([qid, dIP, sIP])+"\n"
         else:
             # TODO: Generalize the logic for parsing packet's metadata
             dIP = ".".join([str(x) for x in list(self.ip_struct.unpack(p_str[1:5]))])

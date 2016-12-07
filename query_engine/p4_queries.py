@@ -1,5 +1,5 @@
 TABLE_WIDTH = 32
-TABLE_SIZE = 16
+TABLE_SIZE = 4096
 DISTINCT = 0
 THRESHOLD = 2
 
@@ -255,6 +255,7 @@ class Register(object):
         out = 'field_list copy_to_cpu_fields_'+str(self.qid)
         out += '{\n'
         out += '\tstandard_metadata;\n'
+        out += '\t'+self.hash_metadata.name+';\n'
         out += '\t'+self.metadata.name+';\n'
         out += '\tmeta_fm;\n'
         out += '}\n\n'
