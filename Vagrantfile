@@ -42,6 +42,7 @@ Vagrant.configure(2) do |config|
      tar xvf spark-1.6.1-bin-hadoop2.6.tgz
      mv spark-1.6.1-bin-hadoop2.6 spark
      rm spark-1.6.1-bin-hadoop2.6.tgz
+     sudo apt-get install -y vim-gtk
   SHELL
 
   ## iSDX
@@ -58,12 +59,13 @@ Vagrant.configure(2) do |config|
   config.vm.provision :shell, privileged: false, :path => "setup/sdx-setup.sh"
   config.vm.provision :shell, privileged: false, :path => "setup/kafka-setup.sh"
   config.vm.provision :shell, privileged: false, :path => "setup/p4-setup.sh"
+  config.vm.provision :shell, privileged: false, :path => "setup/syntax-highlight-setup.sh"
 
   ## Notebook
   config.vm.provision "shell", run: "always", inline: <<-SHELL
     #ipython notebook --notebook-dir=/vagrant/notebook --no-browser --ip=0.0.0.0 &
     #cd /vagrant/notebook; sudo JAVA_HOME=/usr/lib/jvm/java-8-oracle IPYTHON_OPTS="notebook --ip=0.0.0.0 --no-browser" /home/vagrant/spark/bin/pyspark &
-    export PYTHONPATH=$PYTHONPATH:/vagrant/dev/ 
+    #export PYTHONPATH=$PYTHONPATH:/vagrant/dev/ 
  SHELL
 
   ## CPU & RAM
