@@ -33,7 +33,7 @@ class spark_source(object):
         callback function executed for each capture packet
         '''
         p_str = str(raw_packet)
-
+        print p_str
         # TODO: Generalize the logic for parsing packet's metadata
         sIP = ".".join([str(x) for x in list(self.ip_struct.unpack(p_str[:4]))])
         dIP = ".".join([str(x) for x in list(self.ip_struct.unpack(p_str[4:8]))])
