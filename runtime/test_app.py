@@ -6,7 +6,7 @@ logging.getLogger("testApp")
 
 import coloredlogs
 
-coloredlogs.install(level='DEBUG',)
+coloredlogs.install(level='INFO',)
 
 from runtime import *
 from query_engine.sonata_queries import *

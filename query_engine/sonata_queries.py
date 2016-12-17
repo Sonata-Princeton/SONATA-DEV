@@ -14,7 +14,7 @@ def get_original_wo_mask(lstOfFields):
 
     for field in lstOfFields:
         if '/' in field:
-            prev_fields.append(field.split('/')[0])
+            fields.append(field.split('/')[0])
         else:
             fields.append(field)
 
@@ -67,7 +67,7 @@ class Map(Query):
         if 'values' in map_dict:
             self.values = map_dict['values']
         #print(self.keys, self.values)
-        self.fields = self.keys + self.values
+        self.fields = tuple(list(self.keys) + list(self.values))
 
 
 class Reduce(Query):
@@ -78,7 +78,7 @@ class Reduce(Query):
         self.prev_fields = map_dict['prev_fields']
         self.values = map_dict['values']
         self.func = map_dict['func']
-        self.fields = self.prev_fields[:-1] + self.values
+        self.fields = tuple(list(self.prev_fields[:-1]) + list(self.values))
         #self.fields = tuple(set(self.fields).difference(set("1")))
 
 
@@ -203,7 +203,7 @@ class PacketStream(Query):
         if self.isInput != True:
             if self.partition_plan_final != None:
                 dp_query = self.partition_plan_final[0]
-                p4_query = p4.PacketStream(qid)
+                p4_query = p4.QueryPipeline(qid)
                 for operator in dp_query.operators:
                     if operator.name == 'Reduce':
                         p4_query = p4_query.reduce(keys = operator.prev_fields)
@@ -226,27 +226,27 @@ class PacketStream(Query):
                         prev_fields = get_original_wo_mask(operator.prev_fields)
                         keys = get_original_wo_mask(operator.keys)
 
-                        spark_query.operators.append(Map(prev_fields = prev_fields,
+                        spark_query.operators.append(spark.Map(prev_fields = prev_fields,
                                            keys = keys, values = operator.values))
                         print(prev_fields, operator.keys, operator.values)
 
                     if(operator.name == "Reduce"):
                         prev_fields = get_original_wo_mask(operator.prev_fields)
 
-                        spark_query.operators.append(Reduce(prev_fields = prev_fields,
+                        spark_query.operators.append(spark.Reduce(prev_fields = prev_fields,
                                                       func = operator.func,
                                                       values = operator.values))
 
                     if(operator.name == "Distinct"):
                         prev_fields = get_original_wo_mask(operator.prev_fields)
 
-                        spark_query.operators.append(Filter(prev_fields = prev_fields))
+                        spark_query.operators.append(spark.Distinct(prev_fields = prev_fields))
 
 
                     if(operator.name == "Filter"):
                         prev_fields = get_original_wo_mask(operator.prev_fields)
 
-                        spark_query.operators.append(Filter(prev_fields = prev_fields,
+                        spark_query.operators.append(spark.Filter(prev_fields = prev_fields,
                                                    expr = operator.expr))
                 self.sp_query = spark_query
             else:
