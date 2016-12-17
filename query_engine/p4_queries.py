@@ -68,6 +68,8 @@ class Register(object):
 
     def add_hash_metadata(self):
         self.hash_metadata = MetaData(name = self.hash_metadata_name)
+        #print self.keys
+        self.hash_metadata.fields = {}
         for fld in self.keys:
             if '/' in fld:
                 hdr = fld.split('/')[0]
@@ -76,6 +78,7 @@ class Register(object):
                 hdr = fld
                 mask = header_size[hdr]
             self.hash_metadata.fields[hdr] = mask
+        #print self.hash_metadata.fields
         return self.hash_metadata.add_metadata()
 
     def add_metadata(self):
@@ -93,7 +96,7 @@ class Register(object):
             out += self.hash_metadata.name+'.'+elem+';\n\t'
         out = out[:-1]
         out += '}\n\n'
-        print out
+        #print out
         return out
 
     def add_field_list_calculation(self):
@@ -130,7 +133,7 @@ class Register(object):
         out += self.operator_name+'_fields_hash, '+str(self.instance_count)+');\n\t'
         out += 'register_read('+self.metadata.name+'.'+self.metadata.fields.keys()[1]+', '+self.operator_name+', '+self.metadata.name+'.'+self.metadata.fields.keys()[2]+');\n'
         out += '}\n\n'
-        print out
+        #print out
         return out
 
     def add_action_start(self):
@@ -142,8 +145,8 @@ class Register(object):
 
     def add_drop_action(self, id):
         out = 'table drop_'+self.operator_name+'_'+str(id)+' {\n\t'
-        out += 'actions {_drop;}\n\tsize : 1;\n}\n\n'
-        self.p4_init_commands.append('table_set_default drop_'+self.operator_name+'_'+str(id)+' _drop')
+        out += 'actions {mark_drop;}\n\tsize : 1;\n}\n\n'
+        self.p4_init_commands.append('table_set_default drop_'+self.operator_name+'_'+str(id)+' mark_drop')
         return out
 
     def add_skip_action(self, id):
@@ -378,7 +381,7 @@ class Reduce(Register):
         out += '}\n\n'
         return out
 
-class PacketStream(object):
+class QueryPipeline(object):
     '''Multiple packet streams can exist for a switch'''
     def __init__(self, id):
         self.qid = id

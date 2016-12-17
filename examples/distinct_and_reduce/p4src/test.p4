@@ -1,6 +1,5 @@
 #include "includes/headers.p4"
 #include "includes/parser.p4"
-#define NUMBER_OF_QUERIES 2
 
 parser start {
 	return select(current(0, 64)) {
@@ -14,6 +13,42 @@ action _drop() {
 
 action _nop() {
 	no_op();
+}
+
+header_type intrinsic_metadata_t {
+	fields {
+	recirculate_flag : 16;}
+}
+
+metadata intrinsic_metadata_t intrinsic_metadata;
+
+field_list recirculate_fields {
+	standard_metadata;
+	meta_fm;
+}
+
+action do_recirculate_to_ingress() {
+	add_to_field(meta_fm.f1, 1);
+	recirculate(recirculate_fields);
+}
+
+table recirculate_to_ingress {
+	actions { do_recirculate_to_ingress; }
+	size : 1;
+}
+
+table drop_table {
+	actions {_drop;}
+	size : 1;
+}
+
+table drop_packets {
+	actions {_drop;}
+	size : 1;
+}
+
+action mark_drop() {
+	modify_field(meta_fm.is_drop, 1);
 }
 
 parser parse_out_header {
@@ -31,20 +66,11 @@ header_type out_header_1_t {
 
 header out_header_1_t out_header_1;
 
-header_type intrinsic_metadata_t {
-    fields {
-        count: 8;
-        recirculate_flag : 16;
-    }
-}
-metadata intrinsic_metadata_t intrinsic_metadata;
-
 field_list copy_to_cpu_fields_1{
 	standard_metadata;
 	hash_meta_distinct_0_1;
 	meta_distinct_0_1;
 	meta_fm;
-	mymeta;
 }
 
 action do_copy_to_cpu_1() {
@@ -83,7 +109,6 @@ field_list copy_to_cpu_fields_2{
 	hash_meta_reduce_0_2;
 	meta_reduce_0_2;
 	meta_fm;
-	mymeta;
 }
 
 action do_copy_to_cpu_2() {
@@ -125,10 +150,6 @@ table drop_distinct_0_1_2 {
 table skip_reduce_0_2_1 {
 	actions {_nop;}
 	size : 1;
-}
-
-action mark_drop() {
-	modify_field(mymeta.is_drop, 1);
 }
 
 table drop_reduce_0_2_1 {
@@ -217,7 +238,6 @@ metadata meta_reduce_0_2_t meta_reduce_0_2;
 
 header_type hash_meta_reduce_0_2_t {
 	fields {
-		sIP : 32;
 		dIP : 32;
 	}
 }
@@ -252,7 +272,6 @@ table update_reduce_0_2_counts {
 }
 
 action do_reduce_0_2_hashes() {
-	modify_field(hash_meta_reduce_0_2.sIP, ipv4.srcAddr);
 	modify_field(hash_meta_reduce_0_2.dIP, ipv4.dstAddr);
 	modify_field(meta_reduce_0_2.qid, 2);
 	modify_field_with_hash_based_offset(meta_reduce_0_2.idx, 0, reduce_0_2_fields_hash, 4096);
@@ -277,6 +296,8 @@ header_type meta_fm_t {
 	fields {
 		qid_1 : 1;
 		qid_2 : 1;
+		f1 : 8;
+		is_drop : 1;
 	}
 }
 
@@ -285,6 +306,7 @@ metadata meta_fm_t meta_fm;
 action init_meta_fm() {
 	modify_field(meta_fm.qid_1, 0);
 	modify_field(meta_fm.qid_2, 0);
+	modify_field(meta_fm.is_drop, 0);
 }
 
 table init_meta_fm {
@@ -316,110 +338,64 @@ table filter_2{
 	}
 }
 
-header_type mymeta_t {
-    fields {
-        f1 : 8;
-				is_drop: 8;
-    }
-}
-metadata mymeta_t mymeta;
-
-field_list recirculate_to_cpu_fields1 {
-    standard_metadata;
-    mymeta;
-		meta_fm;
-}
-
-action do_recirculate_to_ingress() {
-			add_to_field(mymeta.f1, 1);
-      recirculate(recirculate_to_cpu_fields1);
-}
-
-table recirculate_to_ingress {
-    actions { do_recirculate_to_ingress; }
-    size : 1;
-}
-
-action do_reset_drop(){
-	modify_field(mymeta.is_drop, 0);
-}
-table reset_drop{
-	actions{do_reset_drop;}
-	size: 1;
-}
-
 control ingress {
-	apply(reset_drop);
 	apply(init_meta_fm);
-	if (mymeta.f1 == 0){
-			apply(filter_1);
-			apply(start_distinct_0_1);
+	if (meta_fm.f1 == 0){
+		apply(filter_1);
+		apply(start_distinct_0_1);
+		if(meta_distinct_0_1.val > 0) {
+			apply(drop_distinct_0_1_1);
+		}
+		else if(meta_distinct_0_1.val == 0) {
+			apply(skip_distinct_0_1_1);
+		}
+		else {
+			apply(drop_distinct_0_1_2);
+		}
 
-			if(meta_distinct_0_1.val > 0) {
-				apply(drop_distinct_0_1_1);
-			}
-			else if(meta_distinct_0_1.val == 0) {
-				apply(skip_distinct_0_1_1);
-
-			}
-			else {
-				apply(drop_distinct_0_1_2);
-			}
-			if (mymeta.is_drop == 0){
-				apply(update_distinct_0_1_counts);
-			}
-			apply(copy_to_cpu_1);
+		apply(update_distinct_0_1_counts);
+		apply(copy_to_cpu_1);
 	}
-	if (mymeta.f1 == 1){
-			apply(filter_2);
+	if (meta_fm.f1 == 1){
+		apply(filter_2);
+		apply(start_reduce_0_2);
+		apply(update_reduce_0_2_counts);
+		if(meta_reduce_0_2.val > 2) {
+			apply(set_reduce_0_2_count);		}
+		else if(meta_reduce_0_2.val == 2) {
+			apply(skip_reduce_0_2_1);
+		}
+		else {
+			apply(drop_reduce_0_2_1);
+		}
 
-			apply(start_reduce_0_2);
-			apply(update_reduce_0_2_counts);
-
-			if(meta_reduce_0_2.val > 2) {
-				apply(set_reduce_0_2_count);
-			}
-			else if(meta_reduce_0_2.val == 2) {
-				apply(skip_reduce_0_2_1);
-			}
-			else {
-				apply(drop_reduce_0_2_1);
-			}
-			apply(copy_to_cpu_2);
+		apply(copy_to_cpu_2);
 	}
-}
-
-table drop_table {
-    actions {_drop;}
-    size : 1;
-}
-table drop_packets {
-	actions {_drop;}
-	size : 1;
 }
 
 control egress {
 	if (standard_metadata.instance_type != 1) {
-		if(mymeta.f1 < NUMBER_OF_QUERIES) {
+		if(meta_fm.f1 < 2) {
 			apply(recirculate_to_ingress);
 		}
 		else {
 			apply(drop_table);
 		}
 	}
+
 	else if (standard_metadata.instance_type == 1) {
-		if (mymeta.is_drop == 1){
+		if (meta_fm.is_drop == 1){
 			apply(drop_packets);
 		}
 		else {
-			if (mymeta.f1 == 0){
+			if (meta_fm.f1 == 0){
 				apply(encap_1);
 			}
-			if (mymeta.f1 == 1){
+			if (meta_fm.f1 == 1){
 				apply(encap_2);
 			}
 		}
 
-	}
 
+	}
 }
