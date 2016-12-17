@@ -8,6 +8,18 @@ from multiprocessing.connection import Client
 import p4_queries as p4
 import spark_queries as spark
 
+
+def get_original_wo_mask(lstOfFields):
+    fields = []
+
+    for field in lstOfFields:
+        if '/' in field:
+            prev_fields.append(field.split('/')[0])
+        else:
+            fields.append(field)
+
+    return fields
+
 class Query(object):
     """
     Abstract Query Class
@@ -210,10 +222,32 @@ class PacketStream(Query):
                 sp_query = self.partition_plan_final[1]
                 spark_query = spark.PacketStream()
                 for operator in sp_query.operators:
-                    new_operator = copy.deepcopy(operator)
-                    print new_operator.name, new_operator.fields
+                    if(operator.name == "Map"):
+                        prev_fields = get_original_wo_mask(operator.prev_fields)
+                        keys = get_original_wo_mask(operator.keys)
 
-                    spark_query.operators.append(new_operator)
+                        spark_query.operators.append(Map(prev_fields = prev_fields,
+                                           keys = keys, values = operator.values))
+                        print(prev_fields, operator.keys, operator.values)
+
+                    if(operator.name == "Reduce"):
+                        prev_fields = get_original_wo_mask(operator.prev_fields)
+
+                        spark_query.operators.append(Reduce(prev_fields = prev_fields,
+                                                      func = operator.func,
+                                                      values = operator.values))
+
+                    if(operator.name == "Distinct"):
+                        prev_fields = get_original_wo_mask(operator.prev_fields)
+
+                        spark_query.operators.append(Filter(prev_fields = prev_fields))
+
+
+                    if(operator.name == "Filter"):
+                        prev_fields = get_original_wo_mask(operator.prev_fields)
+
+                        spark_query.operators.append(Filter(prev_fields = prev_fields,
+                                                   expr = operator.expr))
                 self.sp_query = spark_query
             else:
                 raise NotImplementedError

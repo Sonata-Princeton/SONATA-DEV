@@ -9,7 +9,6 @@ import pickle
 from pyspark import SparkContext
 from pyspark.streaming import StreamingContext
 from multiprocessing.connection import Client, Listener
-from query_engine.spark_queries import Map, Reduce, Filter
 from threading import Thread
 
 spark_stream_address = 'localhost'
@@ -82,34 +81,12 @@ class StreamingManager(object):
         print("Connection request accepted")
         raw_data = conn.recv()
         queries = pickle.loads(raw_data)
-        for query in queries:
-            query_operators = []
-            for operator in query.operators:
-                if(operator.name == "Map"):
-                    query_operators.append(Map(prev_fields = operator.prev_fields,
-                                       keys = operator.keys, values = operator.values))
-                    print(operator.prev_fields, operator.keys, operator.values)
-
-                if(operator.name == "Reduce"):
-                    query_operators.append(Reduce(prev_fields = operator.prev_fields,
-                                                  func = operator.func,
-                                                  values = operator.values))
-
-                if(operator.name == "Distinct"):
-                    query_operators.append(Filter(prev_fields = operator.prev_fields))
-
-
-                if(operator.name == "Filter"):
-                    query_operators.append(Filter(prev_fields = operator.prev_fields,
-                                               expr = operator.expr))
-            query.operators = query_operators
-
-
         print(queries)
         query_expressions = [x.compile() for x in queries]
         print(query_expressions)
-        q = eval(query_expressions)
-        q.foreachRDD(lambda rdd: for_printing2(rdd))
+        for query in query_expressions:
+            q = eval("pktstream." + query)
+            q.foreachRDD(lambda rdd: for_printing2(rdd))
 
 
 if __name__ == "__main__":
