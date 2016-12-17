@@ -8,6 +8,7 @@ from multiprocessing.connection import Client
 import pickle
 from threading import Thread
 from fabric_manager.fabric_manager import FabricManagerConfig
+from streaming_manager.streaming_manager import StreamingManager
 import logging
 
 logging.getLogger("runtime")
@@ -18,10 +19,15 @@ class Runtime(object):
         self.conf = conf
         self.queries = queries
         self.dp_queries = []
+        self.sp_queries = []
 
         self.fm_thread = Thread(name='fm_manager', target=self.start_fabric_managers)
+        self.sm_thread = Thread(name='sm_manager', target=self.start_streaming_managers)
+
         #self.fm_thread.setDaemon(True)
         self.fm_thread.start()
+        self.sm_thread.start()
+
         time.sleep(1)
 
         self.dp_qid = 1
@@ -35,10 +41,12 @@ class Runtime(object):
                 self.dp_qid += 1
                 refined_query.generate_sp_query()
                 self.dp_queries.append(refined_query.dp_query)
+                self.sp_queries.append(refined_query.sp_query)
 
         time.sleep(2)
         if self.dp_queries:
             self.send_to_fm("init", self.dp_queries)
+            self.send_to_sm()
 
         self.send_to_fm("delta", self.dp_queries)
         self.fm_thread.join()
@@ -56,6 +64,13 @@ class Runtime(object):
 
     def start_streaming_managers(self):
         # Start streaming managers local to each stream processor
+        logging.debug("runtime: " + "creating streaming managers")
+        sm = StreamingManager(self.conf['sm_conf'])
+        logging.debug("runtime: " + "starting streaming managers")
+        sm.start()
+        while True:
+            logging.debug("Running...")
+            time.sleep(5)
         return 0
 
     def apply_iterative_refinement(self):
@@ -86,10 +101,10 @@ class Runtime(object):
 
     def send_to_sm(self):
         # Send compiled query expression to streaming manager
-        query_expressions = self.compile()
-        print query_expressions
-        conn = Client(self.conf['sm_socket'])
-        conn.send(json.dumps(query_expressions))
+        logging.info(self.sp_queries)
+        serialized_queries = pickle.dumps(self.sp_queries)
+        conn = Client(self.conf['sm_conf']['sm_socket'])
+        conn.send(serialized_queries)
         time.sleep(3)
         logging.debug("Config Sent to Streaming Manager ...")
 

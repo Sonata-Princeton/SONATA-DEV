@@ -211,6 +211,8 @@ class PacketStream(Query):
                 spark_query = spark.PacketStream()
                 for operator in sp_query.operators:
                     new_operator = copy.deepcopy(operator)
+                    print new_operator.name, new_operator.fields
+
                     spark_query.operators.append(new_operator)
                 self.sp_query = spark_query
             else:
@@ -266,6 +268,7 @@ class PacketStream(Query):
         self.operators.append(operator)
         return self
 
+"""
 query = (PacketStream()
         .filter(expr = "proto == '17'")
         .map(keys = ("dIP", "sIP"))
@@ -275,4 +278,4 @@ query = (PacketStream()
         .filter(expr='count > 20')
         .map(keys=('dIP',))
         )
-
+"""

@@ -44,8 +44,8 @@ class Map(SparkQuery):
 
         if 'values' in map_dict:
             self.values = map_dict['values']
-        #print(self.keys, self.values)
-        self.fields = self.keys + self.values
+        print(self.keys, self.values)
+        #self.fields = self.keys + self.values
 
     def compile(self):
         if len(self.values) != 0:
@@ -64,7 +64,7 @@ class Reduce(SparkQuery):
         self.prev_fields = map_dict['prev_fields']
         self.values = map_dict['values']
         self.func = map_dict['func']
-        self.fields = self.prev_fields[:-1] + self.values
+        #self.fields = self.prev_fields[:-1] + self.values
         #self.fields = tuple(set(self.fields).difference(set("1")))
 
     def compile(self):
