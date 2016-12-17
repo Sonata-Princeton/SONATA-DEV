@@ -2,7 +2,9 @@ table_set_default recirculate_to_ingress do_recirculate_to_ingress
 table_set_default drop_table _drop
 table_set_default drop_packets _drop
 table_set_default filter_1_1 reset_meta_fm_1
+table_add filter_1_1 set_meta_fm_1 6 =>
 table_set_default filter_1_2 reset_meta_fm_1
+table_add filter_1_2 set_meta_fm_1 112.7.186.25 =>
 table_set_default update_distinct_0_1_counts update_distinct_0_1_regs
 table_set_default start_distinct_0_1 do_distinct_0_1_hashes
 table_set_default set_distinct_0_1_count set_distinct_0_1_count

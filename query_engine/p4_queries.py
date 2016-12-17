@@ -310,20 +310,6 @@ class Register(object):
         self.update_p4_control()
         self.update_p4_encap()
 
-class Filter(object):
-    def __init__(self, *args, **kwargs):
-        (self.id, self.qid) = args
-        self.operator_name = 'filter_'+str(self.id)+'_'+str(self.qid)
-        self.p4_state = ''
-        self.p4_utils = ''
-        self.p4_control = ''
-        self.p4_egress = ''
-        self.p4_invariants = ''
-        self.p4_init_commands = []
-
-    def compile_dp(self):
-        return 0
-
 
 class Distinct(Register):
     def __init__(self, *args, **kwargs):
@@ -416,8 +402,7 @@ class QueryPipeline(object):
         map_dict = dict(**kwargs)
         filter_keys = map_dict['keys']
         filter_name = 'filter_'+str(self.qid)+'_'+str(self.filter_rules_id)
-        if 'values' in map_dict:
-            filter_vals = map_dict['values']
+
         out = ''
         out += 'table '+filter_name+'{\n'
         out += '\treads {\n'
@@ -432,7 +417,10 @@ class QueryPipeline(object):
         self.filter_rules_id += 1
 
         self.filter_control += '\t\tapply('+filter_name+');\n'
-
+        if 'values' in map_dict:
+            filter_vals = map_dict['values']
+            for val in filter_vals:
+                self.p4_init_commands.append('table_add '+filter_name+' set_meta_fm_'+str(self.qid)+' '+str(val)+' =>')
 
         return self
 

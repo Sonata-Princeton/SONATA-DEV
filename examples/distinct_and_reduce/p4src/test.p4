@@ -304,8 +304,8 @@ header_type meta_fm_t {
 metadata meta_fm_t meta_fm;
 
 action init_meta_fm() {
-	modify_field(meta_fm.qid_1, 0);
-	modify_field(meta_fm.qid_2, 0);
+	modify_field(meta_fm.qid_1, 1);
+	modify_field(meta_fm.qid_2, 1);
 	modify_field(meta_fm.is_drop, 0);
 }
 
@@ -411,5 +411,7 @@ control egress {
 				apply(encap_2);
 			}
 		}
+
+
 	}
 }

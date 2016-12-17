@@ -89,7 +89,7 @@ class FabricManagerConfig(object):
 
         out += 'action init_meta_fm() {\n'
         for q in self.queries:
-            out += '\tmodify_field(meta_fm.qid_'+str(q.qid)+', 0);\n'
+            out += '\tmodify_field(meta_fm.qid_'+str(q.qid)+', 1);\n'
         out += '\tmodify_field(meta_fm.is_drop, 0);\n'
         out += '}\n\n'
 
@@ -122,8 +122,8 @@ class FabricManagerConfig(object):
             out += '\t\t\tapply(copy_to_cpu_'+str(q.qid)+');\n'
             out += '\t\t}\n\t}\n'
             self.p4_init_commands.append('table_set_default copy_to_cpu_'+str(q.qid)+' do_copy_to_cpu_'+str(q.qid))
-
         out += '}\n\n'
+
         out += 'control egress {\n'
         out += '\tif (standard_metadata.instance_type != 1) {\n'
         out += '\t\tif(meta_fm.f1 < '+str(len(self.queries))+') {\n'
@@ -147,7 +147,7 @@ class FabricManagerConfig(object):
 
 fm = FabricManagerConfig()
 #q1 = PacketStream(1).filter(keys = ('proto',),values = ('17',)).distinct(keys = ('sIP', 'dIP/16'))
-q1 = QueryPipeline(1).filter(keys = ('proto',),values = ('17',)).filter(keys = ('dIP',)).distinct(keys = ('sIP', 'dIP'))
+q1 = QueryPipeline(1).filter(keys = ('proto',),values = ('6',)).filter(keys = ('dIP',),values = ('112.7.186.25',)).distinct(keys = ('sIP', 'dIP'))
 q2 = QueryPipeline(2).reduce(keys= ('dIP',))
 #q3 = QueryPipeline(3).reduce(keys= ('dIP',))
 #q4 = QueryPipeline(3).distinct(keys = ('sIP', 'dIP')).reduce(keys= ('dIP',))
