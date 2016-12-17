@@ -63,6 +63,7 @@ def main():
 
     cpu_intf1 = Intf("m-veth-1", net.get('s1'), 11)
     cpu_intf2 = Intf("m-veth-2", net.get('s1'), 12)
+    cpu_intf3 = Intf("m-veth-3", net.get('s1'), 13)
 
     net.start()
 

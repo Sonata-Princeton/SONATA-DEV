@@ -1,5 +1,5 @@
 /*
-Copyright 2013-present Barefoot Networks, Inc. 
+Copyright 2013-present Barefoot Networks, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,16 +24,21 @@ header_type ethernet_t {
 
 header_type intrinsic_metadata_t {
     fields {
-        mcast_grp : 4;
-        egress_rid : 4;
-        mcast_hash : 16;
-        lf_field_list: 32;
+        count: 8;
+        recirculate_flag : 16;
     }
 }
 
+header_type mymeta_t {
+    fields {
+        f1 : 8;
+    }
+}
+metadata mymeta_t mymeta;
+
 header_type cpu_header_t {
     fields {
-        device: 8;
+        count: 8;
         reason: 8;
     }
 }
@@ -67,14 +72,16 @@ action _drop() {
 action _nop() {
 }
 
-#define CPU_MIRROR_SESSION_ID                  250
+#define CPU_MIRROR_SESSION_ID_0                  250
+#define CPU_MIRROR_SESSION_ID_1                  251
 
 field_list copy_to_cpu_fields {
     standard_metadata;
+    intrinsic_metadata;
 }
 
 action do_copy_to_cpu() {
-    clone_ingress_pkt_to_egress(CPU_MIRROR_SESSION_ID, copy_to_cpu_fields);
+    clone_ingress_pkt_to_egress(CPU_MIRROR_SESSION_ID_1, copy_to_cpu_fields);
 }
 
 table copy_to_cpu {
@@ -82,22 +89,70 @@ table copy_to_cpu {
     size : 1;
 }
 
+
+field_list copy_to_cpu_fields1 {
+    standard_metadata;
+    mymeta;
+}
+
+action do_recirculate_to_ingress() {
+      add_to_field(mymeta.f1, 1);
+      recirculate(copy_to_cpu_fields1);
+}
+
+table recirculate_to_ingress {
+    actions { do_recirculate_to_ingress; }
+    size : 1;
+}
+
+field_list copy_to_cpu_fields2 {
+    standard_metadata;
+    intrinsic_metadata;
+}
+
+action do_copy_to_cpu2() {
+  clone_ingress_pkt_to_egress(CPU_MIRROR_SESSION_ID_0, copy_to_cpu_fields2);
+}
+
+table copy_to_cpu2 {
+    actions { do_copy_to_cpu2; }
+    size : 1;
+}
+
+table drop_table {
+    actions {_drop;}
+    size : 1;
+}
+
 control ingress {
-    apply(copy_to_cpu);
+    if(mymeta.f1 < 3) {
+      apply(copy_to_cpu);
+    }
+    if(mymeta.f1 >= 3) {
+      apply(copy_to_cpu2);
+    }
 }
 
 action do_cpu_encap() {
     add_header(cpu_header);
-    modify_field(cpu_header.device, 0);
+    modify_field(cpu_header.count, 1);
     modify_field(cpu_header.reason, 0xab);
 }
 
 table redirect {
     reads { standard_metadata.instance_type : exact; }
-    actions { _drop; do_cpu_encap; }
+    actions { do_cpu_encap; _nop; }
     size : 16;
 }
 
 control egress {
-    apply(redirect);
+      apply(redirect);
+      if (standard_metadata.instance_type != 1) {
+        if(mymeta.f1 < 6) {
+          apply(recirculate_to_ingress);
+        }
+        else {
+          apply(drop_table);
+        }
+      }
 }

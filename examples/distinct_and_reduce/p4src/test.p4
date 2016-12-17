@@ -1,5 +1,6 @@
 #include "includes/headers.p4"
 #include "includes/parser.p4"
+#define NUMBER_OF_QUERIES 2
 
 parser start {
 	return select(current(0, 64)) {
@@ -16,47 +17,55 @@ action _nop() {
 }
 
 parser parse_out_header {
-	extract(out_header_3);
+	extract(out_header_1);
 	extract(out_header_2);
 	return parse_ethernet;
 }
 
-header_type out_header_3_t {
+header_type out_header_1_t {
 	fields {
 		qid : 8;
-		dIP : 32;
-		count : 8;
-	}
+		sIP : 32;
+		dIP : 32;}
 }
 
-header out_header_3_t out_header_3;
+header out_header_1_t out_header_1;
 
-field_list copy_to_cpu_fields_3{
+header_type intrinsic_metadata_t {
+    fields {
+        count: 8;
+        recirculate_flag : 16;
+    }
+}
+metadata intrinsic_metadata_t intrinsic_metadata;
+
+field_list copy_to_cpu_fields_1{
 	standard_metadata;
-	hash_meta_reduce_0_3;
-	meta_reduce_0_3;
+	hash_meta_distinct_0_1;
+	meta_distinct_0_1;
 	meta_fm;
+	mymeta;
 }
 
-action do_copy_to_cpu_3() {
-	clone_ingress_pkt_to_egress(203, copy_to_cpu_fields_3);
+action do_copy_to_cpu_1() {
+	clone_ingress_pkt_to_egress(201, copy_to_cpu_fields_1);
 }
 
-table copy_to_cpu_3 {
-	actions {do_copy_to_cpu_3;}
+table copy_to_cpu_1 {
+	actions {do_copy_to_cpu_1;}
 	size : 1;
 }
 
-table encap_3 {
-	actions { do_encap_3; }
+table encap_1 {
+	actions { do_encap_1; }
 	size : 1;
 }
 
-action do_encap_3() {
-	add_header(out_header_3);
-	modify_field(out_header_3.qid, 3);
-	modify_field(out_header_3.dIP, meta_fm.qid_2);
-	modify_field(out_header_3.count,meta_fm.qid_3);
+action do_encap_1() {
+	add_header(out_header_1);
+	modify_field(out_header_1.qid, meta_distinct_0_1.qid);
+	modify_field(out_header_1.sIP, hash_meta_distinct_0_1.sIP);
+	modify_field(out_header_1.dIP, hash_meta_distinct_0_1.dIP);
 }
 
 header_type out_header_2_t {
@@ -74,6 +83,7 @@ field_list copy_to_cpu_fields_2{
 	hash_meta_reduce_0_2;
 	meta_reduce_0_2;
 	meta_fm;
+	mymeta;
 }
 
 action do_copy_to_cpu_2() {
@@ -92,18 +102,23 @@ table encap_2 {
 
 action do_encap_2() {
 	add_header(out_header_2);
-	modify_field(out_header_2.qid, 2);
+	modify_field(out_header_2.qid, meta_reduce_0_2.qid);
 	modify_field(out_header_2.dIP, ipv4.dstAddr);
-	modify_field(out_header_2.count, meta_fm.qid_2);
+	modify_field(out_header_2.count, meta_reduce_0_2.val);
 }
 
-table skip_reduce_0_3_1 {
+table drop_distinct_0_1_1 {
+	actions {mark_drop;}
+	size : 1;
+}
+
+table skip_distinct_0_1_1 {
 	actions {_nop;}
 	size : 1;
 }
 
-table drop_reduce_0_3_1 {
-	actions {_drop;}
+table drop_distinct_0_1_2 {
+	actions {mark_drop;}
 	size : 1;
 }
 
@@ -112,12 +127,16 @@ table skip_reduce_0_2_1 {
 	size : 1;
 }
 
+action mark_drop() {
+	modify_field(mymeta.is_drop, 1);
+}
+
 table drop_reduce_0_2_1 {
-	actions {_drop;}
+	actions {mark_drop;}
 	size : 1;
 }
 
-header_type meta_reduce_0_3_t {
+header_type meta_distinct_0_1_t {
 	fields {
 		qid : 8;
 		val : 32;
@@ -125,61 +144,64 @@ header_type meta_reduce_0_3_t {
 	}
 }
 
-metadata meta_reduce_0_3_t meta_reduce_0_3;
+metadata meta_distinct_0_1_t meta_distinct_0_1;
 
-header_type hash_meta_reduce_0_3_t {
+header_type hash_meta_distinct_0_1_t {
 	fields {
+		sIP : 32;
 		dIP : 32;
 	}
 }
 
-metadata hash_meta_reduce_0_3_t hash_meta_reduce_0_3;
+metadata hash_meta_distinct_0_1_t hash_meta_distinct_0_1;
 
-field_list reduce_0_3_fields {
-	hash_meta_reduce_0_3.dIP;
+field_list distinct_0_1_fields {
+	hash_meta_distinct_0_1.sIP;
+	hash_meta_distinct_0_1.dIP;
 }
 
-field_list_calculation reduce_0_3_fields_hash {
+field_list_calculation distinct_0_1_fields_hash {
 	input {
-		reduce_0_3_fields;
+		distinct_0_1_fields;
 	}
 	algorithm : crc32;
 	output_width : 32;
 }
 
-register reduce_0_3{
+register distinct_0_1{
 	width : 32;
 	instance_count : 4096;
 }
 
-action update_reduce_0_3_regs() {
-	add_to_field(meta_reduce_0_3.val, 1);
-	register_write(reduce_0_3,meta_reduce_0_3.idx,meta_reduce_0_3.val);
+action update_distinct_0_1_regs() {
+	bit_or(meta_distinct_0_1.val,meta_distinct_0_1.val, 1);
+	register_write(distinct_0_1,meta_distinct_0_1.idx,meta_distinct_0_1.val);
 }
 
-table update_reduce_0_3_counts {
-	actions {update_reduce_0_3_regs;}
+table update_distinct_0_1_counts {
+	actions {update_distinct_0_1_regs;}
 	size : 1;
 }
 
-action do_reduce_0_3_hashes() {
-	modify_field(hash_meta_reduce_0_3.dIP, ipv4.dstAddr);
-	modify_field(meta_reduce_0_3.qid, 3);
-	modify_field_with_hash_based_offset(meta_reduce_0_3.idx, 0, reduce_0_3_fields_hash, 4096);
-	register_read(meta_reduce_0_3.val, reduce_0_3, meta_reduce_0_3.idx);
+action do_distinct_0_1_hashes() {
+	modify_field(hash_meta_distinct_0_1.sIP, ipv4.srcAddr);
+	modify_field(hash_meta_distinct_0_1.dIP, ipv4.dstAddr);
+	modify_field(meta_distinct_0_1.qid, 1);
+	modify_field_with_hash_based_offset(meta_distinct_0_1.idx, 0, distinct_0_1_fields_hash, 4096);
+	register_read(meta_distinct_0_1.val, distinct_0_1, meta_distinct_0_1.idx);
 }
 
-table start_reduce_0_3 {
-	actions {do_reduce_0_3_hashes;}
+table start_distinct_0_1 {
+	actions {do_distinct_0_1_hashes;}
 	size : 1;
 }
 
-action set_reduce_0_3_count() {
-	modify_field(meta_reduce_0_3.val, 1);
+action set_distinct_0_1_count() {
+	modify_field(meta_distinct_0_1.val, 1);
 }
 
-table set_reduce_0_3_count {
-	actions {set_reduce_0_3_count;}
+table set_distinct_0_1_count {
+	actions {set_distinct_0_1_count;}
         size: 1;
 }
 
@@ -195,6 +217,7 @@ metadata meta_reduce_0_2_t meta_reduce_0_2;
 
 header_type hash_meta_reduce_0_2_t {
 	fields {
+		sIP : 32;
 		dIP : 32;
 	}
 }
@@ -229,6 +252,7 @@ table update_reduce_0_2_counts {
 }
 
 action do_reduce_0_2_hashes() {
+	modify_field(hash_meta_reduce_0_2.sIP, ipv4.srcAddr);
 	modify_field(hash_meta_reduce_0_2.dIP, ipv4.dstAddr);
 	modify_field(meta_reduce_0_2.qid, 2);
 	modify_field_with_hash_based_offset(meta_reduce_0_2.idx, 0, reduce_0_2_fields_hash, 4096);
@@ -251,7 +275,7 @@ table set_reduce_0_2_count {
 
 header_type meta_fm_t {
 	fields {
-		qid_3 : 1;
+		qid_1 : 1;
 		qid_2 : 1;
 	}
 }
@@ -259,7 +283,7 @@ header_type meta_fm_t {
 metadata meta_fm_t meta_fm;
 
 action init_meta_fm() {
-	modify_field(meta_fm.qid_3, 0);
+	modify_field(meta_fm.qid_1, 0);
 	modify_field(meta_fm.qid_2, 0);
 }
 
@@ -268,18 +292,20 @@ table init_meta_fm {
 	size: 1;
 }
 
-action set_meta_fm_3(){
-	modify_field(meta_fm.qid_3, 1);
+action set_meta_fm_1(){
+	modify_field(meta_fm.qid_1, 1);
+	modify_field(meta_fm.qid_2, 0);
 }
 
-table filter_3{
+table filter_1{
 	actions{
-		set_meta_fm_3;
+		set_meta_fm_1;
 		_nop;
 	}
 }
 
 action set_meta_fm_2(){
+	modify_field(meta_fm.qid_1, 0);
 	modify_field(meta_fm.qid_2, 1);
 }
 
@@ -290,17 +316,110 @@ table filter_2{
 	}
 }
 
-control ingress {
-	apply(copy_to_cpu_3);
-	apply(copy_to_cpu_2);
+header_type mymeta_t {
+    fields {
+        f1 : 8;
+				is_drop: 8;
+    }
+}
+metadata mymeta_t mymeta;
+
+field_list recirculate_to_cpu_fields1 {
+    standard_metadata;
+    mymeta;
+		meta_fm;
 }
 
-table redirect {
-    reads { standard_metadata.instance_type : exact; }
-    actions { _drop; do_encap_3; }
-    size : 16;
+action do_recirculate_to_ingress() {
+			add_to_field(mymeta.f1, 1);
+      recirculate(recirculate_to_cpu_fields1);
+}
+
+table recirculate_to_ingress {
+    actions { do_recirculate_to_ingress; }
+    size : 1;
+}
+
+action do_reset_drop(){
+	modify_field(mymeta.is_drop, 0);
+}
+table reset_drop{
+	actions{do_reset_drop;}
+	size: 1;
+}
+
+control ingress {
+	apply(reset_drop);
+	apply(init_meta_fm);
+	if (mymeta.f1 == 0){
+			apply(filter_1);
+			apply(start_distinct_0_1);
+
+			if(meta_distinct_0_1.val > 0) {
+				apply(drop_distinct_0_1_1);
+			}
+			else if(meta_distinct_0_1.val == 0) {
+				apply(skip_distinct_0_1_1);
+
+			}
+			else {
+				apply(drop_distinct_0_1_2);
+			}
+			if (mymeta.is_drop == 0){
+				apply(update_distinct_0_1_counts);
+			}
+			apply(copy_to_cpu_1);
+	}
+	if (mymeta.f1 == 1){
+			apply(filter_2);
+
+			apply(start_reduce_0_2);
+			apply(update_reduce_0_2_counts);
+
+			if(meta_reduce_0_2.val > 2) {
+				apply(set_reduce_0_2_count);
+			}
+			else if(meta_reduce_0_2.val == 2) {
+				apply(skip_reduce_0_2_1);
+			}
+			else {
+				apply(drop_reduce_0_2_1);
+			}
+			apply(copy_to_cpu_2);
+	}
+}
+
+table drop_table {
+    actions {_drop;}
+    size : 1;
+}
+table drop_packets {
+	actions {_drop;}
+	size : 1;
 }
 
 control egress {
-    apply(redirect);
+	if (standard_metadata.instance_type != 1) {
+		if(mymeta.f1 < NUMBER_OF_QUERIES) {
+			apply(recirculate_to_ingress);
+		}
+		else {
+			apply(drop_table);
+		}
+	}
+	else if (standard_metadata.instance_type == 1) {
+		if (mymeta.is_drop == 1){
+			apply(drop_packets);
+		}
+		else {
+			if (mymeta.f1 == 0){
+				apply(encap_1);
+			}
+			if (mymeta.f1 == 1){
+				apply(encap_2);
+			}
+		}
+
+	}
+
 }

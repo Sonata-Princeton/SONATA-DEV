@@ -118,9 +118,9 @@ q2 = PacketStream(2).reduce(keys= ('dIP',))
 q3 = PacketStream(3).reduce(keys= ('dIP',))
 q4 = PacketStream(3).distinct(keys = ('sIP', 'dIP')).reduce(keys= ('dIP',))
 
-#fm.add_query(q1)
-fm.add_query(q3)
+fm.add_query(q1)
 fm.add_query(q2)
+#fm.add_query(q2)
 fm.compile_init_config()
 
 #print fm.p4_src

@@ -56,13 +56,28 @@ fi
 sysctl net.ipv6.conf.$intf2.disable_ipv6=1
 sysctl net.ipv6.conf.$intf3.disable_ipv6=1
 
+# create CPU port
+intf4="m-veth-3"
+intf5="out-veth-3"
+if ! ip link show $intf4 &> /dev/null; then
+    ip link add name $intf4 type veth peer name $intf5
+    ip link set dev $intf4 up
+    ip link set dev $intf5 up
+    TOE_OPTIONS="rx tx sg tso ufo gso gro lro rxvlan txvlan rxhash"
+    for TOE_OPTION in $TOE_OPTIONS; do
+        /sbin/ethtool --offload $intf4 "$TOE_OPTION" off
+        /sbin/ethtool --offload $intf5 "$TOE_OPTION" off
+    done
+fi
+sysctl net.ipv6.conf.$intf4.disable_ipv6=1
+sysctl net.ipv6.conf.$intf5.disable_ipv6=1
 
-$P4C_BM_SCRIPT p4src/distinct.p4 --json distinct.json
+$P4C_BM_SCRIPT p4src/copy_to_cpu.p4 --json copy_to_cpu.json
 # This gives libtool the opportunity to "warm-up"
 $SWITCH_PATH >/dev/null 2>&1
 PYTHONPATH=$PYTHONPATH:$BMV2_PATH/mininet/ python topo.py \
     --behavioral-exe $SWITCH_PATH \
-    --json distinct.json \
+    --json copy_to_cpu.json \
     --cli $CLI_PATH \
     --thrift-port 22222
 

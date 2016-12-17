@@ -5,6 +5,9 @@ import glob
 import math, time
 import pickle
 
+
+
+
 def load_data():
     print "load_data called"
     data = {}
@@ -25,6 +28,13 @@ def send_packet(pkt_tuple):
     (sIP, sPort, dIP, dPort, nBytes, proto, sMac, dMac) = pkt_tuple
     p = Ether() / IP(dst=dIP, src=sIP) / TCP(dport=int(dPort), sport=int(sPort)) / "SONATA"
     sendp(p, iface = "out-veth-1", verbose=0)
+
+def send_dummy_packets():
+    sIPs = ['112.7.186.20']
+    for sIP in sIPs:
+        p = Ether() / IP(dst='112.7.186.25', src=sIP) / TCP() / "SONATA"
+        p.summary()
+        sendp(p, iface = "out-veth-1", verbose=0)
 
 
 def send_packets(time_slot):
@@ -75,4 +85,6 @@ def send_packets(time_slot):
 
 
 T = 1000
-send_packets(T)
+#send_packets(T)
+
+send_dummy_packets()

@@ -27,7 +27,7 @@ def send_packet(pkt_tuple):
     sendp(p, iface = "out-veth-1", verbose=0)
 
 def send_dummy_packets():
-    sIPs = ['112.7.186.20', '112.7.186.19', '112.7.186.18']
+    sIPs = ['112.7.186.20', '112.7.186.19', '112.7.186.19', '112.7.186.18']
     for sIP in sIPs:
         p = Ether() / IP(dst='112.7.186.25', src=sIP) / TCP() / "SONATA"
         p.summary()
