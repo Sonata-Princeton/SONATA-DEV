@@ -316,60 +316,76 @@ table init_meta_fm {
 
 action set_meta_fm_1(){
 	modify_field(meta_fm.qid_1, 1);
-	modify_field(meta_fm.qid_2, 0);
-}
-
-table filter_1{
-	actions{
-		set_meta_fm_1;
-		_nop;
-	}
 }
 
 action set_meta_fm_2(){
-	modify_field(meta_fm.qid_1, 0);
 	modify_field(meta_fm.qid_2, 1);
 }
 
-table filter_2{
+action reset_meta_fm_1(){
+	modify_field(meta_fm.qid_1, 0);
+}
+
+action reset_meta_fm_2(){
+	modify_field(meta_fm.qid_2, 0);
+}
+
+table filter_1_1{
+	reads {
+		ipv4.protocol: exact;
+	}
 	actions{
-		set_meta_fm_2;
-		_nop;
+		set_meta_fm_1;
+		reset_meta_fm_1;
+	}
+}
+
+table filter_1_2{
+	reads {
+		ipv4.dstAddr: exact;
+	}
+	actions{
+		set_meta_fm_1;
+		reset_meta_fm_1;
 	}
 }
 
 control ingress {
 	apply(init_meta_fm);
 	if (meta_fm.f1 == 0){
-		apply(filter_1);
-		apply(start_distinct_0_1);
-		if(meta_distinct_0_1.val > 0) {
-			apply(drop_distinct_0_1_1);
-		}
-		else if(meta_distinct_0_1.val == 0) {
-			apply(skip_distinct_0_1_1);
-		}
-		else {
-			apply(drop_distinct_0_1_2);
-		}
+		apply(filter_1_1);
+		apply(filter_1_2);
+		if (meta_fm.qid_1 == 1){
+			apply(start_distinct_0_1);
+			if(meta_distinct_0_1.val > 0) {
+				apply(drop_distinct_0_1_1);
+			}
+			else if(meta_distinct_0_1.val == 0) {
+				apply(skip_distinct_0_1_1);
+			}
+			else {
+				apply(drop_distinct_0_1_2);
+			}
 
-		apply(update_distinct_0_1_counts);
-		apply(copy_to_cpu_1);
+			apply(update_distinct_0_1_counts);
+			apply(copy_to_cpu_1);
+		}
 	}
 	if (meta_fm.f1 == 1){
-		apply(filter_2);
-		apply(start_reduce_0_2);
-		apply(update_reduce_0_2_counts);
-		if(meta_reduce_0_2.val > 2) {
-			apply(set_reduce_0_2_count);		}
-		else if(meta_reduce_0_2.val == 2) {
-			apply(skip_reduce_0_2_1);
-		}
-		else {
-			apply(drop_reduce_0_2_1);
-		}
+		if (meta_fm.qid_2 == 1){
+			apply(start_reduce_0_2);
+			apply(update_reduce_0_2_counts);
+			if(meta_reduce_0_2.val > 2) {
+				apply(set_reduce_0_2_count);			}
+			else if(meta_reduce_0_2.val == 2) {
+				apply(skip_reduce_0_2_1);
+			}
+			else {
+				apply(drop_reduce_0_2_1);
+			}
 
-		apply(copy_to_cpu_2);
+			apply(copy_to_cpu_2);
+		}
 	}
 }
 
@@ -395,7 +411,5 @@ control egress {
 				apply(encap_2);
 			}
 		}
-
-
 	}
 }

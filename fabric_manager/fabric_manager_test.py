@@ -98,31 +98,29 @@ class FabricManagerConfig(object):
         out += '\tsize: 1;\n}\n\n'
         self.p4_init_commands.append('table_set_default init_meta_fm init_meta_fm')
 
-        for q0 in self.queries:
-            out += 'action set_meta_fm_'+str(q0.qid)+'(){\n'
-            for q1 in self.queries:
-                if q0.qid == q1.qid:
-                    out += '\tmodify_field(meta_fm.qid_'+str(q1.qid)+', 1);\n'
-                else:
-                    out += '\tmodify_field(meta_fm.qid_'+str(q1.qid)+', 0);\n'
+        for q in self.queries:
+            out += 'action set_meta_fm_'+str(q.qid)+'(){\n'
+            out += '\tmodify_field(meta_fm.qid_'+str(q.qid)+', 1);\n'
             out += '}\n\n'
 
-            out += 'table filter_'+str(q0.qid)+'{\n'
-            #out += '\treads {\n'
-            #ut += '\t\tipv4.protocol: exact;\n'
-            #out += '\t\tipv4.dstAddr: lpm;\n\t}\n'
-            out += '\tactions{\n\t\tset_meta_fm_'+str(q0.qid)+';\n\t\t_nop;\n\t}\n}\n\n'
-            self.p4_init_commands.append('table_set_default filter_'+str(q0.qid)+' set_meta_fm_'+str(q0.qid))
+        for q in self.queries:
+            out += 'action reset_meta_fm_'+str(q.qid)+'(){\n'
+            out += '\tmodify_field(meta_fm.qid_'+str(q.qid)+', 0);\n'
+            out += '}\n\n'
+
+        for q in self.queries:
+            out += q.filter_rules
 
         out += 'control ingress {\n'
         out += '\tapply(init_meta_fm);\n'
         for q in self.queries:
             out += '\tif (meta_fm.f1 == '+str(q.qid-1)+'){\n'
-            out += '\t\tapply(filter_'+str(q.qid)+');\n'
-            out += '\t'+q.p4_ingress_start
+            out += q.filter_control
+            out += '\t\tif (meta_fm.qid_'+str(q.qid)+' == 1){\n'
+            out += '\t\t'+q.p4_ingress_start
             out += q.p4_control
-            out += '\t\tapply(copy_to_cpu_'+str(q.qid)+');\n'
-            out += '\t}\n'
+            out += '\t\t\tapply(copy_to_cpu_'+str(q.qid)+');\n'
+            out += '\t\t}\n\t}\n'
             self.p4_init_commands.append('table_set_default copy_to_cpu_'+str(q.qid)+' do_copy_to_cpu_'+str(q.qid))
 
         out += '}\n\n'
@@ -149,7 +147,7 @@ class FabricManagerConfig(object):
 
 fm = FabricManagerConfig()
 #q1 = PacketStream(1).filter(keys = ('proto',),values = ('17',)).distinct(keys = ('sIP', 'dIP/16'))
-q1 = QueryPipeline(1).distinct(keys = ('sIP', 'dIP'))
+q1 = QueryPipeline(1).filter(keys = ('proto',),values = ('17',)).filter(keys = ('dIP',)).distinct(keys = ('sIP', 'dIP'))
 q2 = QueryPipeline(2).reduce(keys= ('dIP',))
 #q3 = QueryPipeline(3).reduce(keys= ('dIP',))
 #q4 = QueryPipeline(3).distinct(keys = ('sIP', 'dIP')).reduce(keys= ('dIP',))

@@ -179,15 +179,15 @@ class Register(object):
         out = ''
         if self.pre_actions.count('fwd') < 3:
             # then only we need to add condition
-            out += '\t\t'+'if('+self.metadata.name+'.'+self.metadata.fields.keys()[1]+' > '+str(self.thresh)+') {\n\t'
-            out += '\t\t'+self.add_cond_actions(0, 0)
-            out += '\t\t'+'}\n'
-            out += '\t\t'+'else if('+self.metadata.name+'.'+self.metadata.fields.keys()[1]+' == '+str(self.thresh)+') {\n\t'
-            out += '\t\t'+self.add_cond_actions(0, 1)
-            out += '\t\t'+'}\n'
-            out += '\t\t'+'else {\n\t'
-            out += '\t\t'+self.add_cond_actions(0, 2)
-            out += '\t\t'+'}\n\n'
+            out += '\t\t\t'+'if('+self.metadata.name+'.'+self.metadata.fields.keys()[1]+' > '+str(self.thresh)+') {\n\t'
+            out += '\t\t\t'+self.add_cond_actions(0, 0)
+            out += '\t\t\t'+'}\n'
+            out += '\t\t\t'+'else if('+self.metadata.name+'.'+self.metadata.fields.keys()[1]+' == '+str(self.thresh)+') {\n\t'
+            out += '\t\t\t'+self.add_cond_actions(0, 1)
+            out += '\t\t\t'+'}\n'
+            out += '\t\t\t'+'else {\n\t'
+            out += '\t\t\t'+self.add_cond_actions(0, 2)
+            out += '\t\t\t'+'}\n\n'
         #print out
         return out
 
@@ -195,20 +195,20 @@ class Register(object):
         out = ''
         if self.post_actions.count('fwd') < 3:
             # then only we need to add condition
-            out += '\t\t'+'if('+self.metadata.name+'.'+self.metadata.fields.keys()[1]+' > '+str(self.thresh)+') {\n\t'
-            out += '\t\t'+self.add_cond_actions(1, 0)
-            out += '\t\t'+'}\n'
-            out += '\t\t'+'else if('+self.metadata.name+'.'+self.metadata.fields.keys()[1]+' == '+str(self.thresh)+') {\n\t'
-            out += '\t\t'+self.add_cond_actions(1, 1)
-            out += '\t\t'+'}\n'
-            out += '\t\t'+'else {\n\t'
-            out += '\t\t'+self.add_cond_actions(1, 2)
-            out += '\t\t'+'}\n\n'
+            out += '\t\t\t'+'if('+self.metadata.name+'.'+self.metadata.fields.keys()[1]+' > '+str(self.thresh)+') {\n\t'
+            out += '\t\t\t'+self.add_cond_actions(1, 0)
+            out += '\t\t\t'+'}\n'
+            out += '\t\t\t'+'else if('+self.metadata.name+'.'+self.metadata.fields.keys()[1]+' == '+str(self.thresh)+') {\n\t'
+            out += '\t\t\t'+self.add_cond_actions(1, 1)
+            out += '\t\t\t'+'}\n'
+            out += '\t\t\t'+'else {\n\t'
+            out += '\t\t\t'+self.add_cond_actions(1, 2)
+            out += '\t\t\t'+'}\n\n'
         #print out
         return out
 
     def add_register_action(self):
-        out = '\t\t'+'apply(update_'+self.operator_name+'_counts);\n'
+        out = '\t\t\t'+'apply(update_'+self.operator_name+'_counts);\n'
         #print out
         return out
 
@@ -393,6 +393,9 @@ class QueryPipeline(object):
         self.p4_egress = ''
         self.p4_invariants = ''
         self.operators = []
+        self.filter_rules = ''
+        self.filter_control = ''
+        self.filter_rules_id = 1
         self.p4_init_commands = []
 
     def reduce(self, *args, **kwargs):
@@ -410,10 +413,27 @@ class QueryPipeline(object):
         return self
 
     def filter(self, *args, **kwargs):
-        id = len(self.operators)
-        new_args = (id, self.qid)+args
-        operator = Filter(*new_args, **kwargs)
-        self.operators.append(operator)
+        map_dict = dict(**kwargs)
+        filter_keys = map_dict['keys']
+        filter_name = 'filter_'+str(self.qid)+'_'+str(self.filter_rules_id)
+        if 'values' in map_dict:
+            filter_vals = map_dict['values']
+        out = ''
+        out += 'table '+filter_name+'{\n'
+        out += '\treads {\n'
+        for key in filter_keys:
+            out += '\t\t'+str(header_map[key])+': exact;\n'
+        out += '\t}\n'
+        out += '\tactions{\n'
+        out += '\t\tset_meta_fm_'+str(self.qid)+';\n'
+        out += '\t\treset_meta_fm_'+str(self.qid)+';\n\t}\n}\n\n'
+        self.filter_rules += out
+        self.p4_init_commands.append('table_set_default '+filter_name+' reset_meta_fm_'+str(self.qid))
+        self.filter_rules_id += 1
+
+        self.filter_control += '\t\tapply('+filter_name+');\n'
+
+
         return self
 
 
