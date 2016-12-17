@@ -57,6 +57,8 @@ def initialize_switch(behavioral_exe, p4_json_path, thrift_port, cli_path, p4_co
 
     send_commands_to_dp(cli_path, p4_json_path, thrift_port, p4_commands)
 
+    logging.info(p4_commands)
+
     sleep(1)
 
     logging.debug("SWITCH Ready !")

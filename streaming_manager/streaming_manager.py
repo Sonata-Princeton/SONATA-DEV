@@ -4,15 +4,12 @@
 
 from __future__ import print_function
 
-import sys
-import math
 import time
-import json
-
+import pickle
 from pyspark import SparkContext
 from pyspark.streaming import StreamingContext
 from multiprocessing.connection import Client, Listener
-
+from query_engine.spark_queries import Map, Reduce, Filter
 from threading import Thread
 
 spark_stream_address = 'localhost'
@@ -65,8 +62,8 @@ class StreamingManager(object):
 
 
     def start(self):
-        #self.reduction_key_updater = Thread(target=self.update_reduction_keys)
-        #self.reduction_key_updater.start()
+        self.reduction_key_updater = Thread(target=self.update_reduction_keys)
+        self.reduction_key_updater.start()
         lines = self.ssc.socketTextStream(spark_stream_address, spark_stream_port)
         pktstream = (lines.map(lambda line: processLogLine(line)))
         print(pktstream)
@@ -80,74 +77,40 @@ class StreamingManager(object):
             list_rdd = rdd.collect()
             print("P2: ", list_rdd)
 
-        def for_printing1(rdd):
-            list_rdd = rdd.collect()
-            #print(list_rdd)
-            fname = "test.txt"
-            with open(fname,'w') as f:
-                f.write(",".join([x for x in list_rdd]))
-
-        """
-        sm_listener = Listener(('localhost',7777))
         print("Waiting for streaming query expressions ...")
-        conn = sm_listener.accept()
+        conn = self.sm_listener.accept()
         print("Connection request accepted")
         raw_data = conn.recv()
-        query_expressions = [str(x) for x in json.loads(raw_data)]
+        queries = pickle.loads(raw_data)
+        for query in queries:
+            query_operators = []
+            for operator in query.operators:
+                if(operator.name == "Map"):
+                    query_operators.append(Map(prev_fields = operator.prev_fields,
+                                       keys = operator.keys, values = operator.values))
+                    print(operator.prev_fields, operator.keys, operator.values)
+
+                if(operator.name == "Reduce"):
+                    query_operators.append(Reduce(prev_fields = operator.prev_fields,
+                                                  func = operator.func,
+                                                  values = operator.values))
+
+                if(operator.name == "Distinct"):
+                    query_operators.append(Filter(prev_fields = operator.prev_fields))
+
+
+                if(operator.name == "Filter"):
+                    query_operators.append(Filter(prev_fields = operator.prev_fields,
+                                               expr = operator.expr))
+            query.operators = query_operators
+
+
+        print(queries)
+        query_expressions = [x.compile() for x in queries]
         print(query_expressions)
+        q = eval(query_expressions)
+        q.foreachRDD(lambda rdd: for_printing2(rdd))
 
-
-        q2 = eval("pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd.map(lambda s: tuple([str(x.encode('utf-8').strip()) for x in s]))."
-                +query_expressions[0]+"))")
-
-
-        q1 = (pktstream.window(self.window_length, self.sliding_interval)
-                .transform(lambda rdd: (rdd
-                .map(lambda s: tuple([str(x.encode('utf-8').strip()) for x in s]))
-                .filter(lambda (ts,te,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): proto == '17')
-                .map(lambda (ts,te,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): ((dMac,sIP)))
-                .distinct()
-                .map(lambda (dMac, sIP):((dMac,1)))
-                .reduceByKey(lambda x,y: x+y)
-                .filter(lambda (dMac,count): count > 20)
-                .map(lambda (dMac,count): (dMac))))
-            )
-        """
-
-        q2 = (pktstream.window(self.window_length, self.sliding_interval)
-                .transform(lambda rdd: (rdd
-                .map(lambda s: tuple([str(x.encode('utf-8').strip()) for x in s]))
-                #.filter(lambda (ts,te,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): proto == '17')
-                #.map(lambda (ts,te,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac):
-                #    (dMac,(ts,te,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac)))
-                #.join(self.reduction_keys)
-                #.map(lambda s: s[1][0])
-                #.map(lambda (ts,te,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): ((dIP,sIP)))
-                #.distinct()
-                .map(lambda (dIP, sIP):((dIP,1)))
-                .reduceByKey(lambda x,y: x+y)
-                #.filter(lambda (dIP,count): count > 4)
-                .map(lambda (dIP,count): (dIP))
-                ))
-            )
-
-
-        """
-
-        #q1.foreachRDD(lambda rdd: for_printing1(rdd))
-        q2 = (pktstream.window(self.window_length, self.sliding_interval)
-                .transform(lambda rdd: (rdd
-                .map(lambda s: tuple([str(x.encode('utf-8').strip()) for x in s]))
-                #.map(lambda (dIP, sIP):((dIP,1)))
-                #.reduceByKey(lambda x,y: x+y)
-                #.filter(lambda (dIP,count): count > 2)
-                #.map(lambda (dIP,count): (dIP))
-                ))
-            )
-        """
-        q2.foreachRDD(lambda rdd: for_printing2(rdd))
-
-        #q = eval(query)
 
 if __name__ == "__main__":
     conf = {'batch_interval': batch_interval, 'window_length': window_length,
