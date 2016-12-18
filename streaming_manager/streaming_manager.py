@@ -61,8 +61,8 @@ class StreamingManager(object):
 
 
     def start(self):
-        self.reduction_key_updater = Thread(target=self.update_reduction_keys)
-        self.reduction_key_updater.start()
+        # self.reduction_key_updater = Thread(target=self.update_reduction_keys)
+        # self.reduction_key_updater.start()
         lines = self.ssc.socketTextStream(spark_stream_address, spark_stream_port)
         pktstream = (lines.map(lambda line: processLogLine(line)))
         print(pktstream)

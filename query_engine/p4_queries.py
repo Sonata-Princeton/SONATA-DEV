@@ -383,15 +383,20 @@ class QueryPipeline(object):
         self.filter_control = ''
         self.filter_rules_id = 1
         self.p4_init_commands = []
+        self.expr = 'In'
 
     def reduce(self, *args, **kwargs):
         id = len(self.operators)
         new_args = (id, self.qid, self.mirror_id, TABLE_WIDTH, TABLE_SIZE, THRESHOLD)+args
+        map_dict = dict(*args, **kwargs)
+        keys = map_dict['keys']
+        self.expr += '.Reduce(' + ','.join([x for x in keys]) + ')'
         operator = Reduce(*new_args, **kwargs)
         self.operators.append(operator)
         return self
 
     def distinct(self, *args, **kwargs):
+        self.expr += '.Distinct()'
         id = len(self.operators)
         new_args = (id, self.qid, self.mirror_id, TABLE_WIDTH, TABLE_SIZE, DISTINCT)+args
         operator = Distinct(*new_args, **kwargs)
@@ -402,6 +407,9 @@ class QueryPipeline(object):
         map_dict = dict(**kwargs)
         filter_keys = map_dict['keys']
         filter_name = 'filter_'+str(self.qid)+'_'+str(self.filter_rules_id)
+
+        keys = map_dict['keys']
+        self.expr += '.Filter(' + ','.join([x for x in keys]) + ')'
 
         out = ''
         out += 'table '+filter_name+'{\n'

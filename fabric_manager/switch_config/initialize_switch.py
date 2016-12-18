@@ -40,7 +40,7 @@ class MyTopo(Topo):
                                 pcap_dump = True)
 
 
-def initialize_switch(behavioral_exe, p4_json_path, thrift_port, cli_path, p4_commands):
+def initialize_switch(behavioral_exe, p4_json_path, thrift_port, cli_path):
     topo = MyTopo(behavioral_exe,
                   p4_json_path,
                   thrift_port)
@@ -55,9 +55,7 @@ def initialize_switch(behavioral_exe, p4_json_path, thrift_port, cli_path, p4_co
     net.start()
     sleep(1)
 
-    send_commands_to_dp(cli_path, p4_json_path, thrift_port, p4_commands)
-
-    logging.info(p4_commands)
+    send_commands_to_dp(cli_path, p4_json_path, thrift_port)
 
     sleep(1)
 

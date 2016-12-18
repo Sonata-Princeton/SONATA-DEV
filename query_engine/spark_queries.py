@@ -105,6 +105,7 @@ class PacketStream(SparkQuery):
         self.values = tuple(self.basic_headers[1:])
         self.fields = self.keys + self.values
         self.operators = []
+        self.expr = 'In'
 
     def compile(self):
         expr_sp = ''
@@ -122,21 +123,41 @@ class PacketStream(SparkQuery):
         return prev_fields
 
     def map(self, *args, **kwargs):
-        operator = Map(prev_fields = self.get_prev_fields(), *args, **kwargs)
+        map_dict = dict(*args, **kwargs)
+        prev_fields = map_dict['prev_fields']
+        keys = map_dict['keys']
+        values = map_dict['values']
+
+        self.expr += '.Map('+','.join([x for x in keys])+')'
+        operator = Map(prev_fields = prev_fields, keys=keys, values=values)
         self.operators.append(operator)
         return self
 
     def reduce(self, *args, **kwargs):
-        operator = Reduce(prev_fields = self.get_prev_fields(), *args, **kwargs)
+        map_dict = dict(*args, **kwargs)
+        prev_fields = map_dict['prev_fields']
+        func = map_dict['func']
+        values = map_dict['values']
+        self.expr += '.Reduce('+func+','+','.join([x for x in values])+')'
+        operator = Reduce(prev_fields = prev_fields,
+                          func = func,
+                          values = values)
         self.operators.append(operator)
         return self
 
     def distinct(self, *args, **kwargs):
-        operator = Distinct(prev_fields = self.get_prev_fields(), *args, **kwargs)
+        self.expr += '.Distinct()'
+        map_dict = dict(*args, **kwargs)
+        prev_fields = map_dict['prev_fields']
+        operator = Distinct(prev_fields = prev_fields)
         self.operators.append(operator)
         return self
 
     def filter(self, *args, **kwargs):
-        operator = Filter(prev_fields = self.get_prev_fields(),*args, **kwargs)
+        map_dict = dict(*args, **kwargs)
+        prev_fields = map_dict['prev_fields']
+        expr = map_dict['expr']
+        self.expr += '.Filter('+expr+')'
+        operator = Filter(prev_fields = prev_fields, expr=expr)
         self.operators.append(operator)
         return self
