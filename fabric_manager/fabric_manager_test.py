@@ -147,15 +147,15 @@ class FabricManagerConfig(object):
 
 fm = FabricManagerConfig()
 #q1 = PacketStream(1).filter(keys = ('proto',),values = ('17',)).distinct(keys = ('sIP', 'dIP/16'))
-q1 = QueryPipeline(1).filter(keys = ('proto',),values = ('6',)).filter(keys = ('dIP',),values = ('112.7.186.25',)).distinct(keys = ('sIP', 'dIP'))
-q2 = QueryPipeline(2).reduce(keys= ('dIP',))
+#q1 = QueryPipeline(1).filter(keys = ('proto',),values = ('6',)).filter(keys = ('dIP',),values = ('112.7.186.25',)).distinct(keys = ('sIP', 'dIP'))
+#q2 = QueryPipeline(2).reduce(keys= ('dIP',))
 #q3 = QueryPipeline(3).reduce(keys= ('dIP',))
 #q4 = QueryPipeline(3).distinct(keys = ('sIP', 'dIP')).reduce(keys= ('dIP',))
 
-#q5 = PacketStream(5).reduce(keys= ('dIP/16',))
-#q6 = PacketStream(5).filter('dIP/16 in q5').reduce(keys= ('dIP/32',))
-fm.add_query(q1)
-fm.add_query(q2)
+q5 = QueryPipeline(1).distinct(keys= ('dIP/16','sIP'))
+q6 = QueryPipeline(2).distinct(keys= ('dIP/32','sIP'))
+fm.add_query(q5)
+fm.add_query(q6)
 #fm.add_query(q2)
 fm.compile_init_config()
 
