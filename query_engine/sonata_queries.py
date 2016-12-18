@@ -225,29 +225,25 @@ class PacketStream(Query):
                     if(operator.name == "Map"):
                         prev_fields = get_original_wo_mask(operator.prev_fields)
                         keys = get_original_wo_mask(operator.keys)
-
-                        spark_query.operators.append(spark.Map(prev_fields = prev_fields,
-                                           keys = keys, values = operator.values))
-                        print(prev_fields, operator.keys, operator.values)
+                        spark_query = spark_query.map(prev_fields = prev_fields,
+                                                      keys = keys, values = operator.values)
 
                     if(operator.name == "Reduce"):
                         prev_fields = get_original_wo_mask(operator.prev_fields)
-
-                        spark_query.operators.append(spark.Reduce(prev_fields = prev_fields,
+                        spark_query = spark_query.reduce(prev_fields = prev_fields,
                                                       func = operator.func,
-                                                      values = operator.values))
+                                                      values = operator.values)
 
                     if(operator.name == "Distinct"):
                         prev_fields = get_original_wo_mask(operator.prev_fields)
-
-                        spark_query.operators.append(spark.Distinct(prev_fields = prev_fields))
+                        spark_query = spark_query.distinct(prev_fields = prev_fields)
 
 
                     if(operator.name == "Filter"):
                         prev_fields = get_original_wo_mask(operator.prev_fields)
+                        spark_query = spark_query.filter(prev_fields = prev_fields,
+                                                         expr = operator.expr)
 
-                        spark_query.operators.append(spark.Filter(prev_fields = prev_fields,
-                                                   expr = operator.expr))
                 self.sp_query = spark_query
             else:
                 raise NotImplementedError

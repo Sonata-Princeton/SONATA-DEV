@@ -16,7 +16,7 @@ class FabricManagerConfig(object):
     def __init__(self, fm_socket):
         self.p4_src = ''
         self.queries = []
-        self.p4_commands = []
+        self.p4_init_commands = []
         self.fm_socket = fm_socket
         self.interfaces = {'reciever': ['m-veth-1', 'out-veth-1'],
                            'sender': ['m-veth-2', 'out-veth-2']}
@@ -36,11 +36,19 @@ class FabricManagerConfig(object):
                     self.compile_init_config()
                     logging.info("query compiled")
 
-                    write_to_file(P4_COMPILED, self.p4_src)
+                    #write_to_file(P4_COMPILED, self.p4_src)
+
+                    P4_COMMANDS_STR = "\n".join(self.p4_init_commands)
+
+                    write_to_file(P4_COMMANDS, P4_COMMANDS_STR)
+
                     compile_p4_2_json()
                     self.create_interfaces()
+                    cmd = SWITCH_PATH + " >/dev/null 2>&1"
+                    logging.info(cmd)
+                    get_out(cmd)
                     initialize_switch(SWITCH_PATH, JSON_P4_COMPILED, THRIFTPORT,
-                                      CLI_PATH, self.p4_commands)
+                                      CLI_PATH)
                 elif key == "delta":
                     self.process_delta_config()
                 else:
@@ -60,7 +68,7 @@ class FabricManagerConfig(object):
 
     def process_delta_config(self):
         logging.info("Sending deltas to Data Plane")
-        send_commands_to_dp(CLI_PATH, JSON_P4_COMPILED, THRIFTPORT, self.p4_commands)
+        #send_commands_to_dp(CLI_PATH, JSON_P4_COMPILED, THRIFTPORT, self.p4_init_commands)
         return 0
 
     def receive_configs(self):
@@ -72,6 +80,9 @@ class FabricManagerConfig(object):
 
     def compile_init_config(self):
         # Compile the initial config to P4 source code and json output
+
+        logging.info("FM: Compilation....")
+
         out = ''
         for q in self.queries:
             q.compile_pipeline()

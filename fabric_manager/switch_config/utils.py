@@ -6,6 +6,7 @@ from tempfile import TemporaryFile
 COMPILED_SRCS = "/home/vagrant/dev/fabric_manager/switch_config/compiled_srcs/"
 JSON_P4_COMPILED = COMPILED_SRCS + "compiled.json"
 P4_COMPILED = COMPILED_SRCS + "compiled.p4"
+import subprocess
 
 ## Initialization of Switch
 BMV2_PATH = "/home/vagrant/bmv2"
@@ -19,18 +20,24 @@ P4_COMMANDS = COMPILED_SRCS + "commands.txt"
 logging.getLogger(__name__)
 
 
-def send_commands_to_dp(cli_path, p4_json_path, thrift_port, p4_commands):
+def send_commands_to_dp(cli_path, p4_json_path, thrift_port):
     cmd = [cli_path, p4_json_path, str(thrift_port)]
     logging.info(" ".join(cmd))
-    P4_COMMANDS = "\n".join(p4_commands)
     logging.info(P4_COMMANDS)
-    get_in(cmd, P4_COMMANDS)
+    with open(P4_COMMANDS, "r") as f:
+        print " ".join(cmd)
+        try:
+            output = subprocess.check_output(cmd, stdin = f)
+            print output
+        except subprocess.CalledProcessError as e:
+            print e
+            print e.output
 
 def get_out(args):
     with TemporaryFile() as t:
         try:
             out = check_output(args, stderr=t, shell=True)
-            logging.debug("SUCCESS: " + str(args) + ",0 ," + str(out))
+            logging.debug("SUCCESS: " + str(args) + ", 0," + str(out))
             return True, out
         except CalledProcessError as e:
             t.seek(0)
