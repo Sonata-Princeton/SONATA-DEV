@@ -31,7 +31,11 @@ class MetaData(object):
     def add_metadata(self):
         out = 'header_type '+self.name+'_t {\n\tfields {\n\t\t'
         for fld in self.fields:
-            out += fld+' : '+str(self.fields[fld])+';\n\t\t'
+            print fld
+            if fld in header_size:
+                out += fld+' : '+str(header_size[fld])+';\n\t\t'
+            else:
+                out += fld+' : '+str(self.fields[fld])+';\n\t\t'
         out = out[:-1]
         out += '}\n}\n\n'
         out += 'metadata '+self.name+'_t '+self.name+';\n\n'
@@ -127,7 +131,11 @@ class Register(object):
         out = 'action do_'+self.operator_name+'_hashes() {\n\t'
         for fld in self.hash_metadata.fields:
             # TODO: Check if setting field size to mask value is sufficient
+
             out += 'modify_field('+self.hash_metadata.name+'.'+fld+', '+str(header_map[fld])+');\n\t'
+            bit_shift = header_size[fld]-int(self.hash_metadata.fields[fld])
+            if bit_shift > 0:
+                out += 'shift_right(hash_meta_distinct_0_1.'+fld+', hash_meta_distinct_0_1.'+fld+', '+str(bit_shift)+');\n\t'
         out += 'modify_field('+self.metadata.name+'.'+self.metadata.fields.keys()[0]+', '+str(self.qid)+');\n\t'
         out += 'modify_field_with_hash_based_offset('+self.metadata.name+'.'+self.metadata.fields.keys()[2]+', 0, '
         out += self.operator_name+'_fields_hash, '+str(self.instance_count)+');\n\t'
