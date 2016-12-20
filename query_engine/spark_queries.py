@@ -38,9 +38,6 @@ class Map(SparkQuery):
         self.values = ()
         if 'keys' in map_dict:
             self.keys = map_dict['keys']
-            if (set(self.keys).issubset(set(self.prev_fields))) == False:
-                print "Not OK"
-                raise NotImplementedError
 
         if 'values' in map_dict:
             self.values = map_dict['values']
@@ -97,8 +94,8 @@ class Filter(SparkQuery):
         return expr
 
 class PacketStream(SparkQuery):
-    def __init__(self):
-        self.basic_headers = ["ts", "te","sIP", "sPort","dIP", "dPort", "nBytes",
+    def __init__(self, id):
+        self.basic_headers = ["qid", "ts", "te","sIP", "sPort","dIP", "dPort", "nBytes",
                               "proto", "sMac", "dMac"]
         self.fields = tuple(self.basic_headers)
         self.keys = tuple([self.basic_headers[0]])
@@ -106,6 +103,7 @@ class PacketStream(SparkQuery):
         self.fields = self.keys + self.values
         self.operators = []
         self.expr = 'In'
+        self.qid = id
 
     def compile(self):
         expr_sp = ''
@@ -126,7 +124,9 @@ class PacketStream(SparkQuery):
         map_dict = dict(*args, **kwargs)
         prev_fields = map_dict['prev_fields']
         keys = map_dict['keys']
-        values = map_dict['values']
+        values = tuple([])
+        if 'values' in map_dict:
+            values = map_dict['values']
 
         self.expr += '.Map('+','.join([x for x in keys])+')'
         operator = Map(prev_fields = prev_fields, keys=keys, values=values)

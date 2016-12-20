@@ -6,7 +6,7 @@ logging.getLogger("testApp")
 
 import coloredlogs
 
-coloredlogs.install(level='DEBUG',)
+coloredlogs.install(level='ERROR',)
 
 from runtime import *
 from query_engine.sonata_queries import *
@@ -31,7 +31,7 @@ query = (PacketStream()
                 .distinct()
                 .map(keys=("dIP",), values = ("1",))
                 .reduce(func='sum', values=('count',))
-                .filter(expr='count > 2')
+                #.filter(expr='count > 2')
                 .map(keys=('dIP',)))
 
 queries = []

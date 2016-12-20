@@ -216,11 +216,11 @@ class PacketStream(Query):
         else:
             raise NotImplementedError
 
-    def generate_sp_query(self):
+    def generate_sp_query(self, qid):
         if self.isInput != True:
             if self.partition_plan_final != None:
                 sp_query = self.partition_plan_final[1]
-                spark_query = spark.PacketStream()
+                spark_query = spark.PacketStream(qid).filter(prev_fields = ("p"), expr = "p[1] == '" + str(qid) + "'").map(prev_fields = ("p",), keys=("p[2:]",))
                 for operator in sp_query.operators:
                     if(operator.name == "Map"):
                         prev_fields = get_original_wo_mask(operator.prev_fields)
