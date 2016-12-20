@@ -42,30 +42,13 @@ class StreamingManager(object):
         self.ssc = StreamingContext(self.sc, self.batch_interval)
         print("spark context initialized...")
 
-    def update_reduction_keys(self):
-        while True:
-            fname = "test.txt"
-            print("Reduction Key fname ",fname)
-            with open(fname, 'r') as f:
-                dps = f.read().splitlines()
-                if len(dps) == 0:
-                    dmacs = []
-                else:
-                    dmacs = dps[0].split(',')
-                print("Dmacs:", dmacs)
-                self.reduction_keys = self.sc.parallelize([(x,1) for x in dmacs])
-                #self.reduction_keys = self.sc.parallelize(dmacs)
-                # for dubuging only
-                print("File read:", self.reduction_keys.take(2))
-                time.sleep(window_length)
-
-
     def start(self):
         # self.reduction_key_updater = Thread(target=self.update_reduction_keys)
         # self.reduction_key_updater.start()
         lines = self.ssc.socketTextStream(spark_stream_address, spark_stream_port)
+        lines.pprint()
         pktstream = (lines.map(lambda line: processLogLine(line)))
-        print(pktstream)
+        #print(pktstream)
         self.process_pktstream(pktstream)
         print("process_pktstream initialized...")
         self.ssc.start()
@@ -76,6 +59,14 @@ class StreamingManager(object):
             list_rdd = rdd.collect()
             print("P2: ", list_rdd)
 
+        def for_printing1(rdd):
+            list_rdd = rdd.collect()
+            print(list_rdd)
+            fname = "test.txt"
+            with open(fname,'w') as f:
+                f.write(",".join([x for x in list_rdd]))
+
+
         print("Waiting for streaming query expressions ...")
         conn = self.sm_listener.accept()
         print("Connection request accepted")
@@ -84,9 +75,24 @@ class StreamingManager(object):
         print(queries)
         query_expressions = [x.compile() for x in queries]
         print(query_expressions)
+
         for query in query_expressions:
-            q = eval("pktstream." + query)
+            composed_query = "pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd." + query + "))"
+            print(composed_query)
+            q = eval(composed_query)
             q.foreachRDD(lambda rdd: for_printing2(rdd))
+
+        """
+
+        q = pktstream.window(self.window_length, self.sliding_interval)\
+            .transform(lambda rdd: (rdd.filter(lambda p: p[1] == '1')
+            .map(lambda p: (p[2:]))
+            .map(lambda (dIP,sIP): ((dIP),(1)))
+            .reduceByKey(lambda x,y: x+y)
+            .map(lambda (dIP,sIP): ((dIP)))
+            ))
+        q.foreachRDD(lambda rdd: for_printing2(rdd))
+        """
 
 
 if __name__ == "__main__":

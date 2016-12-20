@@ -20,7 +20,7 @@ class spark_source(object):
         self.listener = Listener((self.spark_stream_address, self.spark_stream_port), backlog=10)
         #while True:
         print "Waiting for socket"
-        #self.spark_conn = self.listener.accept()
+        self.spark_conn = self.listener.accept()
         print "Now start sniffing the packets from switch"
         self.sniff_packets()
 
@@ -51,7 +51,7 @@ class spark_source(object):
             output_tuple = (sIP, dIP)
             send_tuple = ",".join([qid, dIP, sIP])+"\n"
         print "Tuple: ", send_tuple
-        #self.send_data(send_tuple)
+        self.send_data(send_tuple)
 
 spark_stream_address = 'localhost'
 spark_stream_port = 8989

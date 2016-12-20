@@ -4,6 +4,7 @@ import sys
 import glob
 import math, time
 import pickle
+from multiprocessing.connection import Listener
 
 def load_data():
     print "load_data called"
@@ -34,6 +35,14 @@ def send_dummy_packets():
         sendp(p, iface = "out-veth-1", verbose=0)
 
 
+def send_dummy_packets_stream():
+    sIPs = ['112.7.186.20', '112.7.186.19', '112.7.186.19', '112.7.186.18']
+    for sIP in sIPs:
+        send_tuple = ",".join([qid, dIP, sIP])+"\n"
+        print "Tuple: ", send_tuple
+
+
+
 def send_packets(time_slot):
     '''
     reads packets from IPFIX data file,
@@ -52,6 +61,7 @@ def send_packets(time_slot):
     for ts in ordered_ts[:1000]:
         pkt_tuples = ipfix_data[ts]
         time_start = math.ceil(ts/time_slot)
+        #time.sleep(1)
         if current_time == 0:
             current_time = time_start
             current_ts = time.time()
@@ -81,9 +91,23 @@ def send_packets(time_slot):
                 send_packet(pkt_tuple[2:])
 
 
-T = 1000
-#send_packets(T)
+T = 100
+send_packets(T)
+"""
 while True:
     print "Sending dummy packets: ...."
     send_dummy_packets()
     time.sleep(1)
+
+listener = Listener(("localhost", 8989))
+spark_conn = listener.accept()
+
+sIPs = ['112.7.186.20', '112.7.186.19', '112.7.186.19', '112.7.186.18']
+for sIP in sIPs:
+    send_tuple = ",".join(['1', '112.7.186.25', sIP])+"\n"
+    print "Tuple: ", send_tuple
+    spark_conn.send(send_tuple)
+"""
+
+
+

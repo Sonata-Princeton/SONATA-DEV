@@ -8,7 +8,7 @@ from multiprocessing.connection import Client
 import pickle
 from threading import Thread
 from fabric_manager.fabric_manager import FabricManagerConfig
-#from streaming_manager.streaming_manager import StreamingManager
+from streaming_manager.streaming_manager import StreamingManager
 import logging
 
 logging.getLogger("runtime")
@@ -22,15 +22,15 @@ class Runtime(object):
         self.sp_queries = []
 
         self.fm_thread = Thread(name='fm_manager', target=self.start_fabric_managers)
-        #self.sm_thread = Thread(name='sm_manager', target=self.start_streaming_managers)
+        self.sm_thread = Thread(name='sm_manager', target=self.start_streaming_managers)
 
         #self.fm_thread.setDaemon(True)
         self.fm_thread.start()
-        #self.sm_thread.start()
+        self.sm_thread.start()
 
         time.sleep(1)
 
-        self.dp_qid = 1
+        self.qid = 1
         for query in self.queries:
             logging.debug("runtime: going thru queries")
             query.get_refinement_plan()
@@ -39,9 +39,9 @@ class Runtime(object):
                 logging.info(refined_query.eval())
                 refined_query.get_partitioning_plan(4)
                 refined_query.partition_plan_final = refined_query.partition_plans[0]
-                refined_query.generate_dp_query(self.dp_qid)
-                self.dp_qid += 1
-                refined_query.generate_sp_query()
+                refined_query.generate_dp_query(self.qid)
+                refined_query.generate_sp_query(self.qid)
+                self.qid += 1
                 self.dp_queries.append(refined_query.dp_query)
                 self.sp_queries.append(refined_query.sp_query)
 
@@ -54,10 +54,12 @@ class Runtime(object):
         time.sleep(2)
         if self.dp_queries:
             self.send_to_fm("init", self.dp_queries)
-            #self.send_to_sm()
+            self.send_to_sm()
 
         self.send_to_fm("delta", self.dp_queries)
         self.fm_thread.join()
+        self.sm_thread.join()
+
 
     def start_fabric_managers(self):
         # Start the fabric managers local to each data plane element
