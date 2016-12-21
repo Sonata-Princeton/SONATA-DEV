@@ -25,11 +25,12 @@ class Runtime(object):
         self.fm_thread = Thread(name='fm_manager', target=self.start_fabric_managers)
         self.em_thread = Thread(name='emitter', target=self.start_emitter)
         self.sm_thread = Thread(name='sm_manager', target=self.start_streaming_managers)
-
+        self.op_handler_thread = Thread(name='op_handler', target=self.start_op_handler)
         #self.fm_thread.setDaemon(True)
         self.fm_thread.start()
         self.em_thread.start()
         self.sm_thread.start()
+        self.op_handler_thread.start()
 
         time.sleep(1)
 
@@ -63,6 +64,27 @@ class Runtime(object):
         self.fm_thread.join()
         self.em_thread.join()
         self.sm_thread.join()
+        self.op_handler_thread.join()
+
+
+    def start_op_handler(self):
+        # Start the output handler
+        # It receives output for each query in SP
+        # It sends output of the coarser queries to the FM or
+        # SM depending on where filter operation is applied (mostly DP)
+        logging.debug("runtime: " + "starting output handler")
+        self.op_handler_socket = ('localhost', 4949)
+        self.op_handler_listener = Listener(self.op_handler_socket)
+        logging.debug("OP Handler Running...")
+        while True:
+            conn = self.fm_listener.accept()
+            # Expected (qid,[])
+            op_data = conn.recv()
+            logging.debug("OP Handler received:"+str(op_data))
+            # TODO: Update the send_to_fm function logic
+            self.send_to_fm("delta", op_data)
+        return 0
+
 
     def start_emitter(self):
         # Start the fabric managers local to each data plane element

@@ -16,6 +16,7 @@ class FabricManagerConfig(object):
     def __init__(self, fm_socket):
         self.p4_src = ''
         self.queries = []
+        self.id_2_query = {}
         self.p4_init_commands = []
         self.fm_socket = fm_socket
         self.interfaces = {'reciever': ['m-veth-1', 'out-veth-1'],
@@ -31,24 +32,7 @@ class FabricManagerConfig(object):
             message = pickle.loads(raw_data)
             for key in message.keys():
                 if key == "init":
-                    for query in message[key]:
-                        self.add_query(query)
-                    self.compile_init_config()
-                    logging.info("query compiled")
 
-                    write_to_file(P4_COMPILED, self.p4_src)
-
-                    P4_COMMANDS_STR = "\n".join(self.p4_init_commands)
-
-                    write_to_file(P4_COMMANDS, P4_COMMANDS_STR)
-
-                    compile_p4_2_json()
-                    self.create_interfaces()
-                    cmd = SWITCH_PATH + " >/dev/null 2>&1"
-                    logging.info(cmd)
-                    get_out(cmd)
-                    initialize_switch(SWITCH_PATH, JSON_P4_COMPILED, THRIFTPORT,
-                                      CLI_PATH)
                 elif key == "delta":
                     self.process_delta_config()
                 else:
@@ -61,14 +45,36 @@ class FabricManagerConfig(object):
 
     def add_query(self, q):
         self.queries.append(q)
+        self.id_2_query[q.qid] = q
 
     def process_init_config(self):
         # Process initial config from RT
-        return 0
+        for query in message[key]:
+            self.add_query(query)
+        self.compile_init_config()
+        logging.info("query compiled")
+
+        write_to_file(P4_COMPILED, self.p4_src)
+
+        P4_COMMANDS_STR = "\n".join(self.p4_init_commands)
+
+        write_to_file(P4_COMMANDS, P4_COMMANDS_STR)
+
+        compile_p4_2_json()
+        self.create_interfaces()
+        cmd = SWITCH_PATH + " >/dev/null 2>&1"
+        logging.info(cmd)
+        get_out(cmd)
+        initialize_switch(SWITCH_PATH, JSON_P4_COMPILED, THRIFTPORT,
+                          CLI_PATH)
 
     def process_delta_config(self):
         logging.info("Sending deltas to Data Plane")
         #send_commands_to_dp(CLI_PATH, JSON_P4_COMPILED, THRIFTPORT, self.p4_init_commands)
+        for qid in message_key:
+            query = self.id_2_query[qid]
+            filter_name = 'filter_'+str(query.qid)+'_'+str(query.filter_rules_id)
+            for elem in 
         return 0
 
     def receive_configs(self):
