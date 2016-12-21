@@ -9,7 +9,6 @@ import pickle
 from pyspark import SparkContext
 from pyspark.streaming import StreamingContext
 from multiprocessing.connection import Client, Listener
-from threading import Thread
 
 spark_stream_address = 'localhost'
 spark_stream_port = 8989
@@ -36,6 +35,7 @@ class StreamingManager(object):
         self.sm_socket = conf['sm_socket']
         self.sm_listener = Listener(self.sm_socket)
         print("In Streaming Manager", self.redKeysPath, self.featuresPath)
+        self.reduction_socket = Client(('localhost', 6000))
 
         # intialize streaming context
         self.sc = SparkContext(appName="Sonata-Streaming")
@@ -43,61 +43,36 @@ class StreamingManager(object):
         print("spark context initialized...")
 
     def start(self):
-        # self.reduction_key_updater = Thread(target=self.update_reduction_keys)
-        # self.reduction_key_updater.start()
         lines = self.ssc.socketTextStream(spark_stream_address, spark_stream_port)
         lines.pprint()
         pktstream = (lines.map(lambda line: processLogLine(line)))
-        #print(pktstream)
         self.process_pktstream(pktstream)
         print("process_pktstream initialized...")
         self.ssc.start()
         self.ssc.awaitTermination()
 
     def process_pktstream(self, pktstream):
-        def for_printing2(rdd):
+        def send_reduction_keys(rdd, qid):
             list_rdd = rdd.collect()
+            reduction_str = "," .join([r for r in list_rdd])
+            self.reduction_socket.send_bytes("k, " + qid + "," + reduction_str + "\n")
             print("P2: ", list_rdd)
-
-        def for_printing1(rdd):
-            list_rdd = rdd.collect()
-            print(list_rdd)
-            fname = "test.txt"
-            with open(fname,'w') as f:
-                f.write(",".join([x for x in list_rdd]))
-
 
         print("Waiting for streaming query expressions ...")
         conn = self.sm_listener.accept()
         print("Connection request accepted")
         raw_data = conn.recv()
         queries = pickle.loads(raw_data)
-        print(queries)
-        query_expressions = [x.compile() for x in queries]
-        print(query_expressions)
 
-        for query in query_expressions:
-            composed_query = "pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd." + query + "))"
-            print(composed_query)
-            q = eval(composed_query)
-            q.foreachRDD(lambda rdd: for_printing2(rdd))
-
-        """
-
-        q = pktstream.window(self.window_length, self.sliding_interval)\
-            .transform(lambda rdd: (rdd.filter(lambda p: p[1] == '1')
-            .map(lambda p: (p[2:]))
-            .map(lambda (dIP,sIP): ((dIP),(1)))
-            .reduceByKey(lambda x,y: x+y)
-            .map(lambda (dIP,sIP): ((dIP)))
-            ))
-        q.foreachRDD(lambda rdd: for_printing2(rdd))
-        """
+        for query in queries:
+            query_str = "pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd." + query.compile() + "))"
+            q = eval(query_str)
+            q.foreachRDD(lambda rdd: send_reduction_keys(rdd, str(query.qid)))
 
 
 if __name__ == "__main__":
     conf = {'batch_interval': batch_interval, 'window_length': window_length,
             'sliding_interval': sliding_interval, 'featuresPath': featuresPath,
-            'redKeysPath': redKeysPath, 'sm_socket':('localhost',5555)}
+            'redKeysPath': redKeysPath, 'sm_socket':('localhost', 5555)}
     sm = StreamingManager(conf)
     sm.start()
