@@ -36,7 +36,7 @@ class FabricManagerConfig(object):
                     self.compile_init_config()
                     logging.info("query compiled")
 
-                    #write_to_file(P4_COMPILED, self.p4_src)
+                    write_to_file(P4_COMPILED, self.p4_src)
 
                     P4_COMMANDS_STR = "\n".join(self.p4_init_commands)
 
