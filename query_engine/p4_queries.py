@@ -393,6 +393,7 @@ class QueryPipeline(object):
         self.filter_id_2_name = {}
         self.p4_init_commands = []
         self.expr = 'In'
+        self.refinement_filter_id = 0
 
     def reduce(self, *args, **kwargs):
         id = len(self.operators)
@@ -415,10 +416,13 @@ class QueryPipeline(object):
     def filter(self, *args, **kwargs):
         map_dict = dict(**kwargs)
         filter_keys = map_dict['keys']
+        filter_vals = ()
+        if 'values' in map_dict:
+            filter_vals = map_dict['values']
         filter_name = 'filter_'+str(self.qid)+'_'+str(self.filter_rules_id)
         self.filter_id_2_name[self.filter_rules_id] = filter_name
         keys = map_dict['keys']
-        self.expr += '.Filter(' + ','.join([x for x in keys]) + ')'
+        self.expr += '.Filter(keys='+str(filter_keys)+', vals='+str(filter_vals)+')'
 
         out = ''
         out += 'table '+filter_name+'{\n'
