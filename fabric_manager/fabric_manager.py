@@ -32,7 +32,7 @@ class FabricManagerConfig(object):
             message = pickle.loads(raw_data)
             for key in message.keys():
                 if key == "init":
-
+                    self.process_init_config()
                 elif key == "delta":
                     self.process_delta_config()
                 else:
@@ -74,7 +74,7 @@ class FabricManagerConfig(object):
         for qid in message_key:
             query = self.id_2_query[qid]
             filter_name = 'filter_'+str(query.qid)+'_'+str(query.filter_rules_id)
-            for elem in 
+            
         return 0
 
     def receive_configs(self):

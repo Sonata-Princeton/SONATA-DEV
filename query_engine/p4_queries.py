@@ -390,6 +390,7 @@ class QueryPipeline(object):
         self.filter_rules = ''
         self.filter_control = ''
         self.filter_rules_id = 1
+        self.filter_id_2_name = {}
         self.p4_init_commands = []
         self.expr = 'In'
 
@@ -415,7 +416,7 @@ class QueryPipeline(object):
         map_dict = dict(**kwargs)
         filter_keys = map_dict['keys']
         filter_name = 'filter_'+str(self.qid)+'_'+str(self.filter_rules_id)
-
+        self.filter_id_2_name[self.filter_rules_id] = filter_name
         keys = map_dict['keys']
         self.expr += '.Filter(' + ','.join([x for x in keys]) + ')'
 

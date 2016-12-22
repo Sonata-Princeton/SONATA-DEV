@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 # Initialize coloredlogs.
 import logging
 
@@ -9,6 +9,9 @@ import coloredlogs
 coloredlogs.install(level='ERROR',)
 
 from runtime import *
+import sys
+print sys.path
+
 from query_engine.sonata_queries import *
 
 batch_interval = 1
@@ -19,26 +22,28 @@ T = 1000*window_length
 featuresPath = ''
 redKeysPath = ''
 
-spark_conf = {'batch_interval': batch_interval, 'window_length': window_length, 'sliding_interval': sliding_interval, 'featuresPath': featuresPath, 'redKeysPath': redKeysPath, 'sm_socket':('localhost',5555)}
+if __name__ == "__main__":
 
-emitter_conf = {'spark_stream_address': 'localhost',
-                'spark_stream_port': 8989,
-                'sniff_interface': "out-veth-2"}
+    spark_conf = {'batch_interval': batch_interval, 'window_length': window_length, 'sliding_interval': sliding_interval, 'featuresPath': featuresPath, 'redKeysPath': redKeysPath, 'sm_socket':('localhost',5555)}
 
-conf = {'dp': 'p4', 'sp': 'spark',
-        'sm_conf': spark_conf, 'emitter_conf': emitter_conf,
-        'fm_socket': ('localhost', 6666)}
+    emitter_conf = {'spark_stream_address': 'localhost',
+                    'spark_stream_port': 8989,
+                    'sniff_interface': "out-veth-2"}
 
-query = (PacketStream()
-                .filter(expr="proto == '17'")
-                .map(keys=("dIP", "sIP"))
-                .distinct()
-                .map(keys=("dIP",), values = ("1",))
-                .reduce(func='sum', values=('count',))
-                #.filter(expr='count > 2')
-                .map(keys=('dIP',)))
+    conf = {'dp': 'p4', 'sp': 'spark',
+            'sm_conf': spark_conf, 'emitter_conf': emitter_conf,
+            'fm_socket': ('localhost', 6666)}
 
-queries = []
-queries.append(query)
-runtime = Runtime(conf, queries)
-#runtime.send_to_sm()
+    query = (PacketStream()
+                    .filter(expr="proto == '17'")
+                    .map(keys=("dIP", "sIP"))
+                    .distinct()
+                    .map(keys=("dIP",), values = ("1",))
+                    .reduce(func='sum', values=('count',))
+                    #.filter(expr='count > 2')
+                    .map(keys=('dIP',)))
+
+    queries = []
+    queries.append(query)
+    runtime = Runtime(conf, queries)
+    #runtime.send_to_sm()
