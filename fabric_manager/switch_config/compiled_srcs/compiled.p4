@@ -211,7 +211,6 @@ table update_distinct_0_1_counts {
 action do_distinct_0_1_hashes() {
 	modify_field(hash_meta_distinct_0_1.sIP, ipv4.srcAddr);
 	modify_field(hash_meta_distinct_0_1.dIP, ipv4.dstAddr);
-	shift_right(hash_meta_distinct_0_1.dIP, hash_meta_distinct_0_1.dIP, 16);
 	modify_field(meta_distinct_0_1.qid, 1);
 	modify_field_with_hash_based_offset(meta_distinct_0_1.idx, 0, distinct_0_1_fields_hash, 4096);
 	register_read(meta_distinct_0_1.val, distinct_0_1, meta_distinct_0_1.idx);
@@ -338,9 +337,40 @@ action reset_meta_fm_2(){
 	modify_field(meta_fm.qid_2, 0);
 }
 
+table filter_1_1{
+	reads {
+		ipv4.protocol: exact;
+	}
+	actions{
+		set_meta_fm_1;
+		reset_meta_fm_1;
+	}
+}
+
+table filter_2_1{
+	reads {
+		ipv4.dstAddr: exact;
+	}
+	actions{
+		set_meta_fm_2;
+		reset_meta_fm_2;
+	}
+}
+
+table filter_2_2{
+	reads {
+		ipv4.protocol: exact;
+	}
+	actions{
+		set_meta_fm_2;
+		reset_meta_fm_2;
+	}
+}
+
 control ingress {
 	apply(init_meta_fm);
 	if (meta_fm.f1 == 0){
+		apply(filter_1_1);
 		if (meta_fm.qid_1 == 1){
 			apply(start_distinct_0_1);
 			if(meta_distinct_0_1.val > 0) {
@@ -358,6 +388,8 @@ control ingress {
 		}
 	}
 	if (meta_fm.f1 == 1){
+		apply(filter_2_1);
+		apply(filter_2_2);
 		if (meta_fm.qid_2 == 1){
 			apply(start_distinct_0_2);
 			if(meta_distinct_0_2.val > 0) {

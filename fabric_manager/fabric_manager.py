@@ -32,9 +32,9 @@ class FabricManagerConfig(object):
             message = pickle.loads(raw_data)
             for key in message.keys():
                 if key == "init":
-                    self.process_init_config()
+                    self.process_init_config(message[key])
                 elif key == "delta":
-                    self.process_delta_config()
+                    self.process_delta_config(message[key])
                 else:
                     logging.error("Unsupported Command: " + key)
 
@@ -47,9 +47,9 @@ class FabricManagerConfig(object):
         self.queries.append(q)
         self.id_2_query[q.qid] = q
 
-    def process_init_config(self):
+    def process_init_config(self, message):
         # Process initial config from RT
-        for query in message[key]:
+        for query in message:
             self.add_query(query)
         self.compile_init_config()
         logging.info("query compiled")
@@ -68,10 +68,10 @@ class FabricManagerConfig(object):
         initialize_switch(SWITCH_PATH, JSON_P4_COMPILED, THRIFTPORT,
                           CLI_PATH)
 
-    def process_delta_config(self):
+    def process_delta_config(self, message):
         logging.info("Sending deltas to Data Plane")
         #send_commands_to_dp(CLI_PATH, JSON_P4_COMPILED, THRIFTPORT, self.p4_init_commands)
-        for qid in message_key:
+        for qid in message:
             query = self.id_2_query[qid]
             filter_name = 'filter_'+str(query.qid)+'_'+str(query.filter_rules_id)
             
