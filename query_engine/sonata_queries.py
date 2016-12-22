@@ -281,14 +281,26 @@ class PacketStream(Query):
     def map(self, *args, **kwargs):
         operator = Map(prev_fields = self.get_prev_fields(), *args, **kwargs)
         self.operators.append(operator)
+        prev_fields = map_dict['prev_fields']
+        keys = map_dict['keys']
+        values = tuple([])
+        if 'values' in map_dict:
+            values = map_dict['values']
+
+        self.expr += '.Map('+','.join([x for x in keys])+')'
         return self
 
     def reduce(self, *args, **kwargs):
         operator = Reduce(prev_fields = self.get_prev_fields(), *args, **kwargs)
+        map_dict = dict(*args, **kwargs)
+        values = map_dict['values']
+        func = map_dict['func']
+        self.expr += '.Reduce('+func+','+','.join([x for x in values])+')'
         self.operators.append(operator)
         return self
 
     def distinct(self, *args, **kwargs):
+        self.expr += '.Distinct()'
         operator = Distinct(prev_fields = self.get_prev_fields(), *args, **kwargs)
         self.operators.append(operator)
         return self
@@ -296,6 +308,9 @@ class PacketStream(Query):
     def filter(self, *args, **kwargs):
         operator = Filter(prev_fields = self.get_prev_fields(),*args, **kwargs)
         self.operators.append(operator)
+        map_dict = dict(*args, **kwargs)
+        expr = map_dict['expr']
+        self.expr += '.Filter('+expr+')'
         return self
 
 """
