@@ -441,6 +441,12 @@ class QueryPipeline(object):
 
         return self
 
+    def map(self, *args, **kwargs):
+        map_dict = dict(**kwargs)
+        filter_keys = map_dict['keys']
+        self.expr += '.Map('+str(filter_keys)+')'
+        return self
+
 
     def update_p4_src(self):
 

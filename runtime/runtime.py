@@ -4,11 +4,11 @@
 
 from query_engine import *
 import json, time
-from multiprocessing.connection import Client
+from multiprocessing.connection import Client, Listener
 import pickle
 from threading import Thread
 from fabric_manager.fabric_manager import FabricManagerConfig
-from streaming_manager.streaming_manager import StreamingManager
+#from streaming_manager.streaming_manager import StreamingManager
 from emitter.emitter import Emitter
 import logging
 
@@ -24,24 +24,25 @@ class Runtime(object):
 
         self.fm_thread = Thread(name='fm_manager', target=self.start_fabric_managers)
         self.em_thread = Thread(name='emitter', target=self.start_emitter)
-        self.sm_thread = Thread(name='sm_manager', target=self.start_streaming_managers)
+        #self.sm_thread = Thread(name='sm_manager', target=self.start_streaming_managers)
         self.op_handler_thread = Thread(name='op_handler', target=self.start_op_handler)
         #self.fm_thread.setDaemon(True)
         self.fm_thread.start()
         self.em_thread.start()
-        self.sm_thread.start()
+        #self.sm_thread.start()
         self.op_handler_thread.start()
 
         time.sleep(1)
 
         self.qid = 1
         for query in self.queries:
-            logging.debug("runtime: going thru queries")
+            logging.info("runtime: going thru queries")
             query.get_refinement_plan()
             for refined_query in query.refined_queries:
-                logging.info("Refined Queries: ")
-                logging.info(refined_query.eval())
-                refined_query.get_partitioning_plan(4)
+                if self.qid == 1:
+                    refined_query.get_partitioning_plan(4)
+                else:
+                    refined_query.get_partitioning_plan(5)
                 refined_query.partition_plan_final = refined_query.partition_plans[0]
                 refined_query.generate_dp_query(self.qid)
                 refined_query.generate_sp_query(self.qid)
@@ -58,12 +59,12 @@ class Runtime(object):
         time.sleep(2)
         if self.dp_queries:
             self.send_to_fm("init", self.dp_queries)
-            self.send_to_sm()
+            #self.send_to_sm()
 
-        self.send_to_fm("delta", self.dp_queries)
+        #self.send_to_fm("delta", self.dp_queries)
         self.fm_thread.join()
         self.em_thread.join()
-        self.sm_thread.join()
+        #self.sm_thread.join()
         self.op_handler_thread.join()
 
 
@@ -77,7 +78,7 @@ class Runtime(object):
         self.op_handler_listener = Listener(self.op_handler_socket)
         logging.debug("OP Handler Running...")
         while True:
-            conn = self.fm_listener.accept()
+            conn = self.op_handler_listener.accept()
             # Expected (qid,[])
             op_data = conn.recv()
             logging.debug("OP Handler received:"+str(op_data))

@@ -1,12 +1,14 @@
 #!/usr/bin/python
 # Initialize coloredlogs.
 import logging
+import sys
 
+print sys.path
 logging.getLogger("testApp")
 
 import coloredlogs
 
-coloredlogs.install(level='ERROR',)
+coloredlogs.install(level='INFO',)
 
 from runtime import *
 import sys
@@ -35,7 +37,7 @@ if __name__ == "__main__":
             'fm_socket': ('localhost', 6666)}
 
     query = (PacketStream()
-                    .filter(expr="proto == '17'")
+                    .filter(keys=("proto",), values=('17',), comp = "eq")
                     .map(keys=("dIP", "sIP"))
                     .distinct()
                     .map(keys=("dIP",), values = ("1",))
