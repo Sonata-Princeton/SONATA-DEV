@@ -25,9 +25,7 @@ class Emitter(object):
             self.sniff_packets()
 
     def send_data(self, data):
-        print "send_data:", data
         self.spark_conn.send_bytes(data)
-        print "done sending data..."
 
     def sniff_packets(self):
         sniff(iface = self.sniff_interface, prn = lambda x: self.process_packet(x))
@@ -40,7 +38,6 @@ class Emitter(object):
         #hexdump(raw_packet)
         send_tuple = ""
         qid = str(self.count_struct.unpack(p_str[0])[0])
-        print qid
         if qid == '1':
             sIP = ".".join([str(x) for x in list(self.ip_struct.unpack(p_str[1:5]))])
             dIP = ".".join([str(x) for x in list(self.ip_struct.unpack(p_str[5:9]))])
@@ -48,7 +45,7 @@ class Emitter(object):
             output_tuple = tuple([qid, tuple([dIP, sIP])])
             send_tuple = str(output_tuple)
             send_tuple = ",".join(['k',qid, dIP, sIP])
-            #print "Tuple:", send_tuple
+            print "Tuple:", send_tuple
             self.send_data(send_tuple + "\n")
             #print "returned from sending to Spark"
         elif qid == '2':
@@ -59,7 +56,7 @@ class Emitter(object):
             output_tuple = tuple([qid, tuple([dIP, sIP])])
             #send_tuple = str(output_tuple)
             send_tuple = ",".join(['k', qid, dIP, sIP])
-            #print "Tuple:", send_tuple
+            print "Tuple:", send_tuple
             self.send_data(send_tuple + "\n")
             #print "returned from sending to Spark"
 

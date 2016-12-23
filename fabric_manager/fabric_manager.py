@@ -70,19 +70,17 @@ class FabricManagerConfig(object):
 
     def process_delta_config(self, message):
         logging.info("Sending deltas to Data Plane")
-        #send_commands_to_dp(CLI_PATH, JSON_P4_COMPILED, THRIFTPORT, self.p4_init_commands)
         commands = ''
 
         for filter_table_fname in message:
             qid = filter_table_fname.split("_")[1]
             for dip in message[filter_table_fname]:
+                dip = dip.strip('\n')
                 command = 'table_add '+filter_table_fname+' set_meta_fm_'+str(qid)+' '+str(dip)+' => \n'
                 commands += command
                 print "Added command ", qid, command
 
-
         write_to_file(P4_DELTA_COMMANDS, commands)
-
         send_commands_to_dp(CLI_PATH, JSON_P4_COMPILED, THRIFTPORT, P4_DELTA_COMMANDS)
             
         return 0

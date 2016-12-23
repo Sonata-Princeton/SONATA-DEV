@@ -54,10 +54,10 @@ class Runtime(object):
                 self.sp_queries.append(refined_query.sp_query)
 
                 for query in self.dp_queries:
-                    logging.info("DP Query: " + query.expr + str(len(self.dp_queries)))
+                    print "DP Query: " + query.expr + str(len(self.dp_queries))
 
                 for query in self.sp_queries:
-                    logging.info("SP Query: " + query.expr)
+                    print "SP Query: " + query.expr
 
         time.sleep(2)
         if self.dp_queries:

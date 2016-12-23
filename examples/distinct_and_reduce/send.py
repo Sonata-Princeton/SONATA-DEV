@@ -82,8 +82,10 @@ def send_packets(time_slot):
 
 
 T = 1000
-#send_packets(T)
+send_packets(T)
+"""
 while True:
     print "Sending dummy packets: ...."
     send_dummy_packets()
     time.sleep(1)
+"""

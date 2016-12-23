@@ -71,6 +71,7 @@ field_list copy_to_cpu_fields_1{
 	hash_meta_distinct_3_1;
 	meta_distinct_3_1;
 	meta_fm;
+	meta_map_3_1;
 }
 
 action do_copy_to_cpu_1() {
@@ -108,6 +109,7 @@ field_list copy_to_cpu_fields_2{
 	hash_meta_distinct_4_2;
 	meta_distinct_4_2;
 	meta_fm;
+	meta_map_3_1;
 }
 
 action do_copy_to_cpu_2() {
@@ -209,8 +211,8 @@ table update_distinct_3_1_counts {
 }
 
 action do_distinct_3_1_hashes() {
-	modify_field(hash_meta_distinct_3_1.sIP, ipv4.srcAddr);
-	modify_field(hash_meta_distinct_3_1.dIP, ipv4.dstAddr);
+	modify_field(hash_meta_distinct_3_1.sIP, meta_map_3_1.sIP);
+	modify_field(hash_meta_distinct_3_1.dIP, meta_map_3_1.dIP);
 	modify_field(meta_distinct_3_1.qid, 1);
 	modify_field_with_hash_based_offset(meta_distinct_3_1.idx, 0, distinct_3_1_fields_hash, 4096);
 	register_read(meta_distinct_3_1.val, distinct_3_1, meta_distinct_3_1.idx);
@@ -278,8 +280,8 @@ table update_distinct_4_2_counts {
 }
 
 action do_distinct_4_2_hashes() {
-	modify_field(hash_meta_distinct_4_2.sIP, ipv4.srcAddr);
-	modify_field(hash_meta_distinct_4_2.dIP, ipv4.dstAddr);
+	modify_field(hash_meta_distinct_4_2.sIP, meta_map_3_1.sIP);
+	modify_field(hash_meta_distinct_4_2.dIP, meta_map_3_1.dIP);
 	modify_field(meta_distinct_4_2.qid, 2);
 	modify_field_with_hash_based_offset(meta_distinct_4_2.idx, 0, distinct_4_2_fields_hash, 4096);
 	register_read(meta_distinct_4_2.val, distinct_4_2, meta_distinct_4_2.idx);
@@ -339,7 +341,7 @@ action reset_meta_fm_2(){
 
 table filter_1_1{
 	reads {
-		ipv4.protocol: exact;
+		meta_map_3_1.proto: exact;
 	}
 	actions{
 		set_meta_fm_1;
@@ -349,7 +351,7 @@ table filter_1_1{
 
 table filter_2_0{
 	reads {
-		ipv4.dstAddr: exact;
+		meta_map_3_1.dIP: exact;
 	}
 	actions{
 		set_meta_fm_2;
@@ -359,7 +361,7 @@ table filter_2_0{
 
 table filter_2_2{
 	reads {
-		ipv4.protocol: exact;
+		meta_map_3_1.proto: exact;
 	}
 	actions{
 		set_meta_fm_2;
@@ -367,11 +369,37 @@ table filter_2_2{
 	}
 }
 
+header_type meta_map_3_1_t {
+	fields {
+		dIP : 32;
+		sIP : 32;
+		proto : 8;
+	}
+}
+
+metadata meta_map_3_1_t meta_map_3_1;
+
+action do_map_3_1()  {
+   modify_field(meta_map_3_1.dIP, ipv4.dstAddr);
+   modify_field(meta_map_3_1.sIP, ipv4.srcAddr);
+   modify_field(meta_map_3_1.proto, ipv4.protocol);
+
+   bit_and(meta_map_3_1.dIP, meta_map_3_1.dIP, 0xFF);
+}
+
+table map_3_1{
+    actions{
+        do_map_3_1;
+    }
+}
+
 control ingress {
 	apply(init_meta_fm);
 	if (meta_fm.f1 == 0){
 		apply(filter_1_1);
 		if (meta_fm.qid_1 == 1){
+
+		    apply(map_3_1);
 			apply(start_distinct_3_1);
 			if(meta_distinct_3_1.val > 0) {
 				apply(drop_distinct_3_1_1);

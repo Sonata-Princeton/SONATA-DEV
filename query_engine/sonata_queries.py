@@ -95,9 +95,9 @@ class Filter(Query):
         self.fields = self.prev_fields
         self.keys = map_dict['keys']
         if 'values' in map_dict:
-            self.vals = map_dict['values']
+            self.values = map_dict['values']
         else:
-            self.vals = ()
+            self.values = ()
         if 'comp' in map_dict:
             self.comp = map_dict['comp']
         else:
@@ -158,18 +158,21 @@ class PacketStream(Query):
             new_operator.fields = new_fields
             new_operator.prev_fields = new_prev_fields
             return new_operator
+
+
         logging.info("Inside get_refinement_plan %%%%%%%%%%%"+ str(self.isInput))
         if self.isInput == True:
             # TODO: automate generation of the refinement levels and reduction keys
+            concise_query = self.get_concise_query()
             refinement_levels = [16, 32]
             reduction_key = 'dIP'
             prev_level = 0
 
             for refinement_level in refinement_levels:
-                refined_query = copy.deepcopy(self)
+                refined_query = copy.deepcopy(concise_query)
                 refined_query.isInput = False
                 map_keys = []
-                for key in self.basic_headers:
+                for key in concise_query.basic_headers:
                     if key == reduction_key:
                         map_keys.append(key+'/'+str(refinement_level))
 
@@ -181,16 +184,43 @@ class PacketStream(Query):
                     refined_query.refinement_filter_id = 0
                     refined_query.filter(append_type = 1, keys = tuple(prev_map_key))
 
-                logging.info("Refined Query for level "+str(refinement_level))
-                logging.info(refined_query.expr)
+                print "Refined Query for level "+str(refinement_level)
+                print refined_query.expr
+
                 self.refined_queries.append(refined_query)
                 prev_level = refinement_level
-                for key in self.basic_headers:
+                for key in concise_query.basic_headers:
                     if key == reduction_key:
                         prev_map_key = (key+'/'+str(refinement_level),)
 
         else:
             raise NotImplementedError
+
+    def get_concise_query(self):
+        unique_keys = {}
+        for operator in self.operators:
+            for k in operator.keys:
+                unique_keys[k] = 0
+
+        concise_query = PacketStream()
+        concise_query.basic_headers = unique_keys.keys()
+        print "Basic headers for concise query", concise_query.basic_headers
+        for operator in self.operators:
+            if operator.name == 'Filter':
+                concise_query.filter(keys = operator.keys,
+                                     values = operator.values,
+                                     comp = operator.comp)
+            elif operator.name == "Map":
+                concise_query.map(keys = operator.keys, values = operator.values)
+            elif operator.name == "Reduce":
+                concise_query.reduce(values = operator.values,
+                                     func = operator.func)
+
+            elif operator.name == "Distinct":
+                concise_query.distinct()
+
+        return concise_query
+
 
     def get_partitioning_plan(self, part):
         if self.isInput != True:
@@ -230,7 +260,7 @@ class PacketStream(Query):
                                                 )
                     elif operator.name == 'Filter':
                         p4_query = p4_query.filter(keys = operator.keys,
-                                                   values = operator.vals,
+                                                   values = operator.values,
                                                    comp = operator.comp)
                     elif operator.name == 'Distinct':
                         p4_query = p4_query.distinct(keys = operator.prev_fields)
@@ -341,9 +371,9 @@ class PacketStream(Query):
         map_dict = dict(*args, **kwargs)
         keys = map_dict['keys']
         if 'values' in map_dict:
-            vals = map_dict['values']
+            values = map_dict['values']
         else:
-            vals = ()
+            values = ()
         if 'comp' in map_dict:
             comp = map_dict['comp']
         else:
@@ -357,9 +387,9 @@ class PacketStream(Query):
 
 
         if append_type == 0:
-            self.expr += '.Filter(keys='+str(keys)+', vals = '+str(vals)+', comp='+str(comp)+')'
+            self.expr += '.Filter(keys='+str(keys)+', values = '+str(values)+', comp='+str(comp)+')'
         else:
-            self.expr = '.Filter(keys='+str(keys)+', vals = '+str(vals)+', comp='+str(comp)+')'+self.expr
+            self.expr = '.Filter(keys='+str(keys)+', values = '+str(values)+', comp='+str(comp)+')'+self.expr
         return self
 
 """
