@@ -55,7 +55,7 @@ def initialize_switch(behavioral_exe, p4_json_path, thrift_port, cli_path):
     net.start()
     sleep(1)
 
-    send_commands_to_dp(cli_path, p4_json_path, thrift_port)
+    send_commands_to_dp(cli_path, p4_json_path, thrift_port, P4_COMMANDS)
 
     sleep(1)
 

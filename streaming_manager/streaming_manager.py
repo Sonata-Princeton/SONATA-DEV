@@ -35,7 +35,7 @@ class StreamingManager(object):
         self.sm_socket = conf['sm_socket']
         self.sm_listener = Listener(self.sm_socket)
         print("In Streaming Manager", self.redKeysPath, self.featuresPath)
-        self.reduction_socket = Client(('localhost', 6000))
+        self.reduction_socket = Client(conf['op_handler_socket'])
 
         # intialize streaming context
         self.sc = SparkContext(appName="Sonata-Streaming")
@@ -44,7 +44,7 @@ class StreamingManager(object):
 
     def start(self):
         lines = self.ssc.socketTextStream(spark_stream_address, spark_stream_port)
-        lines.pprint()
+        #lines.pprint()
         pktstream = (lines.map(lambda line: processLogLine(line)))
         self.process_pktstream(pktstream)
         print("process_pktstream initialized...")
@@ -55,8 +55,8 @@ class StreamingManager(object):
         def send_reduction_keys(rdd, qid):
             list_rdd = rdd.collect()
             reduction_str = "," .join([r for r in list_rdd])
-            self.reduction_socket.send_bytes("k, " + qid + "," + reduction_str + "\n")
-            print("P2: ", list_rdd)
+            self.reduction_socket.send_bytes("k," + qid + "," + reduction_str + "\n")
+            #print("P2: ", list_rdd)
 
         print("Waiting for streaming query expressions ...")
         conn = self.sm_listener.accept()

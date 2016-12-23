@@ -127,6 +127,7 @@ class PacketStream(Query):
         self.expr = ''
         self.refinement_filter_id = 0
 
+
         # Object representing the output of the query
         self.output = None
 
@@ -177,8 +178,8 @@ class PacketStream(Query):
 
                 refined_query.map(append_type=1, keys = tuple(map_keys))
                 if prev_level > 0:
-                    refined_query.refinement_filter_id = len(refined_query.operators)
-                    refined_query.filter(append_type=1, keys = tuple(prev_map_key))
+                    refined_query.refinement_filter_id = 0
+                    refined_query.filter(append_type = 1, keys = tuple(prev_map_key))
 
                 logging.info("Refined Query for level "+str(refinement_level))
                 logging.info(refined_query.expr)
