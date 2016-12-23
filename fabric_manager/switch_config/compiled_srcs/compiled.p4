@@ -68,8 +68,8 @@ header out_header_1_t out_header_1;
 
 field_list copy_to_cpu_fields_1{
 	standard_metadata;
-	hash_meta_distinct_0_1;
-	meta_distinct_0_1;
+	hash_meta_distinct_3_1;
+	meta_distinct_3_1;
 	meta_fm;
 }
 
@@ -89,9 +89,9 @@ table encap_1 {
 
 action do_encap_1() {
 	add_header(out_header_1);
-	modify_field(out_header_1.qid, meta_distinct_0_1.qid);
-	modify_field(out_header_1.dIP, hash_meta_distinct_0_1.dIP);
-	modify_field(out_header_1.sIP, hash_meta_distinct_0_1.sIP);
+	modify_field(out_header_1.qid, meta_distinct_3_1.qid);
+	modify_field(out_header_1.dIP, hash_meta_distinct_3_1.dIP);
+	modify_field(out_header_1.sIP, hash_meta_distinct_3_1.sIP);
 }
 
 header_type out_header_2_t {
@@ -105,8 +105,8 @@ header out_header_2_t out_header_2;
 
 field_list copy_to_cpu_fields_2{
 	standard_metadata;
-	hash_meta_distinct_0_2;
-	meta_distinct_0_2;
+	hash_meta_distinct_4_2;
+	meta_distinct_4_2;
 	meta_fm;
 }
 
@@ -126,42 +126,42 @@ table encap_2 {
 
 action do_encap_2() {
 	add_header(out_header_2);
-	modify_field(out_header_2.qid, meta_distinct_0_2.qid);
-	modify_field(out_header_2.dIP, hash_meta_distinct_0_2.dIP);
-	modify_field(out_header_2.sIP, hash_meta_distinct_0_2.sIP);
+	modify_field(out_header_2.qid, meta_distinct_4_2.qid);
+	modify_field(out_header_2.dIP, hash_meta_distinct_4_2.dIP);
+	modify_field(out_header_2.sIP, hash_meta_distinct_4_2.sIP);
 }
 
-table drop_distinct_0_1_1 {
+table drop_distinct_3_1_1 {
 	actions {mark_drop;}
 	size : 1;
 }
 
-table skip_distinct_0_1_1 {
+table skip_distinct_3_1_1 {
 	actions {_nop;}
 	size : 1;
 }
 
-table drop_distinct_0_1_2 {
+table drop_distinct_3_1_2 {
 	actions {mark_drop;}
 	size : 1;
 }
 
-table drop_distinct_0_2_1 {
+table drop_distinct_4_2_1 {
 	actions {mark_drop;}
 	size : 1;
 }
 
-table skip_distinct_0_2_1 {
+table skip_distinct_4_2_1 {
 	actions {_nop;}
 	size : 1;
 }
 
-table drop_distinct_0_2_2 {
+table drop_distinct_4_2_2 {
 	actions {mark_drop;}
 	size : 1;
 }
 
-header_type meta_distinct_0_1_t {
+header_type meta_distinct_3_1_t {
 	fields {
 		qid : 8;
 		val : 32;
@@ -169,68 +169,68 @@ header_type meta_distinct_0_1_t {
 	}
 }
 
-metadata meta_distinct_0_1_t meta_distinct_0_1;
+metadata meta_distinct_3_1_t meta_distinct_3_1;
 
-header_type hash_meta_distinct_0_1_t {
+header_type hash_meta_distinct_3_1_t {
 	fields {
 		sIP : 32;
 		dIP : 32;
 	}
 }
 
-metadata hash_meta_distinct_0_1_t hash_meta_distinct_0_1;
+metadata hash_meta_distinct_3_1_t hash_meta_distinct_3_1;
 
-field_list distinct_0_1_fields {
-	hash_meta_distinct_0_1.sIP;
-	hash_meta_distinct_0_1.dIP;
+field_list distinct_3_1_fields {
+	hash_meta_distinct_3_1.sIP;
+	hash_meta_distinct_3_1.dIP;
 }
 
-field_list_calculation distinct_0_1_fields_hash {
+field_list_calculation distinct_3_1_fields_hash {
 	input {
-		distinct_0_1_fields;
+		distinct_3_1_fields;
 	}
 	algorithm : crc32;
 	output_width : 32;
 }
 
-register distinct_0_1{
+register distinct_3_1{
 	width : 32;
 	instance_count : 4096;
 }
 
-action update_distinct_0_1_regs() {
-	bit_or(meta_distinct_0_1.val,meta_distinct_0_1.val, 1);
-	register_write(distinct_0_1,meta_distinct_0_1.idx,meta_distinct_0_1.val);
+action update_distinct_3_1_regs() {
+	bit_or(meta_distinct_3_1.val,meta_distinct_3_1.val, 1);
+	register_write(distinct_3_1,meta_distinct_3_1.idx,meta_distinct_3_1.val);
 }
 
-table update_distinct_0_1_counts {
-	actions {update_distinct_0_1_regs;}
+table update_distinct_3_1_counts {
+	actions {update_distinct_3_1_regs;}
 	size : 1;
 }
 
-action do_distinct_0_1_hashes() {
-	modify_field(hash_meta_distinct_0_1.sIP, ipv4.srcAddr);
-	modify_field(hash_meta_distinct_0_1.dIP, ipv4.dstAddr);
-	modify_field(meta_distinct_0_1.qid, 1);
-	modify_field_with_hash_based_offset(meta_distinct_0_1.idx, 0, distinct_0_1_fields_hash, 4096);
-	register_read(meta_distinct_0_1.val, distinct_0_1, meta_distinct_0_1.idx);
+action do_distinct_3_1_hashes() {
+	modify_field(hash_meta_distinct_3_1.sIP, ipv4.srcAddr);
+	modify_field(hash_meta_distinct_3_1.dIP, ipv4.dstAddr);
+	modify_field(meta_distinct_3_1.qid, 1);
+	modify_field_with_hash_based_offset(meta_distinct_3_1.idx, 0, distinct_3_1_fields_hash, 4096);
+	register_read(meta_distinct_3_1.val, distinct_3_1, meta_distinct_3_1.idx);
 }
 
-table start_distinct_0_1 {
-	actions {do_distinct_0_1_hashes;}
+table start_distinct_3_1 {
+	actions {do_distinct_3_1_hashes;}
 	size : 1;
 }
 
-action set_distinct_0_1_count() {
-	modify_field(meta_distinct_0_1.val, 1);
+action set_distinct_3_1_count() {
+	modify_field(meta_distinct_3_1.val, 1);
 }
 
-table set_distinct_0_1_count {
-	actions {set_distinct_0_1_count;}
+table set_distinct_3_1_count {
+	actions {set_distinct_3_1_count;}
         size: 1;
 }
 
-header_type meta_distinct_0_2_t {
+header_type meta_distinct_4_2_t {
 	fields {
 		qid : 8;
 		val : 32;
@@ -238,64 +238,64 @@ header_type meta_distinct_0_2_t {
 	}
 }
 
-metadata meta_distinct_0_2_t meta_distinct_0_2;
+metadata meta_distinct_4_2_t meta_distinct_4_2;
 
-header_type hash_meta_distinct_0_2_t {
+header_type hash_meta_distinct_4_2_t {
 	fields {
 		sIP : 32;
 		dIP : 32;
 	}
 }
 
-metadata hash_meta_distinct_0_2_t hash_meta_distinct_0_2;
+metadata hash_meta_distinct_4_2_t hash_meta_distinct_4_2;
 
-field_list distinct_0_2_fields {
-	hash_meta_distinct_0_2.sIP;
-	hash_meta_distinct_0_2.dIP;
+field_list distinct_4_2_fields {
+	hash_meta_distinct_4_2.sIP;
+	hash_meta_distinct_4_2.dIP;
 }
 
-field_list_calculation distinct_0_2_fields_hash {
+field_list_calculation distinct_4_2_fields_hash {
 	input {
-		distinct_0_2_fields;
+		distinct_4_2_fields;
 	}
 	algorithm : crc32;
 	output_width : 32;
 }
 
-register distinct_0_2{
+register distinct_4_2{
 	width : 32;
 	instance_count : 4096;
 }
 
-action update_distinct_0_2_regs() {
-	bit_or(meta_distinct_0_2.val,meta_distinct_0_2.val, 1);
-	register_write(distinct_0_2,meta_distinct_0_2.idx,meta_distinct_0_2.val);
+action update_distinct_4_2_regs() {
+	bit_or(meta_distinct_4_2.val,meta_distinct_4_2.val, 1);
+	register_write(distinct_4_2,meta_distinct_4_2.idx,meta_distinct_4_2.val);
 }
 
-table update_distinct_0_2_counts {
-	actions {update_distinct_0_2_regs;}
+table update_distinct_4_2_counts {
+	actions {update_distinct_4_2_regs;}
 	size : 1;
 }
 
-action do_distinct_0_2_hashes() {
-	modify_field(hash_meta_distinct_0_2.sIP, ipv4.srcAddr);
-	modify_field(hash_meta_distinct_0_2.dIP, ipv4.dstAddr);
-	modify_field(meta_distinct_0_2.qid, 2);
-	modify_field_with_hash_based_offset(meta_distinct_0_2.idx, 0, distinct_0_2_fields_hash, 4096);
-	register_read(meta_distinct_0_2.val, distinct_0_2, meta_distinct_0_2.idx);
+action do_distinct_4_2_hashes() {
+	modify_field(hash_meta_distinct_4_2.sIP, ipv4.srcAddr);
+	modify_field(hash_meta_distinct_4_2.dIP, ipv4.dstAddr);
+	modify_field(meta_distinct_4_2.qid, 2);
+	modify_field_with_hash_based_offset(meta_distinct_4_2.idx, 0, distinct_4_2_fields_hash, 4096);
+	register_read(meta_distinct_4_2.val, distinct_4_2, meta_distinct_4_2.idx);
 }
 
-table start_distinct_0_2 {
-	actions {do_distinct_0_2_hashes;}
+table start_distinct_4_2 {
+	actions {do_distinct_4_2_hashes;}
 	size : 1;
 }
 
-action set_distinct_0_2_count() {
-	modify_field(meta_distinct_0_2.val, 1);
+action set_distinct_4_2_count() {
+	modify_field(meta_distinct_4_2.val, 1);
 }
 
-table set_distinct_0_2_count {
-	actions {set_distinct_0_2_count;}
+table set_distinct_4_2_count {
+	actions {set_distinct_4_2_count;}
         size: 1;
 }
 
@@ -347,7 +347,7 @@ table filter_1_1{
 	}
 }
 
-table filter_2_1{
+table filter_2_0{
 	reads {
 		ipv4.dstAddr: exact;
 	}
@@ -372,37 +372,37 @@ control ingress {
 	if (meta_fm.f1 == 0){
 		apply(filter_1_1);
 		if (meta_fm.qid_1 == 1){
-			apply(start_distinct_0_1);
-			if(meta_distinct_0_1.val > 0) {
-				apply(drop_distinct_0_1_1);
+			apply(start_distinct_3_1);
+			if(meta_distinct_3_1.val > 0) {
+				apply(drop_distinct_3_1_1);
 			}
-			else if(meta_distinct_0_1.val == 0) {
-				apply(skip_distinct_0_1_1);
+			else if(meta_distinct_3_1.val == 0) {
+				apply(skip_distinct_3_1_1);
 			}
 			else {
-				apply(drop_distinct_0_1_2);
+				apply(drop_distinct_3_1_2);
 			}
 
-			apply(update_distinct_0_1_counts);
+			apply(update_distinct_3_1_counts);
 			apply(copy_to_cpu_1);
 		}
 	}
 	if (meta_fm.f1 == 1){
-		apply(filter_2_1);
+		apply(filter_2_0);
 		apply(filter_2_2);
 		if (meta_fm.qid_2 == 1){
-			apply(start_distinct_0_2);
-			if(meta_distinct_0_2.val > 0) {
-				apply(drop_distinct_0_2_1);
+			apply(start_distinct_4_2);
+			if(meta_distinct_4_2.val > 0) {
+				apply(drop_distinct_4_2_1);
 			}
-			else if(meta_distinct_0_2.val == 0) {
-				apply(skip_distinct_0_2_1);
+			else if(meta_distinct_4_2.val == 0) {
+				apply(skip_distinct_4_2_1);
 			}
 			else {
-				apply(drop_distinct_0_2_2);
+				apply(drop_distinct_4_2_2);
 			}
 
-			apply(update_distinct_0_2_counts);
+			apply(update_distinct_4_2_counts);
 			apply(copy_to_cpu_2);
 		}
 	}

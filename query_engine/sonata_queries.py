@@ -125,6 +125,8 @@ class PacketStream(Query):
         self.dp_compile_mode = 'init'
         self.sp_compile_mode = 'init'
         self.expr = ''
+        self.refinement_filter_id = 0
+
 
         # Object representing the output of the query
         self.output = None
@@ -176,7 +178,8 @@ class PacketStream(Query):
 
                 refined_query.map(append_type=1, keys = tuple(map_keys))
                 if prev_level > 0:
-                    refined_query.filter(append_type=1, keys = tuple(prev_map_key))
+                    refined_query.refinement_filter_id = 0
+                    refined_query.filter(append_type = 1, keys = tuple(prev_map_key))
 
                 logging.info("Refined Query for level "+str(refinement_level))
                 logging.info(refined_query.expr)
@@ -215,6 +218,7 @@ class PacketStream(Query):
         if self.isInput != True:
             if self.partition_plan_final != None:
                 dp_query = self.partition_plan_final[0]
+                dp_query.refinement_filter_id = self.refinement_filter_id
                 p4_query = p4.QueryPipeline(qid)
                 for operator in dp_query.operators:
                     if operator.name == 'Reduce':
@@ -226,7 +230,7 @@ class PacketStream(Query):
                                                 )
                     elif operator.name == 'Filter':
                         p4_query = p4_query.filter(keys = operator.keys,
-                                                   vals = operator.values,
+                                                   values = operator.vals,
                                                    comp = operator.comp)
                     elif operator.name == 'Distinct':
                         p4_query = p4_query.distinct(keys = operator.prev_fields)

@@ -8,7 +8,7 @@ logging.getLogger("testApp")
 
 import coloredlogs
 
-coloredlogs.install(level='INFO',)
+coloredlogs.install(level='ERROR',)
 
 from runtime import *
 import sys
@@ -26,7 +26,8 @@ redKeysPath = ''
 
 if __name__ == "__main__":
 
-    spark_conf = {'batch_interval': batch_interval, 'window_length': window_length, 'sliding_interval': sliding_interval, 'featuresPath': featuresPath, 'redKeysPath': redKeysPath, 'sm_socket':('localhost',5555)}
+    spark_conf = {'batch_interval': batch_interval, 'window_length': window_length, 'sliding_interval': sliding_interval, 'featuresPath': featuresPath, 'redKeysPath': redKeysPath, 'sm_socket':('localhost',5555),
+                  'op_handler_socket': ('localhost', 4949)}
 
     emitter_conf = {'spark_stream_address': 'localhost',
                     'spark_stream_port': 8989,
@@ -37,7 +38,7 @@ if __name__ == "__main__":
             'fm_socket': ('localhost', 6666)}
 
     query = (PacketStream()
-                    .filter(keys=("proto",), values=('17',), comp = "eq")
+                    .filter(keys=("proto",), values=('6',), comp = "eq")
                     .map(keys=("dIP", "sIP"))
                     .distinct()
                     .map(keys=("dIP",), values = ("1",))

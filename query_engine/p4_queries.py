@@ -323,6 +323,7 @@ class Distinct(Register):
     def __init__(self, *args, **kwargs):
         (self.id, self.qid, self.mirror_id, self.width,
         self.instance_count, self.thresh) = args
+        self.name = "Distinct"
         self.operator_name = 'distinct_'+str(self.id)+'_'+str(self.qid)
         super(Distinct, self).__init__(*args, **kwargs)
         self.pre_actions = ('drop', 'fwd', 'drop')
@@ -335,6 +336,7 @@ class Reduce(Register):
         (self.id, self.qid, self.mirror_id, self.width,
         self.instance_count, self.thresh) = args
         self.operator_name = 'reduce_'+str(self.id)+'_'+str(self.qid)
+        self.name = "Reduce"
         super(Reduce, self).__init__(*args, **kwargs)
         self.pre_actions = ('fwd', 'fwd', 'fwd')
         self.post_actions = ('set', 'fwd', 'drop')
@@ -375,6 +377,33 @@ class Reduce(Register):
         out += '}\n\n'
         return out
 
+class Map(object):
+    def __init__(self, *args, **kwargs):
+        self.name = "Map"
+        self.p4_state = ''
+        self.p4_utils = ''
+        self.p4_control = ''
+        self.p4_egress = ''
+        self.p4_invariants = ''
+        self.p4_init_commands = []
+
+
+    def compile_dp(self):
+        print "Dummy compile called for Map"
+
+class Filter(object):
+    def __init__(self, *args, **kwargs):
+        self.name = "Filter"
+        self.p4_state = ''
+        self.p4_utils = ''
+        self.p4_control = ''
+        self.p4_egress = ''
+        self.p4_invariants = ''
+        self.p4_init_commands = []
+
+    def compile_dp(self):
+        print "Dummy compile called for Filter"
+
 class QueryPipeline(object):
     '''Multiple packet streams can exist for a switch'''
     def __init__(self, id):
@@ -393,6 +422,7 @@ class QueryPipeline(object):
         self.filter_id_2_name = {}
         self.p4_init_commands = []
         self.expr = 'In'
+        self.refinement_filter_id = 0
 
     def reduce(self, *args, **kwargs):
         id = len(self.operators)
@@ -413,13 +443,18 @@ class QueryPipeline(object):
         return self
 
     def filter(self, *args, **kwargs):
+        print "Filter operator called ", self.expr, len(self.operators)
         map_dict = dict(**kwargs)
         filter_keys = map_dict['keys']
+        filter_vals = ()
+        self.filter_rules_id = len(self.operators)
+        if 'values' in map_dict:
+            filter_vals = map_dict['values']
         filter_name = 'filter_'+str(self.qid)+'_'+str(self.filter_rules_id)
         self.filter_id_2_name[self.filter_rules_id] = filter_name
-        keys = map_dict['keys']
-        self.expr += '.Filter(' + ','.join([x for x in keys]) + ')'
-
+        self.operators.append(Filter(*args, **kwargs))
+        print self.filter_id_2_name, self.filter_rules_id
+        self.expr += '.Filter(keys='+str(filter_keys)+', vals='+str(filter_vals)+')'
         out = ''
         out += 'table '+filter_name+'{\n'
         out += '\treads {\n'
@@ -431,19 +466,20 @@ class QueryPipeline(object):
         out += '\t\treset_meta_fm_'+str(self.qid)+';\n\t}\n}\n\n'
         self.filter_rules += out
         self.p4_init_commands.append('table_set_default '+filter_name+' reset_meta_fm_'+str(self.qid))
-        self.filter_rules_id += 1
+        #self.filter_rules_id += 1
 
         self.filter_control += '\t\tapply('+filter_name+');\n'
         if 'values' in map_dict:
             filter_vals = map_dict['values']
             for val in filter_vals:
                 self.p4_init_commands.append('table_add '+filter_name+' set_meta_fm_'+str(self.qid)+' '+str(val)+' =>')
-
+        print "Filter operator called ", self.expr, len(self.operators)
         return self
 
     def map(self, *args, **kwargs):
         map_dict = dict(**kwargs)
         filter_keys = map_dict['keys']
+        self.operators.append(Map(*args, **kwargs))
         self.expr += '.Map('+str(filter_keys)+')'
         return self
 
@@ -453,7 +489,7 @@ class QueryPipeline(object):
         for operator in self.operators:
             operator.compile_dp()
 
-        self.p4_invariants += self.operators[0].p4_invariants
+        self.p4_invariants += self.operators[-1].p4_invariants
         self.p4_egress += self.operators[-1].p4_egress
 
         for operator in self.operators:
@@ -463,7 +499,8 @@ class QueryPipeline(object):
             self.p4_state += operator.p4_state
 
         for operator in self.operators:
-            self.p4_ingress_start += '\tapply(start_'+operator.operator_name+');\n'
+            if operator.name not in ['Map', 'Filter']:
+                self.p4_ingress_start += '\tapply(start_'+operator.operator_name+');\n'
 
         self.p4_control = self.p4_control[:-1]
 

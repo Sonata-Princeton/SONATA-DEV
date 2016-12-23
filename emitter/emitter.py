@@ -37,7 +37,7 @@ class Emitter(object):
         callback function executed for each capture packet
         '''
         p_str = str(raw_packet)
-        hexdump(raw_packet)
+        #hexdump(raw_packet)
         send_tuple = ""
         qid = str(self.count_struct.unpack(p_str[0])[0])
         print qid
@@ -48,9 +48,9 @@ class Emitter(object):
             output_tuple = tuple([qid, tuple([dIP, sIP])])
             send_tuple = str(output_tuple)
             send_tuple = ",".join(['k',qid, dIP, sIP])
-            print "Tuple:", send_tuple
+            #print "Tuple:", send_tuple
             self.send_data(send_tuple + "\n")
-            print "returned from sending to Spark"
+            #print "returned from sending to Spark"
         elif qid == '2':
             # TODO: Generalize the logic for parsing packet's metadata
             sIP = ".".join([str(x) for x in list(self.ip_struct.unpack(p_str[1:5]))])
@@ -59,9 +59,9 @@ class Emitter(object):
             output_tuple = tuple([qid, tuple([dIP, sIP])])
             #send_tuple = str(output_tuple)
             send_tuple = ",".join(['k', qid, dIP, sIP])
-            print "Tuple:", send_tuple
+            #print "Tuple:", send_tuple
             self.send_data(send_tuple + "\n")
-            print "returned from sending to Spark"
+            #print "returned from sending to Spark"
 
 
 
