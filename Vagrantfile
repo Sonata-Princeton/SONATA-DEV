@@ -13,7 +13,7 @@ Vagrant.configure(2) do |config|
 
   ## Guest Config
   config.vm.hostname = "vighata"
-  config.vm.network "forwarded_port", guest: 8888, host: 8888
+  config.vm.network "forwarded_port", guest: 8886, host: 8886
   config.ssh.forward_x11 = true
 
   ## Provisioning

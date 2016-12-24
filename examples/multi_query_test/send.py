@@ -28,10 +28,12 @@ def send_packet(pkt_tuple):
 
 def send_dummy_packets():
     sIPs = ['112.7.186.20', '112.7.186.19', '112.7.186.19', '112.7.186.18']
+    dIPs = ['112.7.186.25', '112.7.186.26']
     for sIP in sIPs:
-        p = Ether() / IP(dst='112.7.186.25', src=sIP) / TCP() / "SONATA"
-        p.summary()
-        sendp(p, iface = "out-veth-1", verbose=0)
+        for dIP in dIPs:
+            p = Ether() / IP(dst=dIP, src=sIP) / TCP() / "SONATA"
+            p.summary()
+            sendp(p, iface = "out-veth-1", verbose=0)
 
 
 def send_packets(time_slot):

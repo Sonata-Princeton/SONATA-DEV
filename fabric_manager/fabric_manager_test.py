@@ -152,15 +152,15 @@ fm = FabricManagerConfig()
 #q3 = QueryPipeline(3).reduce(keys= ('dIP',))
 #q4 = QueryPipeline(3).distinct(keys = ('sIP', 'dIP')).reduce(keys= ('dIP',))
 
-q5 = QueryPipeline(1).distinct(keys= ('dIP/16','sIP'))
-q6 = QueryPipeline(2).distinct(keys= ('dIP/32','sIP'))
+q5 = QueryPipeline(1).map_init(keys=('dIP','sIP', 'proto')).map(keys = ('dIP',), func=('mask',16)).distinct(keys= ('dIP','sIP'))
+q6 = QueryPipeline(2).map_init(keys=('dIP','sIP', 'proto')).map(keys = ('dIP',), func=('mask',16)).reduce(keys= ('dIP',))
 fm.add_query(q5)
-fm.add_query(q6)
+#fm.add_query(q6)
 #fm.add_query(q2)
 fm.compile_init_config()
 
 #print fm.p4_src
-example_dir = '/home/vagrant/dev/examples/distinct_and_reduce'
+example_dir = '/home/vagrant/dev/examples/multi_query_test'
 
 with open(example_dir+'/commands.txt', 'w') as f:
     line = ''

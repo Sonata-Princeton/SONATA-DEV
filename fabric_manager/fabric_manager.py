@@ -3,24 +3,30 @@
 #  Arpit Gupta (arpitg@cs.princeton.edu)
 
 import logging
+import json, time
 logging.getLogger(__name__)
 from multiprocessing.connection import Listener
+from threading import Thread
 from switch_config.utils import *
 from switch_config.interfaces import Interfaces
 from switch_config.compile_p4 import compile_p4_2_json
 from switch_config.initialize_switch import initialize_switch
+from emitter.emitter import Emitter
 import pickle
 
 
 class FabricManagerConfig(object):
-    def __init__(self, fm_socket):
+    def __init__(self, fm_socket, em_conf):
         self.p4_src = ''
         self.queries = []
         self.id_2_query = {}
         self.p4_init_commands = []
         self.fm_socket = fm_socket
+        self.em_conf = em_conf
         self.interfaces = {'reciever': ['m-veth-1', 'out-veth-1'],
                            'sender': ['m-veth-2', 'out-veth-2']}
+        self.em_thread = Thread(name='emitter', target=self.start_emitter)
+        self.em_thread.start()
 
     def start(self):
         logging.info("fm_manager: Starting")
@@ -32,11 +38,22 @@ class FabricManagerConfig(object):
             message = pickle.loads(raw_data)
             for key in message.keys():
                 if key == "init":
-
+                    self.process_init_config(message[key])
                 elif key == "delta":
-                    self.process_delta_config()
+                    self.process_delta_config(message[key])
                 else:
                     logging.error("Unsupported Command: " + key)
+
+    def start_emitter(self):
+        # Start the packet parser
+        logging.debug("runtime: " + "creating")
+        em = Emitter(self.em_conf, self.queries)
+        logging.debug("runtime: " + "starting emitter")
+        em.start()
+        while True:
+            logging.debug("Running...")
+            time.sleep(5)
+        return 0
 
     def create_interfaces(self):
         for key in self.interfaces.keys():
@@ -47,9 +64,9 @@ class FabricManagerConfig(object):
         self.queries.append(q)
         self.id_2_query[q.qid] = q
 
-    def process_init_config(self):
+    def process_init_config(self, message):
         # Process initial config from RT
-        for query in message[key]:
+        for query in message:
             self.add_query(query)
         self.compile_init_config()
         logging.info("query compiled")
@@ -68,13 +85,21 @@ class FabricManagerConfig(object):
         initialize_switch(SWITCH_PATH, JSON_P4_COMPILED, THRIFTPORT,
                           CLI_PATH)
 
-    def process_delta_config(self):
+    def process_delta_config(self, message):
         logging.info("Sending deltas to Data Plane")
-        #send_commands_to_dp(CLI_PATH, JSON_P4_COMPILED, THRIFTPORT, self.p4_init_commands)
-        for qid in message_key:
-            query = self.id_2_query[qid]
-            filter_name = 'filter_'+str(query.qid)+'_'+str(query.filter_rules_id)
-            for elem in 
+        commands = ''
+
+        for filter_table_fname in message:
+            qid = filter_table_fname.split("_")[1]
+            for dip in message[filter_table_fname]:
+                dip = dip.strip('\n')
+                command = 'table_add '+filter_table_fname+' set_meta_fm_'+str(qid)+' '+str(dip)+' => \n'
+                commands += command
+                print "Added command ", qid, command
+
+        write_to_file(P4_DELTA_COMMANDS, commands)
+        send_commands_to_dp(CLI_PATH, JSON_P4_COMPILED, THRIFTPORT, P4_DELTA_COMMANDS)
+            
         return 0
 
     def receive_configs(self):
