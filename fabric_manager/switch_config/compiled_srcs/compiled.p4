@@ -192,9 +192,7 @@ table map_1_0{
 }
 
 action do_map_1_0() {
-	bit_and(meta_map_init_1.sIP, meta_map_init_1.sIP, 0xffff0000);
 	bit_and(meta_map_init_1.dIP, meta_map_init_1.dIP, 0xffff0000);
-	bit_and(meta_map_init_1.proto, meta_map_init_1.proto, 0xffff);
 }
 
 header_type meta_distinct_2_1_t {
@@ -295,9 +293,7 @@ table map_2_1{
 }
 
 action do_map_2_1() {
-	bit_and(meta_map_init_2.sIP, meta_map_init_2.sIP, 0xffffffff);
 	bit_and(meta_map_init_2.dIP, meta_map_init_2.dIP, 0xffffffff);
-	bit_and(meta_map_init_2.proto, meta_map_init_2.proto, 0xffffffff);
 }
 
 header_type meta_distinct_3_2_t {
@@ -401,10 +397,12 @@ action set_meta_fm_2(){
 
 action reset_meta_fm_1(){
 	modify_field(meta_fm.qid_1, 0);
+	modify_field(meta_fm.is_drop, 1);
 }
 
 action reset_meta_fm_2(){
 	modify_field(meta_fm.qid_2, 0);
+	modify_field(meta_fm.is_drop, 1);
 }
 
 table filter_1_1{
@@ -419,7 +417,7 @@ table filter_1_1{
 
 table filter_2_0{
 	reads {
-		ipv4.dstAddr: exact;
+		ipv4.dstAddr: lpm;
 	}
 	actions{
 		set_meta_fm_2;
@@ -460,8 +458,12 @@ control ingress {
 		}
 	}
 	if (meta_fm.f1 == 1){
-		apply(filter_2_0);
-		apply(filter_2_2);
+		if (meta_fm.qid_2== 1){
+			apply(filter_2_0);
+		}
+		if (meta_fm.qid_2== 1){
+			apply(filter_2_2);
+		}
 		if (meta_fm.qid_2 == 1){
 			apply(map_init_2);
 			apply(map_2_1);

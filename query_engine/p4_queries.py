@@ -388,7 +388,6 @@ class Map(object):
         self.p4_egress = ''
         self.p4_invariants = ''
         self.p4_init_commands = []
-
         self.id, self.qid = args
         map_dict = dict(**kwargs)
         self.keys = map_dict['keys']
@@ -441,11 +440,48 @@ class Filter(object):
         self.p4_egress = ''
         self.p4_invariants = ''
         self.p4_init_commands = []
-        self.id, self.qid = args
+        self.filter_rules = ''
+        self.expr = ''
+
+        self.id, self.qid, self.filter_rules_id, self.filter_name = args
         self.operator_name = 'filter_'+str(self.qid)+'_'+str(self.id)
+
+        map_dict = dict(**kwargs)
+        self.filter_keys = map_dict['keys']
+        self.filter_mask = ()
+        if 'mask' in map_dict:
+            self.filter_mask = map_dict['mask']
+        self.filter_vals = ()
+
+        if 'values' in map_dict:
+            self.filter_vals = map_dict['values']
+
 
     def compile_dp(self):
         print "Dummy compile called for Filter"
+        out = ''
+        out += 'table '+self.filter_name+'{\n'
+        out += '\treads {\n'
+        for key in self.filter_keys:
+            if self.filter_mask != ():
+                out += '\t\t'+str(header_map[key])+': lpm;\n'
+            else:
+                out += '\t\t'+str(header_map[key])+': exact;\n'
+
+        out += '\t}\n'
+        out += '\tactions{\n'
+        out += '\t\tset_meta_fm_'+str(self.qid)+';\n'
+        out += '\t\treset_meta_fm_'+str(self.qid)+';\n\t}\n}\n\n'
+        self.filter_rules += out
+        self.p4_init_commands.append('table_set_default '+self.filter_name+' reset_meta_fm_'+str(self.qid))
+        #self.filter_rules_id += 1
+
+
+
+        for val in self.filter_vals:
+            self.p4_init_commands.append('table_add '+self.filter_name+' set_meta_fm_'+str(self.qid)+' '+str(val)+' =>')
+
+
 
 class QueryPipeline(object):
     '''Multiple packet streams can exist for a switch'''
@@ -489,42 +525,26 @@ class QueryPipeline(object):
         print "Filter operator called ", self.expr, len(self.operators)
         map_dict = dict(**kwargs)
         filter_keys = map_dict['keys']
+        filter_mask = ()
+        if 'mask' in map_dict:
+            filter_mask = map_dict['mask']
         filter_vals = ()
+
+        if 'values' in map_dict:
+            filter_vals = map_dict['values']
+
+        self.expr += '.Filter(keys='+str(filter_keys)+', mask='+str(filter_mask)+', vals='+str(filter_vals)+')'
+
         self.filter_rules_id = len(self.operators)
-        if 'values' in map_dict:
-            filter_vals = map_dict['values']
-
         filter_name = 'filter_'+str(self.qid)+'_'+str(self.filter_rules_id)
-        self.filter_id_2_name[self.filter_rules_id] = filter_name
+
         id = len(self.operators)
-        new_args = (id, self.qid)+args
+        new_args = (id, self.qid, self.filter_rules_id, filter_name)+args
         self.operators.append(Filter(*new_args, **kwargs))
+        self.filter_id_2_name[self.filter_rules_id] = self.operators[-1]
+
         print self.filter_id_2_name, self.filter_rules_id
-        self.expr += '.Filter(keys='+str(filter_keys)+', vals='+str(filter_vals)+')'
-        out = ''
-        out += 'table '+filter_name+'{\n'
-        out += '\treads {\n'
-        for key in filter_keys:
-            if key in ['dIP', 'sIP']:
-                out += '\t\t'+str(header_map[key])+': lpm;\n'
-            else:
-                out += '\t\t'+str(header_map[key])+': exact;\n'
 
-        out += '\t}\n'
-        out += '\tactions{\n'
-        out += '\t\tset_meta_fm_'+str(self.qid)+';\n'
-        out += '\t\treset_meta_fm_'+str(self.qid)+';\n\t}\n}\n\n'
-        self.filter_rules += out
-        self.p4_init_commands.append('table_set_default '+filter_name+' reset_meta_fm_'+str(self.qid))
-        #self.filter_rules_id += 1
-
-        self.filter_control += '\t\tapply('+filter_name+');\n'
-        if 'values' in map_dict:
-            filter_vals = map_dict['values']
-            for val in filter_vals:
-                self.p4_init_commands.append('table_add '+filter_name+' set_meta_fm_'+str(self.qid)+' '+str(val)+' =>')
-
-        print "Filter operator called ", self.expr, len(self.operators)
         return self
 
     def map(self, *args, **kwargs):
@@ -584,6 +604,17 @@ class QueryPipeline(object):
 
         for operator in self.operators:
             self.p4_utils += operator.p4_utils
+
+        for filter_id in self.filter_id_2_name:
+            filter_operator = self.filter_id_2_name[filter_id]
+            if len(self.filter_id_2_name.keys()) > 1:
+                self.filter_control += '\t\tif (meta_fm.qid_'+str(self.qid)+'== 1){\n'
+                self.filter_control += '\t\t\tapply('+filter_operator.filter_name+');\n'
+                self.filter_control += '\t\t}\n'
+            else:
+                self.filter_control += '\t\tapply('+filter_operator.filter_name+');\n'
+
+            self.filter_rules += filter_operator.filter_rules
 
         for operator in self.operators:
             self.p4_state += operator.p4_state

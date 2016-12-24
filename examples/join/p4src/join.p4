@@ -98,7 +98,6 @@ control join {
 }
 
 /* Normal Control Flow */
-
 action set_default_nhop(port, dstMac) {
     modify_field(standard_metadata.egress_spec, port);
     modify_field(ethernet.dstAddr, dstMac);

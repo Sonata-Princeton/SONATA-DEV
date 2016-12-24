@@ -26,7 +26,7 @@ class FabricManagerConfig(object):
         self.interfaces = {'reciever': ['m-veth-1', 'out-veth-1'],
                            'sender': ['m-veth-2', 'out-veth-2']}
         self.em_thread = Thread(name='emitter', target=self.start_emitter)
-        self.em_thread.start()
+
 
     def start(self):
         logging.info("fm_manager: Starting")
@@ -70,6 +70,8 @@ class FabricManagerConfig(object):
             self.add_query(query)
         self.compile_init_config()
         logging.info("query compiled")
+        print "FM: Received ", len(self.queries), " queries from Runtime"
+        self.em_thread.start()
 
         write_to_file(P4_COMPILED, self.p4_src)
 
@@ -89,11 +91,15 @@ class FabricManagerConfig(object):
         logging.info("Sending deltas to Data Plane")
         commands = ''
 
-        for filter_table_fname in message:
-            qid = filter_table_fname.split("_")[1]
-            for dip in message[filter_table_fname]:
+        for (qid,filter_id) in message:
+            query = self.id_2_query[qid]
+            filter_operator = query.filter_id_2_name[filter_id]
+            filter_mask = filter_operator.filter_mask
+            filter_table_fname = filter_operator.operator_name
+
+            for dip in message[(qid,filter_id)]:
                 dip = dip.strip('\n')
-                command = 'table_add '+filter_table_fname+' set_meta_fm_'+str(qid)+' '+str(dip)+' => \n'
+                command = 'table_add '+filter_table_fname+' set_meta_fm_'+str(qid)+' '+str(dip)+'/'+str(filter_mask[0])+' => \n'
                 commands += command
                 print "Added command ", qid, command
 
@@ -190,6 +196,7 @@ class FabricManagerConfig(object):
         for q in self.queries:
             out += 'action reset_meta_fm_'+str(q.qid)+'(){\n'
             out += '\tmodify_field(meta_fm.qid_'+str(q.qid)+', 0);\n'
+            out += '\tmodify_field(meta_fm.is_drop, 1);\n'
             out += '}\n\n'
 
         for q in self.queries:

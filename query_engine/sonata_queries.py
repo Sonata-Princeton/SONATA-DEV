@@ -106,6 +106,9 @@ class Filter(Query):
             self.comp = map_dict['comp']
         else:
             self.comp = 'eq'
+        self.mask = ()
+        if 'mask' in map_dict:
+            self.mask = map_dict['mask']
 
 
 class PacketStream(Query):
@@ -179,10 +182,10 @@ class PacketStream(Query):
                 for key in concise_query.basic_headers:
                         map_keys.append(key)
 
-                refined_query.map(append_type=1, keys = tuple(map_keys), func = ("mask",refinement_level))
+                refined_query.map(append_type=1, keys = (reduction_key,), func = ("mask",refinement_level))
                 if prev_level > 0:
                     refined_query.refinement_filter_id = 0
-                    refined_query.filter(append_type = 1, keys = tuple(prev_map_key))
+                    refined_query.filter(append_type = 1, keys = (prev_map_key,), mask = (prev_mask,))
 
                 print "Refined Query for level "+str(refinement_level)
                 print refined_query.expr
@@ -191,7 +194,8 @@ class PacketStream(Query):
                 prev_level = refinement_level
                 for key in concise_query.basic_headers:
                     if key == reduction_key:
-                        prev_map_key = (key+'/'+str(refinement_level),)
+                        prev_map_key = key
+                        prev_mask = refinement_level
 
         else:
             raise NotImplementedError
@@ -211,6 +215,7 @@ class PacketStream(Query):
                                      values = operator.values,
                                      comp = operator.comp)
             elif operator.name == "Map":
+                #print "Concise query:: Map.keys", operator.keys
                 concise_query.map(keys = operator.keys, values = operator.values)
             elif operator.name == "Reduce":
                 concise_query.reduce(values = operator.values,
@@ -265,6 +270,7 @@ class PacketStream(Query):
                     elif operator.name == 'Filter':
                         p4_query = p4_query.filter(keys = operator.keys,
                                                    values = operator.values,
+                                                   mask = operator.mask,
                                                    comp = operator.comp)
                     elif operator.name == 'Distinct':
                         p4_query = p4_query.distinct(keys = operator.prev_fields)
@@ -377,6 +383,7 @@ class PacketStream(Query):
     def filter(self, append_type = 0, *args, **kwargs):
         map_dict = dict(*args, **kwargs)
         keys = map_dict['keys']
+
         if 'values' in map_dict:
             values = map_dict['values']
         else:

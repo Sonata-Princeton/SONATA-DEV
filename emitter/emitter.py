@@ -3,10 +3,8 @@ import struct
 from multiprocessing.connection import Listener
 
 
-header_format = {"sIP":'BBBB', "dIP":'BBBB',
-              "sPort": 'H', "dPort": 'H',
-              "nBytes": 'H', "proto": 'H',
-              "sMac": 'BBBBBB', "dMac":'BBBBBB',
+header_format = {"sIP":'BBBB', "dIP":'BBBB', "sPort": 'H', "dPort": 'H',
+              "nBytes": 'H', "proto": 'H', "sMac": 'BBBBBB', "dMac":'BBBBBB',
               "qid":'B', "count": 'B'}
 
 header_size = {"sIP":32, "dIP":32, "sPort": 16, "dPort": 16,
@@ -45,25 +43,27 @@ class Emitter(object):
         '''
         p_str = str(raw_packet)
         #hexdump(raw_packet)
-        qid = str(self.count_struct.unpack(p_str[0])[0])
+        qid = int(self.count_struct.unpack(p_str[0])[0])
+        #print "Received packet for query ", qid, type(qid), self.qid_2_query
         if qid in self.qid_2_query:
             query = self.qid_2_query[qid]
             out_headers = query.operators[-1].out_headers
             output_tuple = []
             ind = 1
-            for fld in out_headers:
+            for fld in out_headers[1:]:
                 strct = struct.Struct(header_format[fld])
                 ctr = header_size[fld]/8
+                #print "indexes parsed ", ind, ind+ctr
                 if 'IP' in fld:
                     output_tuple.append(".".join([str(x) for x in list(strct.unpack(p_str[ind:ind+ctr]))]))
                 elif 'Mac' in fld:
                     output_tuple.append(":".join([str(x) for x in list(strct.unpack(p_str[ind:ind+ctr]))]))
                 else:
-                    output_tuple.append(strct.unpack(p_str[ind:ind+ctr]))
+                    output_tuple.append(strct.unpack(p_str[ind:ind+ctr])[0])
                 ind += ctr
-                output_tuple.append()
-            output_tuple = ['k']+output_tuple
-            send_tuple = ",".join(output_tuple)
+
+            output_tuple = ['k']+[str(qid)]+output_tuple
+            send_tuple = ",".join([str(x) for x in output_tuple])
             print "Tuple:", send_tuple
             self.send_data(send_tuple + "\n")
 

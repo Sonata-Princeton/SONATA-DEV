@@ -1,9 +1,6 @@
 #!/usr/bin/python
 # Initialize coloredlogs.
 import logging
-import sys
-
-print sys.path
 logging.getLogger("testApp")
 
 import coloredlogs
@@ -11,9 +8,6 @@ import coloredlogs
 coloredlogs.install(level='ERROR',)
 
 from runtime import *
-import sys
-print sys.path
-
 from query_engine.sonata_queries import *
 
 batch_interval = 1

@@ -65,7 +65,7 @@ class Runtime(object):
 
         #self.send_to_fm("delta", self.dp_queries)
         self.fm_thread.join()
-        self.em_thread.join()
+
         self.sm_thread.join()
         self.op_handler_thread.join()
 
@@ -80,6 +80,7 @@ class Runtime(object):
         self.op_handler_listener = Listener(self.op_handler_socket)
         logging.debug("OP Handler Running...")
         while True:
+            print "Ready to receive data from SM ***************************"
             conn = self.op_handler_listener.accept()
             # Expected (qid,[])
             op_data = conn.recv_bytes()
@@ -93,8 +94,8 @@ class Runtime(object):
                     if int(refined_query.qid) == int(qid):
                         print "## Received output for query", refined_query.expr,\
                             qid, refined_query.qid, refined_query.refinement_filter_id
-                        filter_table_name = refined_query.dp_query.filter_id_2_name[refined_query.refinement_filter_id]
-                        delta_config[filter_table_name] = dips
+                        filter_operator = refined_query.dp_query.filter_id_2_name[refined_query.refinement_filter_id]
+                        delta_config[(filter_operator.qid, filter_operator.id)] = dips
 
 
             # TODO: Update the send_to_fm function logic
@@ -163,7 +164,7 @@ class Runtime(object):
         serialized_queries = pickle.dumps(message)
         conn = Client(self.conf['fm_socket'])
         conn.send(serialized_queries)
-        time.sleep(3)
+        time.sleep(1)
         logging.debug("Config Sent to Streaming Manager ...")
         return ''
 
