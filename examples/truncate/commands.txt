@@ -1,0 +1,11 @@
+
+table_set_default forward _drop
+table_add forward set_default_nhop 10.0.0.1 => 1 00:00:00:00:00:01
+table_add forward set_default_nhop 10.0.0.2 => 2 00:00:00:00:00:02
+table_add forward set_default_nhop 10.0.0.3 => 3 00:00:00:00:00:03
+
+table_set_default copy_i2e copy_i2e_action
+
+table_set_default truncate_packet truncate_packet_action
+
+mirroring_add 111 3
