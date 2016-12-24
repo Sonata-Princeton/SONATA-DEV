@@ -574,7 +574,6 @@ class QueryPipeline(object):
         return self
 
 
-
     def update_p4_src(self):
 
         for operator in self.operators:

@@ -9,7 +9,6 @@ import pickle
 from threading import Thread
 from fabric_manager.fabric_manager import FabricManagerConfig
 from streaming_manager.streaming_manager import StreamingManager
-from emitter.emitter import Emitter
 import logging
 
 logging.getLogger("runtime")
@@ -23,12 +22,12 @@ class Runtime(object):
         self.sp_queries = []
 
         self.fm_thread = Thread(name='fm_manager', target=self.start_fabric_managers)
-        self.em_thread = Thread(name='emitter', target=self.start_emitter)
+
         self.sm_thread = Thread(name='sm_manager', target=self.start_streaming_managers)
         self.op_handler_thread = Thread(name='op_handler', target=self.start_op_handler)
         #self.fm_thread.setDaemon(True)
         self.fm_thread.start()
-        self.em_thread.start()
+
         self.sm_thread.start()
         self.op_handler_thread.start()
 
@@ -102,22 +101,10 @@ class Runtime(object):
             self.send_to_fm("delta", delta_config)
         return 0
 
-
-    def start_emitter(self):
-        # Start the fabric managers local to each data plane element
-        logging.debug("runtime: " + "creating")
-        em = Emitter(self.conf['emitter_conf'])
-        logging.debug("runtime: " + "starting emitter")
-        em.start()
-        while True:
-            logging.debug("Running...")
-            time.sleep(5)
-        return 0
-
     def start_fabric_managers(self):
         # Start the fabric managers local to each data plane element
         logging.debug("runtime: " + "creating fabric managers")
-        fm = FabricManagerConfig(self.conf['fm_socket'])
+        fm = FabricManagerConfig(self.conf['fm_socket'], self.conf['emitter_conf'])
         logging.debug("runtime: " + "starting fabric managers")
         fm.start()
         while True:
@@ -160,7 +147,6 @@ class Runtime(object):
     def receive_query_output(self):
         # receive query output from stream processor
         return 0
-
 
     def send_to_sm(self):
         # Send compiled query expression to streaming manager

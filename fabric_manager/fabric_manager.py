@@ -3,24 +3,30 @@
 #  Arpit Gupta (arpitg@cs.princeton.edu)
 
 import logging
+import json, time
 logging.getLogger(__name__)
 from multiprocessing.connection import Listener
+from threading import Thread
 from switch_config.utils import *
 from switch_config.interfaces import Interfaces
 from switch_config.compile_p4 import compile_p4_2_json
 from switch_config.initialize_switch import initialize_switch
+from emitter.emitter import Emitter
 import pickle
 
 
 class FabricManagerConfig(object):
-    def __init__(self, fm_socket):
+    def __init__(self, fm_socket, em_conf):
         self.p4_src = ''
         self.queries = []
         self.id_2_query = {}
         self.p4_init_commands = []
         self.fm_socket = fm_socket
+        self.em_conf = em_conf
         self.interfaces = {'reciever': ['m-veth-1', 'out-veth-1'],
                            'sender': ['m-veth-2', 'out-veth-2']}
+        self.em_thread = Thread(name='emitter', target=self.start_emitter)
+        self.em_thread.start()
 
     def start(self):
         logging.info("fm_manager: Starting")
@@ -37,6 +43,17 @@ class FabricManagerConfig(object):
                     self.process_delta_config(message[key])
                 else:
                     logging.error("Unsupported Command: " + key)
+
+    def start_emitter(self):
+        # Start the packet parser
+        logging.debug("runtime: " + "creating")
+        em = Emitter(self.em_conf, self.queries)
+        logging.debug("runtime: " + "starting emitter")
+        em.start()
+        while True:
+            logging.debug("Running...")
+            time.sleep(5)
+        return 0
 
     def create_interfaces(self):
         for key in self.interfaces.keys():

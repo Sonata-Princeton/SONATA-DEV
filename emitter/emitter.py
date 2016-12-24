@@ -2,20 +2,29 @@ from scapy.all import *
 import struct
 from multiprocessing.connection import Listener
 
+
+header_format = {"sIP":'BBBB', "dIP":'BBBB',
+              "sPort": 'H', "dPort": 'H',
+              "nBytes": 'H', "proto": 'H',
+              "sMac": 'BBBBBB', "dMac":'BBBBBB',
+              "qid":'B', "count": 'B'}
+
+header_size = {"sIP":32, "dIP":32, "sPort": 16, "dPort": 16,
+               "nBytes": 16, "proto": 8, "sMac": 48, "dMac":48,
+               "qid":8, "count": 8}
+
 class Emitter(object):
 
-    ip_format = 'BBBB'
-    count_format = 'B'
-
-    def __init__(self, conf):
+    def __init__(self, conf, queries):
         self.spark_stream_address = conf['spark_stream_address']
         self.spark_stream_port = conf['spark_stream_port']
         self.sniff_interface = conf['sniff_interface']
-        self.ip_struct = struct.Struct(self.ip_format)
-        self.count_struct = struct.Struct(self.count_format)
+        self.queries = queries
         self.listener = Listener((self.spark_stream_address, self.spark_stream_port))
-
-
+        self.qid_2_query = {}
+        self.count_struct = struct.Struct('B')
+        for query in self.queries:
+            self.qid_2_query[query.qid] = query
 
     def start(self):
         while True:
@@ -36,30 +45,27 @@ class Emitter(object):
         '''
         p_str = str(raw_packet)
         #hexdump(raw_packet)
-        send_tuple = ""
         qid = str(self.count_struct.unpack(p_str[0])[0])
-        if qid == '1':
-            sIP = ".".join([str(x) for x in list(self.ip_struct.unpack(p_str[1:5]))])
-            dIP = ".".join([str(x) for x in list(self.ip_struct.unpack(p_str[5:9]))])
-            qid = (qid)
-            output_tuple = tuple([qid, tuple([dIP, sIP])])
-            send_tuple = str(output_tuple)
-            send_tuple = ",".join(['k',qid, dIP, sIP])
+        if qid in self.qid_2_query:
+            query = self.qid_2_query[qid]
+            out_headers = query.operators[-1].out_headers
+            output_tuple = []
+            ind = 1
+            for fld in out_headers:
+                strct = struct.Struct(header_format[fld])
+                ctr = header_size[fld]/8
+                if 'IP' in fld:
+                    output_tuple.append(".".join([str(x) for x in list(strct.unpack(p_str[ind:ind+ctr]))]))
+                elif 'Mac' in fld:
+                    output_tuple.append(":".join([str(x) for x in list(strct.unpack(p_str[ind:ind+ctr]))]))
+                else:
+                    output_tuple.append(strct.unpack(p_str[ind:ind+ctr]))
+                ind += ctr
+                output_tuple.append()
+            output_tuple = ['k']+output_tuple
+            send_tuple = ",".join(output_tuple)
             print "Tuple:", send_tuple
             self.send_data(send_tuple + "\n")
-            #print "returned from sending to Spark"
-        elif qid == '2':
-            # TODO: Generalize the logic for parsing packet's metadata
-            sIP = ".".join([str(x) for x in list(self.ip_struct.unpack(p_str[1:5]))])
-            dIP = ".".join([str(x) for x in list(self.ip_struct.unpack(p_str[5:9]))])
-            qid = (qid)
-            output_tuple = tuple([qid, tuple([dIP, sIP])])
-            #send_tuple = str(output_tuple)
-            send_tuple = ",".join(['k', qid, dIP, sIP])
-            print "Tuple:", send_tuple
-            self.send_data(send_tuple + "\n")
-            #print "returned from sending to Spark"
-
 
 
 if __name__ == '__main__':
