@@ -23,9 +23,11 @@ class FabricManagerConfig(object):
         self.p4_init_commands = []
         self.fm_socket = fm_socket
         self.em_conf = em_conf
+        self.reset_bool = False
         self.interfaces = {'reciever': ['m-veth-1', 'out-veth-1'],
                            'sender': ['m-veth-2', 'out-veth-2']}
         self.em_thread = Thread(name='emitter', target=self.start_emitter)
+        self.reset_thread = Thread(name='reset_switch', target=self.reset_switch)
 
 
     def start(self):
@@ -72,6 +74,7 @@ class FabricManagerConfig(object):
         logging.info("query compiled")
         print "FM: Received ", len(self.queries), " queries from Runtime"
         self.em_thread.start()
+        self.reset_thread.start()
 
         write_to_file(P4_COMPILED, self.p4_src)
 
@@ -87,25 +90,37 @@ class FabricManagerConfig(object):
         initialize_switch(SWITCH_PATH, JSON_P4_COMPILED, THRIFTPORT,
                           CLI_PATH)
 
+    def reset_switch(self):
+        while True:
+            time.sleep(10)
+            while self.reset_bool:
+                reset_switch_state()
+                send_commands_to_dp(CLI_PATH, P4_COMPILED, THRIFTPORT, P4_COMMANDS)
+                self.reset_bool = False
+
     def process_delta_config(self, message):
         logging.info("Sending deltas to Data Plane")
         commands = ''
-
+        # This is wrong.....will fix it.
         for (qid,filter_id) in message:
             query = self.id_2_query[qid]
             filter_operator = query.filter_id_2_name[filter_id]
             filter_mask = filter_operator.filter_mask
             filter_table_fname = filter_operator.operator_name
-
+            self.reset_bool = True
+            while self.reset_bool:
+                print "Still inside"
+                time.sleep(1)
             for dip in message[(qid,filter_id)]:
                 dip = dip.strip('\n')
                 command = 'table_add '+filter_table_fname+' set_meta_fm_'+str(qid)+' '+str(dip)+'/'+str(filter_mask[0])+' => \n'
                 commands += command
                 print "Added command ", qid, command
 
-        write_to_file(P4_DELTA_COMMANDS, commands)
-        send_commands_to_dp(CLI_PATH, JSON_P4_COMPILED, THRIFTPORT, P4_DELTA_COMMANDS)
-            
+
+            write_to_file(P4_DELTA_COMMANDS, commands)
+            send_commands_to_dp(CLI_PATH, JSON_P4_COMPILED, THRIFTPORT, P4_DELTA_COMMANDS)
+
         return 0
 
     def receive_configs(self):

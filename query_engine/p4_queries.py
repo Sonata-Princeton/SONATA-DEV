@@ -124,6 +124,7 @@ class Register(object):
         return out
 
     def add_table_update(self):
+        self.table_name = 'update_'+self.operator_name+'_counts'
         out = 'table update_'+self.operator_name+'_counts {\n\t'
         out += 'actions {update_'+self.operator_name+'_regs;}\n\t'
         out += 'size : 1;\n}\n\n'

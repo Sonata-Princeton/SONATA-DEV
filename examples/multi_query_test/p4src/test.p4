@@ -175,7 +175,7 @@ field_list_calculation distinct_1_1_fields_hash {
 
 register distinct_1_1{
 	width : 32;
-	instance_count : 4096;
+	instance_count : 10;
 }
 
 action update_distinct_1_1_regs() {

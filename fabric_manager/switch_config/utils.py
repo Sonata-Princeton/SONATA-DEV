@@ -21,6 +21,11 @@ P4_DELTA_COMMANDS = COMPILED_SRCS + "delta_commands.txt"
 logging.getLogger(__name__)
 
 
+def reset_switch_state():
+    cmd = "echo \'reset_state\' | " + CLI_PATH + " --thrift-port "+str(THRIFTPORT)
+    print "Running ##########:" + cmd
+    get_out(cmd)
+
 def send_commands_to_dp(cli_path, p4_json_path, thrift_port, COMMAND_PATH):
     cmd = [cli_path, p4_json_path, str(thrift_port)]
     logging.info(" ".join(cmd))
@@ -29,7 +34,7 @@ def send_commands_to_dp(cli_path, p4_json_path, thrift_port, COMMAND_PATH):
         print " ".join(cmd)
         try:
             output = subprocess.check_output(cmd, stdin = f)
-            print output
+            #print output
         except subprocess.CalledProcessError as e:
             print e
             print e.output
@@ -63,7 +68,7 @@ def get_in(args, input):
         try:
             t.write(input)
             out = check_output(args, stdin=t, shell=False)
-            logging.debug("SUCCESS: " + str(args) + ",0 ," + str(out))
+            #print "SUCCESS: " + str(args) + ",0 ," + str(out)
             return True, out
         except CalledProcessError as e:
             t.seek(0)
