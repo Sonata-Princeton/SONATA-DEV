@@ -137,17 +137,6 @@ class Runtime(object):
         self.send_to_sm()
         self.send_to_fm()
 
-    def send_init_config(self):
-        # send initial config to FMs and SMs
-        return 0
-
-    def send_update_config(self):
-        # send delta config updates to SMs & FMs
-        return 0
-
-    def receive_query_output(self):
-        # receive query output from stream processor
-        return 0
 
     def send_to_sm(self):
         # Send compiled query expression to streaming manager
@@ -167,7 +156,3 @@ class Runtime(object):
         time.sleep(1)
         logging.debug("Config Sent to Streaming Manager ...")
         return ''
-
-
-
-#.reduceByKey("sum")

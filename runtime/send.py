@@ -90,15 +90,7 @@ def send_packets(time_slot):
             for pkt_tuple in pkt_tuples:
                 send_packet(pkt_tuple[2:])
 
-"""
-T = 100
-send_packets(T)
-"""
 while True:
     print "Sending dummy packets: ...."
     send_dummy_packets()
     time.sleep(1)
-
-
-
-

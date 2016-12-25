@@ -16,13 +16,6 @@ header_size = {"sIP":32, "dIP":32, "sPort": 16, "dPort": 16,
                 "nBytes": 16, "proto": 8, "sMac": 48, "dMac":48,
                 "qid":8, "count": 8}
 
-class GlobalCounts(object):
-    # maintain global counts for skip and drop actions
-    # as we cannot re-use these tables
-    def __init__(self):
-        self.skip_id = 1
-        self.drop_id = 1
-
 class MetaData(object):
     def __init__(self, name, fields = {}):
         self.name = name
@@ -49,9 +42,6 @@ class Register(object):
         self.metadata_name = 'meta_'+self.operator_name
         self.hash_metadata_name = 'hash_meta_'+self.operator_name
         self.field_list_name = self.operator_name+'_fields'
-
-
-
 
         map_dict = dict(**kwargs)
         self.keys = map_dict['keys']
@@ -631,8 +621,6 @@ class QueryPipeline(object):
 
         for operator in self.operators:
             self.p4_control += operator.p4_control
-
-        #self.p4_control += '\t\tapply(copy_to_cpu_'+str(self.qid)+');'
 
         # Update all the initial commands
         for operator in self.operators:

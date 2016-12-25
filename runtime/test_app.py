@@ -7,7 +7,7 @@ import coloredlogs
 
 coloredlogs.install(level='ERROR',)
 
-from runtime import *
+#from runtime import *
 from query_engine.sonata_queries import *
 
 batch_interval = 1
@@ -31,16 +31,29 @@ if __name__ == "__main__":
             'sm_conf': spark_conf, 'emitter_conf': emitter_conf,
             'fm_socket': ('localhost', 6666)}
 
-    query = (PacketStream()
-                    .filter(keys=("proto",), values=('6',), comp = "eq")
-                    .map(keys=("dIP", "sIP"))
-                    .distinct()
-                    .map(keys=("dIP",), values = ("1",))
-                    .reduce(func='sum', values=('count',))
-                    #.filter(expr='count > 2')
-                    .map(keys=('dIP',)))
+    q0 = PacketStream()
 
-    queries = []
-    queries.append(query)
-    runtime = Runtime(conf, queries)
+    q1 = (PacketStream()
+                    .filter(keys = ("proto",), values = ('6',), comp = "eq")
+                    .map(keys = ("dIP", "sIP"))
+                    .distinct()
+                    .map(keys = ("dIP",), values = ("1",))
+                    .reduce(func = 'sum', values = ('count',))
+                    .filter(keys = ("count",), values=("2",), comp = "geq")
+                    .map(keys=('dIP',))
+             )
+
+    q2 = (PacketStream()
+          .map(keys=('dIP',), values=tuple([x for x in q0.basic_headers]))
+        )
+
+    #print q2.expr, q2.keys, q2.values
+    q3 = q1.join(query=q2)
+
+    #print q0
+    #print q1
+    #print q2
+    #print q3
+
+    #runtime = Runtime(conf, queries)
     #runtime.send_to_sm()

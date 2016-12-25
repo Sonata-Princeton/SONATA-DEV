@@ -2,9 +2,7 @@
 #  Author:
 #  Arpit Gupta (arpitg@cs.princeton.edu)
 
-import json, time
 import copy
-from multiprocessing.connection import Client
 import p4_queries as p4
 import spark_queries as spark
 import logging
@@ -68,6 +66,10 @@ class Map(Query):
         #print(self.keys, self.values)
         self.fields = tuple(list(self.keys) + list(self.values))
 
+    def __repr__(self):
+        return '.Map(keys='+str(self.keys)+', values='+str(self.values)+', func='+str(self.func)+')'
+
+
 
 class Reduce(Query):
     def __init__(self, *args, **kwargs):
@@ -80,6 +82,9 @@ class Reduce(Query):
         self.fields = tuple(list(self.prev_fields[:-1]) + list(self.values))
         #self.fields = tuple(set(self.fields).difference(set("1")))
 
+    def __repr__(self):
+        return '.Reduce(func='+self.func+', values='+','.join([x for x in self.values])+')'
+
 
 class Distinct(Query):
     def __init__(self, *args, **kwargs):
@@ -88,6 +93,9 @@ class Distinct(Query):
         map_dict = dict(*args, **kwargs)
         self.prev_fields = map_dict['prev_fields']
         self.fields = self.prev_fields
+
+    def __repr__(self):
+        return '.Distinct()'
 
 
 class Filter(Query):
@@ -109,6 +117,9 @@ class Filter(Query):
         self.mask = ()
         if 'mask' in map_dict:
             self.mask = map_dict['mask']
+
+    def __repr__(self):
+        return '.Filter(keys='+str(self.keys)+', values = '+str(self.values)+', comp='+str(self.comp)+')'
 
 
 class PacketStream(Query):
@@ -137,6 +148,12 @@ class PacketStream(Query):
 
         # Object representing the output of the query
         self.output = None
+
+    def __repr__(self):
+        out = 'In'
+        for operator in self.operators:
+            out += operator.__repr__()
+        return out
 
     def get_refinement_plan(self):
         def generate_new_operator(operator, refinement_level, reduction_key):
@@ -350,18 +367,13 @@ class PacketStream(Query):
         else:
             operator = Map(prev_fields = self.basic_headers, *args, **kwargs)
             self.operators = [operator]+self.operators
+
         map_dict = dict(*args, **kwargs)
         keys = map_dict['keys']
-        values = ()
-        func = ()
+        self.keys = keys
         if 'values' in map_dict:
             values = map_dict['values']
-        if 'func' in map_dict:
-            func = map_dict['func']
-        if append_type == 0:
-            self.expr += '.Map(keys='+str(keys)+'values='+str(values)+',func='+str(func)+')'
-        else:
-            self.expr = '.Map(keys='+str(keys)+'values='+str(values)+',func='+str(func)+')'+self.expr
+            self.values = values
 
         return self
 
@@ -369,13 +381,11 @@ class PacketStream(Query):
         operator = Reduce(prev_fields = self.get_prev_fields(), *args, **kwargs)
         map_dict = dict(*args, **kwargs)
         values = map_dict['values']
-        func = map_dict['func']
-        self.expr += '.Reduce('+func+','+','.join([x for x in values])+')'
+        self.values = values
         self.operators.append(operator)
         return self
 
     def distinct(self, *args, **kwargs):
-        self.expr += '.Distinct()'
         operator = Distinct(prev_fields = self.get_prev_fields(), *args, **kwargs)
         self.operators.append(operator)
         return self
@@ -383,15 +393,8 @@ class PacketStream(Query):
     def filter(self, append_type = 0, *args, **kwargs):
         map_dict = dict(*args, **kwargs)
         keys = map_dict['keys']
+        self.keys = keys
 
-        if 'values' in map_dict:
-            values = map_dict['values']
-        else:
-            values = ()
-        if 'comp' in map_dict:
-            comp = map_dict['comp']
-        else:
-            comp = 'eq'
         if append_type == 0:
             operator = Filter(prev_fields = self.get_prev_fields(),*args, **kwargs)
             self.operators.append(operator)
@@ -399,24 +402,15 @@ class PacketStream(Query):
             operator = Filter(prev_fields = self.basic_headers, *args, **kwargs)
             self.operators = [operator] + self.operators
 
-
-        if append_type == 0:
-            self.expr += '.Filter(keys='+str(keys)+', values = '+str(values)+', comp='+str(comp)+')'
-        else:
-            self.expr = '.Filter(keys='+str(keys)+', values = '+str(values)+', comp='+str(comp)+')'+self.expr
         return self
 
-"""
-query = (PacketStream()
-        .filter(expr = "proto == '17'")
-        .map(keys = ("dIP", "sIP"))
-        .distinct()
-        .map(keys =("dIP",), values = ("1",))
-        .reduce(func='sum', values=('count',))
-        .filter(expr='count > 20')
-        .map(keys=('dIP',))
-        )
-"""
+    def join(self, *args, **kwargs):
+        map_dict = dict(*args, **kwargs)
+        query = map_dict['query']
+        print "Join operation called for query ", self, self.keys, self.values
+        print "Joining with query", query, query.keys, query.values
+
+
 if __name__ == "__main__":
-    q = PacketStream(1).map(keys = ("dIP",), func = ("mask", 16))
-    print q.expr
+    q1 = PacketStream(1).map(keys = ("dIP",), func = ("mask", 16))
+    print q1
