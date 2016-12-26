@@ -11,8 +11,6 @@ header_map = {"sIP":"ipv4.srcAddr", "dIP":"ipv4.dstAddr",
             "sMac": "ethernet.srcAddr", "dMac":"ethernet.dstAddr"}
 
 header_size = {"sIP":32, "dIP":32, "sPort": 16, "dPort": 16,
-                # TODO: Get rid of this hardcoding
-                "dIP/16":16, "dIP/32":32,
                 "nBytes": 16, "proto": 8, "sMac": 48, "dMac":48,
                 "qid":8, "count": 8}
 

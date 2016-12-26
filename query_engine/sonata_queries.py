@@ -97,6 +97,16 @@ class Distinct(Query):
     def __repr__(self):
         return '.Distinct()'
 
+class Join(Query):
+    def __init__(self, *args, **kwargs):
+        super(Join, self).__init__(*args, **kwargs)
+        self.name = 'Join'
+        map_dict = dict(*args, **kwargs)
+        self.query = map_dict['query']
+
+    def __repr__(self):
+        return '.Join(query='+self.query.__repr__()+')'
+
 
 class Filter(Query):
     def __init__(self, *args, **kwargs):
@@ -119,7 +129,7 @@ class Filter(Query):
             self.mask = map_dict['mask']
 
     def __repr__(self):
-        return '.Filter(keys='+str(self.keys)+', values = '+str(self.values)+', comp='+str(self.comp)+')'
+        return '.Filter(keys='+str(self.keys)+', values = '+str(self.values)+', comp='+str(self.comp)+' mask ='+str(self.mask)+')'
 
 
 class PacketStream(Query):
@@ -156,56 +166,47 @@ class PacketStream(Query):
         return out
 
     def get_refinement_plan(self):
-        def generate_new_operator(operator, refinement_level, reduction_key):
-            new_operator = copy.deepcopy(operator)
-            new_keys = []
-            for key in operator.keys:
-                if key == reduction_key:
-                    new_keys.append(key+'/'+str(refinement_level))
-                else:
-                    new_keys.append(key)
-            new_fields = []
-            for fld in operator.fields:
-                if fld == reduction_key:
-                    new_fields.append(fld+'/'+str(refinement_level))
-                else:
-                    new_fields.append(fld)
-
-            new_prev_fields = []
-            for fld in operator.prev_fields:
-                if fld == reduction_key:
-                    new_prev_fields.append(fld+'/'+str(refinement_level))
-                else:
-                    new_prev_fields.append(fld)
-
-            new_operator.keys = new_keys
-            new_operator.fields = new_fields
-            new_operator.prev_fields = new_prev_fields
-            return new_operator
-
-
-        logging.info("Inside get_refinement_plan %%%%%%%%%%%"+ str(self.isInput))
+        print("Inside get_refinement_plan %%%%%%%%%%%"+ str(self.isInput))
         if self.isInput == True:
             # TODO: automate generation of the refinement levels and reduction keys
             concise_query = self.get_concise_query()
+            #return 0
             refinement_levels = [16, 32]
             reduction_key = 'dIP'
             prev_level = 0
 
             for refinement_level in refinement_levels:
-                refined_query = copy.deepcopy(concise_query)
-                refined_query.isInput = False
-                map_keys = []
-                for key in concise_query.basic_headers:
-                        map_keys.append(key)
-
+                refined_query = PacketStream()
                 refined_query.map(append_type=1, keys = (reduction_key,), func = ("mask",refinement_level))
                 if prev_level > 0:
                     refined_query.refinement_filter_id = 0
-                    refined_query.filter(append_type = 1, keys = (prev_map_key,), mask = (prev_mask,))
+                    refined_query.filter(append_type = 1,
+                                         keys = (prev_map_key,),
+                                         mask = (prev_mask,))
 
-                print "Refined Query for level "+str(refinement_level)
-                print refined_query.expr
+                for operator in concise_query.operators:
+                    #print operator
+                    if operator.name == 'Filter':
+                        refined_query.filter(keys = operator.keys,
+                                             values = operator.values,
+                                             comp = operator.comp)
+                    elif operator.name == "Map":
+                        refined_query.map(keys = operator.keys, values = operator.values)
+                    elif operator.name == "Reduce":
+                        refined_query.reduce(values = operator.values,
+                                             func = operator.func)
+
+                    elif operator.name == "Distinct":
+                        refined_query.distinct()
+
+                    elif operator.name == "Join":
+                        operator.query.get_refinement_plan()
+                        refined_query.join(query=operator.query.refined_queries[-1])
+
+                refined_query.isInput = False
+
+                #print "Refined Query for level "+str(refinement_level)
+                #print refined_query
 
                 self.refined_queries.append(refined_query)
                 prev_level = refinement_level
@@ -227,6 +228,7 @@ class PacketStream(Query):
         concise_query.basic_headers = unique_keys.keys()
         print "Basic headers for concise query", concise_query.basic_headers
         for operator in self.operators:
+            #print operator
             if operator.name == 'Filter':
                 concise_query.filter(keys = operator.keys,
                                      values = operator.values,
@@ -240,6 +242,9 @@ class PacketStream(Query):
 
             elif operator.name == "Distinct":
                 concise_query.distinct()
+
+            elif operator.name == "Join":
+                concise_query.join(query=operator.query.get_concise_query())
 
         return concise_query
 
@@ -361,19 +366,19 @@ class PacketStream(Query):
         return prev_fields
 
     def map(self, append_type = 0, *args, **kwargs):
-        if append_type == 0:
-            operator = Map(prev_fields = self.get_prev_fields(), *args, **kwargs)
-            self.operators.append(operator)
-        else:
-            operator = Map(prev_fields = self.basic_headers, *args, **kwargs)
-            self.operators = [operator]+self.operators
-
         map_dict = dict(*args, **kwargs)
         keys = map_dict['keys']
         self.keys = keys
         if 'values' in map_dict:
             values = map_dict['values']
             self.values = values
+
+        if append_type == 0:
+            operator = Map(prev_fields = self.get_prev_fields(), *args, **kwargs)
+            self.operators.append(operator)
+        else:
+            operator = Map(prev_fields = self.basic_headers, *args, **kwargs)
+            self.operators = [operator]+self.operators
 
         return self
 
@@ -405,10 +410,9 @@ class PacketStream(Query):
         return self
 
     def join(self, *args, **kwargs):
-        map_dict = dict(*args, **kwargs)
-        query = map_dict['query']
-        print "Join operation called for query ", self, self.keys, self.values
-        print "Joining with query", query, query.keys, query.values
+        operator = Join(*args, **kwargs)
+        self.operators.append(operator)
+        return self
 
 
 if __name__ == "__main__":

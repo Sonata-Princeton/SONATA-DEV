@@ -39,7 +39,7 @@ if __name__ == "__main__":
                     .distinct()
                     .map(keys = ("dIP",), values = ("1",))
                     .reduce(func = 'sum', values = ('count',))
-                    .filter(keys = ("count",), values=("2",), comp = "geq")
+                    #.filter(keys = ("count",), values=("2",), comp = "geq")
                     .map(keys=('dIP',))
              )
 
@@ -48,7 +48,13 @@ if __name__ == "__main__":
         )
 
     #print q2.expr, q2.keys, q2.values
-    q3 = q1.join(query=q2)
+    q2 = q2.join(query=q1)
+    #q2 = q1
+    print q2
+    q2.get_refinement_plan()
+    for ref_q in q2.refined_queries:
+        print ref_q
+
 
     #print q0
     #print q1
