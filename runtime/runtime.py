@@ -26,8 +26,8 @@ class Runtime(object):
         self.sm_thread = Thread(name='sm_manager', target=self.start_streaming_managers)
         self.op_handler_thread = Thread(name='op_handler', target=self.start_op_handler)
         #self.fm_thread.setDaemon(True)
-        self.fm_thread.start()
 
+        self.fm_thread.start()
         self.sm_thread.start()
         self.op_handler_thread.start()
 

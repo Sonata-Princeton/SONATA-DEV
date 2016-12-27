@@ -1,6 +1,6 @@
 #!/usr/binput/env python
 #  Author:
-#  Arpit Gupta (arpitg@cs.prinputceton.edu)
+#  Arpit Gupta (arpitg@cs.princeton.edu)
 
 import random
 
@@ -58,14 +58,14 @@ def get_plan_cost(plan, cost=0):
         return 0
     return cost
 
-def check_transit(prev, elem):
+def check_transit(prev, elem, costs):
     # TODO Make this more reasonable
     if (tuple([prev,elem])) in costs:
         return True
     else:
         return False
 
-def get_refinement_plan(costs):
+def get_refinement_plan(a, costs):
     root = 0
     level = 0
     levels = range(0,len(a)+1)
@@ -88,11 +88,9 @@ def get_refinement_plan(costs):
             explore_further[next_level] = {}
             for prev in explore_further[curr_level]:
                 for elem in a:
-                    is_transit_allowed = check_transit(prev, elem)
+                    is_transit_allowed = check_transit(prev, elem, costs)
                     if is_transit_allowed:
                         #print curr_level, prev, elem, is_transit_allowed
-
-
                         prev_plan = node_2_all_plans[curr_level][prev]
                         if tuple(prev_plan) in plan_2_cost:
                             prev_plan_cost = plan_2_cost[tuple(prev_plan)]
@@ -125,10 +123,40 @@ def get_refinement_plan(costs):
                         #print tuple(curr_plan)
                         plan_2_cost[tuple(curr_plan)] = curr_plan_cost
 
-    print "Final Plan", node_2_plan[32], plan_2_cost[tuple(node_2_plan[32])]
+    #print "Final Plan", node_2_plan[32], plan_2_cost[tuple(node_2_plan[32])]
     return (node_2_plan[32], plan_2_cost[tuple(node_2_plan[32])])
 
-#print node_2_plan
-a = range(0,36,8)
-costs = generate_costs(a)
-final_plan, cost = get_refinement_plan(costs)
+if __name__ == '__main__':
+    #print node_2_plan
+    a = range(0,36,8)
+    query_2_cost = {}
+    for query_id in range(3):
+        query_id += 1
+        if query_id not in query_2_cost:
+            query_2_cost[query_id] = {}
+        plans = range(1,4)
+        for p1 in plans:
+            for p2 in plans:
+                if p1 != p2:
+                    #print query_id, p1,p2
+                    query_2_cost[query_id][(p1,p2)] = generate_costs(a)
+
+    for query_id in query_2_cost:
+        costs = {}
+        for plan_id in query_2_cost[query_id]:
+            for transit in query_2_cost[query_id][plan_id]:
+                costs[(plan_id, transit)] = query_2_cost[query_id][plan_id][transit]
+        print costs
+
+        #costs = query_2_cost[query_id][1]
+        final_plan, cost = get_refinement_plan(a, costs)
+        print query_id, final_plan, cost
+        break
+
+
+
+    #print query_2_cost
+
+
+    #costs = generate_costs(a)
+    #final_plan, cost = get_refinement_plan(costs)

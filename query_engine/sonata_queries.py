@@ -283,7 +283,6 @@ class PacketStream(Query):
                     if operator.name == 'Reduce':
                         p4_query = p4_query.reduce(keys = operator.prev_fields)
                     elif operator.name == 'Map':
-
                         p4_query = p4_query.map(keys = operator.keys,
                                                 values = operator.values,
                                                 func = operator.func
