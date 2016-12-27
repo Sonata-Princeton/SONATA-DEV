@@ -65,7 +65,7 @@ def check_transit(prev, elem, costs):
     else:
         return False
 
-def get_refinement_plan(a, costs):
+def get_refinement_plan(a, costs, plans):
     root = 0
     level = 0
     levels = range(0,len(a)+1)
@@ -78,53 +78,69 @@ def get_refinement_plan(a, costs):
     for curr_level in levels:
 
         if curr_level == 0:
-            explore_further[curr_level] = {root:0}
+            explore_further[curr_level] = {(1,0):0}
             node_2_all_plans[curr_level] = {}
-            node_2_all_plans[curr_level][root] = [root]
-        #print curr_level, explore_further
+            node_2_all_plans[curr_level][(1,0)] = [(1,0)]
+
 
         next_level = curr_level+1
         if curr_level in explore_further:
+            #print curr_level, explore_further
             explore_further[next_level] = {}
-            for prev in explore_further[curr_level]:
-                for elem in a:
-                    is_transit_allowed = check_transit(prev, elem, costs)
+            for prev_plan_id, prev in explore_further[curr_level]:
+                for plan_id, elem in a:
+                    is_transit_allowed = False
+                    if ((prev_plan_id, plan_id), (prev,elem)) in costs:
+                        is_transit_allowed = True
+                    #print curr_level, ((prev_plan_id, plan_id), (prev,elem)), is_transit_allowed
                     if is_transit_allowed:
                         #print curr_level, prev, elem, is_transit_allowed
-                        prev_plan = node_2_all_plans[curr_level][prev]
+                        prev_plan = node_2_all_plans[curr_level][(prev_plan_id, prev)]
                         if tuple(prev_plan) in plan_2_cost:
                             prev_plan_cost = plan_2_cost[tuple(prev_plan)]
                         else:
                             prev_plan_cost = get_plan_cost(tuple(prev_plan))
 
-                        curr_plan = prev_plan+[elem]
-                        curr_plan_cost = costs[(prev,elem)]+prev_plan_cost
-                        if elem not in node_2_plan:
-                            node_2_plan[elem] = curr_plan
-                            explore_further[next_level][elem] = 0
+                        curr_plan = prev_plan+[(plan_id, elem)]
+                        curr_plan_cost = costs[((prev_plan_id, plan_id), (prev,elem))]+prev_plan_cost
+                        if (plan_id, elem) not in node_2_plan:
+                            node_2_plan[(plan_id, elem)] = curr_plan
+                            explore_further[next_level][(plan_id, elem)] = 0
                         else:
-                            curr_cost = plan_2_cost[tuple(node_2_plan[elem])]
+                            curr_cost = plan_2_cost[tuple(node_2_plan[(plan_id, elem)])]
                             new_cost = curr_plan_cost
 
-                            #print ("Current Plan:", node_2_plan[elem],
-                            #        " Cost:", plan_2_cost[tuple(node_2_plan[elem])])
+                            #print "Current Plan:", node_2_plan[(plan_id, elem)],\
+                            #        " Cost:", plan_2_cost[tuple(node_2_plan[(plan_id, elem)])]
                             #print ("New Plan:", curr_plan, " Cost:", curr_plan_cost)
                             if new_cost < curr_cost:
                                 #print "Updating Plan for Node", elem
-                                node_2_plan[elem] = curr_plan
-                                explore_further[next_level][elem] = 0
+                                node_2_plan[(plan_id, elem)] = curr_plan
+                                explore_further[next_level][(plan_id, elem)] = 0
 
                         if next_level not in node_2_all_plans:
                             node_2_all_plans[next_level] = {}
-                        node_2_all_plans[next_level][elem] = curr_plan
+                        node_2_all_plans[next_level][(plan_id, elem)] = curr_plan
 
 
                         #print curr_plan, curr_plan_cost, node_2_plan
                         #print tuple(curr_plan)
                         plan_2_cost[tuple(curr_plan)] = curr_plan_cost
+    min_cost = 1000000
+    final_plan = []
+    for (plan, elem) in node_2_plan:
+        if elem == 32:
+            candidate_plan = node_2_plan[(plan, elem)]
+            cost = plan_2_cost[tuple(candidate_plan)]
+            print "Final Candidate Plans", candidate_plan, cost
+            if cost < min_cost:
+                final_plan = candidate_plan
+                min_cost = cost
 
-    #print "Final Plan", node_2_plan[32], plan_2_cost[tuple(node_2_plan[32])]
-    return (node_2_plan[32], plan_2_cost[tuple(node_2_plan[32])])
+    print "Final plan", final_plan, " cost", min_cost
+
+
+    return (final_plan,min_cost)
 
 if __name__ == '__main__':
     #print node_2_plan
@@ -137,23 +153,24 @@ if __name__ == '__main__':
         plans = range(1,4)
         for p1 in plans:
             for p2 in plans:
-                if p1 != p2:
-                    #print query_id, p1,p2
-                    query_2_cost[query_id][(p1,p2)] = generate_costs(a)
+                query_2_cost[query_id][(p1,p2)] = generate_costs(a)
 
     for query_id in query_2_cost:
         costs = {}
+        possibility_space = []
         for plan_id in query_2_cost[query_id]:
             for transit in query_2_cost[query_id][plan_id]:
                 costs[(plan_id, transit)] = query_2_cost[query_id][plan_id][transit]
-        print costs
+
+        for plan_id in plans:
+            for elem in a:
+                possibility_space.append((plan_id, elem))
 
         #costs = query_2_cost[query_id][1]
-        final_plan, cost = get_refinement_plan(a, costs)
+        #print query_id, possibility_space, costs
+        final_plan, cost = get_refinement_plan(possibility_space, costs, plans)
         print query_id, final_plan, cost
-        break
-
-
+        #break
 
     #print query_2_cost
 
