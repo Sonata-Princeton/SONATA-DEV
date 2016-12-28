@@ -3,6 +3,8 @@
 #  Arpit Gupta (arpitg@cs.princeton.edu)
 
 import random
+import time
+import sys
 
 def swap(input, ind1, ind2):
     tmp = input[ind2]
@@ -65,11 +67,11 @@ def check_transit(prev, elem, costs):
     else:
         return False
 
-memoized_plans = {}
-ref_levels = range(0,36,8)
 
-def get_refinement_plan(final_level, a, costs, plans, subtree):
-    #print "Function called for", final_level, subtree
+
+
+def get_refinement_plan(final_level, a, costs, plans, query_id, subtree, query_2_final_plan, ref_levels):
+    #print "Function called for", query_id, final_level, subtree
     root = 0
     level = 0
     levels = range(0,len(a)+1)
@@ -123,7 +125,7 @@ def get_refinement_plan(final_level, a, costs, plans, subtree):
                                             else:
                                                 ps.append((pid, e))
 
-                                    fp, cst = get_refinement_plan(fl, ps, c, query_2_plans[qid], st)
+                                    fp, cst = get_refinement_plan(fl, ps, c, query_2_plans[qid], qid, st, query_2_final_plan, ref_levels)
                                     memoized_plans[qid][elem] = (fp, cst)
                                 else:
                                     (fp, cst) = memoized_plans[qid][elem]
@@ -145,10 +147,9 @@ def get_refinement_plan(final_level, a, costs, plans, subtree):
                         else:
                             curr_cost = plan_2_cost[tuple(node_2_plan[(plan_id, elem)])]
                             new_cost = curr_plan_cost
-
-                            #print "Current Plan:", node_2_plan[(plan_id, elem)],\
-                            #        " Cost:", plan_2_cost[tuple(node_2_plan[(plan_id, elem)])]
-                            #print ("New Plan:", curr_plan, " Cost:", curr_plan_cost)
+                            #print "For Query", query_id, final_level
+                            #print "Current Plan:", node_2_plan[(plan_id, elem)]," Cost:", plan_2_cost[tuple(node_2_plan[(plan_id, elem)])]
+                            #print "New Plan:", curr_plan, " Cost:", curr_plan_cost
                             if new_cost < curr_cost:
                                 #print "Updating Plan for Node", elem
                                 node_2_plan[(plan_id, elem)] = curr_plan
@@ -163,62 +164,100 @@ def get_refinement_plan(final_level, a, costs, plans, subtree):
                         #print tuple(curr_plan)
                         plan_2_cost[tuple(curr_plan)] = curr_plan_cost
     #print node_2_plan
-    min_cost = 1000000
+    min_cost = sys.maxint
     final_plan = []
     for (plan, elem) in node_2_plan:
         #print final_level, elem, elem == final_level
         if elem == final_level:
             candidate_plan = node_2_plan[(plan, elem)]
             cost = plan_2_cost[tuple(candidate_plan)]
-            print "Final Candidate Plans", candidate_plan, cost
+            #print "Final Candidate Plans", candidate_plan, cost
             if cost < min_cost:
                 final_plan = candidate_plan
                 min_cost = cost
 
-    print "Final plan", final_plan, " cost", min_cost
+    #print "Final plan", final_plan, " cost", min_cost
+    if query_id not in query_2_final_plan:
+        query_2_final_plan[query_id] = {}
+    query_2_final_plan[query_id][final_level] = (final_plan, min_cost)
 
-
+    print query_id, final_level, final_plan, min_cost
     return (final_plan,min_cost)
+
+
+def generate_query_tree(depth, all_queries, qid = 1):
+    query_tree = {}
+
+    if depth > 0:
+        qid_l = 2*qid
+        all_queries.append(qid_l)
+        query_tree[qid_l] = generate_query_tree(depth-1, all_queries, qid_l)
+
+        qid_r = 2*qid+1
+        all_queries.append(qid_r)
+        query_tree[qid_r] = generate_query_tree(depth-1, all_queries, qid_r)
+
+    #print depth, qid, query_tree
+    return query_tree
+
+
+
 
 if __name__ == '__main__':
     #print node_2_plan
-    a = range(0,36,8)
+    memoized_plans = {}
+    # Tuning parameters
+    query_tree_depth = 1
+    max_plans = 3
+    ref_levels = range(0,101,50)
+
+
+    a = ref_levels
     plans = range(1,4)
-    query_tree = {1:{2:{}}}
+
+
+    query_tree = {}
+    all_queries = [1]
+
+    query_tree[1] = generate_query_tree(query_tree_depth, all_queries)
+    all_queries.sort()
+    #print all_queries
+    print query_tree
+
+    #query_tree = {1:{2:{}, 3:{}}}
     query_2_cost = {}
     query_2_plans = {}
-    for query_id in range(3):
-        query_id += 1
-        query_2_plans[query_id] = plans
+    query_2_final_plan = {}
+    for query_id in all_queries:
         if query_id not in query_2_cost:
             query_2_cost[query_id] = {}
+        n_plans = random.randint(1, max_plans)
+        query_2_plans[query_id] = range(1,n_plans+1)
 
-        for p1 in plans:
-            for p2 in plans:
+        for p1 in range(1,n_plans+1):
+            for p2 in range(1,n_plans+1):
                 query_2_cost[query_id][(p1,p2)] = generate_costs(a)
 
+    print query_2_plans
+    #print query_2_cost.keys()
+    start = time.time()
     for query_id in query_tree:
         costs = {}
         subtree = query_tree[query_id]
         possibility_space = []
-        final_level = 32
+        final_level = a[-1]
         for plan_id in query_2_cost[query_id]:
             for transit in query_2_cost[query_id][plan_id]:
                 costs[(plan_id, transit)] = query_2_cost[query_id][plan_id][transit]
 
-        for plan_id in plans:
+        for plan_id in query_2_plans[query_id]:
             for elem in a:
                 if elem > final_level:
                     break
                 else:
                     possibility_space.append((plan_id, elem))
 
-        final_plan, cost = get_refinement_plan(final_level, possibility_space, costs, plans, subtree)
-        print query_id, final_plan, cost
+        final_plan, cost = get_refinement_plan(final_level, possibility_space, costs, query_2_plans[query_id], query_id, subtree, query_2_final_plan, ref_levels)
+
         break
-
-    #print query_2_cost
-
-
-    #costs = generate_costs(a)
-    #final_plan, cost = get_refinement_plan(costs)
+    print "Took", time.time()-start, "seconds"
