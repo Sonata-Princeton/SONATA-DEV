@@ -80,13 +80,13 @@ def generate_query_tree(depth, all_queries, qid=1):
     return query_tree
 
 
-def get_possibility_space(final_level, ref_levels, plans):
+def get_possibility_space(start_level, final_level, ref_levels, plans):
     possibility_space = []
     for plan_id in plans:
         for elem in ref_levels:
             if elem > final_level:
                 break
-            else:
+            elif elem >= start_level:
                 possibility_space.append((plan_id, elem))
     return possibility_space
 
@@ -99,7 +99,7 @@ def check_transit(prev, elem, costs):
         return False
 
 
-def get_refinement_plan(final_level, query_id, ref_levels, query_2_plans, query_tree, query_2_cost,
+def get_refinement_plan(start_level, final_level, query_id, ref_levels, query_2_plans, query_tree, query_2_cost,
                         query_2_final_plan, memoized_plans):
     # print "Function called for", query_id, final_level, subtree
     root = 0
@@ -109,7 +109,7 @@ def get_refinement_plan(final_level, query_id, ref_levels, query_2_plans, query_
     plan_2_cost = {}
     explore_further = {}
     # Enumerate the possibility space given the final level
-    possibility_space = get_possibility_space(final_level, ref_levels, query_2_plans[query_id])
+    possibility_space = get_possibility_space(start_level, final_level, ref_levels, query_2_plans[query_id])
     subtree = query_tree[query_id]
     costs = query_2_cost[query_id]
     levels = range(root, len(possibility_space) + 1)
@@ -137,20 +137,21 @@ def get_refinement_plan(final_level, query_id, ref_levels, query_2_plans, query_
                         if len(subtree.keys()) > 0:
                             # Explore the refinement plan for each child tree of this query
                             for qid in subtree:
-                                if qid not in memoized_plans:
-                                    memoized_plans[qid] = {}
-                                if elem not in memoized_plans[qid]:
-                                    fp, cst = get_refinement_plan(elem, qid, ref_levels, query_2_plans,
-                                                                  subtree, query_2_cost, query_2_final_plan,
-                                                                  memoized_plans)
-                                    memoized_plans[qid][elem] = (fp, cst)
-                                else:
-                                    # We don't need to explore again the subtree for same refinement level
-                                    (fp, cst) = memoized_plans[qid][elem]
+                                if len(query_2_plans[qid]) > 0:
+                                    if qid not in memoized_plans:
+                                        memoized_plans[qid] = {}
+                                    if elem not in memoized_plans[qid]:
+                                        fp, cst = get_refinement_plan(prev, elem, qid, ref_levels, query_2_plans,
+                                                                      subtree, query_2_cost, query_2_final_plan,
+                                                                      memoized_plans)
+                                        memoized_plans[qid][(prev, elem)] = (fp, cst)
+                                    else:
+                                        # We don't need to explore again the subtree for same refinement level
+                                        (fp, cst) = memoized_plans[qid][(prev, elem)]
 
-                                # Add the cost of refining the subtree to this refinement plan's cost
-                                candidate_plan_cost += cst
-                                # print qid, fp, cst
+                                    # Add the cost of refining the subtree to this refinement plan's cost
+                                    candidate_plan_cost += cst
+                                    # print qid, fp, cst
 
                         prev_plan = node_2_all_plans[curr_level][(prev_plan_id, prev)]
                         if tuple(prev_plan) in plan_2_cost:
@@ -207,11 +208,11 @@ def get_refinement_plan(final_level, query_id, ref_levels, query_2_plans, query_
 
 if __name__ == '__main__':
     # print node_2_plan
-    memoized_plans = {}
+    memorized_plans = {}
     # Tuning parameters
-    query_tree_depth = 2
-    max_plans = 3
-    ref_levels = range(0, 33, 8)
+    query_tree_depth = 1
+    max_plans = 1
+    ref_levels = range(0, 33, 4)
 
     a = ref_levels
     plans = range(1, 4)
@@ -251,8 +252,8 @@ if __name__ == '__main__':
 
     for query_id in query_tree:
         # We start with the finest refinement level, as expressed in the original query
-        final_plan, cost = get_refinement_plan(ref_levels[-1], query_id, ref_levels, query_2_plans, query_tree,
-                                               query_2_cost, query_2_final_plan, memoized_plans)
+        final_plan, cost = get_refinement_plan(ref_levels[1], ref_levels[-1], query_id, ref_levels, query_2_plans, query_tree,
+                                               query_2_cost, query_2_final_plan, memorized_plans)
 
     print query_2_final_plan
     print "Took", time.time() - start, "seconds"
