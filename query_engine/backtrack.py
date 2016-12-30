@@ -86,7 +86,7 @@ def get_possibility_space(start_level, final_level, ref_levels, plans):
         for elem in ref_levels:
             if elem > final_level:
                 break
-            elif elem >= start_level:
+            elif elem > start_level:
                 possibility_space.append((plan_id, elem))
     return possibility_space
 
@@ -212,7 +212,7 @@ if __name__ == '__main__':
     # Tuning parameters
     query_tree_depth = 1
     max_plans = 1
-    ref_levels = range(0, 33, 4)
+    ref_levels = range(0, 33, 8)
 
     a = ref_levels
     plans = range(1, 4)
@@ -222,9 +222,10 @@ if __name__ == '__main__':
 
     # Binary tree representing query tree
     query_tree[1] = generate_query_tree(query_tree_depth, all_queries)
+
     all_queries.sort()
     # print all_queries
-    #print query_tree
+    print query_tree
 
     # query_tree = {1:{2:{}, 3:{}}}
     query_2_cost = {}
@@ -236,6 +237,9 @@ if __name__ == '__main__':
         # randomly select number of plans, i.e. number of paths in the partition tree
         n_plans = random.randint(1, max_plans)
         query_2_plans[query_id] = range(1, n_plans + 1)
+        if query_id == 3:
+            n_plans = 0
+            query_2_plans[query_id] = []
 
         for p1 in range(1, n_plans + 1):
             for p2 in range(1, n_plans + 1):
@@ -252,7 +256,7 @@ if __name__ == '__main__':
 
     for query_id in query_tree:
         # We start with the finest refinement level, as expressed in the original query
-        final_plan, cost = get_refinement_plan(ref_levels[1], ref_levels[-1], query_id, ref_levels, query_2_plans, query_tree,
+        final_plan, cost = get_refinement_plan(ref_levels[0], ref_levels[-1], query_id, ref_levels, query_2_plans, query_tree,
                                                query_2_cost, query_2_final_plan, memorized_plans)
 
     print query_2_final_plan

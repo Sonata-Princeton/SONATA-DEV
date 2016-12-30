@@ -144,8 +144,6 @@ class PacketStream(Query):
         # type: (object, object, object, object) -> object
         # super(PacketStream, self).__init__(*args, **kwargs)
 
-
-
         self.qid = id
         self.name = 'PacketStream'
 
@@ -176,6 +174,10 @@ class PacketStream(Query):
         self.query_2_plans = {}
         self.all_queries = {}
         self.query_2_cost = {}
+        self.query_2_final_plan = {}
+        self.query_2_refinement_levels = {}
+        self.query_in_mapping = {}
+        self.query_2_refinement_levels = {}
         self.all_queries[self.qid] = self
 
         # Object representing the output of the query
@@ -449,8 +451,8 @@ class PacketStream(Query):
     def join(self, *args, **kwargs):
         map_dict = dict(*args, **kwargs)
         right_query = map_dict['query']
-        max_qid = max([self.qid, right_query.qid])
-        new_query = PacketStream(max_qid + 1)
+        new_qid = map_dict['new_qid']
+        new_query = PacketStream(new_qid)
         new_query.left_child = self
         new_query.right_child = right_query
         return new_query
@@ -470,7 +472,6 @@ class PacketStream(Query):
 
     def get_partition_plans(self):
         query_2_plans = {}
-
         for query_id in self.all_queries:
             query = self.all_queries[query_id]
             # We will count how many operators (that matter) can either be executed in DP or SP
@@ -483,15 +484,12 @@ class PacketStream(Query):
                 # And off course we care about whether join operator is executed in DP or SP
                 n_operators += 1
             # TODO: apply constraints to further make the number of possible plans realistic
-            print query_id, n_operators
             plans = range(1, int(math.pow(2,n_operators)))
             query_2_plans[query_id] = plans
         self.query_2_plans = query_2_plans
         return query_2_plans
 
-    def get_cost(self):
-        # TODO: get rid of this hardcoding
-        ref_levels = range(0, 33, 8)
+    def get_cost(self, ref_levels):
         query_2_cost = {}
         for query_id in self.all_queries:
             query_2_cost[query_id] = {}
@@ -499,35 +497,176 @@ class PacketStream(Query):
             for p1 in plans:
                 for p2 in plans:
                     # For each path combination for each query we generate cost using the cost function above.
+                    # TODO: replace this with cost model based on training data
                     tmp = bt.generate_costs(ref_levels)
                     for transit in tmp:
                         query_2_cost[query_id][(p1, p2), transit] = tmp[transit]
         self.query_2_cost = query_2_cost
         return query_2_cost
 
-    def get_refinement_plan(self):
-        # TODO: get rid of this hardcoding
-        ref_levels = range(0, 33, 8)
+    def get_refinement_plan(self, ref_levels):
         query_2_final_plan = {}
-        memoized_plans = {}
+        memorized_plans = {}
         for query_id in self.query_tree:
             # We start with the finest refinement level, as expressed in the original query
-            bt.get_refinement_plan(ref_levels[-1], query_id, ref_levels, self.query_2_plans, self.query_tree,
-                                   self.query_2_cost, query_2_final_plan, memoized_plans)
-        print query_2_final_plan
+            bt.get_refinement_plan(ref_levels[0], ref_levels[-1], query_id, ref_levels, self.query_2_plans, self.query_tree,
+                                   self.query_2_cost, query_2_final_plan, memorized_plans)
 
+        self.query_2_final_plan = query_2_final_plan
+        return query_2_final_plan
+
+    def generate_query_mapping(self, fp, query_2_final_plan, query_in_mapping = {}, query_input = [], is_left = False):
+        query_id = self.qid
+        #print "Exploring", query_id, "input", query_input
+        if query_id in query_2_final_plan:
+            ref_plan, cost = query_2_final_plan[query_id][fp]
+            prev_ref_level = 0
+            last_level = 0
+
+            ref_plans_to_explore = ref_plan[1:]
+            if is_left:
+                # We will join the left child query with the parent query for their finest level of refinement, thus
+                # explore one less refinement level for it
+                if len(ref_plans_to_explore) > 1:
+                    ref_plans_to_explore = ref_plans_to_explore[:-1]
+                else:
+                    ref_plans_to_explore = []
+
+            if len(ref_plans_to_explore) > 0:
+                # first refinement level for child queries might also take input from the output of parent query for
+                # their previous refinement level
+                init_ref_level = ref_plans_to_explore[0][1]
+                if (query_id, init_ref_level) not in query_in_mapping:
+                    query_in_mapping[(query_id, init_ref_level)] = []
+
+                for elem in query_input:
+                    #print "Adding", elem, "for", query_id, init_ref_level
+                    # We only expect a single input in this case, maybe change the tuple to elem later
+                    query_in_mapping[(query_id, init_ref_level)].append(elem)
+
+                for part_plan, ref_level in ref_plans_to_explore:
+                    query_input = []
+                    #print "Generating Query Mapping for", query_id, ref_level
+                    if (query_id, ref_level) not in query_in_mapping:
+                        query_in_mapping[(query_id, ref_level)] = []
+
+                    if prev_ref_level > 0:
+                        query_input.append((query_id, prev_ref_level))
+                        query_in_mapping[(query_id, ref_level)].append((query_id, prev_ref_level))
+
+                    if self.left_child is not None:
+                        # treat left child differently...they are special kids
+                        tmp = self.left_child.generate_query_mapping(ref_level, query_2_final_plan, query_in_mapping,
+                                                                     query_input = query_input, is_left = True)
+                        if tmp != ():
+                            query_in_mapping[(query_id, ref_level)].append(tmp)
+
+                        tmp = self.right_child.generate_query_mapping(ref_level, query_2_final_plan, query_in_mapping,
+                                                                      query_input = query_input)
+                        if tmp != ():
+                            query_in_mapping[(query_id, ref_level)].append(tmp)
+
+                    #print "Mapping for", query_id, ref_level, "is", query_in_mapping[(query_id, ref_level)]
+                    # Update these variables for next iteration
+                    prev_ref_level = ref_level
+                    last_level = ref_level
+
+        self.query_in_mapping = query_in_mapping
+
+        if last_level > 0:
+            return tuple([query_id, last_level])
+        else:
+            return ()
+
+    def get_query_2_refinement_levels(self, fp, query_2_final_plan, query_2_refinement_levels = {}):
+        for queryId in self.query_tree:
+            if queryId not in query_2_refinement_levels:
+                query_2_refinement_levels[queryId] = {}
+
+            if queryId in query_2_final_plan:
+                ref_plan, cost = query_2_final_plan[queryId][fp]
+                for part_plan, ref_level in ref_plan[1:]:
+                    query_2_refinement_levels[queryId][ref_level] = part_plan
+
+                if self.left_child is not None:
+                    self.left_child.get_query_2_refinement_levels(ref_level, query_2_final_plan,
+                                                                  query_2_refinement_levels)
+                    self.right_child.get_query_2_refinement_levels(ref_level, query_2_final_plan,
+                                                                   query_2_refinement_levels)
+        self.query_2_refinement_levels = query_2_refinement_levels
+        return query_2_refinement_levels
+
+    def generate_refined_queries(self, fp, query_2_final_plan, query_2_refinement_levels = {}, refined_queries = {}):
+        reduction_key = 'dIP'
+        for queryId in self.query_tree:
+            if queryId not in query_2_refinement_levels:
+                query_2_refinement_levels[queryId] = []
+                refined_queries[queryId] = {}
+
+            if queryId in query_2_final_plan:
+                ref_plan, cost = query_2_final_plan[queryId][fp]
+                for part_plan, ref_level in ref_plan[1:]:
+                    query_2_refinement_levels[queryId].append((part_plan, ref_level))
+                    print "Process", queryId, " with partition plan", part_plan, " and refinement plan", ref_level
+                    original_query = self.all_queries[queryId]
+                    concise_query = original_query.get_concise_query()
+                    refined_query = PacketStream()
+                    refined_query.map(append_type=1, keys=(reduction_key,), func=("mask", ref_level))
+
+                    for operator in concise_query.operators:
+                        # print operator
+                        if operator.name == 'Filter':
+                            refined_query.filter(keys=operator.keys,
+                                                 values=operator.values,
+                                                 comp=operator.comp)
+                        elif operator.name == "Map":
+                            refined_query.map(keys=operator.keys, values=operator.values)
+                        elif operator.name == "Reduce":
+                            refined_query.reduce(values=operator.values,
+                                                 func=operator.func)
+
+                        elif operator.name == "Distinct":
+                            refined_query.distinct()
+
+                        elif operator.name == "Join":
+                            operator.query.get_refinement_plan()
+                            refined_query.join(query=operator.query.refined_queries[-1])
+
+                    refined_query.isInput = False
+                    refined_queries[queryId][ref_level] = refined_query
+
+                    if self.left_child is not None:
+                        self.left_child.generate_refined_queries(ref_level, query_2_final_plan,
+                                                                 query_2_refinement_levels, refined_queries)
+                        self.right_child.generate_refined_queries(ref_level, query_2_final_plan,
+                                                                  query_2_refinement_levels, refined_queries)
+
+        self.query_2_refinement_levels = query_2_refinement_levels
+
+        return query_2_refinement_levels
 
 
 if __name__ == "__main__":
-
+    # Basic test setup for IR and QP implementations
     q0 = PacketStream(0)
     q1 = PacketStream(1).map(keys=("dIP",), func=("mask", 16)).distinct()
-    q2 = (PacketStream(2).map(keys=('dIP',), values=tuple([x for x in q0.basic_headers])))
-    q3 = q1.join(query=q2).map(keys=("sIP",), func=("mask", 16)).distinct()
+    q2 = (PacketStream(2).map(keys=('dIP',), values=tuple([x for x in q0.basic_headers])).distinct())
+    q3 = q2.join(new_qid=3, query=q1).map(keys=("dIP",), func=("mask", 16)).distinct()
 
-    print q3.get_query_tree()
-    print q3.get_all_queries()
-    print q3.get_partition_plans()
-    q3.get_cost()
-    q3.get_refinement_plan()
-    # print q3
+    q3.get_query_tree()
+    q3.get_all_queries()
+    q3.get_partition_plans()
+
+    # TODO: get rid of this hardcoding
+    red_key = 'dIP'
+    ref_levels = range(0, 33, 4)
+    finest_plan = ref_levels[-1]
+
+    q3.get_cost(ref_levels)
+    q3.get_refinement_plan(ref_levels)
+    print q3.query_2_final_plan
+    q3.generate_query_mapping(finest_plan, q3.query_2_final_plan)
+    print q3.query_in_mapping
+    print q3.get_query_2_refinement_levels(finest_plan, q3.query_2_final_plan)
+    print q3.generate_refined_queries(finest_plan, q3.query_2_final_plan)
+    #print q3.query_2_refinement_levels
