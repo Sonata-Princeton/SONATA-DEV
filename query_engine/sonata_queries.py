@@ -159,7 +159,7 @@ class PacketStream(Query):
         self.left_child = None
         self.right_child = None
 
-        self.refined_queries = []
+        self.refined_queries = {}
         self.partition_plans = []
         self.partition_plan_final = None
         self.dp_query = None
@@ -259,7 +259,7 @@ class PacketStream(Query):
 
         concise_query = PacketStream()
         concise_query.basic_headers = unique_keys.keys()
-        print "Basic headers for concise query", concise_query.basic_headers
+        #print "Basic headers for concise query", concise_query.basic_headers
         for operator in self.operators:
             # print operator
             if operator.name == 'Filter':
@@ -484,7 +484,12 @@ class PacketStream(Query):
                 # And off course we care about whether join operator is executed in DP or SP
                 n_operators += 1
             # TODO: apply constraints to further make the number of possible plans realistic
-            plans = range(1, int(math.pow(2,n_operators)))
+            if n_operators > 1:
+                plans = range(int(math.pow(2, n_operators)-1))
+            elif n_operators == 1:
+                plans = range(2)
+            else:
+                plans = []
             query_2_plans[query_id] = plans
         self.query_2_plans = query_2_plans
         return query_2_plans
@@ -540,22 +545,23 @@ class PacketStream(Query):
                     query_in_mapping[(query_id, init_ref_level)] = []
 
                 for elem in query_input:
-                    #print "Adding", elem, "for", query_id, init_ref_level
+                    print "Adding", elem, "for", query_id, init_ref_level, query_input
                     # We only expect a single input in this case, maybe change the tuple to elem later
                     query_in_mapping[(query_id, init_ref_level)].append(elem)
 
                 for part_plan, ref_level in ref_plans_to_explore:
                     query_input = []
-                    #print "Generating Query Mapping for", query_id, ref_level
+                    print "Generating Query Mapping for", query_id, ref_level, query_input
                     if (query_id, ref_level) not in query_in_mapping:
                         query_in_mapping[(query_id, ref_level)] = []
 
                     if prev_ref_level > 0:
                         query_input.append((query_id, prev_ref_level))
-                        query_in_mapping[(query_id, ref_level)].append((query_id, prev_ref_level))
+                        if self.left_child is None:
+                            query_in_mapping[(query_id, ref_level)].append((query_id, prev_ref_level))
 
                     if self.left_child is not None:
-                        # treat left child differently...they are special kids
+                        # treat left child differently...they are special kids ;)
                         tmp = self.left_child.generate_query_mapping(ref_level, query_2_final_plan, query_in_mapping,
                                                                      query_input = query_input, is_left = True)
                         if tmp != ():
@@ -566,10 +572,11 @@ class PacketStream(Query):
                         if tmp != ():
                             query_in_mapping[(query_id, ref_level)].append(tmp)
 
-                    #print "Mapping for", query_id, ref_level, "is", query_in_mapping[(query_id, ref_level)]
+                    print "Mapping for", query_id, ref_level, "is", query_in_mapping[(query_id, ref_level)], query_input
                     # Update these variables for next iteration
                     prev_ref_level = ref_level
                     last_level = ref_level
+
 
         self.query_in_mapping = query_in_mapping
 
@@ -588,62 +595,136 @@ class PacketStream(Query):
                 for part_plan, ref_level in ref_plan[1:]:
                     query_2_refinement_levels[queryId][ref_level] = part_plan
 
-                if self.left_child is not None:
-                    self.left_child.get_query_2_refinement_levels(ref_level, query_2_final_plan,
-                                                                  query_2_refinement_levels)
-                    self.right_child.get_query_2_refinement_levels(ref_level, query_2_final_plan,
-                                                                   query_2_refinement_levels)
+                    if self.left_child is not None:
+                        self.left_child.get_query_2_refinement_levels(ref_level, query_2_final_plan,
+                                                                      query_2_refinement_levels)
+                        self.right_child.get_query_2_refinement_levels(ref_level, query_2_final_plan,
+                                                                       query_2_refinement_levels)
+        #print query_2_refinement_levels
         self.query_2_refinement_levels = query_2_refinement_levels
         return query_2_refinement_levels
 
-    def generate_refined_queries(self, fp, query_2_final_plan, query_2_refinement_levels = {}, refined_queries = {}):
-        reduction_key = 'dIP'
-        for queryId in self.query_tree:
-            if queryId not in query_2_refinement_levels:
-                query_2_refinement_levels[queryId] = []
-                refined_queries[queryId] = {}
+    def generate_refined_queries(self, red_key):
+        """
+        :param red_key:
+        :return: refined_queries:
+        """
+        refined_queries = {}
+        for queryId in self.query_2_refinement_levels:
+            refined_queries[queryId] = {}
+            q_ctr = 1
+            for ref_level in self.query_2_refinement_levels[queryId]:
+                #print "Adding refined query for", queryId, ref_level
+                original_query = self.all_queries[queryId]
+                new_qid = original_query.qid*10000+q_ctr
+                q_ctr += 1
+                concise_query = original_query.get_concise_query()
+                refined_query = PacketStream(new_qid)
+                #print self.query_in_mapping
+                if (queryId, ref_level) in self.query_in_mapping:
+                    for (_, mask) in self.query_in_mapping[(queryId, ref_level)]:
+                        refined_query.filter(append_type=1, keys=(red_key,), mask=(mask,))
 
-            if queryId in query_2_final_plan:
-                ref_plan, cost = query_2_final_plan[queryId][fp]
-                for part_plan, ref_level in ref_plan[1:]:
-                    query_2_refinement_levels[queryId].append((part_plan, ref_level))
-                    print "Process", queryId, " with partition plan", part_plan, " and refinement plan", ref_level
-                    original_query = self.all_queries[queryId]
-                    concise_query = original_query.get_concise_query()
-                    refined_query = PacketStream()
-                    refined_query.map(append_type=1, keys=(reduction_key,), func=("mask", ref_level))
-
-                    for operator in concise_query.operators:
-                        # print operator
+                refined_query.map(append_type=1, keys=(red_key,), func=("mask", ref_level))
+                if original_query.left_child is not None:
+                    concise_left = original_query.left_child.get_concise_query()
+                    # TODO: get rid of this redundancy
+                    for operator in concise_left.operators:
                         if operator.name == 'Filter':
-                            refined_query.filter(keys=operator.keys,
-                                                 values=operator.values,
-                                                 comp=operator.comp)
+                            refined_query.filter(keys=operator.keys, values=operator.values, comp=operator.comp)
                         elif operator.name == "Map":
                             refined_query.map(keys=operator.keys, values=operator.values)
                         elif operator.name == "Reduce":
-                            refined_query.reduce(values=operator.values,
-                                                 func=operator.func)
-
+                            refined_query.reduce(values=operator.values, func=operator.func)
                         elif operator.name == "Distinct":
                             refined_query.distinct()
 
-                        elif operator.name == "Join":
-                            operator.query.get_refinement_plan()
-                            refined_query.join(query=operator.query.refined_queries[-1])
+                for operator in concise_query.operators:
+                    if operator.name == 'Filter':
+                        refined_query.filter(keys=operator.keys, values=operator.values, comp=operator.comp)
+                    elif operator.name == "Map":
+                        refined_query.map(keys=operator.keys, values=operator.values)
+                    elif operator.name == "Reduce":
+                        refined_query.reduce(values=operator.values, func=operator.func)
+                    elif operator.name == "Distinct":
+                        refined_query.distinct()
 
-                    refined_query.isInput = False
-                    refined_queries[queryId][ref_level] = refined_query
+                refined_query.isInput = False
+                #print "Added refined query for", queryId, ref_level
+                refined_queries[queryId][ref_level] = refined_query
 
-                    if self.left_child is not None:
-                        self.left_child.generate_refined_queries(ref_level, query_2_final_plan,
-                                                                 query_2_refinement_levels, refined_queries)
-                        self.right_child.generate_refined_queries(ref_level, query_2_final_plan,
-                                                                  query_2_refinement_levels, refined_queries)
+        self.refined_queries = refined_queries
+        return refined_queries
 
-        self.query_2_refinement_levels = query_2_refinement_levels
+    def generate_partitioned_queries(self):
+        for (queryId, ref_level) in self.query_in_mapping.keys():
+            plan = self.query_2_refinement_levels[queryId][ref_level]
+            refined_query = self.refined_queries[queryId][ref_level]
+            p4_query = p4.QueryPipeline(refined_query.qid).map_init(keys=refined_query.basic_headers)
+            spark_query = (spark.PacketStream(refined_query.qid)
+                            .filter(prev_fields="p", expr="p[1] == '" + str(refined_query.qid) + "'")
+                            .map(prev_fields=("p",), keys=("p[2:]",)))
+            print queryId, ref_level, plan
+            # For now we will hardcode to push first reduce operator in the data plane
+            print "Original Refined Query before partitioning:", refined_query
+            in_pktstream = True
+            for operator in refined_query.operators:
+                if in_pktstream:
+                    print "Intermediate Operators:", refined_query.qid, operator.name
+                    if operator.name == 'Reduce':
+                        p4_query = p4_query.reduce(keys=operator.prev_fields)
+                        in_pktstream = False
 
-        return query_2_refinement_levels
+                        # duplicate implementation of reduce operators at the border
+                        prev_fields = get_original_wo_mask(operator.prev_fields)
+                        spark_query = spark_query.reduce(prev_fields=prev_fields,
+                                                         func=operator.func,
+                                                         values=operator.values)
+                    elif operator.name == 'Map':
+                        p4_query = p4_query.map(keys=operator.keys,
+                                                values=operator.values,
+                                                func=operator.func
+                                                )
+
+                    elif operator.name == 'Filter':
+                        p4_query = p4_query.filter(keys=operator.keys,
+                                                   values=operator.values,
+                                                   mask=operator.mask,
+                                                   comp=operator.comp)
+                    elif operator.name == 'Distinct':
+                        p4_query = p4_query.distinct(keys=operator.prev_fields)
+                        in_pktstream = False
+
+                        # duplicate implementation of reduce operators at the border
+                        prev_fields = get_original_wo_mask(operator.prev_fields)
+                        spark_query = spark_query.distinct(prev_fields=prev_fields)
+
+                else:
+                    if operator.name == "Map":
+                        prev_fields = get_original_wo_mask(operator.prev_fields)
+                        keys = get_original_wo_mask(operator.keys)
+                        spark_query = spark_query.map(prev_fields=prev_fields,
+                                                      keys=keys, values=operator.values)
+
+                    if operator.name == "Reduce":
+                        prev_fields = get_original_wo_mask(operator.prev_fields)
+                        spark_query = spark_query.reduce(prev_fields=prev_fields,
+                                                         func=operator.func,
+                                                         values=operator.values)
+
+                    if operator.name == "Distinct":
+                        prev_fields = get_original_wo_mask(operator.prev_fields)
+                        spark_query = spark_query.distinct(prev_fields=prev_fields)
+
+                    if operator.name == "Filter":
+                        prev_fields = get_original_wo_mask(operator.prev_fields)
+                        spark_query = spark_query.filter(prev_fields=prev_fields,
+                                                         expr=operator.expr)
+            print "After Partitioning, P4:", p4_query.expr
+            print "After Partitioning, Spark:", spark_query.expr
+            refined_query.dp_query = p4_query
+            refined_query.sp_query = spark_query
+        return 0
 
 
 if __name__ == "__main__":
@@ -658,7 +739,7 @@ if __name__ == "__main__":
     q3.get_partition_plans()
 
     # TODO: get rid of this hardcoding
-    red_key = 'dIP'
+    reduction_key = 'dIP'
     ref_levels = range(0, 33, 4)
     finest_plan = ref_levels[-1]
 
@@ -668,5 +749,8 @@ if __name__ == "__main__":
     q3.generate_query_mapping(finest_plan, q3.query_2_final_plan)
     print q3.query_in_mapping
     print q3.get_query_2_refinement_levels(finest_plan, q3.query_2_final_plan)
-    print q3.generate_refined_queries(finest_plan, q3.query_2_final_plan)
-    #print q3.query_2_refinement_levels
+    q3.generate_refined_queries(reduction_key)
+    q3.generate_partitioned_queries()
+    #print q3.refined_queries
+    #print q3.refined_queries
+    #print q3.query_2_plans
