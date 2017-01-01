@@ -62,7 +62,8 @@ class Register(object):
     def add_hash_metadata(self):
         self.hash_metadata = MetaData(name = self.hash_metadata_name)
 
-        #print self.keys
+        print self.keys
+        print "Operator: ", self.operator_name
         self.hash_metadata.fields = {}
         for fld in self.keys:
             if '/' in fld:
@@ -438,10 +439,12 @@ class Filter(object):
         map_dict = dict(**kwargs)
         self.filter_keys = map_dict['keys']
         self.filter_mask = ()
+        self.src = 0
+        self.filter_vals = ()
+        if 'src' in map_dict:
+            self.src = map_dict['src']
         if 'mask' in map_dict:
             self.filter_mask = map_dict['mask']
-        self.filter_vals = ()
-
         if 'values' in map_dict:
             self.filter_vals = map_dict['values']
 
@@ -487,7 +490,7 @@ class QueryPipeline(object):
         self.filter_rules = ''
         self.filter_control = ''
         self.filter_rules_id = 1
-        self.filter_id_2_name = {}
+        self.src_2_filter_operator = {}
         self.p4_init_commands = []
         self.expr = 'In'
         self.refinement_filter_id = 0
@@ -511,10 +514,13 @@ class QueryPipeline(object):
         return self
 
     def filter(self, *args, **kwargs):
-        print "Filter operator called ", self.expr, len(self.operators)
+        #print "Filter operator called ", self.expr, len(self.operators)
         map_dict = dict(**kwargs)
         filter_keys = map_dict['keys']
         filter_mask = ()
+        src = 0
+        if 'src' in map_dict:
+            src = map_dict['src']
         if 'mask' in map_dict:
             filter_mask = map_dict['mask']
         filter_vals = ()
@@ -530,9 +536,7 @@ class QueryPipeline(object):
         id = len(self.operators)
         new_args = (id, self.qid, self.filter_rules_id, filter_name)+args
         self.operators.append(Filter(*new_args, **kwargs))
-        self.filter_id_2_name[self.filter_rules_id] = self.operators[-1]
-
-        print self.filter_id_2_name, self.filter_rules_id
+        self.src_2_filter_operator[src] = self.operators[-1]
 
         return self
 
@@ -582,9 +586,7 @@ class QueryPipeline(object):
 
         return self
 
-
     def update_p4_src(self):
-
         for operator in self.operators:
             operator.compile_dp()
 

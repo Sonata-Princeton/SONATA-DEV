@@ -41,7 +41,7 @@ class Map(SparkQuery):
 
         if 'values' in map_dict:
             self.values = map_dict['values']
-        print(self.keys, self.values)
+        #print(self.keys, self.values)
         #self.fields = self.keys + self.values
 
     def compile(self):

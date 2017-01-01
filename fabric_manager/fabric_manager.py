@@ -29,7 +29,6 @@ class FabricManagerConfig(object):
         self.em_thread = Thread(name='emitter', target=self.start_emitter)
         self.reset_thread = Thread(name='reset_switch', target=self.reset_switch)
 
-
     def start(self):
         logging.info("fm_manager: Starting")
         self.fm_listener = Listener(self.fm_socket)
@@ -219,8 +218,10 @@ class FabricManagerConfig(object):
 
         out += 'control ingress {\n'
         out += '\tapply(init_meta_fm);\n'
+        ctr = 0
         for q in self.queries:
-            out += '\tif (meta_fm.f1 == '+str(q.qid-1)+'){\n'
+            out += '\tif (meta_fm.f1 == '+str(ctr)+'){\n'
+            ctr += 1
             out += q.filter_control
             out += '\t\tif (meta_fm.qid_'+str(q.qid)+' == 1){\n'
             out += '\t\t'+q.p4_ingress_start
@@ -230,6 +231,7 @@ class FabricManagerConfig(object):
             self.p4_init_commands.append('table_set_default copy_to_cpu_'+str(q.qid)+' do_copy_to_cpu_'+str(q.qid))
         out += '}\n\n'
 
+
         out += 'control egress {\n'
         out += '\tif (standard_metadata.instance_type != 1) {\n'
         out += '\t\tif(meta_fm.f1 < '+str(len(self.queries))+') {\n'
@@ -238,8 +240,10 @@ class FabricManagerConfig(object):
         out += '\telse if (standard_metadata.instance_type == 1) {\n'
         out += '\t\tif (meta_fm.is_drop == 1){\n'
         out += '\t\t\tapply(drop_packets);\n\t\t}\n\t\telse {\n'
+        ctr = 0
         for q in self.queries:
-            out += '\t\t\tif (meta_fm.f1 == '+str(q.qid-1)+'){\n'
+            out += '\t\t\tif (meta_fm.f1 == '+str(ctr)+'){\n'
+            ctr += 1
             out += '\t\t\t\tapply(encap_'+str(q.qid)+');\n\t\t\t}\n'
             self.p4_init_commands.append('table_set_default encap_'+str(q.qid)+' do_encap_'+str(q.qid))
         out += '\t\t}\n\n'

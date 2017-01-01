@@ -7,7 +7,7 @@ import coloredlogs
 
 coloredlogs.install(level='ERROR',)
 
-#from runtime import *
+from runtime import *
 from query_engine.sonata_queries import *
 
 batch_interval = 1
@@ -33,33 +33,34 @@ if __name__ == "__main__":
 
     q0 = PacketStream()
 
-    q1 = (PacketStream()
+    q1 = (PacketStream(1)
                     .filter(keys = ("proto",), values = ('6',), comp = "eq")
                     .map(keys = ("dIP", "sIP"))
                     .distinct()
                     .map(keys = ("dIP",), values = ("1",))
-                    .reduce(func = 'sum', values = ('count',))
+                    .reduce(keys=("dIP",), func = 'sum', values = ('count',))
                     #.filter(keys = ("count",), values=("2",), comp = "geq")
                     .map(keys=('dIP',))
              )
 
-    q2 = (PacketStream()
+    q2 = (PacketStream(2)
           .map(keys=('dIP',), values=tuple([x for x in q0.basic_headers]))
         )
 
     #print q2.expr, q2.keys, q2.values
-    q2 = q2.join(query=q1)
-    #q2 = q1
-    print q2
-    q2.get_refinement_plan()
-    for ref_q in q2.refined_queries:
-        print ref_q
+    q3 = (q2.join(new_qid=3, query=q1)
+          .map(keys=("dIP",), values = ("1",))
+          .reduce(keys=("dIP",), func = 'sum', values = ('count',))
+          .map(keys=('dIP',))
+          )
 
 
+    queries = []
+    queries.append(q3)
     #print q0
     #print q1
     #print q2
     #print q3
 
-    #runtime = Runtime(conf, queries)
+    runtime = Runtime(conf, queries)
     #runtime.send_to_sm()

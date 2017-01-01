@@ -18,8 +18,8 @@ class Runtime(object):
     def __init__(self, conf, queries):
         self.conf = conf
         self.queries = queries
-        self.dp_queries = []
-        self.sp_queries = []
+        self.dp_queries = {}
+        self.sp_queries = {}
 
         self.fm_thread = Thread(name='fm_manager', target=self.start_fabric_managers)
 
@@ -33,30 +33,31 @@ class Runtime(object):
 
         time.sleep(1)
 
-        self.qid = 1
         for query in self.queries:
             logging.info("runtime: going thru queries")
-            query.get_refinement_plan()
-            for refined_query in query.refined_queries:
-                refined_query.qid  = self.qid
-                # TODO: Get rid of this hardcoding
-                if self.qid == 1:
-                    refined_query.get_partitioning_plan(4)
-                else:
-                    refined_query.get_partitioning_plan(5)
 
-                refined_query.partition_plan_final = refined_query.partition_plans[0]
-                refined_query.generate_dp_query(self.qid)
-                refined_query.generate_sp_query(self.qid)
-                self.qid += 1
-                self.dp_queries.append(refined_query.dp_query)
-                self.sp_queries.append(refined_query.sp_query)
+            query.get_query_tree()
+            query.get_all_queries()
+            query.get_partition_plans()
 
-                for query in self.dp_queries:
-                    print "DP Query: " + query.expr + str(len(self.dp_queries))
+            # TODO: get rid of this hardcoding
+            reduction_key = 'dIP'
+            ref_levels = range(0, 33, 8)
+            finest_plan = ref_levels[-1]
 
-                for query in self.sp_queries:
-                    print "SP Query: " + query.expr
+            query.get_cost(ref_levels)
+            query.get_refinement_plan(ref_levels)
+            print query.query_2_final_plan
+            query.generate_query_in_mapping(finest_plan, query.query_2_final_plan)
+            print query.query_in_mapping
+            print query.get_query_2_refinement_levels(finest_plan, query.query_2_final_plan)
+            query.generate_refined_queries(reduction_key)
+            query.generate_partitioned_queries()
+            for qid in query.qid_2_dp_queries:
+                self.dp_queries[qid] = query.qid_2_dp_queries[qid]
+
+            for qid in query.qid_2_sp_queries:
+                self.sp_queries[qid] = query.qid_2_sp_queries[qid]
 
         time.sleep(2)
         if self.dp_queries:
@@ -68,7 +69,6 @@ class Runtime(object):
 
         self.sm_thread.join()
         self.op_handler_thread.join()
-
 
     def start_op_handler(self):
         # Start the output handler
@@ -86,19 +86,24 @@ class Runtime(object):
             op_data = conn.recv_bytes()
             print "$$$$ OP Handler received:"+str(op_data)
             received_data = op_data.split(",")
-            qid = received_data[1]
-            dips = received_data[2:]
+            src_qid = int(received_data[1])
+            table_match_entries = received_data[2:]
             delta_config = {}
-            for query in self.queries:
-                for refined_query in query.refined_queries:
-                    if int(refined_query.qid) == int(qid):
-                        print "## Received output for query", refined_query.expr,\
-                            qid, refined_query.qid, refined_query.refinement_filter_id
-                        filter_operator = refined_query.dp_query.filter_id_2_name[refined_query.refinement_filter_id]
-                        delta_config[(filter_operator.qid, filter_operator.id)] = dips
+            print "## Received output for query", src_qid
 
+            for query in self.queries:
+                # find the queries that take the output of this query as input
+                target_queries = query.query_out_mapping[src_qid]
+                for dst_qid in target_queries:
+                    # get the query for which we need to update the filter table
+                    dp_query = query.qid_2_dp_queries[dst_qid]
+                    # get then name of the filter operator (and corresponding table)
+                    filter_operator = dp_query.src_2_filter_operator[src_qid]
+                    # update the delta config dict
+                    delta_config[(filter_operator.qid, filter_operator.id)] = table_match_entries
 
             # TODO: Update the send_to_fm function logic
+            # now send this delta config to fabric manager and update the filter tables
             self.send_to_fm("delta", delta_config)
         return 0
 
@@ -124,9 +129,6 @@ class Runtime(object):
             time.sleep(5)
         return 0
 
-    def apply_iterative_refinement(self):
-        return 0
-
     def compile(self):
         query_expressions = []
         for query in self.queries:
@@ -136,7 +138,6 @@ class Runtime(object):
     def send_config(self):
         self.send_to_sm()
         self.send_to_fm()
-
 
     def send_to_sm(self):
         # Send compiled query expression to streaming manager
