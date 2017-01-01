@@ -11,8 +11,8 @@ header_map = {"sIP":"ipv4.srcAddr", "dIP":"ipv4.dstAddr",
             "sMac": "ethernet.srcAddr", "dMac":"ethernet.dstAddr"}
 
 header_size = {"sIP":32, "dIP":32, "sPort": 16, "dPort": 16,
-                "nBytes": 16, "proto": 8, "sMac": 48, "dMac":48,
-                "qid":8, "count": 8}
+               "nBytes": 16, "proto": 16, "sMac": 48, "dMac":48,
+               "qid":16, "count": 16}
 
 class MetaData(object):
     def __init__(self, name, fields = {}):
@@ -528,7 +528,7 @@ class QueryPipeline(object):
         if 'values' in map_dict:
             filter_vals = map_dict['values']
 
-        self.expr += '.Filter(keys='+str(filter_keys)+', mask='+str(filter_mask)+', vals='+str(filter_vals)+')'
+        self.expr += '.Filter(keys='+str(filter_keys)+', mask='+str(filter_mask)+', vals='+str(filter_vals)+' src = '+str(src)+')'
 
         self.filter_rules_id = len(self.operators)
         filter_name = 'filter_'+str(self.qid)+'_'+str(self.filter_rules_id)

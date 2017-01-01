@@ -109,7 +109,7 @@ class FabricManagerConfig(object):
         # This is wrong.....will fix it.
         for (qid,filter_id) in message:
             query = self.id_2_query[qid]
-            filter_operator = query.filter_id_2_name[filter_id]
+            filter_operator = query.src_2_filter_operator[filter_id]
             filter_mask = filter_operator.filter_mask
             filter_table_fname = filter_operator.operator_name
             self.reset_bool = True

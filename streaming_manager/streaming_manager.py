@@ -69,6 +69,7 @@ class StreamingManager(object):
         for queryId in queries:
             query = queries[queryId]
             query_str = "pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd." + query.compile() + "))"
+            print(query_str)
             q = eval(query_str)
             q.foreachRDD(lambda rdd: send_reduction_keys(rdd, str(query.qid)))
 

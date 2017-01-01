@@ -7,13 +7,15 @@ from multiprocessing.connection import Listener
 class spark_source(object):
 
     ip_format = 'BBBB'
-    count_format = 'B'
+    count_format = 'BB'
+    qid_format = '>H'
 
     def __init__(self, spark_stream_address, spark_stream_port, sniff_interface):
         self.spark_stream_address = spark_stream_address
         self.spark_stream_port = spark_stream_port
         self.sniff_interface = sniff_interface
         self.ip_struct = struct.Struct(self.ip_format)
+        self.qid_struct = struct.Struct(self.qid_format)
         self.count_struct = struct.Struct(self.count_format)
         self.listener = Listener((self.spark_stream_address, self.spark_stream_port), backlog=10)
         #while True:
@@ -34,19 +36,22 @@ class spark_source(object):
         '''
         p_str = str(raw_packet)
         hexdump(raw_packet)
-        qid = str(self.count_struct.unpack(p_str[0])[0])
+        qid = str(self.qid_struct.unpack(p_str[0:2])[0])
+        #new = "".join(reversed(tmp))
+        #print new
+        #qid = [x for x in struct.unpack('h',new)]
         print qid
-        if qid == '1':
+        if qid == '10001':
             # TODO: Generalize the logic for parsing packet's metadata
-            sIP = ".".join([str(x) for x in list(self.ip_struct.unpack(p_str[1:5]))])
-            dIP = ".".join([str(x) for x in list(self.ip_struct.unpack(p_str[5:9]))])
+            sIP = ".".join([str(x) for x in list(self.ip_struct.unpack(p_str[2:6]))])
+            dIP = ".".join([str(x) for x in list(self.ip_struct.unpack(p_str[6:10]))])
             output_tuple = (sIP, dIP)
             send_tuple = ",".join([qid, dIP, sIP])+"\n"
         else:
             # TODO: Generalize the logic for parsing packet's metadata
-            dIP = ".".join([str(x) for x in list(self.ip_struct.unpack(p_str[1:5]))])
+            dIP = ".".join([str(x) for x in list(self.ip_struct.unpack(p_str[2:6]))])
             #dIP = ".".join([str(x) for x in list(self.ip_struct.unpack(p_str[4:8]))])
-            count = str(self.count_struct.unpack(p_str[5])[0])
+            count = str(self.count_struct.unpack(p_str[6:8])[0])
             output_tuple = (dIP, count)
             send_tuple = ",".join([qid, dIP, count])+"\n"
         print "Tuple: ", send_tuple

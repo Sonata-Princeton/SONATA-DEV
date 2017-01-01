@@ -189,6 +189,7 @@ class PacketStream(Query):
         self.query_in_mapping = {}
         self.query_out_mapping = {}
         self.query_2_refinement_levels = {}
+        self.refined_query_2_original = {}
         self.all_queries[self.qid] = self
 
         # Object representing the output of the query
@@ -543,12 +544,31 @@ class PacketStream(Query):
         self.query_out_mapping = query_out_mapping
         return query_out_mapping
 
+    def get_orig_refined_mapping(self):
+        orig_2_refined = {}
+        refined_2_orig = {}
+        for orig_queryId in self.query_2_refinement_levels:
+            ref_plan = self.query_2_refinement_levels[orig_queryId].keys()
+            ref_plan.sort()
+            ctr = 1
+            print orig_queryId, ref_plan
+            for ref_level in ref_plan:
+                print ref_level
+                refined_queryId = 10000*orig_queryId+ctr
+                ctr += 1
+                orig_2_refined[(orig_queryId, ref_level)] = refined_queryId
+                refined_2_orig[refined_queryId] = (orig_queryId, ref_level)
+
+        self.orig_2_refined = orig_2_refined
+        self.refined_2_orig = refined_2_orig
+        return (orig_2_refined, refined_2_orig)
 
     def generate_query_in_mapping(self, fp, query_2_final_plan, query_in_mapping = {}, query_input = [], is_left = False):
         query_id = self.qid
         #print "Exploring", query_id, "input", query_input
         prev_ref_level = 0
         last_level = 0
+
         if query_id in query_2_final_plan:
             ref_plan, cost = query_2_final_plan[query_id][fp]
             ref_plans_to_explore = ref_plan[1:]
@@ -633,6 +653,7 @@ class PacketStream(Query):
         :return: refined_queries:
         """
         refined_queries = {}
+        refined_query_2_original = {}
         for queryId in self.query_2_refinement_levels:
             refined_queries[queryId] = {}
             q_ctr = 1
@@ -646,8 +667,9 @@ class PacketStream(Query):
                 refined_query.basic_headers = concise_query.basic_headers
                 #print self.query_in_mapping
                 if (queryId, ref_level) in self.query_in_mapping:
-                    for (qid_src, mask) in self.query_in_mapping[(queryId, ref_level)]:
-                        refined_query.filter(append_type=1, src = qid_src, keys=(red_key,), mask=(mask,))
+                    for (orig_qid_src, mask) in self.query_in_mapping[(queryId, ref_level)]:
+                        refined_qid_src = self.orig_2_refined[(orig_qid_src, mask)]
+                        refined_query.filter(append_type=1, src = refined_qid_src, keys=(red_key,), mask=(mask,))
 
                 refined_query.map(keys=(red_key,), func=("mask", ref_level))
                 if original_query.left_child is not None:
@@ -676,8 +698,10 @@ class PacketStream(Query):
                 refined_query.isInput = False
                 #print "Added refined query for", queryId, ref_level
                 refined_queries[queryId][ref_level] = refined_query
+                refined_query_2_original[refined_query.qid] = (queryId, ref_level)
 
         self.refined_queries = refined_queries
+        self.refined_query_2_original = refined_query_2_original
         return refined_queries
 
     def generate_partitioned_queries(self):
@@ -714,7 +738,8 @@ class PacketStream(Query):
                         p4_query = p4_query.filter(keys=operator.keys,
                                                    values=operator.values,
                                                    mask=operator.mask,
-                                                   comp=operator.comp, src = operator.src)
+                                                   comp=operator.comp,
+                                                   src = operator.src)
                     elif operator.name == 'Distinct':
                         p4_query = p4_query.distinct(keys=operator.prev_fields)
                         in_pktstream = False
@@ -778,9 +803,11 @@ if __name__ == "__main__":
     print "query_out_mapping:", q3.generate_query_out_mapping()
 
 
-    #print q3.get_query_2_refinement_levels(finest_plan, q3.query_2_final_plan)
-    #q3.generate_refined_queries(reduction_key)
+
+    print q3.get_query_2_refinement_levels(finest_plan, q3.query_2_final_plan)
+    print q3.get_orig_refined_mapping()
+    q3.generate_refined_queries(reduction_key)
     #q3.generate_partitioned_queries()
-    #print q3.refined_queries
+    print q3.refined_queries
     #print q3.refined_queries
     #print q3.query_2_plans

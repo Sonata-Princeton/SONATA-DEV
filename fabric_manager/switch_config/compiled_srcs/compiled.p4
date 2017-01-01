@@ -61,9 +61,9 @@ parser parse_out_header {
 
 header_type out_header_30001_t {
 	fields {
-		qid : 8;
+		qid : 16;
 		dIP : 32;
-		count : 8;
+		count : 16;
 	}
 }
 
@@ -100,9 +100,9 @@ action do_encap_30001() {
 
 header_type out_header_30002_t {
 	fields {
-		qid : 8;
+		qid : 16;
 		dIP : 32;
-		count : 8;
+		count : 16;
 	}
 }
 
@@ -139,7 +139,7 @@ action do_encap_30002() {
 
 header_type out_header_10002_t {
 	fields {
-		qid : 8;
+		qid : 16;
 		dIP : 32;
 		sIP : 32;}
 }
@@ -177,7 +177,7 @@ action do_encap_10002() {
 
 header_type out_header_10001_t {
 	fields {
-		qid : 8;
+		qid : 16;
 		dIP : 32;
 		sIP : 32;}
 }
@@ -293,7 +293,7 @@ action do_map_30001_1() {
 
 header_type meta_reduce_2_30001_t {
 	fields {
-		qid : 8;
+		qid : 16;
 		val : 32;
 		idx : 32;
 	}
@@ -387,7 +387,7 @@ action do_map_30002_1() {
 
 header_type meta_reduce_2_30002_t {
 	fields {
-		qid : 8;
+		qid : 16;
 		val : 32;
 		idx : 32;
 	}
@@ -455,7 +455,7 @@ header_type meta_map_init_10002_t {
 	 fields {
 		sIP: 32;
 		dIP: 32;
-		proto: 8;
+		proto: 16;
 	}
 }
 
@@ -485,7 +485,7 @@ action do_map_10002_1() {
 
 header_type meta_distinct_3_10002_t {
 	fields {
-		qid : 8;
+		qid : 16;
 		val : 32;
 		idx : 32;
 	}
@@ -556,7 +556,7 @@ header_type meta_map_init_10001_t {
 	 fields {
 		sIP: 32;
 		dIP: 32;
-		proto: 8;
+		proto: 16;
 	}
 }
 
@@ -586,7 +586,7 @@ action do_map_10001_0() {
 
 header_type meta_distinct_2_10001_t {
 	fields {
-		qid : 8;
+		qid : 16;
 		val : 32;
 		idx : 32;
 	}

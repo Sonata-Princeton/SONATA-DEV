@@ -3,13 +3,13 @@ import struct
 from multiprocessing.connection import Listener
 
 
-header_format = {"sIP":'BBBB', "dIP":'BBBB', "sPort": 'H', "dPort": 'H',
-              "nBytes": 'H', "proto": 'H', "sMac": 'BBBBBB', "dMac":'BBBBBB',
-              "qid":'B', "count": 'B'}
+header_format = {"sIP":'BBBB', "dIP":'BBBB', "sPort": '>H', "dPort": '>H',
+              "nBytes": '>H', "proto": '>H', "sMac": 'BBBBBB', "dMac":'BBBBBB',
+              "qid":'>H', "count": '>H'}
 
 header_size = {"sIP":32, "dIP":32, "sPort": 16, "dPort": 16,
-               "nBytes": 16, "proto": 8, "sMac": 48, "dMac":48,
-               "qid":8, "count": 8}
+               "nBytes": 16, "proto": 16, "sMac": 48, "dMac":48,
+               "qid":16, "count": 16}
 
 class Emitter(object):
 
@@ -20,7 +20,7 @@ class Emitter(object):
         self.queries = queries
         self.listener = Listener((self.spark_stream_address, self.spark_stream_port))
         self.qid_2_query = {}
-        self.count_struct = struct.Struct('B')
+        self.qid_struct = struct.Struct('>H')
         for query in self.queries:
             self.qid_2_query[query.qid] = query
 
@@ -42,16 +42,17 @@ class Emitter(object):
         callback function executed for each capture packet
         '''
         p_str = str(raw_packet)
-        #hexdump(raw_packet)
-        qid = int(self.count_struct.unpack(p_str[0])[0])
-        #print "Received packet for query ", qid, type(qid), self.qid_2_query
+        hexdump(raw_packet)
+        qid = int(str(self.qid_struct.unpack(p_str[0:2])[0]))
+        print "Received packet for query ", qid, type(qid), self.qid_2_query
         if qid in self.qid_2_query:
             query = self.qid_2_query[qid]
             out_headers = query.operators[-1].out_headers
             output_tuple = []
-            ind = 1
+            ind = 2
             for fld in out_headers[1:]:
-                strct = struct.Struct(header_format[fld])
+                hdr_format = header_format[fld]
+                strct = struct.Struct(hdr_format)
                 ctr = header_size[fld]/8
                 #print "indexes parsed ", ind, ind+ctr
                 if 'IP' in fld:
