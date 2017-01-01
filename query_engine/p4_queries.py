@@ -596,9 +596,10 @@ class QueryPipeline(object):
         for operator in self.operators:
             self.p4_utils += operator.p4_utils
 
-        for filter_id in self.filter_id_2_name:
-            filter_operator = self.filter_id_2_name[filter_id]
-            if len(self.filter_id_2_name.keys()) > 1:
+        for src in self.src_2_filter_operator:
+            filter_operator = self.src_2_filter_operator[src]
+            # IR filters will have non-zero src value
+            if src > 0:
                 self.filter_control += '\t\tif (meta_fm.qid_'+str(self.qid)+'== 1){\n'
                 self.filter_control += '\t\t\tapply('+filter_operator.filter_name+');\n'
                 self.filter_control += '\t\t}\n'

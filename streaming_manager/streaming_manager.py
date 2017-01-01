@@ -66,7 +66,8 @@ class StreamingManager(object):
         raw_data = conn.recv()
         queries = pickle.loads(raw_data)
 
-        for query in queries:
+        for queryId in queries:
+            query = queries[queryId]
             query_str = "pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd." + query.compile() + "))"
             q = eval(query_str)
             q.foreachRDD(lambda rdd: send_reduction_keys(rdd, str(query.qid)))

@@ -745,8 +745,8 @@ class PacketStream(Query):
                         spark_query = spark_query.filter(prev_fields=prev_fields,
                                                          expr=operator.expr)
 
-            print "After Partitioning, P4:", p4_query.expr
-            print "After Partitioning, Spark:", spark_query.expr
+            print "After Partitioning, P4:", p4_query.expr, type(p4_query)
+            print "After Partitioning, Spark:", spark_query.expr, type(spark_query)
             self.qid_2_dp_queries[refined_query.qid] = p4_query
             self.qid_2_sp_queries[refined_query.qid] = spark_query
             refined_query.dp_query = p4_query

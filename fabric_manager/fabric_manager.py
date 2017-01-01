@@ -62,18 +62,19 @@ class FabricManagerConfig(object):
             inter.setup()
 
     def add_query(self, q):
+        print q
         self.queries.append(q)
         self.id_2_query[q.qid] = q
 
     def process_init_config(self, message):
         # Process initial config from RT
-        for query in message:
-            self.add_query(query)
+        for queryID in message:
+            self.add_query(message[queryID])
         self.compile_init_config()
         logging.info("query compiled")
         print "FM: Received ", len(self.queries), " queries from Runtime"
-        self.em_thread.start()
-        self.reset_thread.start()
+
+
 
         write_to_file(P4_COMPILED, self.p4_src)
 
@@ -88,6 +89,11 @@ class FabricManagerConfig(object):
         get_out(cmd)
         initialize_switch(SWITCH_PATH, JSON_P4_COMPILED, THRIFTPORT,
                           CLI_PATH)
+
+        # Start packet parser (tuple emmiter)
+        self.em_thread.start()
+        # Start the thread that resets register state at regular intervals (deprecated?)
+        self.reset_thread.start()
 
     def reset_switch(self):
         while True:

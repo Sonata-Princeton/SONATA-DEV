@@ -28,8 +28,7 @@ class Runtime(object):
         #self.fm_thread.setDaemon(True)
 
         self.fm_thread.start()
-        self.sm_thread.start()
-        self.op_handler_thread.start()
+
 
         time.sleep(1)
 
@@ -50,19 +49,29 @@ class Runtime(object):
             print query.query_2_final_plan
             query.generate_query_in_mapping(finest_plan, query.query_2_final_plan)
             print query.query_in_mapping
+            print query.generate_query_out_mapping()
             print query.get_query_2_refinement_levels(finest_plan, query.query_2_final_plan)
             query.generate_refined_queries(reduction_key)
             query.generate_partitioned_queries()
             for qid in query.qid_2_dp_queries:
+                print "Adding DP queries", qid, query.qid_2_dp_queries[qid]
                 self.dp_queries[qid] = query.qid_2_dp_queries[qid]
 
             for qid in query.qid_2_sp_queries:
+                print "Adding SP queries", qid, query.qid_2_sp_queries[qid]
                 self.sp_queries[qid] = query.qid_2_sp_queries[qid]
 
         time.sleep(2)
         if self.dp_queries:
             self.send_to_fm("init", self.dp_queries)
+
+        # Start SM after everything is set in DP
+        self.sm_thread.start()
+
+        if self.sp_queries:
             self.send_to_sm()
+
+        self.op_handler_thread.start()
 
         #self.send_to_fm("delta", self.dp_queries)
         self.fm_thread.join()
@@ -93,18 +102,22 @@ class Runtime(object):
 
             for query in self.queries:
                 # find the queries that take the output of this query as input
-                target_queries = query.query_out_mapping[src_qid]
-                for dst_qid in target_queries:
-                    # get the query for which we need to update the filter table
-                    dp_query = query.qid_2_dp_queries[dst_qid]
-                    # get then name of the filter operator (and corresponding table)
-                    filter_operator = dp_query.src_2_filter_operator[src_qid]
-                    # update the delta config dict
-                    delta_config[(filter_operator.qid, filter_operator.id)] = table_match_entries
+                print "Exploring ", query.qid, " with out mappings:", query.query_out_mapping
+                if src_qid in query.query_out_mapping:
+                    target_queries = query.query_out_mapping[src_qid]
+                    for dst_qid in target_queries:
+                        print "Found query", dst_qid, " that requires o/p of", src_qid, "as i/p"
+                        # get the query for which we need to update the filter table
+                        dp_query = query.qid_2_dp_queries[dst_qid]
+                        # get then name of the filter operator (and corresponding table)
+                        filter_operator = dp_query.src_2_filter_operator[src_qid]
+                        # update the delta config dict
+                        delta_config[(filter_operator.qid, filter_operator.id)] = table_match_entries
 
             # TODO: Update the send_to_fm function logic
             # now send this delta config to fabric manager and update the filter tables
-            self.send_to_fm("delta", delta_config)
+            if delta_config != {}:
+                self.send_to_fm("delta", delta_config)
         return 0
 
     def start_fabric_managers(self):

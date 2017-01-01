@@ -735,9 +735,9 @@ table filter_30002_0{
 	}
 }
 
-table filter_10002_0{
+table filter_10002_2{
 	reads {
-		ipv4.dstAddr: lpm;
+		ipv4.protocol: exact;
 	}
 	actions{
 		set_meta_fm_10002;
@@ -745,9 +745,9 @@ table filter_10002_0{
 	}
 }
 
-table filter_10002_2{
+table filter_10002_0{
 	reads {
-		ipv4.protocol: exact;
+		ipv4.dstAddr: lpm;
 	}
 	actions{
 		set_meta_fm_10002;
@@ -768,7 +768,9 @@ table filter_10001_1{
 control ingress {
 	apply(init_meta_fm);
 	if (meta_fm.f1 == 0){
-		apply(filter_30001_0);
+		if (meta_fm.qid_30001== 1){
+			apply(filter_30001_0);
+		}
 		if (meta_fm.qid_30001 == 1){
 			apply(map_init_30001);
 			apply(map_30001_1);
@@ -787,7 +789,9 @@ control ingress {
 		}
 	}
 	if (meta_fm.f1 == 1){
-		apply(filter_30002_0);
+		if (meta_fm.qid_30002== 1){
+			apply(filter_30002_0);
+		}
 		if (meta_fm.qid_30002 == 1){
 			apply(map_init_30002);
 			apply(map_30002_1);
@@ -806,11 +810,9 @@ control ingress {
 		}
 	}
 	if (meta_fm.f1 == 2){
+		apply(filter_10002_2);
 		if (meta_fm.qid_10002== 1){
 			apply(filter_10002_0);
-		}
-		if (meta_fm.qid_10002== 1){
-			apply(filter_10002_2);
 		}
 		if (meta_fm.qid_10002 == 1){
 			apply(map_init_10002);
