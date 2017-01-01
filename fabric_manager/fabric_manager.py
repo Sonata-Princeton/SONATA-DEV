@@ -116,8 +116,12 @@ class FabricManagerConfig(object):
             while self.reset_bool:
                 print "Still inside"
                 time.sleep(1)
+
+            print "Message received:", message[(qid,filter_id)]
+
             for dip in message[(qid,filter_id)]:
                 dip = dip.strip('\n')
+                print "dIP:",dip
                 command = 'table_add '+filter_table_fname+' set_meta_fm_'+str(qid)+' '+str(dip)+'/'+str(filter_mask[0])+' => \n'
                 commands += command
                 print "Added command ", qid, command

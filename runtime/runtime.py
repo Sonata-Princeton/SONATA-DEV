@@ -89,6 +89,9 @@ class Runtime(object):
         self.op_handler_socket = self.conf['sm_conf']['op_handler_socket']
         self.op_handler_listener = Listener(self.op_handler_socket)
         logging.debug("OP Handler Running...")
+        start = time.time()
+        queries_received = {}
+        updateDeltaConfig = False
         while True:
             print "Ready to receive data from SM ***************************"
             conn = self.op_handler_listener.accept()
@@ -98,30 +101,41 @@ class Runtime(object):
             received_data = op_data.split(",")
             src_qid = int(received_data[1])
             table_match_entries = received_data[2:]
+            queries_received[src_qid] = table_match_entries
+            print "DP Queries: ", str(len(self.dp_queries.keys())), " Received keys:", str(len(queries_received.keys()))
+            if len(queries_received.keys()) == len(self.dp_queries.keys()):
+                updateDeltaConfig = True
+
             delta_config = {}
-            print "## Received output for query", src_qid
+            print "## Received output for query", src_qid, "at time", time.time()-start
+            if updateDeltaConfig:
+                for src_qid in queries_received:
+                    table_match_entries = queries_received[src_qid]
 
-            for query in self.queries:
-                # find the queries that take the output of this query as input
-                print "Exploring ", query.qid, " with out-mappings:", query.query_out_mapping
-                original_qid, ref_level = query.refined_2_orig[src_qid]
-                if (original_qid, ref_level) in query.query_out_mapping:
+                    for query in self.queries:
+                        # find the queries that take the output of this query as input
+                        #print "Exploring ", query.qid, " with out-mappings:", query.query_out_mapping
+                        original_qid, ref_level = query.refined_2_orig[src_qid]
+                        if (original_qid, ref_level) in query.query_out_mapping:
 
-                    target_queries = query.query_out_mapping[(original_qid, ref_level)]
-                    print "Target Queries", target_queries
-                    for (dst_orig_qid,dst_ref_level) in target_queries:
-                        print "Found query", dst_orig_qid, " that requires o/p of", original_qid, "as i/p"
-                        dst_refined_qid = query.orig_2_refined[(dst_orig_qid,dst_ref_level)]
+                            target_queries = query.query_out_mapping[(original_qid, ref_level)]
+                            #print "Target Queries", target_queries
+                            for (dst_orig_qid,dst_ref_level) in target_queries:
+                                #print "Found query", dst_orig_qid, " that requires o/p of", original_qid, "as i/p"
+                                dst_refined_qid = query.orig_2_refined[(dst_orig_qid,dst_ref_level)]
 
-                        print "We need to update the filter table for query", dst_refined_qid
+                                #print "We need to update the filter table for query", dst_refined_qid
 
-                        dp_query = query.qid_2_dp_queries[dst_refined_qid]
-                        print "Query is", dp_query.expr
-                        # get then name of the filter operator (and corresponding table)
-                        print "For this query filter tables are:", dp_query.src_2_filter_operator
-                        filter_operator = dp_query.src_2_filter_operator[src_qid]
-                        # update the delta config dict
-                        delta_config[(dst_refined_qid, src_qid)] = table_match_entries
+                                dp_query = query.qid_2_dp_queries[dst_refined_qid]
+                                #print "Query is", dp_query.expr
+                                # get then name of the filter operator (and corresponding table)
+                                #print "For this query filter tables are:", dp_query.src_2_filter_operator
+                                filter_operator = dp_query.src_2_filter_operator[src_qid]
+                                # update the delta config dict
+                                delta_config[(dst_refined_qid, src_qid)] = table_match_entries
+                # reset these state variables
+                updateDeltaConfig = False
+                queries_received = {}
 
             # TODO: Update the send_to_fm function logic
             # now send this delta config to fabric manager and update the filter tables

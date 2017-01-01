@@ -21,6 +21,14 @@ T = 1000*window_length
 featuresPath = ''
 redKeysPath = ''
 
+def send_reduction_keys(rdd, op_handler_socket, start_time, qid='0'):
+    list_rdd = rdd.collect()
+    reduction_str = "," .join([r for r in list_rdd])
+    reduction_socket = Client(op_handler_socket)
+    reduction_socket.send_bytes("k," + qid + "," + reduction_str + "\n")
+    print("Sending P2: ", qid, list_rdd, reduction_str, " at time", time.time()-start_time)
+
+
 def processLogLine(flow):
     return tuple(flow.split(","))
 
@@ -36,6 +44,7 @@ class StreamingManager(object):
         self.sm_listener = Listener(self.sm_socket)
         self.op_handler_socket = conf['op_handler_socket']
         print("In Streaming Manager", self.redKeysPath, self.featuresPath)
+        self.start_time = time.time()
         #self.reduction_socket = Client(conf['op_handler_socket'])
 
         # intialize streaming context
@@ -52,27 +61,22 @@ class StreamingManager(object):
         self.ssc.start()
         self.ssc.awaitTermination()
 
+
+
     def process_pktstream(self, pktstream):
-        def send_reduction_keys(rdd, qid):
-            list_rdd = rdd.collect()
-            reduction_str = "," .join([r for r in list_rdd])
-            reduction_socket = Client(self.op_handler_socket)
-            reduction_socket.send_bytes("k," + qid + "," + reduction_str + "\n")
-            print("Sending P2: ", list_rdd)
 
         print("Waiting for streaming query expressions ...")
         conn = self.sm_listener.accept()
         print("Connection request accepted")
         raw_data = conn.recv()
         queries = pickle.loads(raw_data)
-
+        print ("Received queries", queries)
+        spark_queries = {}
         for queryId in queries:
             query = queries[queryId]
-            query_str = "pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd." + query.compile() + "))"
+            query_str = "pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd." + query.compile() + ")).foreachRDD(lambda rdd: send_reduction_keys(rdd, " + str(self.op_handler_socket)+ "," + str(self.start_time)+",\'"+ str(queryId)+"\'))"
             print(query_str)
-            q = eval(query_str)
-            q.foreachRDD(lambda rdd: send_reduction_keys(rdd, str(query.qid)))
-
+            spark_queries[queryId] = eval(query_str)
 
 if __name__ == "__main__":
     conf = {'batch_interval': batch_interval, 'window_length': window_length,

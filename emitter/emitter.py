@@ -42,9 +42,9 @@ class Emitter(object):
         callback function executed for each capture packet
         '''
         p_str = str(raw_packet)
-        hexdump(raw_packet)
+        #hexdump(raw_packet)
         qid = int(str(self.qid_struct.unpack(p_str[0:2])[0]))
-        print "Received packet for query ", qid, type(qid), self.qid_2_query
+        #print "Received packet for query ", qid, type(qid), self.qid_2_query
         if qid in self.qid_2_query:
             query = self.qid_2_query[qid]
             out_headers = query.operators[-1].out_headers
