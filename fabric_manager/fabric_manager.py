@@ -27,7 +27,6 @@ class FabricManagerConfig(object):
         self.interfaces = {'reciever': ['m-veth-1', 'out-veth-1'],
                            'sender': ['m-veth-2', 'out-veth-2']}
         self.em_thread = Thread(name='emitter', target=self.start_emitter)
-        self.reset_thread = Thread(name='reset_switch', target=self.reset_switch)
 
     def start(self):
         logging.info("fm_manager: Starting")
@@ -92,31 +91,22 @@ class FabricManagerConfig(object):
 
         # Start packet parser (tuple emmiter)
         self.em_thread.start()
-        # Start the thread that resets register state at regular intervals (deprecated?)
-        self.reset_thread.start()
 
     def reset_switch(self):
-        while True:
-            time.sleep(10)
-            while self.reset_bool:
-                reset_switch_state()
-                send_commands_to_dp(CLI_PATH, P4_COMPILED, THRIFTPORT, P4_COMMANDS)
-                self.reset_bool = False
+        reset_switch_state()
+        # Sending initial commands after reset
+        send_commands_to_dp(CLI_PATH, P4_COMPILED, THRIFTPORT, P4_COMMANDS)
 
     def process_delta_config(self, message):
         logging.info("Sending deltas to Data Plane")
         commands = ''
-        # This is wrong.....will fix it.
+        # Reset the data plane registers/tables before pushing the new delta config
+        self.reset_switch()
         for (qid,filter_id) in message:
             query = self.id_2_query[qid]
             filter_operator = query.src_2_filter_operator[filter_id]
             filter_mask = filter_operator.filter_mask
             filter_table_fname = filter_operator.operator_name
-            self.reset_bool = True
-            while self.reset_bool:
-                print "Still inside"
-                time.sleep(1)
-
             print "Message received:", message[(qid,filter_id)]
 
             for dip in message[(qid,filter_id)]:

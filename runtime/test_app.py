@@ -57,10 +57,4 @@ if __name__ == "__main__":
 
     queries = []
     queries.append(q3)
-    #print q0
-    #print q1
-    #print q2
-    #print q3
-
     runtime = Runtime(conf, queries)
-    #runtime.send_to_sm()
