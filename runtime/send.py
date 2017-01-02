@@ -27,12 +27,20 @@ def send_packet(pkt_tuple):
     p = Ether() / IP(dst=dIP, src=sIP) / TCP(dport=int(dPort), sport=int(sPort)) / "SONATA"
     sendp(p, iface = "out-veth-1", verbose=0)
 
-def send_dummy_packets():
-    sIPs = ['112.7.186.20', '112.7.186.19', '112.7.186.19', '112.7.186.18']
-    for sIP in sIPs:
-        p = Ether() / IP(dst='112.7.186.25', src=sIP) / TCP() / "SONATA"
-        p.summary()
-        sendp(p, iface = "out-veth-1", verbose=0)
+def send_dummy_packets(mode):
+    if mode == 0:
+        sIPs = ['112.7.186.20', '112.7.186.19', '112.7.186.19', '112.7.186.18']
+        for sIP in sIPs:
+            p = Ether() / IP(dst='112.7.186.25', src=sIP) / TCP() / "SONATA"
+            p.summary()
+            sendp(p, iface = "out-veth-1", verbose=0)
+    else:
+        sIPs = ['121.7.186.20', '121.7.186.19', '121.7.186.19', '121.7.186.18']
+        for sIP in sIPs:
+            p = Ether() / IP(dst='121.7.186.25', src=sIP) / TCP() / "ATTACK"
+            p.summary()
+            sendp(p, iface = "out-veth-1", verbose=0)
+
 
 
 def send_dummy_packets_stream():
@@ -92,5 +100,6 @@ def send_packets(time_slot):
 
 while True:
     print "Sending dummy packets: ...."
-    send_dummy_packets()
+    send_dummy_packets(0)
+    send_dummy_packets(1)
     time.sleep(1)

@@ -35,6 +35,12 @@ class Map(SparkQuery):
         map_dict = dict(*args, **kwargs)
         self.prev_fields = map_dict['prev_fields']
         self.keys = ()
+        self.prev_keys = ()
+        self.prev_values = ()
+        if 'prev_keys' in map_dict:
+            self.prev_keys = map_dict['prev_keys']
+        if 'prev_values' in map_dict:
+            self.prev_values = map_dict['prev_values']
         self.values = ()
         if 'keys' in map_dict:
             self.keys = map_dict['keys']
@@ -45,14 +51,26 @@ class Map(SparkQuery):
         #self.fields = self.keys + self.values
 
     def compile(self):
+        print self.keys, self.values, self.prev_keys, self.prev_values
         if len(self.values) != 0:
-            expr = ('map(lambda ('+','.join(str(x) for x in self.prev_fields)+
-                    '): (('+','.join(str(x) for x in self.keys)+
-                    '),('+','.join(str(x) for x in self.values)+')))')
+            if len(self.prev_keys) > 0 and len(self.prev_values) > 0:
+                expr = ('map(lambda (('+','.join(str(x) for x in self.prev_keys)+
+                        '), ('+','.join(str(x) for x in self.prev_values)+')): (('+','.join(str(x) for x in self.keys)+
+                        '),('+','.join(str(x) for x in self.values)+')))')
+
+            else:
+                expr = ('map(lambda ('+','.join(str(x) for x in self.prev_fields)+
+                        '): (('+','.join(str(x) for x in self.keys)+
+                        '),('+','.join(str(x) for x in self.values)+')))')
         else:
-            expr = ('map(lambda ('+','.join(str(x) for x in self.prev_fields)+
-                    '): (('+','.join(str(x) for x in self.keys)+
-                    ')))')
+            if len(self.prev_keys) > 0 and len(self.prev_values) > 0:
+                expr = ('map(lambda (('+','.join(str(x) for x in self.prev_keys)+
+                        '), ('+','.join(str(x) for x in self.prev_values)+')): (('+','.join(str(x) for x in self.keys)+')))')
+
+            else:
+                expr = ('map(lambda ('+','.join(str(x) for x in self.prev_fields)+
+                        '): (('+','.join(str(x) for x in self.keys)+')))')
+        print "Map Query", expr
         return expr
 
 class Reduce(SparkQuery):
@@ -84,13 +102,19 @@ class Filter(SparkQuery):
     def __init__(self, *args, **kwargs):
         map_dict = dict(*args, **kwargs)
         self.prev_fields = map_dict['prev_fields']
-        self.fields = self.prev_fields
+        self.keys = map_dict['keys']
+        self.values = filter(lambda x: x not in self.keys, self.prev_fields)
         self.expr = map_dict['expr']
+        self.fields = self.prev_fields
 
     def compile(self):
-        expr = ('filter(lambda ('
-                +','.join(str(x) for x in self.prev_fields)
-                +'): '+self.expr+')')
+        kys = ",".join(self.keys)
+        vals = ",".join(self.values)
+        if len(self.values) > 0:
+            expr = ('filter(lambda (('+str(kys)+'), ('+str(vals)+')): '+self.expr+')')
+        else:
+            expr = ('filter(lambda ('+str(kys)+'): '+self.expr+')')
+
         return expr
 
 class PacketStream(SparkQuery):
@@ -129,7 +153,7 @@ class PacketStream(SparkQuery):
             values = map_dict['values']
 
         self.expr += '.Map('+','.join([x for x in keys])+')'
-        operator = Map(prev_fields = prev_fields, keys=keys, values=values)
+        operator = Map(*args, **kwargs)
         self.operators.append(operator)
         return self
 
@@ -156,8 +180,6 @@ class PacketStream(SparkQuery):
     def filter(self, *args, **kwargs):
         map_dict = dict(*args, **kwargs)
         prev_fields = map_dict['prev_fields']
-        expr = map_dict['expr']
-        self.expr += '.Filter('+expr+')'
-        operator = Filter(prev_fields = prev_fields, expr=expr)
+        operator = Filter(*args, **kwargs)
         self.operators.append(operator)
         return self

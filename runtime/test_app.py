@@ -1,11 +1,12 @@
 #!/usr/bin/python
 # Initialize coloredlogs.
 import logging
+
 logging.getLogger("testApp")
 
 import coloredlogs
 
-coloredlogs.install(level='ERROR',)
+coloredlogs.install(level='ERROR', )
 
 from runtime import *
 from query_engine.sonata_queries import *
@@ -13,14 +14,15 @@ from query_engine.sonata_queries import *
 batch_interval = 1
 window_length = 10
 sliding_interval = 10
-T = 1000*window_length
+T = 1000 * window_length
 
 featuresPath = ''
 redKeysPath = ''
 
 if __name__ == "__main__":
-
-    spark_conf = {'batch_interval': batch_interval, 'window_length': window_length, 'sliding_interval': sliding_interval, 'featuresPath': featuresPath, 'redKeysPath': redKeysPath, 'sm_socket':('localhost',5555),
+    spark_conf = {'batch_interval': batch_interval, 'window_length': window_length,
+                  'sliding_interval': sliding_interval, 'featuresPath': featuresPath, 'redKeysPath': redKeysPath,
+                  'sm_socket': ('localhost', 5555),
                   'op_handler_socket': ('localhost', 4949)}
 
     emitter_conf = {'spark_stream_address': 'localhost',
@@ -34,27 +36,27 @@ if __name__ == "__main__":
     q0 = PacketStream()
 
     q1 = (PacketStream(1)
-                    .filter(keys = ("proto",), values = ('6',), comp = "eq")
-                    .map(keys = ("dIP", "sIP"))
-                    .distinct()
-                    .map(keys = ("dIP",), values = ("1",))
-                    .reduce(keys=("dIP",), func = 'sum', values = ('count',))
-                    #.filter(keys = ("count",), values=("2",), comp = "geq")
-                    .map(keys=('dIP',))
-             )
-
-    q2 = (PacketStream(2)
-          .map(keys=('dIP',), values=tuple([x for x in q0.basic_headers]))
-        )
-
-    #print q2.expr, q2.keys, q2.values
-    q3 = (q2.join(new_qid=3, query=q1)
-          .map(keys=("dIP",), values = ("1",))
-          .reduce(keys=("dIP",), func = 'sum', values = ('count',))
+          .filter(keys=("proto",), values=('6',), comp="eq")
+          .map(keys=("dIP", "sIP"))
+          .distinct()
+          .map(keys=("dIP",), values=("1",))
+          .reduce(keys=("dIP",), func='sum', values=('count',))
+          .filter(keys=("dIP",), values=(3,), comp="geq")
           .map(keys=('dIP',))
           )
 
+    q2 = (PacketStream(2)
+          .map(keys=('dIP','payload'))
+          )
 
-    queries = []
-    queries.append(q3)
+    #print q2.expr, q2.keys, q2.values
+    q3 = (q2.join(new_qid=3, query=q1)
+          .map(keys=("dIP", "payload"), values=("1",))
+          .reduce(keys=("dIP","payload"), func='sum', values=('count',))
+          .filter(keys=("dIP","payload"), values=(1,), comp="geq")
+          .map(keys=('dIP',))
+          .distinct()
+          )
+
+    queries = [q3]
     runtime = Runtime(conf, queries)

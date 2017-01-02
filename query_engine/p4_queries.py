@@ -8,7 +8,7 @@ header_map = {"sIP":"ipv4.srcAddr", "dIP":"ipv4.dstAddr",
             "dIP/16":"ipv4.dstAddr", "dIP/32":"ipv4.dstAddr",
             "sPort": "tcp.srcPort", "dPort": "tcp.dstPort",
             "nBytes": "ipv4.totalLen", "proto": "ipv4.protocol",
-            "sMac": "ethernet.srcAddr", "dMac":"ethernet.dstAddr"}
+            "sMac": "ethernet.srcAddr", "dMac":"ethernet.dstAddr", "payload": ""}
 
 header_size = {"sIP":32, "dIP":32, "sPort": 16, "dPort": 16,
                "nBytes": 16, "proto": 16, "sMac": 48, "dMac":48,
@@ -22,7 +22,6 @@ class MetaData(object):
     def add_metadata(self):
         out = 'header_type '+self.name+'_t {\n\tfields {\n\t\t'
         for fld in self.fields:
-            print fld
             if fld in header_size:
                 out += fld+' : '+str(header_size[fld])+';\n\t\t'
             else:
@@ -62,8 +61,8 @@ class Register(object):
     def add_hash_metadata(self):
         self.hash_metadata = MetaData(name = self.hash_metadata_name)
 
-        print self.keys
-        print "Operator: ", self.operator_name
+        #print self.keys
+        #print "Operator: ", self.operator_name
         self.hash_metadata.fields = {}
         for fld in self.keys:
             if '/' in fld:
@@ -74,7 +73,7 @@ class Register(object):
                 mask = header_size[hdr]
             self.hash_metadata.fields[hdr] = mask
         #print self.hash_metadata.fields
-        print "Operator: ", self.operator_name+', fields:', self.hash_metadata.fields
+        #print "Operator: ", self.operator_name+', fields:', self.hash_metadata.fields
         return self.hash_metadata.add_metadata()
 
     def add_metadata(self):
@@ -329,6 +328,8 @@ class Reduce(Register):
         self.operator_name = 'reduce_'+str(self.id)+'_'+str(self.qid)
         self.name = "Reduce"
         super(Reduce, self).__init__(*args, **kwargs)
+        # TODO: this sequence should be determined by the filter operation that follows this reduce operation
+        # TODO: remove this hardcoding
         self.pre_actions = ('fwd', 'fwd', 'fwd')
         self.post_actions = ('set', 'fwd', 'drop')
         self.out_headers = tuple(list(self.out_headers)+['count'])
@@ -378,17 +379,16 @@ class Map(object):
         self.p4_egress = ''
         self.p4_invariants = ''
         self.p4_init_commands = []
-        self.id, self.qid = args
+        self.id, self.qid, self.mirror_id = args
         map_dict = dict(**kwargs)
         self.keys = map_dict['keys']
         self.func = map_dict['func']
+        self.out_headers = tuple(['qid']+list(self.keys))
+        self.expr = ''
 
         self.operator_name = 'map_'+str(self.qid)+'_'+str(self.id)
 
-
-
-    def compile_dp(self):
-        print "Dummy compile called for Map"
+    def update_map_table(self):
         out = ''
 
         # Add match table for inital map operator
@@ -399,6 +399,7 @@ class Map(object):
         self.p4_init_commands.append('table_set_default '+self.operator_name+' do_'+str(self.operator_name))
 
         if len(self.func) > 0:
+            # TODO: add more mapping functions that we can support in the data plane
             out += 'action do_'+self.operator_name+'() {\n'
             if self.func[0] == 'mask':
                 # TODO: add more functions to generalize this map operator
@@ -419,6 +420,71 @@ class Map(object):
 
         self.p4_state += out
 
+    def update_p4_invariants(self):
+        out = '#include "includes/headers.p4"\n'
+        out += '#include "includes/parser.p4"\n\n'
+        out += 'parser start {\n\treturn select(current(0, 64)) {\n\t\t0 : parse_out_header;\n\t\tdefault: parse_ethernet;\n\t}\n}\n'
+        out += 'action _drop() {\n\tdrop();\n}\n\n'
+        out += 'action _nop() {\n\tno_op();\n}\n\n'
+
+        self.p4_invariants += out
+        return out
+
+    def add_out_header(self):
+        out = 'header_type out_header_'+str(self.qid)+'_t {\n'
+        out += '\tfields {\n'
+
+        for fld in self.out_headers:
+            if '/' in fld:
+                fld = fld.split('/')[0]
+            out += '\t\t'+fld+' : '+str(header_size[fld])+';\n'
+        out = out [:-1]
+        out += '}\n}\n\n'
+        out += 'header out_header_'+str(self.qid)+'_t out_header_'+str(self.qid)+';\n\n'
+        return out
+
+    def add_copy_fields(self):
+        out = 'field_list copy_to_cpu_fields_'+str(self.qid)
+        out += '{\n'
+        out += '\tstandard_metadata;\n'
+        out += '\tmeta_map_init_'+str(self.qid)+';\n'
+        out += '\tmeta_fm;\n'
+        out += '}\n\n'
+
+        out += 'action do_copy_to_cpu_'+str(self.qid)+'() {\n\tclone_ingress_pkt_to_egress('+str(self.mirror_id)+', copy_to_cpu_fields_'+str(self.qid)+');\n}\n\n'
+        out += 'table copy_to_cpu_'+str(self.qid)+' {\n\tactions {do_copy_to_cpu_'+str(self.qid)+';}\n\tsize : 1;\n}\n\n'
+
+        return out
+
+    def add_encap_table(self):
+        out = 'table encap_'+str(self.qid)+' {\n\tactions { do_encap_'+str(self.qid)+'; }\n\tsize : 1;\n}\n\n'
+        return out
+
+    def add_encap_action(self):
+        out = 'action do_encap_'+str(self.qid)
+        out += '() {\n\tadd_header(out_header_'+str(self.qid)+');\n\t'
+        for fld in self.out_headers:
+            if '/' in fld:
+                fld = fld.split('/')[0]
+            #if fld in header_map:
+            meta_fld = 'meta_map_init_'+str(self.qid)+'.'+fld
+            out += 'modify_field(out_header_'+str(self.qid)+'.'+fld+', '
+            out += meta_fld+ ');\n\t'
+        out = out [:-1]
+        out += '}\n\n'
+        return out
+
+    def update_p4_encap(self):
+        self.p4_egress += self.add_out_header()
+        self.p4_egress += self.add_copy_fields()
+        self.p4_egress += self.add_encap_table()
+        self.p4_egress += self.add_encap_action()
+
+    def compile_dp(self):
+        self.update_p4_invariants()
+        self.update_map_table()
+        self.update_p4_encap()
+
 
 class Filter(object):
     def __init__(self, *args, **kwargs):
@@ -433,11 +499,12 @@ class Filter(object):
         self.filter_rules = ''
         self.expr = ''
 
-        self.id, self.qid, self.filter_rules_id, self.filter_name = args
+        self.id, self.qid, self.mirror_id, self.filter_rules_id, self.filter_name = args
         self.operator_name = 'filter_'+str(self.qid)+'_'+str(self.id)
 
         map_dict = dict(**kwargs)
         self.filter_keys = map_dict['keys']
+        self.out_headers = tuple(['qid']+list(self.filter_keys))
         self.filter_mask = ()
         self.src = 0
         self.filter_vals = ()
@@ -448,9 +515,67 @@ class Filter(object):
         if 'values' in map_dict:
             self.filter_vals = map_dict['values']
 
+    def update_p4_invariants(self):
+        out = '#include "includes/headers.p4"\n'
+        out += '#include "includes/parser.p4"\n\n'
+        out += 'parser start {\n\treturn select(current(0, 64)) {\n\t\t0 : parse_out_header;\n\t\tdefault: parse_ethernet;\n\t}\n}\n'
+        out += 'action _drop() {\n\tdrop();\n}\n\n'
+        out += 'action _nop() {\n\tno_op();\n}\n\n'
 
-    def compile_dp(self):
-        print "Dummy compile called for Filter"
+        self.p4_invariants += out
+        return out
+
+    def add_out_header(self):
+        out = 'header_type out_header_'+str(self.qid)+'_t {\n'
+        out += '\tfields {\n'
+
+        for fld in self.out_headers:
+            if '/' in fld:
+                fld = fld.split('/')[0]
+            out += '\t\t'+fld+' : '+str(header_size[fld])+';\n'
+        out = out [:-1]
+        out += '}\n}\n\n'
+        out += 'header out_header_'+str(self.qid)+'_t out_header_'+str(self.qid)+';\n\n'
+        return out
+
+    def add_copy_fields(self):
+        out = 'field_list copy_to_cpu_fields_'+str(self.qid)
+        out += '{\n'
+        out += '\tstandard_metadata;\n'
+        out += '\tmeta_map_init_'+str(self.qid)+';\n'
+        out += '\tmeta_fm;\n'
+        out += '}\n\n'
+
+        out += 'action do_copy_to_cpu_'+str(self.qid)+'() {\n\tclone_ingress_pkt_to_egress('+str(self.mirror_id)+', copy_to_cpu_fields_'+str(self.qid)+');\n}\n\n'
+        out += 'table copy_to_cpu_'+str(self.qid)+' {\n\tactions {do_copy_to_cpu_'+str(self.qid)+';}\n\tsize : 1;\n}\n\n'
+
+        return out
+
+    def add_encap_table(self):
+        out = 'table encap_'+str(self.qid)+' {\n\tactions { do_encap_'+str(self.qid)+'; }\n\tsize : 1;\n}\n\n'
+        return out
+
+    def add_encap_action(self):
+        out = 'action do_encap_'+str(self.qid)
+        out += '() {\n\tadd_header(out_header_'+str(self.qid)+');\n\t'
+        for fld in self.out_headers:
+            if '/' in fld:
+                fld = fld.split('/')[0]
+            #if fld in header_map:
+            meta_fld = 'meta_map_init_'+str(self.qid)+'.'+fld
+            out += 'modify_field(out_header_'+str(self.qid)+'.'+fld+', '
+            out += meta_fld+ ');\n\t'
+        out = out [:-1]
+        out += '}\n\n'
+        return out
+
+    def update_p4_encap(self):
+        self.p4_egress += self.add_out_header()
+        self.p4_egress += self.add_copy_fields()
+        self.p4_egress += self.add_encap_table()
+        self.p4_egress += self.add_encap_action()
+
+    def update_filter_tables(self):
         out = ''
         out += 'table '+self.filter_name+'{\n'
         out += '\treads {\n'
@@ -459,21 +584,21 @@ class Filter(object):
                 out += '\t\t'+str(header_map[key])+': lpm;\n'
             else:
                 out += '\t\t'+str(header_map[key])+': exact;\n'
-
         out += '\t}\n'
         out += '\tactions{\n'
         out += '\t\tset_meta_fm_'+str(self.qid)+';\n'
         out += '\t\treset_meta_fm_'+str(self.qid)+';\n\t}\n}\n\n'
-        self.filter_rules += out
         self.p4_init_commands.append('table_set_default '+self.filter_name+' reset_meta_fm_'+str(self.qid))
         #self.filter_rules_id += 1
-
-
-
         for val in self.filter_vals:
             self.p4_init_commands.append('table_add '+self.filter_name+' set_meta_fm_'+str(self.qid)+' '+str(val)+' =>')
 
+        self.filter_rules += out
 
+    def compile_dp(self):
+        self.update_p4_invariants()
+        self.update_filter_tables()
+        self.update_p4_encap()
 
 class QueryPipeline(object):
     '''Multiple packet streams can exist for a switch'''
@@ -494,13 +619,20 @@ class QueryPipeline(object):
         self.p4_init_commands = []
         self.expr = 'In'
         self.refinement_filter_id = 0
+        self.parse_payload = False
 
     def reduce(self, *args, **kwargs):
         id = len(self.operators)
         new_args = (id, self.qid, self.mirror_id, TABLE_WIDTH, TABLE_SIZE, THRESHOLD)+args
         map_dict = dict(*args, **kwargs)
         keys = map_dict['keys']
-        self.expr += '.Reduce(' + ','.join([x for x in keys]) + ')'
+        values = ()
+        func = ''
+        if 'values' in map_dict:
+            values = map_dict['values']
+        if 'func' in map_dict:
+            func = map_dict['func']
+        self.expr += '.Reduce(keys=' + ','.join([x for x in keys]) + ', values='+str(values)+', func='+str(func)+')'
         operator = Reduce(*new_args, **kwargs)
         self.operators.append(operator)
         return self
@@ -534,7 +666,7 @@ class QueryPipeline(object):
         filter_name = 'filter_'+str(self.qid)+'_'+str(self.filter_rules_id)
 
         id = len(self.operators)
-        new_args = (id, self.qid, self.filter_rules_id, filter_name)+args
+        new_args = (id, self.qid, self.mirror_id, self.filter_rules_id, filter_name)+args
         self.operators.append(Filter(*new_args, **kwargs))
         self.src_2_filter_operator[src] = self.operators[-1]
 
@@ -546,7 +678,7 @@ class QueryPipeline(object):
         func = map_dict['func']
         if len(func) > 0:
             id = len(self.operators)
-            self.operators.append(Map(id, self.qid,*args, **kwargs))
+            self.operators.append(Map(id, self.qid, self.mirror_id, *args, **kwargs))
             self.expr += '.Map(keys='+str(keys)+', func='+str(func)+')'
         return self
 
@@ -562,6 +694,9 @@ class QueryPipeline(object):
         # Add metadata for initial map operator
         out += 'header_type meta_'+map_operator_name+'_t {\n'
         out += '\t fields {\n'
+
+        self.init_meta['qid'] = map_operator_name+'.qid'
+        out += '\t\t'+ 'qid' + ': '+str(header_size['qid'])+';\n'
         for fld in map_keys:
             self.init_meta[fld] = map_operator_name+'.'+fld
             out += '\t\t'+ fld + ': '+str(header_size[fld])+';\n'
@@ -578,6 +713,8 @@ class QueryPipeline(object):
 
         # Add action of copying the header fields to initial map operator
         out += 'action do_'+map_operator_name+'(){\n'
+        fld = 'qid'
+        out += '\tmodify_field(meta_'+map_operator_name+'.'+str(fld)+', '+str(self.qid)+');\n'
         for fld in map_keys:
             out += '\tmodify_field(meta_'+map_operator_name+'.'+str(fld)+', '+header_map[fld]+');\n'
         out += '}\n\n'
@@ -592,6 +729,7 @@ class QueryPipeline(object):
 
         self.p4_invariants += self.operators[-1].p4_invariants
         self.p4_egress += self.operators[-1].p4_egress
+        print "Qid", self.qid, self.p4_egress
 
         for operator in self.operators:
             self.p4_utils += operator.p4_utils

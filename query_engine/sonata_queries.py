@@ -31,7 +31,7 @@ class Query(object):
     Abstract Query Class
     """
     basic_headers = ["sIP", "sPort", "dIP", "dPort", "nBytes",
-                     "proto", "sMac", "dMac"]
+                     "proto", "sMac", "dMac", "payload"]
 
     def __init__(self, *args, **kwargs):
         self.fields = []
@@ -210,58 +210,67 @@ class PacketStream(Query):
 
         return out
 
-    def get_refinement_plan(self):
-        print("Inside get_refinement_plan %%%%%%%%%%%" + str(self.isInput))
-        if self.isInput:
-            # TODO: automate generation of the refinement levels and reduction keys
-            concise_query = self.get_concise_query()
-            # return 0
-            refinement_levels = [16, 32]
-            reduction_key = 'dIP'
-            prev_level = 0
+    def map(self, append_type=0, *args, **kwargs):
+        # type: (object, object, object) -> object
+        map_dict = dict(*args, **kwargs)
+        keys = map_dict['keys']
+        self.keys = keys
+        if 'values' in map_dict:
+            values = map_dict['values']
+            self.values = values
 
-            for refinement_level in refinement_levels:
-                refined_query = PacketStream()
-                refined_query.map(append_type=1, keys=(reduction_key,), func=("mask", refinement_level))
-                if prev_level > 0:
-                    refined_query.refinement_filter_id = 0
-                    refined_query.filter(append_type=1,
-                                         keys=(prev_map_key,),
-                                         mask=(prev_mask,))
-
-                for operator in concise_query.operators:
-                    # print operator
-                    if operator.name == 'Filter':
-                        refined_query.filter(keys=operator.keys,
-                                             values=operator.values,
-                                             comp=operator.comp)
-                    elif operator.name == "Map":
-                        refined_query.map(keys=operator.keys, values=operator.values)
-                    elif operator.name == "Reduce":
-                        refined_query.reduce(values=operator.values,
-                                             func=operator.func)
-
-                    elif operator.name == "Distinct":
-                        refined_query.distinct()
-
-                    elif operator.name == "Join":
-                        operator.query.get_refinement_plan()
-                        refined_query.join(query=operator.query.refined_queries[-1])
-
-                refined_query.isInput = False
-
-                # print "Refined Query for level "+str(refinement_level)
-                # print refined_query
-
-                self.refined_queries.append(refined_query)
-                prev_level = refinement_level
-                for key in concise_query.basic_headers:
-                    if key == reduction_key:
-                        prev_map_key = key
-                        prev_mask = refinement_level
-
+        if append_type == 0:
+            operator = Map(prev_fields=self.get_prev_fields(), *args, **kwargs)
+            self.operators.append(operator)
         else:
-            raise NotImplementedError
+            operator = Map(prev_fields=self.basic_headers, *args, **kwargs)
+            self.operators = [operator] + self.operators
+
+        return self
+
+    def reduce(self, *args, **kwargs):
+        operator = Reduce(prev_fields=self.get_prev_fields(), *args, **kwargs)
+        map_dict = dict(*args, **kwargs)
+        values = map_dict['values']
+        self.values = values
+        self.operators.append(operator)
+        return self
+
+    def distinct(self, *args, **kwargs):
+        # type: (object, object) -> object
+        operator = Distinct(prev_fields=self.get_prev_fields(), *args, **kwargs)
+        self.operators.append(operator)
+        return self
+
+    def filter(self, append_type=0, *args, **kwargs):
+        """
+        :param append_type:
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        map_dict = dict(*args, **kwargs)
+        keys = map_dict['keys']
+        self.keys = keys
+
+        if append_type == 0:
+            operator = Filter(prev_fields=self.get_prev_fields(), *args, **kwargs)
+            self.operators.append(operator)
+        else:
+            operator = Filter(prev_fields=self.basic_headers, *args, **kwargs)
+            self.operators = [operator] + self.operators
+
+        return self
+
+    def join(self, *args, **kwargs):
+        map_dict = dict(*args, **kwargs)
+        right_query = map_dict['query']
+        new_qid = map_dict['new_qid']
+        new_query = PacketStream(new_qid)
+        new_query.left_child = self
+        new_query.right_child = right_query
+        return new_query
+
 
     def get_concise_query(self):
         unique_keys = {}
@@ -409,66 +418,6 @@ class PacketStream(Query):
             prev_fields = self.basic_headers
         return prev_fields
 
-    def map(self, append_type=0, *args, **kwargs):
-        # type: (object, object, object) -> object
-        map_dict = dict(*args, **kwargs)
-        keys = map_dict['keys']
-        self.keys = keys
-        if 'values' in map_dict:
-            values = map_dict['values']
-            self.values = values
-
-        if append_type == 0:
-            operator = Map(prev_fields=self.get_prev_fields(), *args, **kwargs)
-            self.operators.append(operator)
-        else:
-            operator = Map(prev_fields=self.basic_headers, *args, **kwargs)
-            self.operators = [operator] + self.operators
-
-        return self
-
-    def reduce(self, *args, **kwargs):
-        operator = Reduce(prev_fields=self.get_prev_fields(), *args, **kwargs)
-        map_dict = dict(*args, **kwargs)
-        values = map_dict['values']
-        self.values = values
-        self.operators.append(operator)
-        return self
-
-    def distinct(self, *args, **kwargs):
-        # type: (object, object) -> object
-        operator = Distinct(prev_fields=self.get_prev_fields(), *args, **kwargs)
-        self.operators.append(operator)
-        return self
-
-    def filter(self, append_type=0, *args, **kwargs):
-        """
-        :param append_type:
-        :param args:
-        :param kwargs:
-        :return:
-        """
-        map_dict = dict(*args, **kwargs)
-        keys = map_dict['keys']
-        self.keys = keys
-
-        if append_type == 0:
-            operator = Filter(prev_fields=self.get_prev_fields(), *args, **kwargs)
-            self.operators.append(operator)
-        else:
-            operator = Filter(prev_fields=self.basic_headers, *args, **kwargs)
-            self.operators = [operator] + self.operators
-
-        return self
-
-    def join(self, *args, **kwargs):
-        map_dict = dict(*args, **kwargs)
-        right_query = map_dict['query']
-        new_qid = map_dict['new_qid']
-        new_query = PacketStream(new_qid)
-        new_query.left_child = self
-        new_query.right_child = right_query
-        return new_query
 
     def get_query_tree(self):
         self.query_tree = {self.qid: {}}
@@ -708,70 +657,169 @@ class PacketStream(Query):
         for (queryId, ref_level) in self.query_in_mapping.keys():
             plan = self.query_2_refinement_levels[queryId][ref_level]
             refined_query = self.refined_queries[queryId][ref_level]
-            p4_query = p4.QueryPipeline(refined_query.qid).map_init(keys=refined_query.basic_headers)
-            spark_query = (spark.PacketStream(refined_query.qid)
-                            .filter(prev_fields="p", expr="p[1] == '" + str(refined_query.qid) + "'")
-                            .map(prev_fields=("p",), keys=("p[2:]",)))
+            p4_basic_headers = filter(lambda x: x != "payload", refined_query.basic_headers)
+            p4_query = p4.QueryPipeline(refined_query.qid).map_init(keys=p4_basic_headers)
+            p4_query.parse_payload = False
+
+            spark_query = (spark.PacketStream(refined_query.qid))
+
             print queryId, ref_level, plan
             # For now we will hardcode to push first reduce operator in the data plane
             print "Original Refined Query before partitioning:", refined_query
-            in_pktstream = True
+            in_dataplane = 0
+            border_reduce = None
+            max_dp_operators = 2
+            init_spark = True
             for operator in refined_query.operators:
-                if in_pktstream:
+                if "payload" in operator.keys or "payload" in operator.values:
+                    in_dataplane = max_dp_operators
+                    p4_query.parse_payload = True
+
+                if in_dataplane < max_dp_operators:
                     #print "Intermediate Operators:", refined_query.qid, operator.name
                     if operator.name == 'Reduce':
-                        p4_query = p4_query.reduce(keys=operator.keys)
-                        in_pktstream = False
+                        in_dataplane += 1
+                        if "payload" not in operator.keys:
+                            p4_query = p4_query.reduce(keys=operator.keys)
+                            if in_dataplane == max_dp_operators:
+                                border_reduce = p4_query.operators[-1]
 
-                        # duplicate implementation of reduce operators at the border
-                        prev_fields = get_original_wo_mask(operator.prev_fields)
+                            # duplicate implementation of reduce operators at the border
+                            if in_dataplane == max_dp_operators:
+                                border_reduce = p4_query.operators[-1]
+                                prev_fields = get_original_wo_mask(operator.prev_fields)
+
+                                if init_spark == True:
+                                    hdrs = list(p4_query.operators[-1].out_headers)
+                                    if p4_query.parse_payload: hdrs += ['payload']
+                                    spark_query = (spark_query.filter(keys= ['k']+hdrs,
+                                                                      prev_fields=['k']+hdrs,
+                                                                      expr="qid=='" + str(refined_query.qid) + "'")
+                                                   .map(prev_fields=("p",), keys=("p[2:]",)))
+                                    init_spark = False
+
+
                         spark_query = spark_query.reduce(prev_fields=prev_fields,
-                                                         func=operator.func,
-                                                         values=operator.values)
+                                                             func=operator.func,
+                                                             values=operator.values)
                     elif operator.name == 'Map':
+                        print "Adding map operation", operator
                         p4_query = p4_query.map(keys=operator.keys,
                                                 values=operator.values,
                                                 func=operator.func
                                                 )
 
                     elif operator.name == 'Filter':
-                        p4_query = p4_query.filter(keys=operator.keys,
-                                                   values=operator.values,
-                                                   mask=operator.mask,
-                                                   comp=operator.comp,
-                                                   src = operator.src)
+                        # check if previous operator was reduce
+                        if len(p4_query.operators) > 0:
+                            prev_operator = p4_query.operators[-1]
+                            if prev_operator.name == "Reduce":
+                                # update the threshold for the previous Reduce operator
+                                prev_operator.thresh = operator.values[0]
+                        else:
+                            p4_query = p4_query.filter(keys=operator.keys,
+                                                       values=operator.values,
+                                                       mask=operator.mask,
+                                                       comp=operator.comp,
+                                                       src = operator.src)
                     elif operator.name == 'Distinct':
                         p4_query = p4_query.distinct(keys=operator.prev_fields)
-                        in_pktstream = False
+                        in_dataplane += 1
 
                         # duplicate implementation of reduce operators at the border
-                        prev_fields = get_original_wo_mask(operator.prev_fields)
+                        if in_dataplane == max_dp_operators:
+                            prev_fields = get_original_wo_mask(operator.prev_fields)
+                            if init_spark == True:
+                                hdrs = list(p4_query.operators[-1].out_headers)
+                                if p4_query.parse_payload: hdrs += ['payload']
+
+                                spark_query = (spark_query.filter(keys= ['k']+hdrs,
+                                                                  prev_fields=['k']+hdrs,
+                                                                  expr="qid=='" + str(refined_query.qid) + "'")
+                                               .map(prev_fields=("p",), keys=("p[2:]",)))
+                                init_spark = False
+
+
                         spark_query = spark_query.distinct(prev_fields=prev_fields)
 
                 else:
+                    if init_spark == True:
+                        hdrs = list(p4_query.operators[-1].out_headers)
+                        if p4_query.parse_payload: hdrs += ['payload']
+                        spark_query = (spark_query.filter(keys= ['k']+hdrs,
+                                                          prev_fields=['k']+hdrs,
+                                                          expr="qid=='" + str(refined_query.qid) + "'")
+                                       .map(prev_fields=("p",), keys=("p[2:]",)))
+                        init_spark = False
+
+
                     if operator.name == "Map":
-                        prev_fields = get_original_wo_mask(operator.prev_fields)
-                        keys = get_original_wo_mask(operator.keys)
-                        spark_query = spark_query.map(prev_fields=prev_fields,
+                        if len(spark_query.operators) == 2:
+                            # This is the first operation for this Spark query
+                            prev_fields = refined_query.basic_headers
+                            keys = get_original_wo_mask(operator.keys)
+                            spark_query = spark_query.map(prev_fields=prev_fields,
                                                       keys=keys, values=operator.values)
+                        elif len(spark_query.operators) > 2:
+                            prev_fields = get_original_wo_mask(operator.prev_fields)
+                            prev_keys = spark_query.operators[-1].keys
+                            prev_values = spark_query.operators[-1].values
+                            keys = get_original_wo_mask(operator.keys)
+                            print "In loop >2", keys, operator.values, prev_keys, prev_values
+                            spark_query = spark_query.map(prev_fields=prev_fields,
+                                                          prev_keys = prev_keys,
+                                                          prev_values = prev_values,
+                                                          keys=keys, values=operator.values)
+
+
 
                     if operator.name == "Reduce":
-                        prev_fields = get_original_wo_mask(operator.prev_fields)
+                        if len(spark_query.operators) == 2:
+                            # This is the first operation for this Spark query
+                            prev_fields = refined_query.basic_headers
+                        else:
+                            prev_fields = get_original_wo_mask(operator.prev_fields)
+
                         spark_query = spark_query.reduce(prev_fields=prev_fields,
                                                          func=operator.func,
                                                          values=operator.values)
 
                     if operator.name == "Distinct":
-                        prev_fields = get_original_wo_mask(operator.prev_fields)
+                        if len(spark_query.operators) == 2:
+                            # This is the first operation for this Spark query
+                            prev_fields = refined_query.basic_headers
+                        else:
+                            prev_fields = get_original_wo_mask(operator.prev_fields)
                         spark_query = spark_query.distinct(prev_fields=prev_fields)
 
                     if operator.name == "Filter":
-                        prev_fields = get_original_wo_mask(operator.prev_fields)
-                        spark_query = spark_query.filter(prev_fields=prev_fields,
-                                                         expr=operator.expr)
+                        if border_reduce is not None:
+                            border_reduce.thresh = operator.values[0]
+                            print "Updated threshold", border_reduce.thresh, " for", border_reduce.name
 
-            print "After Partitioning, P4:", p4_query.expr, type(p4_query)
-            print "After Partitioning, Spark:", spark_query.expr, type(spark_query)
+                        if len(spark_query.operators) == 2:
+                            # This is the first operation for this Spark query
+                            prev_fields = refined_query.basic_headers
+                        else:
+                            prev_fields = get_original_wo_mask(operator.prev_fields)
+                        tmp = ''
+                        # TODO: make this more generic.....puke puke
+                        for fld in prev_fields:
+                            if fld not in operator.keys:
+                                if operator.comp == 'eq':
+                                    tmp += '('+str(fld)+'=='+str(operator.values[0])+')'
+                                elif operator.comp == 'geq':
+                                    tmp += '('+str(fld)+'>='+str(operator.values[0])+')'
+                                elif operator.comp == 'leq':
+                                    tmp += '('+str(fld)+'<='+str(operator.values[0])+')'
+
+                        expr = tmp
+
+                        spark_query = spark_query.filter(keys=operator.keys, prev_fields=prev_fields,
+                                                         expr=expr)
+
+            print "After Partitioning, P4:", p4_query.expr
+            print "After Partitioning, Spark:", spark_query.expr
             self.qid_2_dp_queries[refined_query.qid] = p4_query
             self.qid_2_sp_queries[refined_query.qid] = spark_query
             refined_query.dp_query = p4_query

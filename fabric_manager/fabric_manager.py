@@ -73,8 +73,6 @@ class FabricManagerConfig(object):
         logging.info("query compiled")
         print "FM: Received ", len(self.queries), " queries from Runtime"
 
-
-
         write_to_file(P4_COMPILED, self.p4_src)
 
         P4_COMMANDS_STR = "\n".join(self.p4_init_commands)
@@ -116,7 +114,6 @@ class FabricManagerConfig(object):
                 commands += command
                 print "Added command ", qid, command
 
-
             write_to_file(P4_DELTA_COMMANDS, commands)
             send_commands_to_dp(CLI_PATH, JSON_P4_COMPILED, THRIFTPORT, P4_DELTA_COMMANDS)
 
@@ -157,7 +154,6 @@ class FabricManagerConfig(object):
         out += '\tsize : 1;\n}\n\n'
         self.p4_init_commands.append('table_set_default recirculate_to_ingress do_recirculate_to_ingress')
 
-
         out += 'table drop_table {\n\tactions {_drop;}\n\tsize : 1;\n}\n\n'
         out += 'table drop_packets {\n\tactions {_drop;}\n\tsize : 1;\n}\n\n'
         self.p4_init_commands.append('table_set_default drop_table _drop')
@@ -169,7 +165,6 @@ class FabricManagerConfig(object):
         # Update the initial P4 commands
         for q in self.queries:
             self.p4_init_commands += q.p4_init_commands
-
 
         out += 'parser parse_out_header {\n\t'
         for q in self.queries:
@@ -230,7 +225,6 @@ class FabricManagerConfig(object):
             out += '\t\t}\n\t}\n'
             self.p4_init_commands.append('table_set_default copy_to_cpu_'+str(q.qid)+' do_copy_to_cpu_'+str(q.qid))
         out += '}\n\n'
-
 
         out += 'control egress {\n'
         out += '\tif (standard_metadata.instance_type != 1) {\n'
