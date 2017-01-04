@@ -3,8 +3,15 @@
 #  Arpit Gupta (arpitg@cs.princeton.edu)
 
 import random
-import time
 import sys
+import time
+import matplotlib
+import networkx as nx
+
+matplotlib.rc('text', usetex=False)
+matplotlib.use('Agg')
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
 
 
 def swap(input, ind1, ind2):
@@ -202,15 +209,19 @@ def get_refinement_plan(start_level, final_level, query_id, ref_levels, query_2_
         query_2_final_plan[query_id] = {}
     query_2_final_plan[query_id][final_level] = (final_plan, min_cost)
 
-    #print query_id, final_level, final_plan, min_cost
+    # print query_id, final_level, final_plan, min_cost
     return (final_plan, min_cost)
+
+
+def get_refplan_dijkstra():
+    pass
 
 
 if __name__ == '__main__':
     # print node_2_plan
     memorized_plans = {}
     # Tuning parameters
-    query_tree_depth = 1
+    query_tree_depth = 0
     max_plans = 1
     ref_levels = range(0, 33, 8)
 
@@ -225,7 +236,7 @@ if __name__ == '__main__':
 
     all_queries.sort()
     # print all_queries
-    print query_tree
+    # print query_tree
 
     # query_tree = {1:{2:{}, 3:{}}}
     query_2_cost = {}
@@ -248,16 +259,58 @@ if __name__ == '__main__':
                 for transit in tmp:
                     query_2_cost[query_id][(p1, p2), transit] = tmp[transit]
 
-
-    #print query_2_plans
-    #print query_2_cost
+    # print query_2_plans
+    # print query_2_cost
     # print query_2_cost.keys()
     start = time.time()
 
     for query_id in query_tree:
         # We start with the finest refinement level, as expressed in the original query
-        final_plan, cost = get_refinement_plan(ref_levels[0], ref_levels[-1], query_id, ref_levels, query_2_plans, query_tree,
-                                               query_2_cost, query_2_final_plan, memorized_plans)
+        final_plan, cost = get_refinement_plan(ref_levels[0], ref_levels[-1], query_id, ref_levels, query_2_plans,
+                                               query_tree, query_2_cost, query_2_final_plan, memorized_plans)
+
+        # Verify that the refinement search is not a complicated backtracking
+        # problem. Instead, it cab be mapped as a simple shortest path problem.
+        # TODO: update the get_refinement_plan() function to make it simpler
+        G = nx.DiGraph()
+        src_node = str('src')
+        G.add_node(src_node)
+        sink_node = str('sink')
+        G.add_node(sink_node)
+        query_id = 1
+
+        for ref_level in range(1, len(ref_levels) + 1):
+            for plan_id in query_2_plans[query_id]:
+                for dimension in ref_levels[1:]:
+                    node_name = str((ref_level, plan_id, dimension))
+                    G.add_node(node_name)
+                    print "Added node", node_name
+
+        for ref_level in range(1, len(ref_levels)):
+            for ((prev_plan, curr_plan), (prev_dim, curr_dim)) in query_2_cost[query_id]:
+                if prev_dim != 0 and curr_dim != 0:
+                    src = str((ref_level, prev_plan, prev_dim))
+                    dst = str((ref_level + 1, curr_plan, curr_dim))
+                    cost = query_2_cost[query_id][((prev_plan, curr_plan), (prev_dim, curr_dim))]
+                    G.add_edge(src, dst, cost=cost)
+                    print "Added edge", src, dst, cost
+
+        ref_level = 1
+        for plan_id in query_2_plans[query_id]:
+            for dimension in ref_levels[1:]:
+                dst = str((ref_level, plan_id, dimension))
+                cost = query_2_cost[query_id][((1, plan_id), (0, dimension))]
+                G.add_edge(src_node, dst, cost=cost)
+                print "Added edge", src_node, dst, cost
+
+        for ref_level in range(1, len(ref_levels) + 1):
+            for plan_id in query_2_plans[query_id]:
+                dimension = ref_levels[-1]
+                src = str((ref_level, plan_id, dimension))
+                G.add_edge(src, sink_node, cost=10)
+                print "Added edge", src, sink_node, 0
+
+        print(nx.shortest_path(G, source=src_node, target=sink_node, weight='cost'))
 
     print query_2_final_plan
     print "Took", time.time() - start, "seconds"
