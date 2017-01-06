@@ -5,14 +5,7 @@
 import random
 import sys
 import time
-import matplotlib
 import networkx as nx
-
-matplotlib.rc('text', usetex=False)
-matplotlib.use('Agg')
-matplotlib.rcParams['pdf.fonttype'] = 42
-matplotlib.rcParams['ps.fonttype'] = 42
-
 
 def swap(input, ind1, ind2):
     tmp = input[ind2]

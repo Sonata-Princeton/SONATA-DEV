@@ -34,29 +34,44 @@ if __name__ == "__main__":
             'fm_socket': ('localhost', 6666)}
 
     q0 = PacketStream()
+    app_n = 1
+    if app_n == 1:
 
-    q1 = (PacketStream(1)
-          .filter(keys=("proto",), values=('6',), comp="eq")
-          .map(keys=("dIP", "sIP"))
-          .distinct()
-          .map(keys=("dIP",), values=("1",))
-          .reduce(keys=("dIP",), func='sum', values=('count',))
-          .filter(keys=("dIP",), values=(3,), comp="geq")
-          .map(keys=('dIP',))
-          )
+        q1 = (PacketStream(1)
+              .filter(keys=("proto",), values=('6',), comp="eq")
+              .map(keys=("dIP", "sIP"))
+              .distinct()
+              .map(keys=("dIP",), values=("1",))
+              .reduce(keys=("dIP",), func='sum', values=('count',))
+              .filter(keys=("dIP",), values=(3,), comp="geq")
+              .map(keys=('dIP',))
+              )
 
-    q2 = (PacketStream(2)
-          .map(keys=('dIP','payload'))
-          )
+        q2 = (PacketStream(2)
+              .map(keys=('dIP','payload'))
+              )
 
-    #print q2.expr, q2.keys, q2.values
-    q3 = (q2.join(new_qid=3, query=q1)
-          .map(keys=("dIP", "payload"), values=("1",))
-          .reduce(keys=("dIP","payload"), func='sum', values=('count',))
-          .filter(keys=("dIP","payload"), values=(1,), comp="geq")
-          .map(keys=('dIP',))
-          .distinct()
-          )
+        #print q2.expr, q2.keys, q2.values
+        q3 = (q2.join(new_qid=3, query=q1)
+              .map(keys=("dIP", "payload"), values=("1",))
+              .reduce(keys=("dIP","payload"), func='sum', values=('count',))
+              .filter(keys=("dIP","payload"), values=(1,), comp="geq")
+              .map(keys=('dIP',))
+              .distinct()
+              )
+        queries = [q3]
 
-    queries = [q3]
+    elif app_n == 2:
+        q1 = (PacketStream(1).filter(keys = ('proto',),values = ('6',))
+              .filter(keys = ('dIP',),values = ('112.7.186.25',))
+              .map(keys=("dIP", "sIP"))
+              .distinct()
+            )
+
+        q2 = (PacketStream(2)
+              .map(keys=("dIP",), values=("1",))
+              .reduce(keys=("dIP",), func='sum', values=('count',))
+              )
+        queries = [q1]
+
     runtime = Runtime(conf, queries)

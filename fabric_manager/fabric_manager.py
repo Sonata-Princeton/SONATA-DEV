@@ -247,3 +247,6 @@ class FabricManagerConfig(object):
         for q in self.queries:
             self.p4_init_commands.append('mirroring_add '+str(q.mirror_id)+' 12')
         self.p4_src = out
+
+if __name__ == "__main__":
+    blah = 1

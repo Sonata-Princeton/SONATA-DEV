@@ -679,6 +679,7 @@ class PacketStream(Query):
                     #print "Intermediate Operators:", refined_query.qid, operator.name
                     if operator.name == 'Reduce':
                         in_dataplane += 1
+                        prev_fields = get_original_wo_mask(operator.prev_fields)
                         if "payload" not in operator.keys:
                             p4_query = p4_query.reduce(keys=operator.keys)
                             if in_dataplane == max_dp_operators:
@@ -687,7 +688,6 @@ class PacketStream(Query):
                             # duplicate implementation of reduce operators at the border
                             if in_dataplane == max_dp_operators:
                                 border_reduce = p4_query.operators[-1]
-                                prev_fields = get_original_wo_mask(operator.prev_fields)
 
                                 if init_spark == True:
                                     hdrs = list(p4_query.operators[-1].out_headers)
@@ -725,10 +725,11 @@ class PacketStream(Query):
                     elif operator.name == 'Distinct':
                         p4_query = p4_query.distinct(keys=operator.prev_fields)
                         in_dataplane += 1
-
+                        prev_fields = get_original_wo_mask(operator.prev_fields)
                         # duplicate implementation of reduce operators at the border
+                        print "Test in_dataplane val for distinct", in_dataplane
                         if in_dataplane == max_dp_operators:
-                            prev_fields = get_original_wo_mask(operator.prev_fields)
+
                             if init_spark == True:
                                 hdrs = list(p4_query.operators[-1].out_headers)
                                 if p4_query.parse_payload: hdrs += ['payload']
