@@ -81,7 +81,7 @@ class Reduce(Query):
         super(Reduce, self).__init__(*args, **kwargs)
         self.name = 'Reduce'
         map_dict = dict(*args, **kwargs)
-        print map_dict
+        #print map_dict
 
         self.keys = map_dict['keys']
         self.prev_fields = map_dict['prev_fields']
@@ -850,8 +850,6 @@ if __name__ == "__main__":
     q3.generate_query_in_mapping(finest_plan, q3.query_2_final_plan)
     print "query_in_mapping:", q3.query_in_mapping
     print "query_out_mapping:", q3.generate_query_out_mapping()
-
-
 
     print q3.get_query_2_refinement_levels(finest_plan, q3.query_2_final_plan)
     print q3.get_orig_refined_mapping()
