@@ -7,7 +7,7 @@ import math
 import p4_queries as p4
 import spark_queries as spark
 import logging
-import backtrack as bt
+import plans_search as rs
 
 logging.getLogger("sonata_queries")
 
@@ -465,7 +465,7 @@ class PacketStream(Query):
                 for p2 in plans:
                     # For each path combination for each query we generate cost using the cost function above.
                     # TODO: replace this with cost model based on training data
-                    tmp = bt.generate_costs(ref_levels)
+                    tmp = rs.generate_costs(ref_levels)
                     for transit in tmp:
                         query_2_cost[query_id][(p1, p2), transit] = tmp[transit]
         self.query_2_cost = query_2_cost
@@ -476,7 +476,7 @@ class PacketStream(Query):
         memorized_plans = {}
         for query_id in self.query_tree:
             # We start with the finest refinement level, as expressed in the original query
-            bt.get_refinement_plan(ref_levels[0], ref_levels[-1], query_id, ref_levels, self.query_2_plans, self.query_tree,
+            rs.get_refinement_plan(ref_levels[0], ref_levels[-1], query_id, ref_levels, self.query_2_plans, self.query_tree,
                                    self.query_2_cost, query_2_final_plan, memorized_plans)
 
         self.query_2_final_plan = query_2_final_plan

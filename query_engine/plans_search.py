@@ -55,14 +55,12 @@ def generate_costs(a):
     # print costs
     return costs
 
-
 def get_plan_cost(plan, cost=0):
     if len(plan) > 1:
         cost += costs[tuple([plan[0], plan[1]])] + get_plan_cost(plan[1:], cost)
     else:
         return 0
     return cost
-
 
 def generate_query_tree(depth, all_queries, qid=1):
     query_tree = {}
