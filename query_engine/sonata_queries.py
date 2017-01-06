@@ -13,7 +13,6 @@ logging.getLogger("sonata_queries")
 
 pstream_qid = 1
 
-
 def get_original_wo_mask(lstOfFields):
     fields = []
 
