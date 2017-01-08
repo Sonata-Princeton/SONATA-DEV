@@ -522,10 +522,10 @@ class PacketStream(Query):
                         refined_query.filter(append_type=1, src = refined_qid_src, keys=(red_key,), mask=(mask,))
 
                 refined_query.map(keys=(red_key,), func=("mask", ref_level))
-                if original_query.left_child is not None:
-                    concise_left = original_query.left_child.get_concise_query()
+                if original_query.right_child is not None:
+                    concise_right = original_query.right_child.get_concise_query()
                     # TODO: get rid of this redundancy
-                    for operator in concise_left.operators:
+                    for operator in concise_right.operators:
                         if operator.name == 'Filter':
                             refined_query.filter(keys=operator.keys, values=operator.values, comp=operator.comp)
                         elif operator.name == "Map":
@@ -570,6 +570,12 @@ class PacketStream(Query):
             in_dataplane = 0
             border_reduce = None
             max_dp_operators = 2
+            max_reduce_operators = 0
+            for operator in refined_query.operators:
+                if operator.name in ['Reduce', 'Distinct']:
+                    max_reduce_operators += 1
+            if max_reduce_operators < max_dp_operators:
+                max_dp_operators = max_reduce_operators
             init_spark = True
             for operator in refined_query.operators:
                 if "payload" in operator.keys or "payload" in operator.values:

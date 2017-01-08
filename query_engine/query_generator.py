@@ -34,7 +34,7 @@ def generate_composed_query(query_tree, qid_2_query):
         right_query = generate_composed_query({right_qid:query_tree[root_qid][right_qid]}, qid_2_query)
 
         left_query_keys = left_query.keys
-        right_query = right_query.map(keys=left_query_keys, values=tuple(basic_headers))
+        #right_query = right_query.map(keys=left_query_keys, values=tuple(basic_headers))
         """
         print "Qid", root_qid
         print "Root Query", root_query
@@ -180,6 +180,7 @@ class QueryGenerator(object):
             other_headers = reduction_fields
             ctr += 1
             self.generate_reduction_operators(q, qid, [reduction_key]+reduction_fields)
+        q.map(keys=tuple([reduction_key]+reduction_fields))
 
         #print qid, q
         return q
