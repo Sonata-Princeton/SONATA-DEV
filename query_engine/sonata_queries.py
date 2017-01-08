@@ -276,7 +276,7 @@ class PacketStream(Query):
             for k in operator.keys:
                 unique_keys[k] = 0
 
-        concise_query = PacketStream(self.qid)
+        concise_query = PacketStream()
         concise_query.basic_headers = unique_keys.keys()
         #print "Basic headers for concise query", concise_query.basic_headers
         """
@@ -314,10 +314,12 @@ class PacketStream(Query):
             prev_fields = self.basic_headers
         return prev_fields
 
-
     def get_query_tree(self):
         self.query_tree = {self.qid: {}}
+        print "Root:", self
         if self.right_child is not None:
+            print "Left:", self.left_child
+            print "Right", self.right_child
             self.query_tree[self.qid][self.left_child.qid] = self.left_child.get_query_tree()[self.left_child.qid]
             self.query_tree[self.qid][self.right_child.qid] = self.right_child.get_query_tree()[self.right_child.qid]
         return self.query_tree

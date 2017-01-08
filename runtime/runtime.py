@@ -37,7 +37,9 @@ class Runtime(object):
 
             query.get_query_tree()
             print "Parsed Query Tree", query.query_tree
+            print "Before", query.all_queries
             query.get_all_queries()
+            print "After", query.all_queries
             query.get_partition_plans()
 
             # TODO: get rid of this hardcoding
