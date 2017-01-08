@@ -92,6 +92,7 @@ class Distinct(SparkQuery):
     def __init__(self, *args, **kwargs):
         map_dict = dict(*args, **kwargs)
         self.prev_fields = map_dict['prev_fields']
+        self.keys = self.prev_fields
         self.fields = self.prev_fields
 
     def compile(self):

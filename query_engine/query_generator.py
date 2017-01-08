@@ -52,7 +52,7 @@ def generate_composed_query(query_tree, qid_2_query):
             elif operator.name == "Reduce":
                 composed_query.reduce(keys=operator.keys, values=operator.values, func=operator.func)
             elif operator.name == "Distinct":
-                composed_query.distinct()
+                composed_query.distinct(keys=operator.keys)
 
     else:
         composed_query = root_query
@@ -143,15 +143,18 @@ class QueryGenerator(object):
     def generate_reduction_operators(self, q, qid, reduction_fields):
         """
         Generate Map-Reduce-Filter Operators on input query `q`
-
         arguments:
         @q: query PacketStream to add Map-Reduce-Filter operators
         @qid: query id for the query
         @reduction_fields: fields to reduce query on
         """
         q.map(keys=tuple(reduction_fields), values=("1",))
-        q.reduce(keys=tuple(reduction_fields), func='sum', values=('count',))
-        q.filter(keys=tuple(reduction_fields), values=(self.qid_2_thresh[qid],), comp="geq")
+        operator = random.choice(['Distinct', 'Reduce'])
+        if operator == 'Reduce':
+            q.reduce(keys=tuple(reduction_fields), func='sum', values=('count',))
+            q.filter(keys=tuple(reduction_fields), values=(self.qid_2_thresh[qid],), comp="geq")
+        else:
+            q.distinct(keys=tuple(reduction_fields))
 
     def generate_single_query(self, qid, isLeft=True):
         """

@@ -35,6 +35,10 @@ def get_all_possible_transits(a):
 
 
 def generate_costs(a):
+    """
+
+    :rtype: object
+    """
     costs = {}
     low = 1000
     high = 2000
@@ -111,13 +115,14 @@ def get_refinement_plan(start_level, final_level, query_id, ref_levels, query_2_
     subtree = query_tree[query_id]
     costs = query_2_cost[query_id]
     levels = range(root, len(possibility_space) + 1)
+    plans = query_2_plans[query_id]
 
     for curr_level in levels:
 
         if curr_level == 0:
-            explore_further[curr_level] = {(1, root): 0}
+            explore_further[curr_level] = {(plans[0], root): 0}
             node_2_all_plans[curr_level] = {}
-            node_2_all_plans[curr_level][(1, 0)] = [(1, 0)]
+            node_2_all_plans[curr_level][(plans[0], 0)] = [(plans[0], 0)]
 
         next_level = curr_level + 1
         if curr_level in explore_further:

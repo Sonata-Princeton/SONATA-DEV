@@ -33,17 +33,17 @@ class Runtime(object):
         time.sleep(1)
 
         for query in self.queries:
-            logging.info("runtime: going thru queries")
+            logging.info("runtime: going through queries")
 
             query.get_query_tree()
-            print "Parsed Query Tree", query.query_tree
-            print "Before", query.all_queries
             query.get_all_queries()
-            print "After", query.all_queries
             query.get_partition_plans()
 
-            # TODO: get rid of this hardcoding
-            reduction_key = 'dIP'
+
+            reduction_key = query.get_reduction_key()
+            print "Reduction key for Query", query.qid, " is ", reduction_key
+            # Tunable parameter
+            #reduction_key = 'dIP'
             ref_levels = range(0, 33, 8)
             finest_plan = ref_levels[-1]
 

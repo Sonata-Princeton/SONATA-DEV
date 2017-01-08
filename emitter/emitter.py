@@ -11,8 +11,8 @@ header_size = {"sIP":32, "dIP":32, "sPort": 16, "dPort": 16,
                "nBytes": 16, "proto": 16, "sMac": 48, "dMac":48,
                "qid":16, "count": 16}
 
-class Emitter(object):
 
+class Emitter(object):
     def __init__(self, conf, queries):
         self.spark_stream_address = conf['spark_stream_address']
         self.spark_stream_port = conf['spark_stream_port']
@@ -65,17 +65,25 @@ class Emitter(object):
                     output_tuple.append(strct.unpack(p_str[ind:ind+ctr])[0])
                 ind += ctr
 
-                if query.parse_payload:
-                    print "Adding payload for query", query.qid
-                    payload = ''
-                    if raw_packet.haslayer(Raw):
-                        payload = str(raw_packet.getlayer(Raw).load)
-                    output_tuple.append(payload)
+            # TODO find a better solution to filter unrelated packets
+            is_related = False
+            if raw_packet.haslayer(Raw):
+                is_related = True
+
+            if query.parse_payload:
+                print "Adding payload for query", query.qid
+                payload = ''
+                if raw_packet.haslayer(Raw):
+                    payload = str(raw_packet.getlayer(Raw).load)
+                output_tuple.append(payload)
 
             output_tuple = ['k']+[str(qid)]+output_tuple
             send_tuple = ",".join([str(x) for x in output_tuple])
-            print "Tuple:", send_tuple
-            self.send_data(send_tuple + "\n")
+            if is_related:
+                print "Tuple:", send_tuple
+                self.send_data(send_tuple + "\n")
+            else:
+                print "Sniffed unrelated packet."
 
 
 if __name__ == '__main__':

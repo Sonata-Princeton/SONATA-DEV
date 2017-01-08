@@ -31,6 +31,7 @@ class Query(object):
     """
     basic_headers = ["sIP", "sPort", "dIP", "dPort", "nBytes",
                      "proto", "sMac", "dMac", "payload"]
+    refinement_headers = ["dIP", "sIP"]
 
     def __init__(self, *args, **kwargs):
         self.fields = []
@@ -98,11 +99,12 @@ class Distinct(Query):
         super(Distinct, self).__init__(*args, **kwargs)
         self.name = 'Distinct'
         map_dict = dict(*args, **kwargs)
+        self.keys = map_dict['keys']
         self.prev_fields = map_dict['prev_fields']
         self.fields = self.prev_fields
 
     def __repr__(self):
-        return '.Distinct()'
+        return '.Distinct(keys='+str(self.keys)+')'
 
 
 class Join(Query):
@@ -303,7 +305,7 @@ class PacketStream(Query):
                                      func=operator.func)
 
             elif operator.name == "Distinct":
-                concise_query.distinct()
+                concise_query.distinct(keys = operator.keys)
 
         return concise_query
 
@@ -316,10 +318,10 @@ class PacketStream(Query):
 
     def get_query_tree(self):
         self.query_tree = {self.qid: {}}
-        print "Root:", self
+        #print "Root:", self
         if self.right_child is not None:
-            print "Left:", self.left_child
-            print "Right", self.right_child
+            #print "Left:", self.left_child
+            #print "Right", self.right_child
             self.query_tree[self.qid][self.left_child.qid] = self.left_child.get_query_tree()[self.left_child.qid]
             self.query_tree[self.qid][self.right_child.qid] = self.right_child.get_query_tree()[self.right_child.qid]
         return self.query_tree
@@ -329,30 +331,57 @@ class PacketStream(Query):
             self.all_queries.update(self.left_child.get_all_queries())
             self.all_queries.update(self.right_child.get_all_queries())
 
-            print "[get_all_queries]:", self.all_queries
+            #print "[get_all_queries]:", self.all_queries
         return self.all_queries
 
     def get_partition_plans(self):
         query_2_plans = {}
         for query_id in self.all_queries:
             query = self.all_queries[query_id]
+            print "Exploring partitioning plans for", query.qid
+            red_operators = []
             # We will count how many operators (that matter) can either be executed in DP or SP
             n_operators = 0
             for operator in query.operators:
                 if operator.name in ['Distinct', 'Reduce']:
                     # Only distinct and reduce matter when making query partitioning decisions
                     n_operators += 1
+                    red_operators.append(operator.name)
+            # TODO: Explore how we can make decisions regarding offloading of join operation
+            """
             if query.right_child is not None:
                 # And off course we care about whether join operator is executed in DP or SP
                 n_operators += 1
+                red_operators.append('Join')
+            """
+            print "Reduction Operators", red_operators
             # TODO: apply constraints to further make the number of possible plans realistic
             if n_operators > 1:
-                plans = range(int(math.pow(2, n_operators)-1))
+                plans = range(int(math.pow(2, n_operators)))
             elif n_operators == 1:
                 plans = range(2)
             else:
                 plans = []
-            query_2_plans[query_id] = plans
+            refined_plans = []
+            get_bin = lambda x, n: format(x, 'b').zfill(n)
+            for plan in plans:
+                plan_b = get_bin(plan,len(red_operators))
+                is_allowed = True
+                has_one = False
+                ctr = 0
+                for elem in plan_b[2:]:
+                    if elem == '1':
+                        has_one = True
+                    if elem == '0' and has_one:
+                        is_allowed = False
+                    ctr += 1
+
+                print "Plan", plan, plan_b, is_allowed
+                if is_allowed:
+                    refined_plans.append(plan_b)
+            print plans, refined_plans
+            query_2_plans[query_id] = refined_plans
+            #query_2_plans[query_id] = plans
         self.query_2_plans = query_2_plans
         return query_2_plans
 
@@ -369,6 +398,7 @@ class PacketStream(Query):
                     for transit in tmp:
                         query_2_cost[query_id][(p1, p2), transit] = tmp[transit]
         self.query_2_cost = query_2_cost
+        print "Cost", self.query_2_cost
         return query_2_cost
 
     def get_refinement_plan(self, ref_levels):
@@ -381,6 +411,27 @@ class PacketStream(Query):
 
         self.query_2_final_plan = query_2_final_plan
         return query_2_final_plan
+
+    def get_reduction_key(self):
+        red_key = ''
+        if self.left_child is not None:
+            red_keys_left = self.left_child.get_reduction_key()
+            red_keys_right = self.right_child.get_reduction_key()
+            # TODO: make sure that we better handle the case when first reduce operator has both sIP and dIP as reduction keys
+            if len(red_keys_right) > 0:
+                red_key = list(set(red_keys_left).intersection(red_keys_right).intersection(self.refinement_headers))[0]
+            else:
+                red_key = list(set(red_keys_left).intersection(self.refinement_headers))[0]
+        else:
+            #print "Reached leaf node", self.qid
+            for operator in self.operators:
+                # Extract reduction keys from first reduce/distinct operator
+                if operator.name in ['Distinct', 'Reduce']:
+                    red_key = operator.keys
+                    break
+
+        #print "Reduction Key Search", self.qid, red_key
+        return red_key
 
     def generate_query_out_mapping(self):
         query_out_mapping = {}
@@ -470,7 +521,6 @@ class PacketStream(Query):
                     prev_ref_level = ref_level
                     last_level = ref_level
 
-
         self.query_in_mapping = query_in_mapping
 
         if last_level > 0:
@@ -533,7 +583,7 @@ class PacketStream(Query):
                         elif operator.name == "Reduce":
                             refined_query.reduce(keys=operator.keys, values=operator.values, func=operator.func)
                         elif operator.name == "Distinct":
-                            refined_query.distinct()
+                            refined_query.distinct(keys=operator.keys)
 
                 for operator in concise_query.operators:
                     if operator.name == 'Filter':
@@ -543,7 +593,7 @@ class PacketStream(Query):
                     elif operator.name == "Reduce":
                         refined_query.reduce(keys=operator.keys, values=operator.values, func=operator.func)
                     elif operator.name == "Distinct":
-                        refined_query.distinct()
+                        refined_query.distinct(keys=operator.keys)
 
                 refined_query.isInput = False
                 #print "Added refined query for", queryId, ref_level
@@ -630,7 +680,7 @@ class PacketStream(Query):
                                                        comp=operator.comp,
                                                        src = operator.src)
                     elif operator.name == 'Distinct':
-                        p4_query = p4_query.distinct(keys=operator.prev_fields)
+                        p4_query = p4_query.distinct(keys=operator.keys)
                         in_dataplane += 1
                         prev_fields = get_original_wo_mask(operator.prev_fields)
                         # duplicate implementation of reduce operators at the border
@@ -647,7 +697,6 @@ class PacketStream(Query):
                                                .map(prev_fields=("p",), keys=("p[2:]",)))
                                 init_spark = False
 
-
                         spark_query = spark_query.distinct(prev_fields=prev_fields)
 
                 else:
@@ -659,7 +708,6 @@ class PacketStream(Query):
                                                           expr="qid=='" + str(refined_query.qid) + "'")
                                        .map(prev_fields=("p",), keys=("p[2:]",)))
                         init_spark = False
-
 
                     if operator.name == "Map":
                         if len(spark_query.operators) == 2:
@@ -678,8 +726,6 @@ class PacketStream(Query):
                                                           prev_keys = prev_keys,
                                                           prev_values = prev_values,
                                                           keys=keys, values=operator.values)
-
-
 
                     if operator.name == "Reduce":
                         if len(spark_query.operators) == 2:
@@ -738,9 +784,9 @@ class PacketStream(Query):
 if __name__ == "__main__":
     # Basic test setup for IR and QP implementations
     q0 = PacketStream(0)
-    q1 = PacketStream(1).map(keys=("dIP",), func=("mask", 16)).distinct()
-    q2 = (PacketStream(2).map(keys=('dIP',), values=tuple([x for x in q0.basic_headers])).distinct())
-    q3 = q2.join(new_qid=3, query=q1).map(keys=("dIP",), func=("mask", 16)).distinct()
+    q1 = PacketStream(1).map(keys=("dIP",), func=("mask", 16)).distinct(keys=("dIP",))
+    q2 = (PacketStream(2).map(keys=('dIP',), values=tuple([x for x in q0.basic_headers])).distinct(keys=('dIP',)))
+    q3 = q2.join(new_qid=3, query=q1).map(keys=("dIP",), func=("mask", 16)).distinct(keys=("dIP",))
 
     q3.get_query_tree()
     q3.get_all_queries()
