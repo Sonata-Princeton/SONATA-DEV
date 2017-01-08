@@ -152,7 +152,7 @@ class PacketStream(SparkQuery):
         if 'values' in map_dict:
             values = map_dict['values']
 
-        self.expr += '.Map('+','.join([x for x in keys])+')'
+        self.expr += '\n\t.Map('+','.join([x for x in keys])+')'
         operator = Map(*args, **kwargs)
         self.operators.append(operator)
         return self
@@ -162,7 +162,7 @@ class PacketStream(SparkQuery):
         prev_fields = map_dict['prev_fields']
         func = map_dict['func']
         values = map_dict['values']
-        self.expr += '.Reduce('+func+','+','.join([x for x in values])+')'
+        self.expr += '\n\t.Reduce('+func+',values='+','.join([x for x in values])+',prev_fields='+','.join([x for x in prev_fields])+')'
         operator = Reduce(prev_fields = prev_fields,
                           func = func,
                           values = values)
@@ -170,7 +170,7 @@ class PacketStream(SparkQuery):
         return self
 
     def distinct(self, *args, **kwargs):
-        self.expr += '.Distinct()'
+        self.expr += '\n\t.Distinct()'
         map_dict = dict(*args, **kwargs)
         prev_fields = map_dict['prev_fields']
         operator = Distinct(prev_fields = prev_fields)
@@ -180,6 +180,10 @@ class PacketStream(SparkQuery):
     def filter(self, *args, **kwargs):
         map_dict = dict(*args, **kwargs)
         prev_fields = map_dict['prev_fields']
+        keys = map_dict['keys']
+        values = filter(lambda x: x not in keys, prev_fields)
+        expr = map_dict['expr']
+        self.expr += '\n\t.Filter(prev_fields=('+','.join([x for x in prev_fields])+'), expr=('+expr+'),keys=('+','.join([x for x in keys])+'))'
         operator = Filter(*args, **kwargs)
         self.operators.append(operator)
         return self

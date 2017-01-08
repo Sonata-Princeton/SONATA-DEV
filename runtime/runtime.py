@@ -36,6 +36,7 @@ class Runtime(object):
             logging.info("runtime: going thru queries")
 
             query.get_query_tree()
+            print "Parsed Query Tree", query.query_tree
             query.get_all_queries()
             query.get_partition_plans()
 

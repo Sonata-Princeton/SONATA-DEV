@@ -59,6 +59,7 @@ if __name__ == "__main__":
               .map(keys=('dIP',))
               .distinct()
               )
+        print q3
         queries = [q3]
 
     elif app_n == 2:

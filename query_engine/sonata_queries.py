@@ -195,17 +195,17 @@ class PacketStream(Query):
         self.output = None
 
     def __repr__(self):
-        out = 'In'
+        out = ''
         if self.left_child is not None:
-            for operator in self.left_child.operators:
-                out += operator.__repr__()
-            out += '\n\t.Join('
-            for operator in self.right_child.operators:
-                out += operator.__repr__()
-            out += ')\n\t'
+            out += self.right_child.__repr__()
+            out += '.Join(qid='+str(self.qid)+', q_left='
+            out += "" + self.left_child.__repr__()
+            out += ')\n'
+        else:
+            out += 'In'
 
         for operator in self.operators:
-            out += operator.__repr__()
+            out += operator.__repr__()+"\n\t"
 
         return out
 
@@ -263,13 +263,12 @@ class PacketStream(Query):
 
     def join(self, *args, **kwargs):
         map_dict = dict(*args, **kwargs)
-        right_query = map_dict['query']
+        left_query = map_dict['query']
         new_qid = map_dict['new_qid']
         new_query = PacketStream(new_qid)
-        new_query.left_child = self
-        new_query.right_child = right_query
+        new_query.right_child = self
+        new_query.left_child = left_query
         return new_query
-
 
     def get_concise_query(self):
         unique_keys = {}
@@ -277,9 +276,18 @@ class PacketStream(Query):
             for k in operator.keys:
                 unique_keys[k] = 0
 
-        concise_query = PacketStream()
+        concise_query = PacketStream(self.qid)
         concise_query.basic_headers = unique_keys.keys()
         #print "Basic headers for concise query", concise_query.basic_headers
+        """
+        if self.left_child is not None:
+            left_child_query = self.left_child.get_concise_query()
+            right_child_query = self.right_child.get_concise_query()
+            concise_query.basic_headers = list(set(concise_query.basic_headers)
+                                               .union(set(left_child_query.basic_headers))
+                                               .union(set(right_child_query.basic_headers)))
+            concise_query = right_child_query.join(query = left_child_query, new_qid = concise_query.qid)
+        """
         for operator in self.operators:
             # print operator
             if operator.name == 'Filter':
@@ -297,118 +305,7 @@ class PacketStream(Query):
             elif operator.name == "Distinct":
                 concise_query.distinct()
 
-            elif operator.name == "Join":
-                concise_query.join(query=operator.query.get_concise_query())
-
         return concise_query
-
-    def get_partitioning_plan(self, part):
-        if not self.isInput:
-            dp_query = PacketStream(isInput=False)
-            sp_query = PacketStream(isInput=False)
-            dp_query.basic_headers = self.basic_headers
-            sp_query.basic_headers = self.basic_headers
-            partition_plan = {0: dp_query, 1: sp_query}
-            for operator in self.operators[:part]:
-                new_operator = copy.deepcopy(operator)
-                dp_query.operators.append(new_operator)
-
-            for operator in self.operators[part - 1:]:
-                new_operator = copy.deepcopy(operator)
-                sp_query.operators.append(new_operator)
-            self.partition_plans.append(partition_plan)
-        else:
-            raise NotImplementedError
-
-    def get_query_cost(self):
-        if not self.isInput:
-            return 0
-        else:
-            raise NotImplementedError
-
-    def generate_dp_query(self, qid):
-        if not self.isInput:
-            if self.partition_plan_final is not None:
-                dp_query = self.partition_plan_final[0]
-                dp_query.refinement_filter_id = self.refinement_filter_id
-                p4_query = p4.QueryPipeline(qid).map_init(keys=dp_query.basic_headers)
-                for operator in dp_query.operators:
-                    if operator.name == 'Reduce':
-                        p4_query = p4_query.reduce(keys=operator.prev_fields)
-                    elif operator.name == 'Map':
-                        p4_query = p4_query.map(keys=operator.keys,
-                                                values=operator.values,
-                                                func=operator.func
-                                                )
-
-                    elif operator.name == 'Filter':
-                        p4_query = p4_query.filter(keys=operator.keys,
-                                                   values=operator.values,
-                                                   mask=operator.mask,
-                                                   comp=operator.comp)
-                    elif operator.name == 'Distinct':
-                        p4_query = p4_query.distinct(keys=operator.prev_fields)
-                self.dp_query = p4_query
-            else:
-                raise NotImplementedError
-
-        else:
-            raise NotImplementedError
-
-    def generate_sp_query(self, qid):
-        if not self.isInput:
-            if self.partition_plan_final is not None:
-                sp_query = self.partition_plan_final[1]
-                spark_query = spark.PacketStream(qid).filter(prev_fields="p", expr="p[1] == '" + str(qid) + "'").map(
-                    prev_fields=("p",), keys=("p[2:]",))
-                for operator in sp_query.operators:
-                    if operator.name == "Map":
-                        prev_fields = get_original_wo_mask(operator.prev_fields)
-                        keys = get_original_wo_mask(operator.keys)
-                        spark_query = spark_query.map(prev_fields=prev_fields,
-                                                      keys=keys, values=operator.values)
-
-                    if operator.name == "Reduce":
-                        prev_fields = get_original_wo_mask(operator.prev_fields)
-                        spark_query = spark_query.reduce(prev_fields=prev_fields,
-                                                         func=operator.func,
-                                                         values=operator.values)
-
-                    if operator.name == "Distinct":
-                        prev_fields = get_original_wo_mask(operator.prev_fields)
-                        spark_query = spark_query.distinct(prev_fields=prev_fields)
-
-                    if operator.name == "Filter":
-                        prev_fields = get_original_wo_mask(operator.prev_fields)
-                        spark_query = spark_query.filter(prev_fields=prev_fields,
-                                                         expr=operator.expr)
-
-                self.sp_query = spark_query
-            else:
-                raise NotImplementedError
-
-        else:
-            raise NotImplementedError
-
-    def compile_dp_query(self):
-        # compile the data plane query
-        if self.dp_query is not None:
-            if self.dp_compile_mode == 'init':
-                self.dp_query.compile_pipeline()
-            else:
-                self.dp_query.compile_delta()
-        else:
-            raise NotImplementedError
-
-    def compile_sp_query(self):
-        # compile the stream processor query
-        if self.sp_query is not None:
-            if self.sp_compile_mode == 'init':
-                self.sp_query.compile_pipeline()
-            else:
-                self.sp_query.compile_delta()
-        else:
-            raise NotImplementedError
 
     def get_prev_fields(self):
         if len(self.operators) > 0:
@@ -421,14 +318,16 @@ class PacketStream(Query):
     def get_query_tree(self):
         self.query_tree = {self.qid: {}}
         if self.right_child is not None:
-            self.query_tree[self.qid][self.right_child.qid] = self.right_child.get_query_tree()[self.right_child.qid]
             self.query_tree[self.qid][self.left_child.qid] = self.left_child.get_query_tree()[self.left_child.qid]
+            self.query_tree[self.qid][self.right_child.qid] = self.right_child.get_query_tree()[self.right_child.qid]
         return self.query_tree
 
     def get_all_queries(self):
         if self.right_child is not None:
-            self.all_queries.update(self.right_child.get_all_queries())
             self.all_queries.update(self.left_child.get_all_queries())
+            self.all_queries.update(self.right_child.get_all_queries())
+
+            print "[get_all_queries]:", self.all_queries
         return self.all_queries
 
     def get_partition_plans(self):
@@ -493,6 +392,7 @@ class PacketStream(Query):
         return query_out_mapping
 
     def get_orig_refined_mapping(self):
+        # for each sub query, we generate mapping for each refinement level
         orig_2_refined = {}
         refined_2_orig = {}
         for orig_queryId in self.query_2_refinement_levels:
@@ -661,7 +561,7 @@ class PacketStream(Query):
             p4_query.parse_payload = False
 
             spark_query = (spark.PacketStream(refined_query.qid))
-
+            print "Initialize Spark", spark_query.expr
             print queryId, ref_level, plan
             # For now we will hardcode to push first reduce operator in the data plane
             print "Original Refined Query before partitioning:", refined_query
@@ -681,12 +581,12 @@ class PacketStream(Query):
                         prev_fields = get_original_wo_mask(operator.prev_fields)
                         if "payload" not in operator.keys:
                             p4_query = p4_query.reduce(keys=operator.keys)
-                            if in_dataplane == max_dp_operators:
-                                border_reduce = p4_query.operators[-1]
+                            print "R1 - P4", in_dataplane, max_dp_operators
 
                             # duplicate implementation of reduce operators at the border
-                            if in_dataplane == max_dp_operators:
+                            if in_dataplane >= max_dp_operators:
                                 border_reduce = p4_query.operators[-1]
+                                print "Adding border reduce", str(init_spark), spark_query.expr
 
                                 if init_spark == True:
                                     hdrs = list(p4_query.operators[-1].out_headers)
@@ -697,8 +597,8 @@ class PacketStream(Query):
                                                    .map(prev_fields=("p",), keys=("p[2:]",)))
                                     init_spark = False
 
-
-                        spark_query = spark_query.reduce(prev_fields=prev_fields,
+                                print "R1"
+                                spark_query = spark_query.reduce(prev_fields=prev_fields,
                                                              func=operator.func,
                                                              values=operator.values)
                     elif operator.name == 'Map':
@@ -779,7 +679,7 @@ class PacketStream(Query):
                             prev_fields = refined_query.basic_headers
                         else:
                             prev_fields = get_original_wo_mask(operator.prev_fields)
-
+                        print "R2"
                         spark_query = spark_query.reduce(prev_fields=prev_fields,
                                                          func=operator.func,
                                                          values=operator.values)

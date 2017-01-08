@@ -1,0 +1,14 @@
+pktstream
+    .window(self.window_length, self.sliding_interval)
+    .transform(lambda rdd: (rdd.reduceByKey(lambda x,y: x+y)
+    .filter(lambda (k,qid,sIP,dMac,dPort,count): qid=='10001')
+    .map(lambda (p): ((p[2:])))
+    .reduceByKey(lambda x,y: x+y)
+    .filter(lambda ((sIP,dMac,dPort), (count)): (count>=2))
+    .map(lambda ((sIP,dMac,dPort), (count)): ((sIP,dMac),(1)))
+    .reduceByKey(lambda x,y: x+y)
+    .filter(lambda ((sIP,dMac), (count)): (count>=2))))
+    .foreachRDD(lambda rdd: send_reduction_keys(rdd, ('localhost', 4949),1483828360.08,'10001'))
+
+    k,qid,sIP,dMac,dPort,count
+    k,10001,0.0.0.0,51:51:0:0:0:2,0,1

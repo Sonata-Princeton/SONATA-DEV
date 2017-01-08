@@ -632,13 +632,13 @@ class QueryPipeline(object):
             values = map_dict['values']
         if 'func' in map_dict:
             func = map_dict['func']
-        self.expr += '.Reduce(keys=' + ','.join([x for x in keys]) + ', values='+str(values)+', func='+str(func)+')'
+        self.expr += '\n\t.Reduce(keys=' + ','.join([x for x in keys]) + ', values='+str(values)+', func='+str(func)+')'
         operator = Reduce(*new_args, **kwargs)
         self.operators.append(operator)
         return self
 
     def distinct(self, *args, **kwargs):
-        self.expr += '.Distinct()'
+        self.expr += '\n\t.Distinct()'
         id = len(self.operators)
         new_args = (id, self.qid, self.mirror_id, TABLE_WIDTH, TABLE_SIZE, DISTINCT)+args
         operator = Distinct(*new_args, **kwargs)
@@ -660,7 +660,7 @@ class QueryPipeline(object):
         if 'values' in map_dict:
             filter_vals = map_dict['values']
 
-        self.expr += '.Filter(keys='+str(filter_keys)+', mask='+str(filter_mask)+', vals='+str(filter_vals)+' src = '+str(src)+')'
+        self.expr += '\n\t.Filter(keys='+str(filter_keys)+', mask='+str(filter_mask)+', vals='+str(filter_vals)+' src = '+str(src)+')'
 
         self.filter_rules_id = len(self.operators)
         filter_name = 'filter_'+str(self.qid)+'_'+str(self.filter_rules_id)
@@ -679,14 +679,14 @@ class QueryPipeline(object):
         if len(func) > 0:
             id = len(self.operators)
             self.operators.append(Map(id, self.qid, self.mirror_id, *args, **kwargs))
-            self.expr += '.Map(keys='+str(keys)+', func='+str(func)+')'
+            self.expr += '\n\t.Map(keys='+str(keys)+', func='+str(func)+')'
         return self
 
     def map_init(self, *args, **kwargs):
         self.init_meta = {}
         map_dict = dict(**kwargs)
         map_keys = map_dict['keys']
-        self.expr += '.MapInit('+str(map_keys)+')'
+        self.expr += '\n\t.MapInit('+str(map_keys)+')'
 
         map_operator_name = 'map_init_'+str(self.qid)
 
@@ -729,7 +729,7 @@ class QueryPipeline(object):
 
         self.p4_invariants += self.operators[-1].p4_invariants
         self.p4_egress += self.operators[-1].p4_egress
-        print "Qid", self.qid, self.p4_egress
+        #print "Qid", self.qid, self.p4_egress
 
         for operator in self.operators:
             self.p4_utils += operator.p4_utils
