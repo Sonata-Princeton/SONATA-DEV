@@ -61,7 +61,6 @@ class FabricManagerConfig(object):
             inter.setup()
 
     def add_query(self, q):
-        print q
         self.queries.append(q)
         self.id_2_query[q.qid] = q
 

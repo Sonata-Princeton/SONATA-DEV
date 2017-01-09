@@ -49,20 +49,21 @@ class Runtime(object):
             finest_plan = ref_levels[-1]
             query.get_cost(ref_levels)
             query.get_refinement_plan(ref_levels)
-            print query.query_2_final_plan
+            #print query.query_2_final_plan
             query.generate_query_in_mapping(finest_plan, query.query_2_final_plan)
-            print "Q2In", query.query_in_mapping
-            print "Q2Out", query.generate_query_out_mapping()
-            print query.get_query_2_refinement_levels(finest_plan, query.query_2_final_plan)
+            #print "Q2In", query.query_in_mapping
+            #print "Q2Out"
+            query.generate_query_out_mapping()
+            query.get_query_2_refinement_levels(finest_plan, query.query_2_final_plan)
             query.get_orig_refined_mapping()
             query.generate_refined_queries(reduction_key)
             query.generate_partitioned_queries()
             for qid in query.qid_2_dp_queries:
-                print "Adding DP queries", qid, query.qid_2_dp_queries[qid]
+                print "Adding DP queries for query", qid
                 self.dp_queries[qid] = query.qid_2_dp_queries[qid]
 
             for qid in query.qid_2_sp_queries:
-                print "Adding SP queries", qid, query.qid_2_sp_queries[qid]
+                print "Adding SP queries for query ", qid
                 self.sp_queries[qid] = query.qid_2_sp_queries[qid]
 
         time.sleep(2)

@@ -2,6 +2,7 @@
 #  Author:
 #  Arpit Gupta (arpitg@cs.princeton.edu)
 
+
 def get_original_wo_mask(lstOfFields):
     fields = []
 
@@ -12,6 +13,7 @@ def get_original_wo_mask(lstOfFields):
             fields.append(field)
 
     return fields
+
 
 def copy_operators(query, optr):
     if optr.name == 'Filter':
@@ -34,8 +36,9 @@ def copy_operators(query, optr):
         query.distinct(keys=optr.keys,
                        values=optr.values)
 
+
 def copy_sonata_operators_to_spark(query, optr):
-    print "Adding spark operator", optr.name
+    #print "Adding spark operator", optr.name
     prev_keys = get_original_wo_mask(optr.prev_keys)
     keys = get_original_wo_mask(optr.keys)
     if optr.name == 'Filter':
@@ -56,19 +59,16 @@ def copy_sonata_operators_to_spark(query, optr):
         query.distinct(keys=keys)
 
 
-
 def initialize_spark_query(p4_query, spark_query, qid):
-    print "Initializing Spark Query Object"
+    #print "Initializing Spark Query Object"
     if len(p4_query.operators) > 0:
         hdrs = list(p4_query.operators[-1].out_headers)
     else:
         raise NotImplementedError
     if p4_query.parse_payload: hdrs += ['payload']
-    print "Headers", hdrs
+    #print "Headers", hdrs
     spark_query.basic_headers = ['k'] + hdrs
-    spark_query = (spark_query.filter(keys=spark_query.basic_headers,
-                                      filter_keys=('qid',),
-                                      func=('eq',"'"+str(qid)+"'")))
+    spark_query = spark_query.filter_init(qid=qid, keys=spark_query.basic_headers)
     return False, spark_query
 
 
@@ -77,7 +77,7 @@ def filter_payload(keys):
 
 
 def copy_sonata_operators_to_p4(query, optr):
-    print "Adding P4 operator", optr.name
+    #print "Adding P4 operator", optr.name
     keys = filter_payload(optr.keys)
     if optr.name == 'Filter':
         query.filter(keys=keys,

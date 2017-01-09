@@ -612,7 +612,7 @@ class Map_Init(object):
         self.p4_egress += self.add_encap_action()
 
     def compile_dp(self):
-        print "MapInit Compiling"
+        #print "MapInit Compiling"
         self.update_p4_invariants()
         self.update_map_table()
         self.update_p4_encap()
@@ -770,9 +770,9 @@ class QueryPipeline(object):
         self.parse_payload = False
 
     def __repr__(self):
-        expr = 'In'
+        expr = 'In\n'
         for operator in self.operators:
-            expr += '\t'+operator.__repr__()+'\n'
+            expr += ''+operator.__repr__()+'\n'
         return expr
 
     def reduce(self, *args, **kwargs):

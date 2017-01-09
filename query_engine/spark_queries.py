@@ -71,8 +71,8 @@ class Map(SparkQuery):
             self.func = map_dict['func']
 
     def __repr__(self):
-        print "Map Keys: ",self.prev_keys, self.prev_values, self.keys, self.values
-        print self.map_keys, self.map_values
+        #print "Map Keys: ",self.prev_keys, self.prev_values, self.keys, self.values
+        #print self.map_keys, self.map_values
         expr = '.map(lambda (('
         # There is mapping required either for key or value
         expr += ','.join([str(elem) for elem in self.prev_keys])
@@ -111,7 +111,7 @@ class Map(SparkQuery):
         return expr
 
     def compile(self):
-        print "Map Keys: ",str(self.prev_keys), str(self.prev_values),str(self.keys), str(self.values)
+        #print "Map Keys: ",str(self.prev_keys), str(self.prev_values),str(self.keys), str(self.values)
         expr = '.map(lambda (('
         expr += ','.join([str(elem) for elem in self.prev_keys])
         expr += ')'
@@ -150,7 +150,7 @@ class Map(SparkQuery):
             expr += ')'
         expr += '))'
 
-        print "Map Query", expr
+        #print "Map Query", expr
 
         return expr
 
@@ -194,7 +194,7 @@ class Reduce(SparkQuery):
 
     def compile(self):
         expr = ''
-        print "Reduce Keys: ",str(self.prev_keys), str(self.prev_values),str(self.keys), str(self.values)
+        #print "Reduce Keys: ",str(self.prev_keys), str(self.prev_values),str(self.keys), str(self.values)
         if self.func[0] == 'sum':
             expr += '.reduceByKey(lambda x,y: x+y)'
         return expr
@@ -230,6 +230,22 @@ class Distinct(SparkQuery):
 
     def compile(self):
         expr = '.distinct()'
+        return expr
+
+
+class FilterInit(SparkQuery):
+    def __init__(self, *args, **kwargs):
+        map_dict = dict(*args, **kwargs)
+        self.qid = map_dict['qid']
+        self.keys = map_dict['keys']
+        self.name = "FilterInit"
+        self.values = ()
+
+    def __repr__(self):
+        return '.filter(lambda p : (p[1]=='+str(self.qid)+'))'
+
+    def compile(self):
+        expr = '.filter(lambda p : (p[1]=='+str(self.qid)+'))'
         return expr
 
 
@@ -292,7 +308,7 @@ class Filter(SparkQuery):
         return out
 
     def compile(self):
-        print "Filter Keys: " + str(self.values)
+        #print "Filter Keys: " + str(self.values)
         # .filter(keys=('dIP',), func=('geq', '3'))
         expr = '.filter(lambda ('
         expr += '('+','.join([str(elem) for elem in self.keys])+')'
@@ -305,7 +321,6 @@ class Filter(SparkQuery):
 
 
 class PacketStream(SparkQuery):
-
     def __init__(self, id):
         self.basic_headers = ["qid", "ts", "te","sIP", "sPort","dIP", "dPort", "nBytes",
                               "proto", "sMac", "dMac"]
@@ -320,7 +335,7 @@ class PacketStream(SparkQuery):
     def __repr__(self):
         out = 'In\n'
         for operator in self.operators:
-            out += '\t'+operator.__repr__()+'\n'
+            out += ''+operator.__repr__()+'\n'
         return out
 
     def compile(self):
@@ -361,5 +376,10 @@ class PacketStream(SparkQuery):
 
     def filter(self, *args, **kwargs):
         operator = Filter(prev_keys=self.get_prev_keys(), prev_values=self.get_prev_values(), *args, **kwargs)
+        self.operators.append(operator)
+        return self
+
+    def filter_init(self,*args, **kwargs):
+        operator = FilterInit(*args, **kwargs)
         self.operators.append(operator)
         return self
