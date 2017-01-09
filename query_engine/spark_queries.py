@@ -71,6 +71,8 @@ class Map(SparkQuery):
             self.func = map_dict['func']
 
     def __repr__(self):
+        print "Map Keys: ",self.prev_keys, self.prev_values, self.keys, self.values
+        print self.map_keys, self.map_values
         expr = '.map(lambda (('
         # There is mapping required either for key or value
         expr += ','.join([str(elem) for elem in self.prev_keys])
@@ -88,21 +90,24 @@ class Map(SparkQuery):
                         # TODO generalize for more mapping functions
                         pass
         expr = expr[:-1]
-        expr += '),('
-        for elem in self.values:
-            if elem not in self.map_values:
-                expr += elem+','
-            else:
-                if len(self.func) > 0:
-                    if self.func[0] == 'eq':
-                        expr += str(self.func[1])+','
-                    else:
-                        # TODO generalize for more mapping functions
-                        pass
+        expr += ')'
+        if len(self.values) > 0 and len(self.func) > 0:
+            expr += ',('
+            for elem in self.map_values:
+                if self.func[0] == 'eq':
+                    expr += str(self.func[1])+','
                 else:
-                    raise NotImplementedError
-
-        expr = expr[:-1]+')))'
+                    # TODO generalize for more mapping functions
+                    pass
+            expr = expr[:-1]
+            expr += ')'
+        elif len(self.values) > 0 and len(self.func) == 0:
+            expr += ',('
+            for elem in self.values:
+                expr += elem+','
+            expr = expr[:-1]
+            expr += ')'
+        expr += '))'
         return expr
 
     def compile(self):
@@ -135,6 +140,12 @@ class Map(SparkQuery):
                 else:
                     # TODO generalize for more mapping functions
                     pass
+            expr = expr[:-1]
+            expr += ')'
+        elif len(self.values) > 0 and len(self.func) == 0:
+            expr += ',('
+            for elem in self.values:
+                expr += elem+','
             expr = expr[:-1]
             expr += ')'
         expr += '))'

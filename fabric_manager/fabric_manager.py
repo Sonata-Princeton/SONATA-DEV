@@ -110,7 +110,7 @@ class FabricManagerConfig(object):
             for dip in message[(qid,filter_id)]:
                 dip = dip.strip('\n')
                 print "dIP:",dip
-                command = 'table_add '+filter_table_fname+' set_meta_fm_'+str(qid)+' '+str(dip)+'/'+str(filter_mask[0])+' => \n'
+                command = 'table_add '+filter_table_fname+' set_meta_fm_'+str(qid)+' '+str(dip)+'/'+str(filter_mask)+' => \n'
                 commands += command
                 print "Added command ", qid, command
 

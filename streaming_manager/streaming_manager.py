@@ -72,6 +72,12 @@ class StreamingManager(object):
         queries = pickle.loads(raw_data)
         print ("Received queries", queries)
         spark_queries = {}
+        pktstream.window(self.window_length, self.sliding_interval)\
+            .transform(lambda rdd: (
+            rdd.filter(lambda ((k,qid,dIP,count)): ((qid=='10001' )))
+                .reduceByKey(lambda x,y: x+y)
+                .filter(lambda ((dIP)): ((count>=3 )))
+                .map(lambda ((dIP)): ((dIP)))))
         for queryId in queries:
             query = queries[queryId]
             query_str = "pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd." + query.compile() + ")).foreachRDD(lambda rdd: send_reduction_keys(rdd, " + str(self.op_handler_socket)+ "," + str(self.start_time)+",\'"+ str(queryId)+"\'))"

@@ -507,6 +507,7 @@ class PacketStream(Query):
             print "Original Refined Query before partitioning:", refined_query
             in_dataplane = 0
             border_reduce = None
+            border_map = None
             init_spark = True
             for operator in refined_query.operators:
 
@@ -544,11 +545,16 @@ class PacketStream(Query):
                                 init_spark, spark_query = initialize_spark_query(p4_query,
                                                                                  spark_query,
                                                                                  refined_query.qid)
+                            if border_map is not None:
+                                border_map.func = ()
+                                copy_sonata_operators_to_spark(spark_query, border_map)
                             copy_sonata_operators_to_spark(spark_query, operator)
 
                     elif operator.name == 'Map':
                         if len(operator.func) > 0 and operator.func[0] == 'mask':
                             copy_sonata_operators_to_p4(p4_query, operator)
+                        else:
+                            border_map = operator
 
                     elif operator.name == 'Filter':
                         # check if previous operator was reduce

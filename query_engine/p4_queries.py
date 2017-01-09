@@ -635,9 +635,10 @@ class Filter(object):
         self.operator_name = 'filter_'+str(self.qid)+'_'+str(self.id)
 
         map_dict = dict(**kwargs)
-        self.filter_mask = ()
-        self.src = 0
+        self.filter_mask = ''
         self.filter_values = ()
+        self.src = 0
+
 
 
         if 'filter_values' in map_dict:
@@ -727,7 +728,7 @@ class Filter(object):
         out += 'table '+self.filter_name+'{\n'
         out += '\treads {\n'
         for key in self.filter_keys:
-            if self.filter_mask != ():
+            if self.func[0] == 'mask':
                 out += '\t\t'+str(header_map[key])+': lpm;\n'
             else:
                 out += '\t\t'+str(header_map[key])+': exact;\n'
