@@ -34,20 +34,22 @@ def get_all_possible_transits(a):
     return transits
 
 
-def generate_costs(a):
+def generate_costs(p1, p2, ref_levels):
     """
 
     :rtype: object
     """
     costs = {}
-    low = 1000
-    high = 2000
+    plan_id = 1+int(str(p2), 2)
+    # Higher the plan_id, higher should be the cost
+    low = 1000*plan_id+1
+    high = 2000*plan_id
     ind1 = 1
-    for elem1 in a:
+    for elem1 in ref_levels:
         low = int(low / ind1)
         high = int(high / ind1)
         ind2 = 1
-        for elem2 in a[ind1:]:
+        for elem2 in ref_levels[ind1:]:
             low = low * ind2
             high = high * ind2
             # print (elem1, elem2), low, high

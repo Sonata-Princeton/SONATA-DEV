@@ -1,7 +1,10 @@
-#!/usr/bin/python
+#!/usr/bin/env python
+#  Author:
+#  Arpit Gupta (arpitg@cs.princeton.edu)
+
 import random
 
-from query_engine.sonata_queries import *
+from query_engine.sonata_operators import *
 from runtime.runtime import *
 
 batch_interval = 1
@@ -148,12 +151,14 @@ class QueryGenerator(object):
         @qid: query id for the query
         @reduction_fields: fields to reduce query on
         """
-        q.map(keys=tuple(reduction_fields), values=("1",))
+
         operator = random.choice(['Distinct', 'Reduce'])
         if operator == 'Reduce':
+            q.map(keys=tuple(reduction_fields), values=("1",))
             q.reduce(keys=tuple(reduction_fields), func='sum', values=('count',))
             q.filter(keys=tuple(reduction_fields), values=(self.qid_2_thresh[qid],), comp="geq")
         else:
+            q.map(keys=tuple(reduction_fields))
             q.distinct(keys=tuple(reduction_fields))
 
     def generate_single_query(self, qid, isLeft=True):

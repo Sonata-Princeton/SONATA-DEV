@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+#  Author:
+#  Arpit Gupta (arpitg@cs.princeton.edu)
+
 TABLE_WIDTH = 32
 TABLE_SIZE = 4096
 DISTINCT = 0
@@ -319,8 +323,6 @@ class Distinct(Register):
         self.pre_actions = ('drop', 'fwd', 'drop')
         self.post_actions = ('fwd', 'fwd', 'fwd')
 
-
-
 class Reduce(Register):
     def __init__(self, *args, **kwargs):
         (self.id, self.qid, self.mirror_id, self.width,
@@ -380,9 +382,12 @@ class Map(object):
         self.p4_invariants = ''
         self.p4_init_commands = []
         self.id, self.qid, self.mirror_id = args
+
         map_dict = dict(**kwargs)
+        self.map_keys = map_dict['map_keys']
         self.keys = map_dict['keys']
         self.func = map_dict['func']
+
         self.out_headers = tuple(['qid']+list(self.keys))
         self.expr = ''
 
@@ -390,7 +395,6 @@ class Map(object):
 
     def update_map_table(self):
         out = ''
-
         # Add match table for inital map operator
         out += 'table '+self.operator_name+'{\n'
         out += '\tactions{\n'
@@ -399,13 +403,12 @@ class Map(object):
         self.p4_init_commands.append('table_set_default '+self.operator_name+' do_'+str(self.operator_name))
 
         if len(self.func) > 0:
-            # TODO: add more mapping functions that we can support in the data plane
             out += 'action do_'+self.operator_name+'() {\n'
             if self.func[0] == 'mask':
                 # TODO: add more functions to generalize this map operator
                 mask = self.func[1]
 
-                for fld in self.keys:
+                for fld in self.map_keys:
                     size = header_size[fld]
                     fs = int(mask)/4
                     zeros = size/4-fs
@@ -417,6 +420,9 @@ class Map(object):
                     meta_init_name = 'meta_map_init_'+str(self.qid)
                     out += '\tbit_and('+meta_init_name+'.'+str(fld)+', '+meta_init_name+'.'+str(fld)+', '+mask_str+');\n'
                 out += '}\n\n'
+            else:
+                # TODO add more functions for map operations
+                pass
 
         self.p4_state += out
 
@@ -486,6 +492,122 @@ class Map(object):
         self.update_p4_encap()
 
 
+class Map_Init(object):
+    def __init__(self, *args, **kwargs):
+        self.name = "Map"
+        self.p4_state = ''
+        self.p4_utils = ''
+        self.p4_control = ''
+        self.p4_egress = ''
+        self.p4_invariants = ''
+        self.p4_init_commands = []
+        self.id, self.qid, self.mirror_id = args
+
+        map_dict = dict(**kwargs)
+        self.keys = map_dict['keys']
+
+        self.out_headers = tuple(['qid']+list(self.keys))
+        self.expr = ''
+
+        self.operator_name = 'map_init_'+str(self.qid)
+
+    def update_map_table(self):
+        out = ''
+
+        # Add match table for inital map operator
+        out += 'table '+self.operator_name+'{\n'
+        out += '\tactions{\n'
+        out += '\t\tdo_'+self.operator_name+';\n'
+        out += '\t}\n}\n\n'
+        self.p4_init_commands.append('table_set_default '+self.operator_name+' do_'+str(self.operator_name))
+
+        out += 'action do_'+self.operator_name+'(){\n'
+        fld = 'qid'
+        out += '\tmodify_field(meta_'+self.operator_name+'.'+str(fld)+', '+str(self.qid)+');\n'
+        for fld in self.keys:
+            out += '\tmodify_field(meta_'+self.operator_name+'.'+str(fld)+', '+header_map[fld]+');\n'
+        out += '}\n\n'
+
+        out += 'header_type meta_'+self.operator_name+'_t {\n'
+        out += '\t fields {\n'
+
+        out += '\t\t'+ 'qid' + ': '+str(header_size['qid'])+';\n'
+        for fld in self.keys:
+            out += '\t\t'+ fld + ': '+str(header_size[fld])+';\n'
+        out += '\t}\n}\n\n'
+
+        out += 'metadata meta_'+self.operator_name+'_t meta_'+self.operator_name+';\n\n'
+
+
+        self.p4_state += out
+
+    def update_p4_invariants(self):
+        out = '#include "includes/headers.p4"\n'
+        out += '#include "includes/parser.p4"\n\n'
+        out += 'parser start {\n\treturn select(current(0, 64)) {\n\t\t0 : parse_out_header;\n\t\tdefault: parse_ethernet;\n\t}\n}\n'
+        out += 'action _drop() {\n\tdrop();\n}\n\n'
+        out += 'action _nop() {\n\tno_op();\n}\n\n'
+
+        self.p4_invariants += out
+        return out
+
+    def add_out_header(self):
+        out = 'header_type out_header_'+str(self.qid)+'_t {\n'
+        out += '\tfields {\n'
+
+        for fld in self.out_headers:
+            if '/' in fld:
+                fld = fld.split('/')[0]
+            out += '\t\t'+fld+' : '+str(header_size[fld])+';\n'
+        out = out [:-1]
+        out += '}\n}\n\n'
+        out += 'header out_header_'+str(self.qid)+'_t out_header_'+str(self.qid)+';\n\n'
+        return out
+
+    def add_copy_fields(self):
+        out = 'field_list copy_to_cpu_fields_'+str(self.qid)
+        out += '{\n'
+        out += '\tstandard_metadata;\n'
+        out += '\tmeta_map_init_'+str(self.qid)+';\n'
+        out += '\tmeta_fm;\n'
+        out += '}\n\n'
+
+        out += 'action do_copy_to_cpu_'+str(self.qid)+'() {\n\tclone_ingress_pkt_to_egress('+str(self.mirror_id)+', copy_to_cpu_fields_'+str(self.qid)+');\n}\n\n'
+        out += 'table copy_to_cpu_'+str(self.qid)+' {\n\tactions {do_copy_to_cpu_'+str(self.qid)+';}\n\tsize : 1;\n}\n\n'
+
+        return out
+
+    def add_encap_table(self):
+        out = 'table encap_'+str(self.qid)+' {\n\tactions { do_encap_'+str(self.qid)+'; }\n\tsize : 1;\n}\n\n'
+        return out
+
+    def add_encap_action(self):
+        out = 'action do_encap_'+str(self.qid)
+        out += '() {\n\tadd_header(out_header_'+str(self.qid)+');\n\t'
+        for fld in self.out_headers:
+            if '/' in fld:
+                fld = fld.split('/')[0]
+            #if fld in header_map:
+            meta_fld = 'meta_map_init_'+str(self.qid)+'.'+fld
+            out += 'modify_field(out_header_'+str(self.qid)+'.'+fld+', '
+            out += meta_fld+ ');\n\t'
+        out = out [:-1]
+        out += '}\n\n'
+        return out
+
+    def update_p4_encap(self):
+        self.p4_egress += self.add_out_header()
+        self.p4_egress += self.add_copy_fields()
+        self.p4_egress += self.add_encap_table()
+        self.p4_egress += self.add_encap_action()
+
+    def compile_dp(self):
+        print "MapInit Compiling"
+        self.update_p4_invariants()
+        self.update_map_table()
+        self.update_p4_encap()
+
+
 class Filter(object):
     def __init__(self, *args, **kwargs):
         self.name = "Filter"
@@ -503,17 +625,24 @@ class Filter(object):
         self.operator_name = 'filter_'+str(self.qid)+'_'+str(self.id)
 
         map_dict = dict(**kwargs)
-        self.filter_keys = map_dict['keys']
-        self.out_headers = tuple(['qid']+list(self.filter_keys))
         self.filter_mask = ()
         self.src = 0
-        self.filter_vals = ()
+        self.filter_values = ()
+
+        self.keys = map_dict['keys']
+        self.filter_keys = map_dict['filter_keys']
+        self.func = map_dict['func']
+        if len(self.func) > 0:
+            if self.func[0] == 'mask':
+                self.filter_mask = self.func[1]
+                self.filter_values = self.func[2:]
+            elif self.func[0] == 'eq':
+                self.filter_values = self.func[1:]
+
         if 'src' in map_dict:
             self.src = map_dict['src']
-        if 'mask' in map_dict:
-            self.filter_mask = map_dict['mask']
-        if 'values' in map_dict:
-            self.filter_vals = map_dict['values']
+
+        self.out_headers = tuple(['qid']+list(self.keys))
 
     def update_p4_invariants(self):
         out = '#include "includes/headers.p4"\n'
@@ -590,7 +719,7 @@ class Filter(object):
         out += '\t\treset_meta_fm_'+str(self.qid)+';\n\t}\n}\n\n'
         self.p4_init_commands.append('table_set_default '+self.filter_name+' reset_meta_fm_'+str(self.qid))
         #self.filter_rules_id += 1
-        for val in self.filter_vals:
+        for val in self.filter_values:
             self.p4_init_commands.append('table_add '+self.filter_name+' set_meta_fm_'+str(self.qid)+' '+str(val)+' =>')
 
         self.filter_rules += out
@@ -632,8 +761,10 @@ class QueryPipeline(object):
             values = map_dict['values']
         if 'func' in map_dict:
             func = map_dict['func']
-        self.expr += '\n\t.Reduce(keys=' + ','.join([x for x in keys]) + ', values='+str(values)+', func='+str(func)+')'
+
         operator = Reduce(*new_args, **kwargs)
+        self.expr += '\n\t.Reduce(keys=' + ','.join([x for x in keys]) + ', values='+str(values)+', func='+str(func)+', threshold='+str(operator.thresh)+')'
+
         self.operators.append(operator)
         return self
 
@@ -648,7 +779,7 @@ class QueryPipeline(object):
     def filter(self, *args, **kwargs):
         #print "Filter operator called ", self.expr, len(self.operators)
         map_dict = dict(**kwargs)
-        filter_keys = map_dict['keys']
+        filter_keys = map_dict['filter_keys']
         filter_mask = ()
         src = 0
         if 'src' in map_dict:
@@ -674,53 +805,20 @@ class QueryPipeline(object):
 
     def map(self, *args, **kwargs):
         map_dict = dict(**kwargs)
-        keys = map_dict['keys']
+        keys = map_dict['map_keys']
         func = map_dict['func']
         if len(func) > 0:
             id = len(self.operators)
             self.operators.append(Map(id, self.qid, self.mirror_id, *args, **kwargs))
-            self.expr += '\n\t.Map(keys='+str(keys)+', func='+str(func)+')'
+            self.expr += '\n\t.Map(map_keys='+str(keys)+', func='+str(func)+')'
         return self
 
     def map_init(self, *args, **kwargs):
-        self.init_meta = {}
         map_dict = dict(**kwargs)
-        map_keys = map_dict['keys']
-        self.expr += '\n\t.MapInit('+str(map_keys)+')'
+        self.keys = map_dict['keys']
 
-        map_operator_name = 'map_init_'+str(self.qid)
-
-        out = ''
-        # Add metadata for initial map operator
-        out += 'header_type meta_'+map_operator_name+'_t {\n'
-        out += '\t fields {\n'
-
-        self.init_meta['qid'] = map_operator_name+'.qid'
-        out += '\t\t'+ 'qid' + ': '+str(header_size['qid'])+';\n'
-        for fld in map_keys:
-            self.init_meta[fld] = map_operator_name+'.'+fld
-            out += '\t\t'+ fld + ': '+str(header_size[fld])+';\n'
-        out += '\t}\n}\n\n'
-
-        out += 'metadata meta_'+map_operator_name+'_t meta_'+map_operator_name+';\n\n'
-
-        # Add match table for inital map operator
-        out += 'table '+map_operator_name+'{\n'
-        out += '\tactions{\n'
-        out += '\t\tdo_'+map_operator_name+';\n'
-        out += '\t}\n}\n\n'
-        self.p4_init_commands.append('table_set_default '+map_operator_name+' do_'+str(map_operator_name))
-
-        # Add action of copying the header fields to initial map operator
-        out += 'action do_'+map_operator_name+'(){\n'
-        fld = 'qid'
-        out += '\tmodify_field(meta_'+map_operator_name+'.'+str(fld)+', '+str(self.qid)+');\n'
-        for fld in map_keys:
-            out += '\tmodify_field(meta_'+map_operator_name+'.'+str(fld)+', '+header_map[fld]+');\n'
-        out += '}\n\n'
-        self.p4_state += out
-        #print self.p4_state
-
+        self.operators.append(Map_Init(id, self.qid, self.mirror_id, *args, **kwargs))
+        self.expr += '\n\t.MapInit('+str(self.keys)+')'
         return self
 
     def update_p4_src(self):
@@ -749,7 +847,7 @@ class QueryPipeline(object):
         for operator in self.operators:
             self.p4_state += operator.p4_state
 
-        self.p4_ingress_start += '\tapply(map_init_'+str(self.qid)+');\n'
+        #self.p4_ingress_start += '\tapply(map_init_'+str(self.qid)+');\n'
         for operator in self.operators:
             if operator.name not in ['Map','Filter']:
                 self.p4_ingress_start += '\t\t\tapply(start_'+operator.operator_name+');\n'

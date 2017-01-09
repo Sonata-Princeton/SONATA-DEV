@@ -28,8 +28,6 @@ class Runtime(object):
         #self.fm_thread.setDaemon(True)
 
         self.fm_thread.start()
-
-
         time.sleep(1)
 
         for query in self.queries:
@@ -39,14 +37,16 @@ class Runtime(object):
             query.get_all_queries()
             query.get_partition_plans()
 
-
-            reduction_key = query.get_reduction_key()
-            print "Reduction key for Query", query.qid, " is ", reduction_key
-            # Tunable parameter
-            #reduction_key = 'dIP'
-            ref_levels = range(0, 33, 8)
+            reduction_key = list(query.get_reduction_key())[0]
+            if reduction_key != '':
+                print "Reduction key for Query", query.qid, " is ", reduction_key
+                # Tunable parameter
+                ref_levels = range(0, 33, 8)
+            else:
+                # TODO: better handle this case
+                print "Query", query.qid, " cannot be refined"
+                ref_levels = []
             finest_plan = ref_levels[-1]
-
             query.get_cost(ref_levels)
             query.get_refinement_plan(ref_levels)
             print query.query_2_final_plan

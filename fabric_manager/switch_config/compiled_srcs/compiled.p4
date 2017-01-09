@@ -52,171 +52,123 @@ action mark_drop() {
 }
 
 parser parse_out_header {
-	extract(out_header_10001);
-	extract(out_header_10002);
+	extract(out_header_30001);
+	extract(out_header_30002);
 	return parse_ethernet;
 }
 
-header_type out_header_10001_t {
+header_type out_header_30001_t {
 	fields {
 		qid : 16;
 		dIP : 32;}
 }
 
-header out_header_10001_t out_header_10001;
+header out_header_30001_t out_header_30001;
 
-field_list copy_to_cpu_fields_10001{
+field_list copy_to_cpu_fields_30001{
 	standard_metadata;
-	meta_map_init_10001;
+	meta_map_init_30001;
 	meta_fm;
 }
 
-action do_copy_to_cpu_10001() {
-	clone_ingress_pkt_to_egress(10201, copy_to_cpu_fields_10001);
+action do_copy_to_cpu_30001() {
+	clone_ingress_pkt_to_egress(30201, copy_to_cpu_fields_30001);
 }
 
-table copy_to_cpu_10001 {
-	actions {do_copy_to_cpu_10001;}
+table copy_to_cpu_30001 {
+	actions {do_copy_to_cpu_30001;}
 	size : 1;
 }
 
-table encap_10001 {
-	actions { do_encap_10001; }
+table encap_30001 {
+	actions { do_encap_30001; }
 	size : 1;
 }
 
-action do_encap_10001() {
-	add_header(out_header_10001);
-	modify_field(out_header_10001.qid, meta_map_init_10001.qid);
-	modify_field(out_header_10001.dIP, meta_map_init_10001.dIP);
+action do_encap_30001() {
+	add_header(out_header_30001);
+	modify_field(out_header_30001.qid, meta_map_init_30001.qid);
+	modify_field(out_header_30001.dIP, meta_map_init_30001.dIP);
 }
 
-header_type out_header_10002_t {
+header_type out_header_30002_t {
 	fields {
 		qid : 16;
 		dIP : 32;}
 }
 
-header out_header_10002_t out_header_10002;
+header out_header_30002_t out_header_30002;
 
-field_list copy_to_cpu_fields_10002{
+field_list copy_to_cpu_fields_30002{
 	standard_metadata;
-	meta_map_init_10002;
+	meta_map_init_30002;
 	meta_fm;
 }
 
-action do_copy_to_cpu_10002() {
-	clone_ingress_pkt_to_egress(10202, copy_to_cpu_fields_10002);
+action do_copy_to_cpu_30002() {
+	clone_ingress_pkt_to_egress(30202, copy_to_cpu_fields_30002);
 }
 
-table copy_to_cpu_10002 {
-	actions {do_copy_to_cpu_10002;}
+table copy_to_cpu_30002 {
+	actions {do_copy_to_cpu_30002;}
 	size : 1;
 }
 
-table encap_10002 {
-	actions { do_encap_10002; }
+table encap_30002 {
+	actions { do_encap_30002; }
 	size : 1;
 }
 
-action do_encap_10002() {
-	add_header(out_header_10002);
-	modify_field(out_header_10002.qid, meta_map_init_10002.qid);
-	modify_field(out_header_10002.dIP, meta_map_init_10002.dIP);
+action do_encap_30002() {
+	add_header(out_header_30002);
+	modify_field(out_header_30002.qid, meta_map_init_30002.qid);
+	modify_field(out_header_30002.dIP, meta_map_init_30002.dIP);
 }
 
-header_type meta_map_init_10001_t {
+table map_init_30001{
+	actions{
+		do_map_init_30001;
+	}
+}
+
+action do_map_init_30001(){
+	modify_field(meta_map_init_30001.qid, 30001);
+	modify_field(meta_map_init_30001.dIP, ipv4.dstAddr);
+}
+
+header_type meta_map_init_30001_t {
 	 fields {
 		qid: 16;
-		dMac: 48;
-		sIP: 32;
-		proto: 16;
-		sMac: 48;
-		nBytes: 16;
-		dPort: 16;
-		sPort: 16;
 		dIP: 32;
 	}
 }
 
-metadata meta_map_init_10001_t meta_map_init_10001;
+metadata meta_map_init_30001_t meta_map_init_30001;
 
-table map_init_10001{
+table map_init_30002{
 	actions{
-		do_map_init_10001;
+		do_map_init_30002;
 	}
 }
 
-action do_map_init_10001(){
-	modify_field(meta_map_init_10001.qid, 10001);
-	modify_field(meta_map_init_10001.dMac, ethernet.dstAddr);
-	modify_field(meta_map_init_10001.sIP, ipv4.srcAddr);
-	modify_field(meta_map_init_10001.proto, ipv4.protocol);
-	modify_field(meta_map_init_10001.sMac, ethernet.srcAddr);
-	modify_field(meta_map_init_10001.nBytes, ipv4.totalLen);
-	modify_field(meta_map_init_10001.dPort, tcp.dstPort);
-	modify_field(meta_map_init_10001.sPort, tcp.srcPort);
-	modify_field(meta_map_init_10001.dIP, ipv4.dstAddr);
+action do_map_init_30002(){
+	modify_field(meta_map_init_30002.qid, 30002);
+	modify_field(meta_map_init_30002.dIP, ipv4.dstAddr);
 }
 
-table map_10001_0{
-	actions{
-		do_map_10001_0;
-	}
-}
-
-action do_map_10001_0() {
-	bit_and(meta_map_init_10001.dIP, meta_map_init_10001.dIP, 0xff000000);
-}
-
-header_type meta_map_init_10002_t {
+header_type meta_map_init_30002_t {
 	 fields {
 		qid: 16;
-		dMac: 48;
-		sIP: 32;
-		proto: 16;
-		sMac: 48;
-		nBytes: 16;
-		dPort: 16;
-		sPort: 16;
 		dIP: 32;
 	}
 }
 
-metadata meta_map_init_10002_t meta_map_init_10002;
-
-table map_init_10002{
-	actions{
-		do_map_init_10002;
-	}
-}
-
-action do_map_init_10002(){
-	modify_field(meta_map_init_10002.qid, 10002);
-	modify_field(meta_map_init_10002.dMac, ethernet.dstAddr);
-	modify_field(meta_map_init_10002.sIP, ipv4.srcAddr);
-	modify_field(meta_map_init_10002.proto, ipv4.protocol);
-	modify_field(meta_map_init_10002.sMac, ethernet.srcAddr);
-	modify_field(meta_map_init_10002.nBytes, ipv4.totalLen);
-	modify_field(meta_map_init_10002.dPort, tcp.dstPort);
-	modify_field(meta_map_init_10002.sPort, tcp.srcPort);
-	modify_field(meta_map_init_10002.dIP, ipv4.dstAddr);
-}
-
-table map_10002_0{
-	actions{
-		do_map_10002_0;
-	}
-}
-
-action do_map_10002_0() {
-	bit_and(meta_map_init_10002.dIP, meta_map_init_10002.dIP, 0xffffffff);
-}
+metadata meta_map_init_30002_t meta_map_init_30002;
 
 header_type meta_fm_t {
 	fields {
-		qid_10001 : 1;
-		qid_10002 : 1;
+		qid_30001 : 1;
+		qid_30002 : 1;
 		f1 : 8;
 		is_drop : 1;
 	}
@@ -225,8 +177,8 @@ header_type meta_fm_t {
 metadata meta_fm_t meta_fm;
 
 action init_meta_fm() {
-	modify_field(meta_fm.qid_10001, 1);
-	modify_field(meta_fm.qid_10002, 1);
+	modify_field(meta_fm.qid_30001, 1);
+	modify_field(meta_fm.qid_30002, 1);
 	modify_field(meta_fm.is_drop, 0);
 }
 
@@ -235,38 +187,36 @@ table init_meta_fm {
 	size: 1;
 }
 
-action set_meta_fm_10001(){
-	modify_field(meta_fm.qid_10001, 1);
+action set_meta_fm_30001(){
+	modify_field(meta_fm.qid_30001, 1);
 }
 
-action set_meta_fm_10002(){
-	modify_field(meta_fm.qid_10002, 1);
+action set_meta_fm_30002(){
+	modify_field(meta_fm.qid_30002, 1);
 }
 
-action reset_meta_fm_10001(){
-	modify_field(meta_fm.qid_10001, 0);
+action reset_meta_fm_30001(){
+	modify_field(meta_fm.qid_30001, 0);
 	modify_field(meta_fm.is_drop, 1);
 }
 
-action reset_meta_fm_10002(){
-	modify_field(meta_fm.qid_10002, 0);
+action reset_meta_fm_30002(){
+	modify_field(meta_fm.qid_30002, 0);
 	modify_field(meta_fm.is_drop, 1);
 }
 
 control ingress {
 	apply(init_meta_fm);
 	if (meta_fm.f1 == 0){
-		if (meta_fm.qid_10001 == 1){
-			apply(map_init_10001);
-			apply(map_10001_0);
-			apply(copy_to_cpu_10001);
+		if (meta_fm.qid_30001 == 1){
+					apply(map_init_30001);
+			apply(copy_to_cpu_30001);
 		}
 	}
 	if (meta_fm.f1 == 1){
-		if (meta_fm.qid_10002 == 1){
-			apply(map_init_10002);
-			apply(map_10002_0);
-			apply(copy_to_cpu_10002);
+		if (meta_fm.qid_30002 == 1){
+					apply(map_init_30002);
+			apply(copy_to_cpu_30002);
 		}
 	}
 }
@@ -287,10 +237,10 @@ control egress {
 		}
 		else {
 			if (meta_fm.f1 == 0){
-				apply(encap_10001);
+				apply(encap_30001);
 			}
 			if (meta_fm.f1 == 1){
-				apply(encap_10002);
+				apply(encap_30002);
 			}
 		}
 
