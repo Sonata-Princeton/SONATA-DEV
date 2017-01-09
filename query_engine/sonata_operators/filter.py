@@ -9,12 +9,13 @@ class Filter(Query):
         super(Filter, self).__init__(*args, **kwargs)
         self.name = 'Filter'
         map_dict = dict(*args, **kwargs)
-        self.keys = ()
-        self.filter_keys = ()
-        self.values = ()
-        self.prev_keys = ()
-        self.prev_values = ()
-        self.func = ()
+        self.keys = []
+        self.filter_keys = []
+        self.filter_vals = []
+        self.values = []
+        self.prev_keys = []
+        self.prev_values = []
+        self.func = []
         self.src = 0
 
         if 'prev_keys' in map_dict:
@@ -41,5 +42,10 @@ class Filter(Query):
         if 'filter_keys' in map_dict:
             self.filter_keys = map_dict['filter_keys']
 
+        if 'filter_vals' in map_dict:
+            self.filter_vals = map_dict['filter_vals']
+
+
     def __repr__(self):
-        return '.Filter(filter_keys=' + str(self.keys) + ', func=' + str(self.func) + ' src = ' + str(self.src) + ')'
+        return '.Filter(filter_keys=' + str(self.filter_keys) +', filter_vals=' + str(self.filter_vals) + \
+               ', func=' + str(self.func) + ' src = ' + str(self.src) + ')'

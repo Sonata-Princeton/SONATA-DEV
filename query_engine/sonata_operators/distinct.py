@@ -24,7 +24,7 @@ class Distinct(Query):
             self.keys = map_dict['keys']
         else:
             self.keys = self.prev_keys
-        self.values = self.prev_values
+        self.values = ()
 
     def __repr__(self):
         return '.Distinct(keys=' + str(self.keys) + ')'

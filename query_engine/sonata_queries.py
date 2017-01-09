@@ -27,8 +27,8 @@ class PacketStream(Query):
         self.name = 'PacketStream'
 
         self.fields = tuple(self.basic_headers)
-        self.keys = tuple([self.basic_headers[0]])
-        self.values = tuple(self.basic_headers[1:])
+        self.keys = tuple(self.basic_headers)
+        self.values = ()
         self.fields = self.keys + self.values
         self.training_data_fname = training_data_fname
         self.operators = []
@@ -107,6 +107,9 @@ class PacketStream(Query):
         return self
 
     def distinct(self, *args, **kwargs):
+        map_dict = dict(*args, **kwargs)
+        if 'keys' in map_dict:
+            self.keys = map_dict['keys']
         operator = Distinct(prev_keys=self.get_prev_keys(), prev_values=self.get_prev_values(),
                             *args, **kwargs)
         self.operators.append(operator)
@@ -137,20 +140,26 @@ class PacketStream(Query):
         new_query = PacketStream(new_qid)
         new_query.right_child = self
         new_query.left_child = left_query
+
         return new_query
 
     def get_concise_query(self):
-
         unique_keys = {}
         for operator in self.operators:
-            for k in operator.keys:
-                unique_keys[k] = 0
+            if operator.name in ["Distinct", "Map", "Reduce"]:
+                for k in operator.keys:
+                    if k not in ["count"]:
+                        unique_keys[k] = 0
+            elif operator.name in ["Filter"]:
+                for k in operator.filter_keys:
+                    if k not in ["count"]:
+                        unique_keys[k] = 0
 
+        print "Concise Query: ", self.qid, unique_keys.keys()
         concise_query = PacketStream()
         concise_query.basic_headers = unique_keys.keys()
         for operator in self.operators:
             copy_operators(concise_query, operator)
-
         return concise_query
 
     def get_prev_keys(self):
@@ -325,16 +334,16 @@ class PacketStream(Query):
         self.refined_2_orig = refined_2_orig
         return (orig_2_refined, refined_2_orig)
 
-    def generate_query_in_mapping(self, fp, query_2_final_plan, query_in_mapping={}, query_input=[], is_left=False):
+    def generate_query_in_mapping(self, fp, query_2_final_plan, query_in_mapping={}, query_input=[], is_right=False):
         query_id = self.qid
-        # print "Exploring", query_id, "input", query_input
+        print "Exploring", query_id, "input", query_input
         prev_ref_level = 0
         last_level = 0
 
         if query_id in query_2_final_plan:
             ref_plan, cost = query_2_final_plan[query_id][fp]
             ref_plans_to_explore = ref_plan[1:]
-            if is_left:
+            if is_right:
                 # We will join the left child query with the parent query for their finest level of refinement, thus
                 # explore one less refinement level for it
                 if len(ref_plans_to_explore) > 1:
@@ -362,17 +371,17 @@ class PacketStream(Query):
 
                     if prev_ref_level > 0:
                         query_input.append((query_id, prev_ref_level))
-                        if self.left_child is None:
+                        if self.right_child is None:
                             query_in_mapping[(query_id, ref_level)].append((query_id, prev_ref_level))
 
-                    if self.left_child is not None:
-                        # treat left child differently...they are special kids ;)
-                        tmp = self.left_child.generate_query_in_mapping(ref_level, query_2_final_plan, query_in_mapping,
-                                                                        query_input=query_input, is_left=True)
+                    if self.right_child is not None:
+                        # treat right child differently...they are special kids ;)
+                        tmp = self.right_child.generate_query_in_mapping(ref_level, query_2_final_plan, query_in_mapping,
+                                                                         query_input=query_input, is_right=True)
                         if tmp != ():
                             query_in_mapping[(query_id, ref_level)].append(tmp)
 
-                        tmp = self.right_child.generate_query_in_mapping(ref_level, query_2_final_plan,
+                        tmp = self.left_child.generate_query_in_mapping(ref_level, query_2_final_plan,
                                                                          query_in_mapping,
                                                                          query_input=query_input)
                         if tmp != ():
@@ -424,9 +433,18 @@ class PacketStream(Query):
                 original_query = self.all_queries[queryId]
                 new_qid = original_query.qid * 10000 + q_ctr
                 q_ctr += 1
-                concise_query = original_query.get_concise_query()
                 refined_query = PacketStream(new_qid)
-                refined_query.basic_headers = concise_query.basic_headers
+
+                concise_query = original_query.get_concise_query()
+                if original_query.right_child is not None:
+                    concise_right = original_query.right_child.get_concise_query()
+                    concise_left = original_query.left_child.get_concise_query()
+                    refined_query.basic_headers = list(set(concise_query.basic_headers)
+                                                       .union(set(concise_right.basic_headers)))
+                else:
+                    refined_query.basic_headers = concise_query.basic_headers
+                print "Basic headers for ", queryId, refined_query.basic_headers
+
                 # print self.query_in_mapping
                 if (queryId, ref_level) in self.query_in_mapping:
                     for (orig_qid_src, mask) in self.query_in_mapping[(queryId, ref_level)]:
@@ -436,7 +454,11 @@ class PacketStream(Query):
 
                 refined_query.map(map_keys=(red_key,), func=("mask", ref_level))
                 if original_query.right_child is not None:
-                    concise_right = original_query.right_child.get_concise_query()
+                    print "Left Child", concise_left.keys, concise_left.operators[-1].keys
+                    print "Right Child", concise_right.operators[-1].keys, concise_right.operators[-1].values
+                    #refined_query.map(keys=list(set(concise_left.operators[-1].keys)
+                    #                        .union(set(concise_right.operators[-1].keys))
+                    #                        .union(set(concise_right.operators[-1].values))))
                     # TODO: get rid of this redundancy
                     for operator in concise_right.operators:
                         copy_operators(refined_query, operator)
@@ -455,6 +477,12 @@ class PacketStream(Query):
 
     def generate_partitioned_queries(self):
 
+        def set_partition_with_payload_processing(p4_query, operator):
+            print "Partition set with payload processing for", operator.name
+            p4_query.parse_payload = True
+            return max_dp_operators
+
+
         for (queryId, ref_level) in self.query_in_mapping.keys():
             partitioning_plan = self.query_2_refinement_levels[queryId][ref_level]
             max_dp_operators = 0
@@ -466,30 +494,42 @@ class PacketStream(Query):
 
             refined_query = self.refined_queries[queryId][ref_level]
             p4_basic_headers = filter(lambda x: x != "payload", refined_query.basic_headers)
-            print "p4_basic_headers", p4_basic_headers
+            print "p4_basic_headers", p4_basic_headers, refined_query.basic_headers
+
+            # Initialize P4 query
             p4_query = p4.QueryPipeline(refined_query.qid).map_init(keys=p4_basic_headers)
             p4_query.parse_payload = False
 
+            # Initialize Spark Query
             spark_query = (spark.PacketStream(refined_query.qid))
-            print "Initialize Spark", spark_query.expr
+
             print queryId, ref_level, partitioning_plan, max_dp_operators
-            # For now we will hardcode to push first reduce operator in the data plane
             print "Original Refined Query before partitioning:", refined_query
             in_dataplane = 0
             border_reduce = None
-            max_reduce_operators = 0
-            for operator in refined_query.operators:
-                if operator.name in ['Reduce', 'Distinct']:
-                    max_reduce_operators += 1
-            if max_reduce_operators < max_dp_operators:
-                max_dp_operators = max_reduce_operators
             init_spark = True
             for operator in refined_query.operators:
-                if "payload" in operator.keys or "payload" in operator.values:
-                    in_dataplane = max_dp_operators
-                    p4_query.parse_payload = True
 
                 if in_dataplane < max_dp_operators:
+
+                    print "Making partitioning decision for", operator, in_dataplane, p4_query.parse_payload
+                    if not p4_query.parse_payload:
+                        if operator.name in ['Filter']:
+                            if "payload" in operator.filter_keys or "payload" in operator.filter_vals:
+                                in_dataplane = set_partition_with_payload_processing(p4_query, operator)
+                        elif operator.name in ['Map']:
+                            if len(operator.map_keys) == 0:
+                                if "payload" in operator.keys or "payload" in operator.values:
+                                    in_dataplane = set_partition_with_payload_processing(p4_query, operator)
+                            else:
+                                if "payload" in operator.map_keys or "payload" in operator.map_values:
+                                    in_dataplane = set_partition_with_payload_processing(p4_query, operator)
+                        else:
+                            if "payload" in operator.keys or "payload" in operator.values:
+                                in_dataplane = set_partition_with_payload_processing(p4_query, operator)
+
+
+
                     if operator.name == 'Reduce':
                         in_dataplane += 1
                         copy_sonata_operators_to_p4(p4_query, operator)
@@ -498,7 +538,7 @@ class PacketStream(Query):
                         # duplicate implementation of reduce operators at the border
                         if in_dataplane == max_dp_operators:
                             border_reduce = p4_query.operators[-1]
-                            print "Adding border reduce", str(init_spark), spark_query.expr
+                            print "Adding border reduce to Spark", border_reduce
 
                             if init_spark:
                                 init_spark, spark_query = initialize_spark_query(p4_query,
@@ -507,38 +547,53 @@ class PacketStream(Query):
                             copy_sonata_operators_to_spark(spark_query, operator)
 
                     elif operator.name == 'Map':
-                        print "Adding map operation", operator
-                        copy_sonata_operators_to_p4(p4_query, operator)
+                        if len(operator.func) > 0 and operator.func[0] == 'mask':
+                            copy_sonata_operators_to_p4(p4_query, operator)
 
                     elif operator.name == 'Filter':
                         # check if previous operator was reduce
-                        if len(p4_query.operators) > 0:
-                            prev_operator = p4_query.operators[-1]
-                            if prev_operator.name == "Reduce":
+                        if len(operator.func) > 0 and operator.func[1] == 'geq':
+                            if len(p4_query.operators) > 0 and p4_query.operators[-1].name == "Reduce":
+                                prev_operator = p4_query.operators[-1]
                                 # update the threshold for the previous Reduce operator
                                 # TODO: assumes func is `geq`, implement others
                                 prev_operator.thresh = operator.func[1]
+
                         else:
                             copy_sonata_operators_to_p4(p4_query, operator)
 
                     elif operator.name == 'Distinct':
-                        copy_sonata_operators_to_p4(p4_query, operator)
                         in_dataplane += 1
+                        copy_sonata_operators_to_p4(p4_query, operator)
+
                 else:
                     if init_spark:
                         init_spark, spark_query = initialize_spark_query(p4_query,
                                                                          spark_query,
                                                                          refined_query.qid)
-
+                    #print "Adding", operator
                     if operator.name == "Filter":
-                        if border_reduce is not None:
-                            border_reduce.thresh = operator.values[0]
+                        print "Filter", operator.func, border_reduce
+                        if len(operator.func) > 0 and operator.func[0] == 'geq' and border_reduce is not None:
+                            border_reduce.thresh = operator.func[1]
                             print "Updated threshold", border_reduce.thresh, " for", border_reduce.name
 
-                    print "Adding", operator
-                    copy_sonata_operators_to_spark(spark_query, operator)
+                        if len(operator.func) > 0 and operator.func[0] == 'mask':
+                            copy_sonata_operators_to_p4(p4_query, operator)
+                        elif len(operator.func) > 0 and operator.func[0] == 'eq' and 'payload' not in operator.filter_keys:
+                            copy_sonata_operators_to_p4(p4_query, operator)
+                        else:
+                            copy_sonata_operators_to_spark(spark_query, operator)
 
-            print "After Partitioning, P4:", p4_query.expr
+                    elif operator.name == "Map":
+                        if len(operator.func) > 0 and operator.func[0] == 'mask':
+                            copy_sonata_operators_to_p4(p4_query, operator)
+                        else:
+                            copy_sonata_operators_to_spark(spark_query, operator)
+                    else:
+                        copy_sonata_operators_to_spark(spark_query, operator)
+
+            print "After Partitioning, P4:", p4_query
             print "After Partitioning, Spark:", spark_query
             self.qid_2_dp_queries[refined_query.qid] = p4_query
             self.qid_2_sp_queries[refined_query.qid] = spark_query

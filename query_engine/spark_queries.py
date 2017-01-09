@@ -56,7 +56,7 @@ class Map(SparkQuery):
         if 'values' in map_dict:
             self.values = list(map_dict['values'])
         else:
-            self.values = list(self.prev_values)
+            self.values = []
 
         if 'map_keys' in map_dict:
             self.map_keys = map_dict['map_keys']
@@ -211,7 +211,7 @@ class Distinct(SparkQuery):
         if 'values' in map_dict:
             self.values = map_dict['values']
         else:
-            self.values = self.prev_values
+            self.values = ()
 
     def __repr__(self):
         out = '.distinct(keys='+str(self.keys)+')'
@@ -230,6 +230,7 @@ class Filter(SparkQuery):
         self.prev_keys = []
         self.prev_values = []
         self.filter_keys = []
+        self.filter_vals = []
         self.func = []
         self.expr = ''
 
@@ -254,8 +255,18 @@ class Filter(SparkQuery):
         if 'filter_keys' in map_dict:
             self.filter_keys = map_dict['filter_keys']
 
+        if 'filter_vals' in map_dict:
+            self.filter_vals = map_dict['filter_vals']
+
         self.filter_expr = '('
         for fld in self.filter_keys:
+            if self.func[0] == 'eq':
+                self.filter_expr += str(fld) + '==' + str(self.func[1]) + ' &&'
+            elif self.func[0] == 'geq':
+                self.filter_expr += str(fld) + '>=' + str(self.func[1]) + ' &&'
+            elif self.func[0] == 'leq':
+                self.filter_expr += str(fld) + '<=' + str(self.func[1]) + '&&'
+        for fld in self.filter_vals:
             if self.func[0] == 'eq':
                 self.filter_expr += str(fld) + '==' + str(self.func[1]) + ' &&'
             elif self.func[0] == 'geq':
@@ -308,22 +319,36 @@ class PacketStream(SparkQuery):
 
         return expr_sp[1:]
 
+    def get_prev_keys(self):
+        if len(self.operators) > 0:
+            prev_keys = self.operators[-1].keys
+        else:
+            prev_keys = self.basic_headers
+        return prev_keys
+
+    def get_prev_values(self):
+        if len(self.operators) > 0:
+            prev_values = self.operators[-1].values
+        else:
+            prev_values = ()
+        return prev_values
+
     def map(self, *args, **kwargs):
-        operator = Map(*args, **kwargs)
+        operator = Map(prev_keys=self.get_prev_keys(), prev_values=self.get_prev_values(), *args, **kwargs)
         self.operators.append(operator)
         return self
 
     def reduce(self, *args, **kwargs):
-        operator = Reduce(*args, **kwargs)
+        operator = Reduce(prev_keys=self.get_prev_keys(), prev_values=self.get_prev_values(), *args, **kwargs)
         self.operators.append(operator)
         return self
 
     def distinct(self, *args, **kwargs):
-        operator = Distinct(*args, **kwargs)
+        operator = Distinct(prev_keys=self.get_prev_keys(), prev_values=self.get_prev_values(), *args, **kwargs)
         self.operators.append(operator)
         return self
 
     def filter(self, *args, **kwargs):
-        operator = Filter(*args, **kwargs)
+        operator = Filter(prev_keys=self.get_prev_keys(), prev_values=self.get_prev_values(), *args, **kwargs)
         self.operators.append(operator)
         return self

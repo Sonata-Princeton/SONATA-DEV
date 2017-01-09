@@ -28,4 +28,5 @@ class Reduce(Query):
         self.func = map_dict['func']
 
     def __repr__(self):
-        return '.Reduce( keys=' + ','.join([x for x in self.keys])+ ', values=' + ','.join([x for x in self.values])+ ',func=' + str(self.func)+')'
+        return '.Reduce( keys=(' + ','.join([x for x in self.keys])+ '), values=(' + ','.join([x for x in self.values])+ \
+               '), func=' + str(self.func)+')'

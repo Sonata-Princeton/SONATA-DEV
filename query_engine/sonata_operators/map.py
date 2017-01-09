@@ -29,7 +29,7 @@ class Map(Query):
         if 'values' in map_dict:
             self.values = list(map_dict['values'])
         else:
-            self.values = self.prev_values
+            self.values = []
 
         if 'map_keys' in map_dict:
             self.map_keys = map_dict['map_keys']

@@ -8,8 +8,6 @@ DISTINCT = 0
 THRESHOLD = 2
 
 header_map = {"sIP":"ipv4.srcAddr", "dIP":"ipv4.dstAddr",
-            # TODO: Get rid of this hardcoding
-            "dIP/16":"ipv4.dstAddr", "dIP/32":"ipv4.dstAddr",
             "sPort": "tcp.srcPort", "dPort": "tcp.dstPort",
             "nBytes": "ipv4.totalLen", "proto": "ipv4.protocol",
             "sMac": "ethernet.srcAddr", "dMac":"ethernet.dstAddr", "payload": ""}
@@ -323,6 +321,9 @@ class Distinct(Register):
         self.pre_actions = ('drop', 'fwd', 'drop')
         self.post_actions = ('fwd', 'fwd', 'fwd')
 
+    def __repr__(self):
+        return '.Distinct(keys='+str(self.keys)+')'
+
 class Reduce(Register):
     def __init__(self, *args, **kwargs):
         (self.id, self.qid, self.mirror_id, self.width,
@@ -336,6 +337,8 @@ class Reduce(Register):
         self.post_actions = ('set', 'fwd', 'drop')
         self.out_headers = tuple(list(self.out_headers)+['count'])
 
+    def __repr__(self):
+        return '.Reduce(keys=' + ','.join([x for x in self.keys]) + ', threshold='+str(self.thresh)+')'
 
     def add_action_update(self):
         out = 'action update_'+self.operator_name+'_regs() {\n\t'
@@ -393,6 +396,9 @@ class Map(object):
 
         self.operator_name = 'map_'+str(self.qid)+'_'+str(self.id)
 
+    def __repr__(self):
+        return '.Map(keys='+str(self.keys)+', map_keys='+str(self.map_keys)+', func='+str(self.func)+')'
+
     def update_map_table(self):
         out = ''
         # Add match table for inital map operator
@@ -422,6 +428,7 @@ class Map(object):
                 out += '}\n\n'
             else:
                 # TODO add more functions for map operations
+                raise NotImplementedError
                 pass
 
         self.p4_state += out
@@ -510,6 +517,9 @@ class Map_Init(object):
         self.expr = ''
 
         self.operator_name = 'map_init_'+str(self.qid)
+
+    def __repr__(self):
+        return '.MapInit('+str(self.keys)+')'
 
     def update_map_table(self):
         out = ''
@@ -629,6 +639,10 @@ class Filter(object):
         self.src = 0
         self.filter_values = ()
 
+
+        if 'filter_values' in map_dict:
+            self.filter_values = map_dict['filter_values']
+
         self.keys = map_dict['keys']
         self.filter_keys = map_dict['filter_keys']
         self.func = map_dict['func']
@@ -643,6 +657,10 @@ class Filter(object):
             self.src = map_dict['src']
 
         self.out_headers = tuple(['qid']+list(self.keys))
+
+    def __repr__(self):
+        return '.Filter(filter_keys='+str(self.filter_keys)+', func='+str(self.func)+', src = '+str(self.src)+')'
+
 
     def update_p4_invariants(self):
         out = '#include "includes/headers.p4"\n'
@@ -750,6 +768,12 @@ class QueryPipeline(object):
         self.refinement_filter_id = 0
         self.parse_payload = False
 
+    def __repr__(self):
+        expr = 'In'
+        for operator in self.operators:
+            expr += '\t'+operator.__repr__()+'\n'
+        return expr
+
     def reduce(self, *args, **kwargs):
         id = len(self.operators)
         new_args = (id, self.qid, self.mirror_id, TABLE_WIDTH, TABLE_SIZE, THRESHOLD)+args
@@ -786,12 +810,6 @@ class QueryPipeline(object):
             src = map_dict['src']
         if 'mask' in map_dict:
             filter_mask = map_dict['mask']
-        filter_vals = ()
-
-        if 'values' in map_dict:
-            filter_vals = map_dict['values']
-
-        self.expr += '\n\t.Filter(keys='+str(filter_keys)+', mask='+str(filter_mask)+', vals='+str(filter_vals)+' src = '+str(src)+')'
 
         self.filter_rules_id = len(self.operators)
         filter_name = 'filter_'+str(self.qid)+'_'+str(self.filter_rules_id)

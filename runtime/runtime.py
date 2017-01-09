@@ -51,8 +51,8 @@ class Runtime(object):
             query.get_refinement_plan(ref_levels)
             print query.query_2_final_plan
             query.generate_query_in_mapping(finest_plan, query.query_2_final_plan)
-            print query.query_in_mapping
-            print query.generate_query_out_mapping()
+            print "Q2In", query.query_in_mapping
+            print "Q2Out", query.generate_query_out_mapping()
             print query.get_query_2_refinement_levels(finest_plan, query.query_2_final_plan)
             query.get_orig_refined_mapping()
             query.generate_refined_queries(reduction_key)

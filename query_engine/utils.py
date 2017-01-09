@@ -15,9 +15,8 @@ def get_original_wo_mask(lstOfFields):
 
 def copy_operators(query, optr):
     if optr.name == 'Filter':
-        query.filter(keys=optr.keys,
-                     values=optr.values,
-                     filter_keys=optr.filter_keys,
+        query.filter(filter_keys=optr.filter_keys,
+                     filter_vals=optr.filter_vals,
                      func=optr.func,
                      src=optr.src)
     elif optr.name == "Map":
@@ -36,64 +35,61 @@ def copy_operators(query, optr):
                        values=optr.values)
 
 def copy_sonata_operators_to_spark(query, optr):
+    print "Adding spark operator", optr.name
     prev_keys = get_original_wo_mask(optr.prev_keys)
     keys = get_original_wo_mask(optr.keys)
     if optr.name == 'Filter':
-        query.filter(keys=keys,
-                     values=optr.values,
-                     filter_keys=optr.filter_keys,
-                     prev_keys=prev_keys,
-                     prev_values=optr.prev_values,
+        query.filter(filter_keys=optr.filter_keys,
+                     filter_vals=optr.filter_vals,
                      func=optr.func)
     elif optr.name == "Map":
         query.map(keys=keys,
                   values=optr.values,
                   map_keys=optr.map_keys,
                   map_values=optr.map_values,
-                  prev_keys=prev_keys,
-                  prev_values=optr.prev_values,
                   func=optr.func)
     elif optr.name == "Reduce":
         query.reduce(keys=keys,
-                     values=optr.values,
-                     prev_keys=prev_keys,
-                     prev_values=optr.prev_values,
                      func=optr.func)
 
     elif optr.name == "Distinct":
-        query.distinct(keys=keys,
-                       values=optr.values,
-                       prev_keys=prev_keys,
-                       prev_values=optr.prev_values)
+        query.distinct(keys=keys)
 
 
 
 def initialize_spark_query(p4_query, spark_query, qid):
+    print "Initializing Spark Query Object"
     if len(p4_query.operators) > 0:
         hdrs = list(p4_query.operators[-1].out_headers)
     else:
-        print "basic", p4_query.keys
-        hdrs = p4_query.keys
+        raise NotImplementedError
     if p4_query.parse_payload: hdrs += ['payload']
-    spark_query = (spark_query.filter(keys=['k'] + hdrs,
+    print "Headers", hdrs
+    spark_query.basic_headers = ['k'] + hdrs
+    spark_query = (spark_query.filter(keys=spark_query.basic_headers,
                                       filter_keys=('qid',),
-                                      func=('eq',"'"+str(qid)+"'"))
-                   .map(prev_keys=("p",), keys=("p[2:]",)))
+                                      func=('eq',"'"+str(qid)+"'")))
     return False, spark_query
 
 
+def filter_payload(keys):
+    return filter(lambda x: x!= 'payload', keys)
+
+
 def copy_sonata_operators_to_p4(query, optr):
+    print "Adding P4 operator", optr.name
+    keys = filter_payload(optr.keys)
     if optr.name == 'Filter':
-        query.filter(keys=optr.keys,
+        query.filter(keys=keys,
                      filter_keys=optr.filter_keys,
-                     func=optr.funcs,
+                     func=optr.func,
                      src=optr.src)
     elif optr.name == "Map":
-        query.map(keys = optr.keys,
+        query.map(keys = keys,
                   map_keys=optr.map_keys,
                   func=optr.func)
     elif optr.name == "Reduce":
-        query.reduce(keys=optr.keys)
+        query.reduce(keys=keys)
 
     elif optr.name == "Distinct":
-        query.distinct(keys=optr.keys)
+        query.distinct(keys=keys)

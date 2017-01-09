@@ -44,20 +44,21 @@ if __name__ == '__main__':
               .distinct(keys=('dIP', 'sIP'))
               .map(keys=('dIP',), map_values = ('count',), func=('eq',1,))
               .reduce(keys=('dIP',), func=('sum',))
-              .filter(filter_keys=('count',), func=('geq', '3'))
+              .filter(filter_vals=('count',), func=('geq', '3'))
               .map(keys=('dIP',))
               )
 
         q2 = (PacketStream(2)
+              .filter(filter_keys=('proto',), func=('eq', 6))
               .map(keys=('dIP','payload'))
               )
 
         q3 = (q2.join(new_qid=3, query=q1)
               .map(keys=('dIP', 'payload'), map_values=('count',), func=('eq', 1))
               .reduce(keys=('dIP','payload'),func=('sum',))
-              .filter(filter_keys=('count',), func = ('geq', 1))
-              .map(keys=('dIP',))
+              .filter(filter_vals=('count',), func = ('geq', 1))
               .distinct(keys=('dIP',))
+              .map(keys=('dIP',))
               )
         print q3
         queries = [q3]
