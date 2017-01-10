@@ -72,12 +72,7 @@ class StreamingManager(object):
         queries = pickle.loads(raw_data)
         print ("Received queries from Runtime")
         spark_queries = {}
-        """
-        pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd.filter(lambda p : (p[1]==str(30001))).map(lambda ((k,qid,dIP,proto,payload)): ((dIP,payload),(1))).reduceByKey(lambda x,y: x+y).filter(lambda ((dIP,payload),(count)): ((count>=1 ))).distinct().map(lambda ((dIP)): ((dIP))))).foreachRDD(lambda rdd: send_reduction_keys(rdd, ('localhost', 4949),1484007411.49,'30001'))
-        pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd.filter(lambda p : (p[1]==str(30002))).map(lambda ((k,qid,dIP,proto)): ((dIP,payload))).map(lambda ((dIP,payload)): ((dIP,payload),(1))).reduceByKey(lambda x,y: x+y).filter(lambda ((dIP,payload),(count)): ((count>=1 ))).distinct().map(lambda ((dIP)): ((dIP))))).foreachRDD(lambda rdd: send_reduction_keys(rdd, ('localhost', 4949),1484007411.49,'30002'))
-        pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd.filter(lambda p : (p[1]==str(10002))).map(lambda ((k,qid,dIP,count)): ((dIP),(count))).reduceByKey(lambda x,y: x+y).filter(lambda ((dIP),(count)): ((count>=3 ))).map(lambda ((dIP),(count)): ((dIP))))).foreachRDD(lambda rdd: send_reduction_keys(rdd, ('localhost', 4949),1484007411.49,'10002'))
-        pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd.filter(lambda p : (p[1]==str(10001))).map(lambda ((k,qid,dIP,count)): ((dIP),(count))).reduceByKey(lambda x,y: x+y).filter(lambda ((dIP),(count)): ((count>=3 ))).map(lambda ((dIP),(count)): ((dIP))))).foreachRDD(lambda rdd: send_reduction_keys(rdd, ('localhost', 4949),1484007411.49,'10001'))
-        """
+
         for queryId in queries:
             query = queries[queryId]
             query_str = "pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd." + query.compile() + ")).foreachRDD(lambda rdd: send_reduction_keys(rdd, " + str(self.op_handler_socket)+ "," + str(self.start_time)+",\'"+ str(queryId)+"\'))"

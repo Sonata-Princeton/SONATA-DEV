@@ -5,6 +5,8 @@
 import random
 
 from query_engine.sonata_operators import *
+from query_engine.sonata_queries import *
+from query_engine.utils import *
 from runtime.runtime import *
 
 batch_interval = 1
@@ -44,19 +46,9 @@ def generate_composed_query(query_tree, qid_2_query):
         print "Right Query", right_query
         print "Left Query", left_query
         """
-
-
         composed_query = right_query.join(new_qid=root_qid, query=left_query)
         for operator in root_query.operators:
-            if operator.name == 'Filter':
-                composed_query.filter(keys=operator.keys, values=operator.values, comp=operator.comp)
-            elif operator.name == "Map":
-                composed_query.map(keys=operator.keys, values=operator.values)
-            elif operator.name == "Reduce":
-                composed_query.reduce(keys=operator.keys, values=operator.values, func=operator.func)
-            elif operator.name == "Distinct":
-                composed_query.distinct(keys=operator.keys)
-
+            copy_operators(composed_query, operator)
     else:
         composed_query = root_query
 
@@ -154,9 +146,9 @@ class QueryGenerator(object):
 
         operator = random.choice(['Distinct', 'Reduce'])
         if operator == 'Reduce':
-            q.map(keys=tuple(reduction_fields), values=("1",))
-            q.reduce(keys=tuple(reduction_fields), func='sum', values=('count',))
-            q.filter(keys=tuple(reduction_fields), values=(self.qid_2_thresh[qid],), comp="geq")
+            q.map(keys=tuple(reduction_fields), map_values = ('count',), func=('eq',1,))
+            q.reduce(keys=tuple(reduction_fields), func=('sum',))
+            q.filter(filter_vals=('count',), func=('geq', self.qid_2_thresh[qid]))
         else:
             q.map(keys=tuple(reduction_fields))
             q.distinct(keys=tuple(reduction_fields))
@@ -173,7 +165,6 @@ class QueryGenerator(object):
         q = PacketStream(qid)
         # TODO: get rid of this hardcoding
         self.qid_2_thresh[qid] = 2
-
         reduction_key = random.choice(self.refinement_headers)
         other_headers = self.other_headers + [x for x in self.refinement_headers if x != reduction_key]
         if isLeft:
@@ -190,7 +181,6 @@ class QueryGenerator(object):
             self.generate_reduction_operators(q, qid, [reduction_key]+reduction_fields)
         q.map(keys=tuple([reduction_key]+reduction_fields))
 
-        #print qid, q
         return q
 
 if __name__ == "__main__":
@@ -209,7 +199,7 @@ if __name__ == "__main__":
 
 
     n_queries = 1
-    max_reduce_operators = 2
+    max_reduce_operators = 3
     query_tree_depth = 1
     query_generator = QueryGenerator(n_queries, max_reduce_operators, query_tree_depth)
     queries = query_generator.query_trees.values()
