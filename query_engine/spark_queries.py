@@ -242,10 +242,10 @@ class FilterInit(SparkQuery):
         self.values = ()
 
     def __repr__(self):
-        return '.filter(lambda p : (p[1]=='+str(self.qid)+'))'
+        return '.filter(lambda p : (p[1]==str('+str(self.qid)+')))'
 
     def compile(self):
-        expr = '.filter(lambda p : (p[1]=='+str(self.qid)+'))'
+        expr = '.filter(lambda p : (p[1]==str('+str(self.qid)+')))'
         return expr
 
 

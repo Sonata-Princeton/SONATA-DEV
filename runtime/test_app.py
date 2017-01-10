@@ -57,8 +57,8 @@ if __name__ == '__main__':
               .map(keys=('dIP', 'payload'), map_values=('count',), func=('eq', 1))
               .reduce(keys=('dIP','payload'),func=('sum',))
               .filter(filter_vals=('count',), func = ('geq', 1))
-              .distinct(keys=('dIP',))
               .map(keys=('dIP',))
+              .distinct(keys=('dIP',))
               )
         print q3
         queries = [q3]
