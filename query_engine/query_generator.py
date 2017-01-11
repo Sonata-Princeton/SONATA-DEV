@@ -119,6 +119,7 @@ class QueryGenerator(object):
             ctr = 1
             query_tree = {root_qid:generate_query_tree(ctr, all_queries, self.query_tree_depth)}
             qid_2_query = {}
+            reduction_key = random.choice(self.refinement_headers)
 
             out = []
             get_left_children(query_tree, out)
@@ -126,14 +127,16 @@ class QueryGenerator(object):
 
             for qid in single_queries:
                 if qid == root_qid:
-                    qid_2_query[qid] = self.generate_single_query(qid, isLeft=False)
+                    qid_2_query[qid] = self.generate_single_query(qid, reduction_key, isLeft=False)
                 else:
-                    qid_2_query[qid] = self.generate_single_query(qid)
+                    qid_2_query[qid] = self.generate_single_query(qid, reduction_key)
                 print qid, qid_2_query[qid]
 
             composed_query = generate_composed_query(query_tree, qid_2_query)
             self.query_trees[n_query]= composed_query
             print composed_query.qid, composed_query
+            #tmp = composed_query.get_reduction_key()
+            #print tmp
 
     def generate_reduction_operators(self, q, qid, reduction_fields):
         """
@@ -143,7 +146,6 @@ class QueryGenerator(object):
         @qid: query id for the query
         @reduction_fields: fields to reduce query on
         """
-
         operator = random.choice(['Distinct', 'Reduce'])
         if operator == 'Reduce':
             q.map(keys=tuple(reduction_fields), map_values = ('count',), func=('eq',1,))
@@ -153,7 +155,7 @@ class QueryGenerator(object):
             q.map(keys=tuple(reduction_fields))
             q.distinct(keys=tuple(reduction_fields))
 
-    def generate_single_query(self, qid, isLeft=True):
+    def generate_single_query(self, qid, reduction_key, isLeft=True):
         """
         Generate Single Query
 
@@ -165,7 +167,7 @@ class QueryGenerator(object):
         q = PacketStream(qid)
         # TODO: get rid of this hardcoding
         self.qid_2_thresh[qid] = 2
-        reduction_key = random.choice(self.refinement_headers)
+
         other_headers = self.other_headers + [x for x in self.refinement_headers if x != reduction_key]
         if isLeft:
             other_headers = list(set(other_headers)-set(["payload"]))
@@ -199,8 +201,8 @@ if __name__ == "__main__":
 
 
     n_queries = 1
-    max_reduce_operators = 3
-    query_tree_depth = 1
+    max_reduce_operators = 2
+    query_tree_depth = 2
     query_generator = QueryGenerator(n_queries, max_reduce_operators, query_tree_depth)
     queries = query_generator.query_trees.values()
     #print query_generator.query_trees.keys()

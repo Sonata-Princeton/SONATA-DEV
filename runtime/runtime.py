@@ -36,8 +36,9 @@ class Runtime(object):
             query.get_query_tree()
             query.get_all_queries()
             query.get_partition_plans()
-
-            reduction_key = list(query.get_reduction_key())[0]
+            tmp = query.get_reduction_key()
+            print tmp
+            reduction_key = list(tmp)[0]
             if reduction_key != '':
                 print "Reduction key for Query", query.qid, " is ", reduction_key
                 # Tunable parameter

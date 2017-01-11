@@ -727,6 +727,7 @@ class Filter(object):
         out = ''
         out += 'table '+self.filter_name+'{\n'
         out += '\treads {\n'
+        print "Adding filter for", self.filter_name, self.func, self.filter_keys
         for key in self.filter_keys:
             if self.func[0] == 'mask':
                 out += '\t\t'+str(header_map[key])+': lpm;\n'

@@ -80,10 +80,12 @@ def copy_sonata_operators_to_p4(query, optr):
     #print "Adding P4 operator", optr.name
     keys = filter_payload(optr.keys)
     if optr.name == 'Filter':
-        query.filter(keys=keys,
-                     filter_keys=optr.filter_keys,
-                     func=optr.func,
-                     src=optr.src)
+        # TODO: get rid of this hardcoding
+        if optr.func[0] != 'geq':
+            query.filter(keys=keys,
+                         filter_keys=optr.filter_keys,
+                         func=optr.func,
+                         src=optr.src)
     elif optr.name == "Map":
         query.map(keys = keys,
                   map_keys=optr.map_keys,

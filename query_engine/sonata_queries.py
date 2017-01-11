@@ -275,8 +275,8 @@ class PacketStream(Query):
         if self.left_child is not None:
             red_keys_left = self.left_child.get_reduction_key()
             red_keys_right = self.right_child.get_reduction_key()
-            #print "left keys", red_keys_left, self.qid
-            #print "right keys", red_keys_right, self.qid
+            print "left keys", red_keys_left, self.qid
+            print "right keys", red_keys_right, self.qid
             # TODO: make sure that we better handle the case when first reduce operator has both sIP and dIP as reduction keys
             if len(red_keys_right) > 0:
                 red_keys = set(red_keys_left).intersection(red_keys_right)
@@ -286,21 +286,21 @@ class PacketStream(Query):
             for operator in self.operators:
                 if operator.name in ['Distinct', 'Reduce']:
                     red_keys = red_keys.intersection(set(operator.keys))
-                    #print self.qid, operator.name, red_keys
+                    print self.qid, operator.name, red_keys
 
             red_keys = red_keys.intersection(self.refinement_headers)
 
         else:
-            #print "Reached leaf node", self.qid
+            print "Reached leaf node", self.qid
             red_keys = set(self.basic_headers)
             for operator in self.operators:
                 # Extract reduction keys from first reduce/distinct operator
                 if operator.name in ['Distinct', 'Reduce']:
                     red_keys = red_keys.intersection(set(operator.keys))
-                    #print self.qid, operator.name, red_keys
+                    print self.qid, operator.name, red_keys
                     #break
 
-        #print "Reduction Key Search", self.qid, red_keys
+        print "Reduction Key Search", self.qid, red_keys
         return red_keys
 
     def generate_query_out_mapping(self):
@@ -475,6 +475,11 @@ class PacketStream(Query):
 
     def generate_partitioned_queries(self):
 
+        """
+        Generates P4 query and Sonata query object for each refined query.
+        :return:
+        """
+
         def set_partition_with_payload_processing(p4_query, operator):
             #print "Partition set with payload processing for", operator.name
             p4_query.parse_payload = True
@@ -482,7 +487,18 @@ class PacketStream(Query):
 
 
         for (queryId, ref_level) in self.query_in_mapping.keys():
+            # partitioning plan is a bit string. For example for a query with partitioning
+            # plan `001` means that it will add the first two reduce operators to
+            # the P4 query and the last one to the Spark query
+            # It is easy to apply the logic of partitioning the reduce operatos, however, we
+            # want to make sure that even if there are no reduce operators in the
+            # data plane, we execute basic filtering and map operations in the data plane,
+            # We are using the data plane to parse the incoming packet stream to packet
+            # tuples (qid, ...) that can be processed by the stream processor, thus we need to
+            # make sure that each query has its basic map/filter function in the data plane.
+
             partitioning_plan = self.query_2_refinement_levels[queryId][ref_level]
+            # `max_dp_operators` is the number of reduction operators to be added to the P4 query
             max_dp_operators = 0
             for elem in str(partitioning_plan):
                 if elem == '0':
@@ -491,6 +507,9 @@ class PacketStream(Query):
                     break
 
             refined_query = self.refined_queries[queryId][ref_level]
+
+            # Even if the query has payload field in packet tuple, we exclude that from
+            # our P4 query object as we can't parse it in the data plane
             p4_basic_headers = filter(lambda x: x != "payload", refined_query.basic_headers)
             #print "p4_basic_headers", p4_basic_headers, refined_query.basic_headers
 
@@ -503,16 +522,27 @@ class PacketStream(Query):
 
             print queryId, ref_level, partitioning_plan, max_dp_operators
             print "Original Refined Query before partitioning:\n", refined_query
+            # number of reduce operators delegated so far
             in_dataplane = 0
+            # our implementation requires duplicating the last (border) reduce
+            # operator in P4 query to Spark query, the reason is that ours is not
+            # just reduce, it is reduce and filter, so after the count exceeds
+            # the threshold, it emits all the packet tuples with count 1.
+            # Thus we require duplicating the reduce operator.
             border_reduce = None
+            # In future, we should not require this map operation that needs to
+            # be applied before the border reduce operator.
             border_map = None
+
+            # To ensure that we initialize the spark query only once
             init_spark = True
+
             for operator in refined_query.operators:
-
                 if in_dataplane < max_dp_operators:
-
                     #print "Making partitioning decision for", operator, in_dataplane, p4_query.parse_payload
                     if not p4_query.parse_payload:
+                        # Check whether we can support these operators in the data plane, and if
+                        # we need to parse packet payload in the stream processor
                         if operator.name in ['Filter']:
                             if "payload" in operator.filter_keys or "payload" in operator.filter_vals:
                                 in_dataplane = set_partition_with_payload_processing(p4_query, operator)
@@ -526,8 +556,6 @@ class PacketStream(Query):
                         else:
                             if "payload" in operator.keys or "payload" in operator.values:
                                 in_dataplane = set_partition_with_payload_processing(p4_query, operator)
-
-
 
                     if operator.name == 'Reduce':
                         in_dataplane += 1
@@ -543,6 +571,7 @@ class PacketStream(Query):
                                 init_spark, spark_query = initialize_spark_query(p4_query,
                                                                                  spark_query,
                                                                                  refined_query.qid)
+                            # Add the map operator before this border reduce operator to select the right reduction keys
                             if border_map is not None:
                                 border_map.func = ()
                                 copy_sonata_operators_to_spark(spark_query, border_map)
@@ -552,6 +581,7 @@ class PacketStream(Query):
                         if len(operator.func) > 0 and operator.func[0] == 'mask':
                             copy_sonata_operators_to_p4(p4_query, operator)
                         else:
+                            # TODO: think of a better logic to identify the border map operator
                             border_map = operator
 
                     elif operator.name == 'Filter':
@@ -562,7 +592,6 @@ class PacketStream(Query):
                                 # update the threshold for the previous Reduce operator
                                 # TODO: assumes func is `geq`, implement others
                                 prev_operator.thresh = operator.func[1]
-
                         else:
                             copy_sonata_operators_to_p4(p4_query, operator)
 
@@ -581,8 +610,8 @@ class PacketStream(Query):
                         if len(operator.func) > 0 and operator.func[0] == 'geq' and border_reduce is not None:
                             border_reduce.thresh = operator.func[1]
                             #print "Updated threshold", border_reduce.thresh, " for", border_reduce.name
-
-                        if len(operator.func) > 0 and operator.func[0] == 'mask':
+                            copy_sonata_operators_to_spark(spark_query, operator)
+                        elif len(operator.func) > 0 and operator.func[0] == 'mask':
                             copy_sonata_operators_to_p4(p4_query, operator)
                         elif len(operator.func) > 0 and operator.func[0] == 'eq' and 'payload' not in operator.filter_keys:
                             copy_sonata_operators_to_p4(p4_query, operator)
