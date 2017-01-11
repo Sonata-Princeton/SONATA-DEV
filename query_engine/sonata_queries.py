@@ -275,8 +275,8 @@ class PacketStream(Query):
         if self.left_child is not None:
             red_keys_left = self.left_child.get_reduction_key()
             red_keys_right = self.right_child.get_reduction_key()
-            print "left keys", red_keys_left, self.qid
-            print "right keys", red_keys_right, self.qid
+            #print "left keys", red_keys_left, self.qid
+            #print "right keys", red_keys_right, self.qid
             # TODO: make sure that we better handle the case when first reduce operator has both sIP and dIP as reduction keys
             if len(red_keys_right) > 0:
                 red_keys = set(red_keys_left).intersection(red_keys_right)
@@ -286,21 +286,21 @@ class PacketStream(Query):
             for operator in self.operators:
                 if operator.name in ['Distinct', 'Reduce']:
                     red_keys = red_keys.intersection(set(operator.keys))
-                    print self.qid, operator.name, red_keys
+                    #print self.qid, operator.name, red_keys
 
             red_keys = red_keys.intersection(self.refinement_headers)
 
         else:
-            print "Reached leaf node", self.qid
+            #print "Reached leaf node", self.qid
             red_keys = set(self.basic_headers)
             for operator in self.operators:
                 # Extract reduction keys from first reduce/distinct operator
                 if operator.name in ['Distinct', 'Reduce']:
                     red_keys = red_keys.intersection(set(operator.keys))
-                    print self.qid, operator.name, red_keys
+                    #print self.qid, operator.name, red_keys
                     #break
 
-        print "Reduction Key Search", self.qid, red_keys
+        #print "Reduction Key Search", self.qid, red_keys
         return red_keys
 
     def generate_query_out_mapping(self):

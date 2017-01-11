@@ -4,6 +4,7 @@
 
 import json, time
 from multiprocessing.connection import Client
+from netaddr import *
 
 class SparkQuery(object):
     """
@@ -85,7 +86,7 @@ class Map(SparkQuery):
             else:
                 if len(self.func) > 0:
                     if self.func[0] == 'mask':
-                        expr += elem+','
+                        expr += 'str(IPNetwork('+str(elem)+'/'+str(self.func[1])+').network)'+','
                     else:
                         # TODO generalize for more mapping functions
                         pass
@@ -126,7 +127,7 @@ class Map(SparkQuery):
             else:
                 if len(self.func) > 0:
                     if self.func[0] == 'mask':
-                        expr += elem+','
+                        expr += 'str(IPNetwork('+str(elem)+'/'+str(self.func[1])+').network)'+','
                     else:
                         # TODO generalize for more mapping functions
                         pass

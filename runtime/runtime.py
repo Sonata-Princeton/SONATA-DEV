@@ -86,6 +86,16 @@ class Runtime(object):
         self.op_handler_thread.join()
 
     def start_op_handler(self):
+        """
+        At the end of each window interval, two things need to happen for each query (in order),
+        (1) registers and filter tables need to be flushed, (2) Filter tables need to get updated.
+        We tried to do (1) and (2) for each query independently, but struggled as there were no
+        easy way to flush specific registers for a query. So what we ended up doing was to wait
+        for o/p from all queries, use the reset command to flush all registers/tables at once,
+        and then update them with the delta commands. I am sure there is a better way of solving
+        this reset and update problem.
+        :return:
+        """
         # Start the output handler
         # It receives output for each query in SP
         # It sends output of the coarser queries to the FM or
