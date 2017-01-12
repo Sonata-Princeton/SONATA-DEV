@@ -60,8 +60,20 @@ if __name__ == '__main__':
               .map(keys=('dIP',))
               .distinct(keys=('dIP',))
               )
-        print q3
-        queries = [q3]
+        #print q3
+        q5 = (PacketStream(5)
+              .filter(filter_keys=('proto',), func=('eq', 6))
+              .distinct(keys=('dIP', 'sIP'))
+              .reduce(keys=('dIP',), func=('sum',))
+              )
+
+        q6 = (PacketStream(6)
+              .distinct(keys=('dIP', 'sIP'))
+              .reduce(keys=('sIP',), func=('sum',))
+              .filter(filter_keys=('proto',), func=('eq', 17))
+              )
+        queries = [q5, q6]
+        #queries = [q3]
 
     elif app_n == 2:
         q1 = (PacketStream(1).filter(keys = ('proto',),values = ('6',))
