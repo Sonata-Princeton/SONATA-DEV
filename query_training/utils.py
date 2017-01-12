@@ -2,6 +2,12 @@
 #  Author:
 #  Arpit Gupta (arpitg@cs.princeton.edu)
 
+from query_engine.query_generator import *
+from query_engine.sonata_queries import *
+
+# Standard set of packet tuple headers
+BASIC_HEADERS = ["ts", "sIP", "sPort", "dIP", "dPort", "nBytes",
+                 "proto", "sMac", "dMac"]
 
 def parse_log_line(logline):
     return tuple(logline.split(","))
