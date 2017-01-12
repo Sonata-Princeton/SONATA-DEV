@@ -52,7 +52,7 @@ class TupleEmitter(object):
             flow_ctr = 0
             start_ts = time.time()
             for pkt_tuple in pkt_tuples:
-                pkt_tuple = [time_start] + list(pkt_tuple[2:-2])+[1,1]
+                pkt_tuple = ['k',time_start] + list(pkt_tuple[2:-2])+[1,1]
                 print pkt_tuple
                 send_tuple = ",".join([str(x) for x in pkt_tuple])+ "\n"
                 print send_tuple

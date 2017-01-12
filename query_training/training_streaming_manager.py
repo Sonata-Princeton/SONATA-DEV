@@ -5,6 +5,7 @@
 from __future__ import print_function
 
 import time
+import json
 import pickle
 from pyspark import SparkContext
 from pyspark.streaming import StreamingContext
@@ -21,43 +22,42 @@ T = 1000*window_length
 featuresPath = ''
 redKeysPath = ''
 
-def send_reduction_keys(rdd, op_handler_socket, start_time, qid='0', refinement_level='0', itera_qid='0'):
+
+def send_reduction_keys(rdd, qid, refinement_level, itera_qid):
+    print("Output received for Query", qid, "refinement level", refinement_level, "iteration id", itera_qid)
     list_rdd = rdd.collect()
-    reduction_str = "," .join([str(r) for r in list_rdd])
-    reduction_socket = Client(op_handler_socket)
-    reduction_socket.send_bytes("k," + qid + "," + reduction_str + "\n")
-    print("Sending P2: ", qid, list_rdd, reduction_str, " at time", time.time()-start_time)
+    out_dict = dict((x,y) for (x,y) in list_rdd)
+    print(out_dict)
+    fname = "out_"+str(qid)+"_"+str(refinement_level)+"_"+str(itera_qid)+".json"
+    with open(fname,'w') as f:
+        json.dump(out_dict,f)
 
 
-def processLogLine(flow):
+def process_log_line(flow):
     return tuple(flow.split(","))
 
+
 class StreamingManager(object):
-    def __init__(self, conf, query_str, ref_queries):
+    def __init__(self, conf, ref_queries):
         # initialize config params
         self.batch_interval = conf['batch_interval']
         self.window_length = conf['window_length']
         self.sliding_interval = conf['sliding_interval']
-        self.featuresPath = conf['featuresPath']
-        self.redKeysPath = conf['redKeysPath']
         self.sm_socket = conf['sm_socket']
-        self.sm_listener = Listener(self.sm_socket)
-        self.op_handler_socket = conf['op_handler_socket']
-        print("In Streaming Manager", self.redKeysPath, self.featuresPath)
-        self.start_time = time.time()
-        #self.reduction_socket = Client(conf['op_handler_socket'])
 
-        self.query = query_str
+        self.sm_listener = Listener(self.sm_socket)
+        print("In Streaming Manager for Query Training")
+        self.start_time = time.time()
         self.refined_queries = ref_queries
         # intialize streaming context
-        self.sc = SparkContext(appName="Sonata-Streaming")
+        self.sc = SparkContext(appName="Sonata-Training")
         self.ssc = StreamingContext(self.sc, self.batch_interval)
         print("spark context initialized...")
 
     def start(self):
         lines = self.ssc.socketTextStream(spark_stream_address, spark_stream_port)
         lines.pprint()
-        pktstream = (lines.map(lambda line: processLogLine(line)))
+        pktstream = (lines.map(lambda line: process_log_line(line)))
         self.process_pktstream(pktstream)
         print("process_pktstream initialized...")
         self.ssc.start()
@@ -65,31 +65,21 @@ class StreamingManager(object):
 
     def process_pktstream(self, pktstream):
         print("Waiting for streaming query expressions ...")
-
-
         for qid in self.refined_queries:
             for ref_level in refined_queries[qid]:
                 for iter_qid in refined_queries[qid][ref_level]:
-                    query_str = "pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd." + str(refined_queries[qid][ref_level][iter_qid].compile()) +")).foreachRDD(lambda rdd: send_reduction_keys(rdd, " + str(spark_conf['op_handler_socket']) + ",0,\'"+ str(qid)+"\',\'"+ str(ref_level)+"\',\'"+ str(iter_qid)+"\'))\n"
+                    query_str = "pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd.map(lambda p: p[1:])." + str(refined_queries[qid][ref_level][iter_qid].compile()) +")).foreachRDD(lambda rdd: send_reduction_keys(rdd,\'"+ str(qid)+"\',\'"+ str(ref_level)+"\',\'"+ str(iter_qid)+"\'))\n"
                     print("starting", query_str)
                     eval(query_str)
 
 
-
 if __name__ == "__main__":
     spark_conf = {'batch_interval': batch_interval, 'window_length': window_length,
-                  'sliding_interval': sliding_interval, 'featuresPath': featuresPath, 'redKeysPath': redKeysPath,
-                  'sm_socket': ('localhost', 5555),
-                  'op_handler_socket': ('localhost', 4949)}
+                  'sliding_interval': sliding_interval, 'sm_socket': ('localhost', 5555)}
 
     fname = 'query_engine/query_dumps/refined_queries_1.pickle'
     with open(fname,'r') as f:
         refined_queries = pickle.load(f)
 
-
-    query_str = ""
-
-
-    print(query_str)
-    sm = StreamingManager(spark_conf, query_str, refined_queries)
+    sm = StreamingManager(spark_conf, refined_queries)
     sm.start()

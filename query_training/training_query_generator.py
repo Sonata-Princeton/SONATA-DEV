@@ -13,6 +13,17 @@ def parseDNSData(logline):
     return tuple(logline.split(","))
 
 
+def add_timestamp_key(qid_2_query):
+    for qid in qid_2_query:
+        query = qid_2_query[qid]
+        print qid
+        print "Before:", query
+        for operator in query.operators:
+            operator.keys = tuple(['ts'] + list(operator.keys))
+        print "After:", query
+    return qid_2_query
+
+
 class Learning(object):
     sc = SparkContext(appName="SONATA-Training")
     # Load data
@@ -124,6 +135,9 @@ if __name__ == "__main__":
         query_generator = pickle.load(f)
 
     qid_2_sonata_query = query_generator.qid_2_query
+    # Add timestamp for each key
+    qid_2_sonata_query = add_timestamp_key(qid_2_sonata_query)
+
     spark_intermediate_queries = {}
     filter_mappings = {}
     for (qid, sonata_query) in qid_2_sonata_query.iteritems():
@@ -141,6 +155,3 @@ if __name__ == "__main__":
     fname = 'query_engine/query_dumps/refined_queries_1.pickle'
     with open(fname,'w') as f:
         pickle.dump(refined_queries, f)
-
-
-
