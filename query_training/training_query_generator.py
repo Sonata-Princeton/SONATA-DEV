@@ -1,9 +1,44 @@
-from query_generator import *
+from query_engine.query_generator import *
 from query_engine.sonata_queries import *
+from pyspark import SparkContext
+import os
+import pickle
 
 # Standard set of packet tuple headers
 BASIC_HEADERS = ["ts", "sIP", "sPort", "dIP", "dPort", "nBytes",
                  "proto", "sMac", "dMac"]
+
+
+def parseDNSData(logline):
+    return tuple(logline.split(","))
+
+
+class Learning(object):
+    sc = SparkContext(appName="SONATA-Training")
+    # Load data
+    baseDir = os.path.join('/home/vagrant/dev/data/sample_data/')
+    flows_File = os.path.join(baseDir, 'sample_data.csv')
+
+    def __init__(self):
+        self.training_data = (self.sc.textFile(self.flows_File)
+                              .map(parseDNSData)
+                              .map(lambda s:tuple([int(math.ceil(int(s[0])/T))]+(list(s[2:]))))
+                              .cache())
+
+    def get_mean(self, spark_query):
+        query_string = 'self.training_data.'+spark_query.compile()+'.map(lambda s: s[1]).mean()'
+        #print query_string
+        mean = eval(query_string)
+        print "Mean:", mean
+        return mean
+
+    def get_stdev(self, spark_query):
+        query_string = 'self.training_data.'+spark_query.compile()+'.map(lambda s: s[1]).stdev()'
+        #print query_string
+        stdev = eval(query_string)
+        print "Stdev:", stdev
+        return stdev
+
 
 def get_intermediate_spark_queries(max_reduce_operators, sonata_query):
     reduce_operators = filter(lambda s: s in ['Distinct', 'Reduce'], [x.name for x in sonata_query.operators])
@@ -36,19 +71,19 @@ def get_intermediate_spark_queries(max_reduce_operators, sonata_query):
     return spark_intermediate_queries, filter_mappings
 
 
-def update_filter(qid_2_sonata_query, spark_intermediate_queries, filter_mappings):
+def update_filter(td, qid_2_sonata_query, spark_intermediate_queries, filter_mappings):
     for (prev_qid, curr_qid) in filter_mappings:
         prev_query = spark_intermediate_queries[prev_qid]
         sonata_query_id, filter_id, spread = filter_mappings[(prev_qid, curr_qid)]
-        mean = prev_query.mean()
-        stdev = prev_query.stddev()
+        mean = td.get_mean(prev_query)
+        stdev = td.get_stdev(prev_query)
         thresh = mean+spread*stdev
         sonata_query = qid_2_sonata_query[sonata_query_id]
         filter_ctr = 1
         for operator in sonata_query.operators:
             if operator.name == 'Filter':
                 if filter_ctr == filter_id:
-                    operator.func[1] = thresh
+                    operator.func = ('geq',thresh)
                     print "Updated threshold for ", sonata_query_id, operator
                     break
                 else:
@@ -56,8 +91,9 @@ def update_filter(qid_2_sonata_query, spark_intermediate_queries, filter_mapping
 
     return qid_2_sonata_query
 
-def generate_refined_queries(qid_2_sonata_query):
+def generate_refined_queries(query_generator):
     refined_queries = {}
+    qid_2_sonata_query = query_generator.qid_2_query
     for (qid, sonata_query) in qid_2_sonata_query.iteritems():
         print "Exploring Sonata Query", qid
         refined_queries[qid] = {}
@@ -69,23 +105,23 @@ def generate_refined_queries(qid_2_sonata_query):
             refined_queries[qid][ref_level] = {}
             refined_query_id = 10000*qid+ref_level
             refined_sonata_query = PacketStream(refined_query_id)
+            refined_sonata_query.basic_headers = BASIC_HEADERS
             refined_sonata_query.map(map_keys=(reduction_key,), func=("mask", ref_level))
             for operator in sonata_query.operators:
                 copy_sonata_operators_to_spark(refined_sonata_query, operator)
 
-            tmp1, _ = get_intermediate_spark_queries(max_reduce_operators, refined_sonata_query)
+            tmp1, _ = get_intermediate_spark_queries(query_generator.max_reduce_operators, refined_sonata_query)
             for iter_qid in tmp1:
-                print "Adding intermediate Query:", iter_qid
+                print "Adding intermediate Query:", iter_qid, type(tmp1[iter_qid])
                 refined_queries[qid][ref_level][iter_qid] = tmp1[iter_qid]
     return refined_queries
 
 
 if __name__ == "__main__":
-    n_queries = 1
-    max_filter_sigma = 3
-    max_reduce_operators = 3
-    query_tree_depth = 0
-    query_generator = QueryGenerator(n_queries, max_reduce_operators, query_tree_depth, max_filter_sigma)
+    learning_object = Learning()
+    fname = 'query_engine/query_dumps/query_generator_object_1.pickle'
+    with open(fname,'r') as f:
+        query_generator = pickle.load(f)
 
     qid_2_sonata_query = query_generator.qid_2_query
     spark_intermediate_queries = {}
@@ -93,12 +129,18 @@ if __name__ == "__main__":
     for (qid, sonata_query) in qid_2_sonata_query.iteritems():
         print qid, sonata_query
         # Initialize Spark Query
-        tmp1, tmp2 = get_intermediate_spark_queries(max_reduce_operators, sonata_query)
+        tmp1, tmp2 = get_intermediate_spark_queries(query_generator.max_reduce_operators, sonata_query)
         spark_intermediate_queries.update(tmp1)
         filter_mappings.update(tmp2)
         #break
     print spark_intermediate_queries.keys(), filter_mappings
-    #qid_2_sonata_query = update_filter(qid_2_sonata_query, spark_intermediate_queries, filter_mappings)
-    refined_queries = generate_refined_queries(qid_2_sonata_query)
+    qid_2_sonata_query = update_filter(learning_object, qid_2_sonata_query, spark_intermediate_queries, filter_mappings)
+    refined_queries = generate_refined_queries(query_generator)
     print refined_queries
+
+    fname = 'query_engine/query_dumps/refined_queries_1.pickle'
+    with open(fname,'w') as f:
+        pickle.dump(refined_queries, f)
+
+
 

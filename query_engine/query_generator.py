@@ -3,6 +3,7 @@
 #  Arpit Gupta (arpitg@cs.princeton.edu)
 
 import random
+import pickle
 
 from query_engine.sonata_operators import *
 from query_engine.sonata_queries import *
@@ -131,10 +132,11 @@ class QueryGenerator(object):
                     qid_2_query[qid] = self.generate_single_query(qid, reduction_key, isLeft=False)
                 else:
                     qid_2_query[qid] = self.generate_single_query(qid, reduction_key)
-                #print qid, qid_2_query[qid]
+                print qid, qid_2_query[qid]
 
             composed_query = generate_composed_query(query_tree, qid_2_query)
             self.query_trees[n_query]= composed_query
+            print n_query, self.query_trees[n_query]
             #print composed_query.qid, composed_query
             self.qid_2_query.update(qid_2_query)
             #tmp = composed_query.get_reduction_key()
@@ -218,10 +220,14 @@ if __name__ == "__main__":
     max_filter_sigma = 3
     max_reduce_operators = 3
     query_tree_depth = 1
+    # TODO: make sure the queries are unique
     query_generator = QueryGenerator(n_queries, max_reduce_operators, query_tree_depth, max_filter_sigma)
     queries = query_generator.query_trees.values()
-    #print query_generator.query_trees.keys()
+    #print query_generator.query_trees
     #print len(queries)
 
     #runtime = Runtime(conf, queries)
+    fname = 'query_dumps/query_generator_object_1.pickle'
+    with open(fname, 'w') as f:
+        pickle.dump(query_generator, f)
 

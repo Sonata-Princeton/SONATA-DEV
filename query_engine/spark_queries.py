@@ -86,7 +86,7 @@ class Map(SparkQuery):
             else:
                 if len(self.func) > 0:
                     if self.func[0] == 'mask':
-                        expr += 'str(IPNetwork('+str(elem)+'/'+str(self.func[1])+').network)'+','
+                        expr += 'str(IPNetwork(str(str('+str(elem)+')+\"/'+str(self.func[1])+'\")).network)'+','
                     else:
                         # TODO generalize for more mapping functions
                         pass
@@ -127,7 +127,7 @@ class Map(SparkQuery):
             else:
                 if len(self.func) > 0:
                     if self.func[0] == 'mask':
-                        expr += 'str(IPNetwork('+str(elem)+'/'+str(self.func[1])+').network)'+','
+                        expr += 'str(IPNetwork(str(str('+str(elem)+')+\"/'+str(self.func[1])+'\")).network)'+','
                     else:
                         # TODO generalize for more mapping functions
                         pass
@@ -298,7 +298,7 @@ class Filter(SparkQuery):
             if self.func[0] == 'eq':
                 self.filter_expr += str(fld) + '==' + str(self.func[1]) + ' &&'
             elif self.func[0] == 'geq':
-                self.filter_expr += str(fld) + '>=' + str(self.func[1]) + ' &&'
+                self.filter_expr += 'float(' + str(fld) + ')' + '>=' + str(self.func[1]) + ' &&'
             elif self.func[0] == 'leq':
                 self.filter_expr += str(fld) + '<=' + str(self.func[1]) + '&&'
         self.filter_expr = self.filter_expr[:-2]
