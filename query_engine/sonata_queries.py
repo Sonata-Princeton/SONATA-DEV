@@ -428,7 +428,7 @@ class PacketStream(Query):
             q_ctr = 1
             for ref_level in self.query_2_refinement_levels[queryId]:
                 # print "Adding refined query for", queryId, ref_level
-                print self.all_queries
+                #print self.all_queries
                 original_query = self.all_queries[queryId]
                 new_qid = original_query.qid * 10000 + q_ctr
                 q_ctr += 1

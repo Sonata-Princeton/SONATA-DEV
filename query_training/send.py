@@ -45,45 +45,24 @@ class TupleEmitter(object):
 
         #while True:
         print "Sending packets to P4 switch"
-        current_time = 0
-        flow_ctr = 0
-        for ts in self.ordered_ts[:1000]:
+        aggr_start = time.time()
+        for ts in self.ordered_ts:
             pkt_tuples = self.ipfix_data[ts]
             time_start = math.ceil(ts / window_interval)
-            #time.sleep(1)
-            if current_time == 0:
-                current_time = time_start
-                current_ts = time.time()
-
-            if time_start > current_time:
-                time_to_process = time.time()-current_ts
-                print "Sent ", flow_ctr, "flows between ", time_start, current_time
-                print "Took ", time_to_process, " for processing"
-                current_time = time_start
-                if time_to_process > 1:
-                    time_to_sleep = 0
-                else:
-                    time_to_sleep = 1 - time_to_process
-                print "Sleeping for ",time_to_sleep," second"
-                #time.sleep(time_to_sleep)
-
-                # update the current time stamp
-                current_ts = time.time()
-                # update flow count
-                flow_ctr = 0
-                #break
-
-            else:
-                #print line
+            flow_ctr = 0
+            start_ts = time.time()
+            for pkt_tuple in pkt_tuples:
+                pkt_tuple = [time_start] + list(pkt_tuple[2:-2])+[1,1]
+                print pkt_tuple
+                send_tuple = ",".join([str(x) for x in pkt_tuple])+ "\n"
+                print send_tuple
+                self.send_tuples(send_tuple)
                 flow_ctr += 1
-                for pkt_tuple in pkt_tuples:
-                    pkt_tuple = [time_start] + list(pkt_tuple[2:-2])+[1,1]
-                    print pkt_tuple
-                    send_tuple = ",".join([str(x) for x in pkt_tuple])+ "\n"
-                    print send_tuple
-                    self.send_tuples(send_tuple)
-                    break
-
+            stop_ts = time.time()
+            print "Sent", flow_ctr, "flows with TS", time_start
+            print "Took", stop_ts-start_ts, "seconds"
+        aggr_stop = time.time()
+        print "Took ", aggr_stop-aggr_start, "seconds in total"
 
 
     def load_data(self):
