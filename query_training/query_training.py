@@ -251,7 +251,7 @@ class QueryTraining(object):
             for ref_level in query_output[qid]:
                 for iter_qid in query_output[qid][ref_level]:
                     out = query_output[qid][ref_level][iter_qid]
-                    print qid, ref_level, iter_qid
+
                     for entry in out:
                         #print entry
                         if type(entry[0]) == type(1):
@@ -268,20 +268,24 @@ class QueryTraining(object):
                         k = tuple(entry[0][1:])
                         v = entry[1]
                         query_output_reformatted[ts][qid][ref_level][iter_qid][k] = v
+                    print qid, ref_level, iter_qid, query_output_reformatted[ts][qid][ref_level].keys()
 
         self.query_output_reformatted = query_output_reformatted
 
-    def get_diff_buckets(self, prev_out, curr_out, curr_query):
-        keys = curr_query.keys
-        red_key_ctr = 0
-        for ky in keys:
-            if ky == 'dIP':
-                break
+    def get_diff_buckets(self, prev_out, curr_out, ref_level_prev):
         diff_entries = {}
-        for elem in curr_out:
-            if elem[red_key_ctr] in prev_out:
-                diff_entries[elem] = curr_out[elem]
-
+        print "Curr", len(curr_out.keys()), "prev", len(prev_out.keys())
+        for curr_out_entry in curr_out.keys():
+            filtered_keys = filter(lambda x: len(str(x).split('.')) == 4, curr_out_entry)
+            filtered_keys = [str(IPNetwork(str(x)+"/"+str(ref_level_prev)).network) for x in filtered_keys]
+            for prev_out_entry in prev_out.keys():
+                print prev_out_entry, filtered_keys
+                break
+                if str(prev_out_entry) in filtered_keys:
+                    diff_entries[curr_out_entry] = curr_out[curr_out_entry]
+                    break
+            break
+        print "Diff", len(diff_entries.keys())
         return diff_entries
 
     def get_query_costs(self):
@@ -293,18 +297,19 @@ class QueryTraining(object):
                 query_costs[ts][qid] = {}
                 query = qt.qid_2_sonata_query[qid]
                 partition_plans = query.get_partition_plans()
+                print partition_plans
                 ref_levels = qt.refined_queries[qid].keys()
-                for partition_plan in partition_plans:
+                for partition_plan in partition_plans[qid]:
                     print partition_plan
                     for ref_level_prev in ref_levels:
                         for ref_level_curr in ref_levels:
-                            if ref_level_curr != ref_level_prev:
+                            if ref_level_curr > ref_level_prev:
                                 transit = (ref_level_prev, ref_level_curr)
                                 iter_qids_prev = query_output_reformatted[ts][qid][ref_level_prev].keys()
                                 iter_qids_curr = query_output_reformatted[ts][qid][ref_level_curr].keys()
                                 iter_qids_prev.sort()
                                 iter_qids_curr.sort()
-                                print transit, iter_qids_prev, iter_qids_curr
+                                print ts, qid, transit, iter_qids_prev, iter_qids_curr
                                 # output of the previous level helps us filter out crap from curr level
                                 prev_out = query_output_reformatted[ts][qid][ref_level_prev][iter_qids_prev[-1]]
 
@@ -317,16 +322,16 @@ class QueryTraining(object):
                                 # count the difference (filtered packet tuples) and not the total
                                 curr_in = query_output_reformatted[ts][qid][ref_level_curr][0]
                                 in_query = self.base_query
-                                prev_bucket_count = self.get_diff_buckets(prev_out, curr_in, in_query)
+                                prev_bucket_count = self.get_diff_buckets(prev_out, curr_in, ref_level_prev)
                                 ctr = 1
                                 for elem in str(partition_plan):
-                                    curr_out = query_output_reformatted[ts][qid][ref_level_curr][iter_qids_prev[ctr]]
+                                    curr_out = query_output_reformatted[ts][qid][ref_level_curr][iter_qids_curr[ctr]]
 
                                     # To get the keys that we need to discard we need to know what entries are
                                     # common between the output of prev level and keys in the current bucket
                                     # For that we need to get a sense of position of reduction key
-                                    curr_query = self.refined_queries[qid][ref_level_curr][iter_qids_prev[ctr]]
-                                    diff_entries = self.get_diff_buckets(prev_out, curr_out, curr_query)
+                                    curr_query = self.refined_queries[qid][ref_level_curr][iter_qids_curr[ctr]]
+                                    diff_entries = self.get_diff_buckets(prev_out, curr_out, ref_level_prev)
                                     diff_entries_count = len(diff_entries.keys())
 
                                     if elem == '0':
@@ -343,7 +348,7 @@ class QueryTraining(object):
 
                                 if packet_count == 0:
                                     # Case when all reduce operators are executed in the data plane
-                                    packet_count = len(query_output_reformatted[ts][qid][ref_level_curr][iter_qids_prev[-1]].keys())
+                                    packet_count = len(query_output_reformatted[ts][qid][ref_level_curr][iter_qids_curr[-1]].keys())
 
                                 query_costs[ts][qid][partition_plan, transit] = (bucket_count, packet_count)
         self.query_costs = query_costs
@@ -362,6 +367,7 @@ if __name__ == "__main__":
     #query_output = qt.query_out
     qt.get_reformatted_output()
     qt.get_query_costs()
+    print qt.query_costs
 
     #qt.get_query_output()
     #print qt.query_out
