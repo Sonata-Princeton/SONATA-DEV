@@ -67,6 +67,8 @@ class PacketStream(Query):
         # Object representing the output of the query
         self.output = None
 
+        self.reduction_key = ''
+
     def __repr__(self):
         out = ''
         if self.left_child is not None:

@@ -321,6 +321,53 @@ class Filter(SparkQuery):
         return expr
 
 
+class Join(object):
+    def __init__(self, *args, **kwargs):
+        map_dict = dict(*args, **kwargs)
+        self.keys = []
+        self.values = []
+        self.prev_keys = []
+        self.prev_values = []
+        self.join_key = []
+        self.join_query = None
+        self.expr = ''
+        self.in_stream = ''
+
+
+        if 'prev_keys' in map_dict:
+            self.prev_keys = map_dict['prev_keys']
+        if 'prev_values' in map_dict:
+            self.prev_values = map_dict['prev_values']
+
+        self.keys = self.prev_keys
+        self.values = self.prev_values
+
+        if 'q' in map_dict:
+            self.join_query = map_dict['q']
+
+        if 'join_key' in map_dict:
+            self.join_key = map_dict['join_key']
+
+        if 'in_stream' in map_dict:
+            self.in_stream = map_dict['in_stream']
+
+
+    def __repr__(self):
+        out = '.map(lambda s: (('+','.join([str(elem) for elem in self.join_key]) + '),s)'
+        out += '.join('+self.join_query.__repr__()+')'
+        out += '.map(lambda s: s[0][0])'
+        return out
+
+    def compile(self):
+        #print "Filter Keys: " + str(self.values)
+        # .filter(keys=('dIP',), func=('geq', '3'))
+        out = '.map(lambda s: (('+','.join([str(elem) for elem in self.join_key]) + '),s)'
+        out += '.join('+self.in_stream+self.join_query.compile()+')'
+        out += '.map(lambda s: s[0][0])'
+
+        return out
+
+
 class PacketStream(SparkQuery):
     def __init__(self, id):
         self.basic_headers = ["qid", "ts", "te","sIP", "sPort","dIP", "dPort", "nBytes",
@@ -382,5 +429,10 @@ class PacketStream(SparkQuery):
 
     def filter_init(self,*args, **kwargs):
         operator = FilterInit(*args, **kwargs)
+        self.operators.append(operator)
+        return self
+
+    def join(self, *args, **kwargs):
+        operator = Join(prev_keys=self.get_prev_keys(), prev_values=self.get_prev_values(), *args, **kwargs)
         self.operators.append(operator)
         return self

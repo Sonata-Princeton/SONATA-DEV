@@ -109,6 +109,7 @@ class QueryGenerator(object):
         self.max_reduce_operators = max_reduce_operators
         self.query_tree_depth = query_tree_depth
         self.max_filter_sigma = max_filter_sigma
+        self.composed_queries = {}
         self.query_trees = {}
         self.qid_2_thresh = {}
 
@@ -120,6 +121,7 @@ class QueryGenerator(object):
 
             ctr = 1
             query_tree = {root_qid:generate_query_tree(ctr, all_queries, self.query_tree_depth)}
+            self.query_trees[n_query] = query_tree
             qid_2_query = {}
             reduction_key = random.choice(self.refinement_headers)
 
@@ -135,7 +137,7 @@ class QueryGenerator(object):
                 #print qid, qid_2_query[qid]
 
             composed_query = generate_composed_query(query_tree, qid_2_query)
-            self.query_trees[n_query]= composed_query
+            self.composed_queries[n_query]= composed_query
             #print n_query, self.query_trees[n_query]
             #print composed_query.qid, composed_query
             self.qid_2_query.update(qid_2_query)
@@ -173,6 +175,7 @@ class QueryGenerator(object):
                   `False` - also consider payload for right child of a tree
         """
         q = PacketStream(qid)
+        q.reduction_key = reduction_key
 
         other_headers = self.other_headers + [x for x in self.refinement_headers if x != reduction_key]
         if isLeft:
@@ -201,6 +204,44 @@ class QueryGenerator(object):
 
         return q
 
+
+def generate_composed_queries(query_tree, qid_2_query, composed_queries = {}):
+    print query_tree
+    root_qid = query_tree.keys()[0]
+    #print "##", root_qid, query_tree.keys(), qid_2_query
+    if root_qid in qid_2_query:
+        root_query = qid_2_query[root_qid]
+    else:
+        root_query = PacketStream(root_qid)
+
+    print "%%", root_qid, root_query
+
+    if query_tree[root_qid] != {}:
+
+        left_qid = query_tree[root_qid].keys()[0]
+        right_qid = query_tree[root_qid].keys()[1]
+
+        left_query = generate_composed_queries({left_qid:query_tree[root_qid][left_qid]}, qid_2_query, composed_queries)
+        right_query = generate_composed_queries({right_qid:query_tree[root_qid][right_qid]}, qid_2_query, composed_queries)
+
+        left_query_keys = left_query.keys
+        #right_query = right_query.map(keys=left_query_keys, values=tuple(basic_headers))
+        """
+        print "Qid", root_qid
+        print "Root Query", root_query
+        print "Right Query", right_query
+        print "Left Query", left_query
+        """
+        composed_query = right_query.join(new_qid=root_qid, query=left_query)
+        for operator in root_query.operators:
+            copy_operators(composed_query, operator)
+        composed_queries[root_qid] = composed_query
+    else:
+        composed_query = root_query
+        composed_queries[root_qid] = composed_query
+
+    return composed_query
+
 if __name__ == "__main__":
     spark_conf = {'batch_interval': batch_interval, 'window_length': window_length,
                   'sliding_interval': sliding_interval, 'featuresPath': featuresPath, 'redKeysPath': redKeysPath,
@@ -218,15 +259,27 @@ if __name__ == "__main__":
 
     n_queries = 1
     max_filter_sigma = 3
-    max_reduce_operators = 3
-    query_tree_depth = 1
+    max_reduce_operators = 1
+    query_tree_depth = 2
     # TODO: make sure the queries are unique
     query_generator = QueryGenerator(n_queries, max_reduce_operators, query_tree_depth, max_filter_sigma)
 
+    def get_left_child(t):
+        if len(t.keys()) > 0:
+            return [t.keys()[0]]+get_left_child(t[t.keys()[0]])
+        else:
+            return []
+
+
+    for n_query in query_generator.query_trees:
+        composed_queries = {}
+        query_tree = query_generator.query_trees[n_query]
+        generate_composed_queries(query_tree, query_generator.qid_2_query, composed_queries)
+        print composed_queries
+
     #runtime = Runtime(conf, queries)
-    """
+
     fname = 'query_dumps/query_generator_object_1.pickle'
     with open(fname, 'w') as f:
         pickle.dump(query_generator, f)
-    """
 

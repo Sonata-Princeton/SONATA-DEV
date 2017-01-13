@@ -71,15 +71,9 @@ def get_intermediate_spark_queries(max_reduce_operators, sonata_query):
     return spark_intermediate_queries, filter_mappings
 
 
-# noinspection PyShadowingNames
-
-
-
-
-
-
-
 T = 10000
+
+
 class QueryTraining(object):
     sc = SparkContext(appName="SONATA-Training")
     # Load data
@@ -100,6 +94,7 @@ class QueryTraining(object):
                               .cache())
         self.query_out = {}
         self.query_costs = {}
+        """
 
         if refined_queries is None:
             if fname_rq_read == '':
@@ -109,6 +104,7 @@ class QueryTraining(object):
                     self.refined_queries = pickle.load(f)
         else:
             self.refined_queries = refined_queries
+        """
 
         # Update the query Generator Object (either passed directly, or filename specified)
         if query_generator is None:
@@ -268,7 +264,7 @@ class QueryTraining(object):
                         k = tuple(entry[0][1:])
                         v = entry[1]
                         query_output_reformatted[ts][qid][ref_level][iter_qid][k] = v
-                    print qid, ref_level, iter_qid, query_output_reformatted[ts][qid][ref_level].keys()
+                    print qid, ref_level, iter_qid, len(out), query_output_reformatted[ts][qid][ref_level].keys()
 
         self.query_output_reformatted = query_output_reformatted
 
@@ -279,12 +275,12 @@ class QueryTraining(object):
             filtered_keys = filter(lambda x: len(str(x).split('.')) == 4, curr_out_entry)
             filtered_keys = [str(IPNetwork(str(x)+"/"+str(ref_level_prev)).network) for x in filtered_keys]
             for prev_out_entry in prev_out.keys():
-                print prev_out_entry, filtered_keys
-                break
-                if str(prev_out_entry) in filtered_keys:
+                #print prev_out_entry, filtered_keys, str(prev_out_entry[0]) in filtered_keys
+                if str(prev_out_entry[0]) in filtered_keys:
                     diff_entries[curr_out_entry] = curr_out[curr_out_entry]
                     break
-            break
+                #break
+            #break
         print "Diff", len(diff_entries.keys())
         return diff_entries
 
@@ -322,7 +318,7 @@ class QueryTraining(object):
                                 # count the difference (filtered packet tuples) and not the total
                                 curr_in = query_output_reformatted[ts][qid][ref_level_curr][0]
                                 in_query = self.base_query
-                                prev_bucket_count = self.get_diff_buckets(prev_out, curr_in, ref_level_prev)
+                                prev_bucket_count = len(self.get_diff_buckets(prev_out, curr_in, ref_level_prev).keys())
                                 ctr = 1
                                 for elem in str(partition_plan):
                                     curr_out = query_output_reformatted[ts][qid][ref_level_curr][iter_qids_curr[ctr]]
@@ -330,7 +326,6 @@ class QueryTraining(object):
                                     # To get the keys that we need to discard we need to know what entries are
                                     # common between the output of prev level and keys in the current bucket
                                     # For that we need to get a sense of position of reduction key
-                                    curr_query = self.refined_queries[qid][ref_level_curr][iter_qids_curr[ctr]]
                                     diff_entries = self.get_diff_buckets(prev_out, curr_out, ref_level_prev)
                                     diff_entries_count = len(diff_entries.keys())
 
@@ -349,28 +344,62 @@ class QueryTraining(object):
                                 if packet_count == 0:
                                     # Case when all reduce operators are executed in the data plane
                                     packet_count = len(query_output_reformatted[ts][qid][ref_level_curr][iter_qids_curr[-1]].keys())
-
+                                print ts, qid, partition_plan, transit, bucket_count, packet_count
                                 query_costs[ts][qid][partition_plan, transit] = (bucket_count, packet_count)
         self.query_costs = query_costs
 
 
 if __name__ == "__main__":
+    """
     fname_rq_read = 'query_engine/query_dumps/refined_queries_1.pickle'
     qt = QueryTraining(fname_rq_read=fname_rq_read)
     qt.get_reformatted_output()
     print qt.refined_queries
     #qt.get_query_output()
 
+    print "Loading Query Out ..."
+
     with open('query_out.pickle','r') as f:
         qt.query_out = pickle.load(f)
 
+
+
     #query_output = qt.query_out
     qt.get_reformatted_output()
-    qt.get_query_costs()
-    print qt.query_costs
+    #qt.get_query_costs()
+    #print qt.query_costs
 
     #qt.get_query_output()
     #print qt.query_out
+    """
+    def get_left_child(t):
+        return t.keys()[0]+get_left_child(t[t.keys()[0]])
+
+    qt = QueryTraining()
+    qid_2_query = qt.qid_2_sonata_query
+    for n_query in qt.query_generator.query_trees:
+        tree = qt.query_generator.query_trees[n_query]
+        print get_left_child(tree)
+
+    """
+    sonata_1 = qid_2_query[1]
+    sonata_2 = qid_2_query[2]
+
+    spark_2 =(spark.PacketStream(sonata_2.qid))
+    spark_2.basic_headers = BASIC_HEADERS
+    for operator in sonata_2.operators:
+        copy_sonata_operators_to_spark(spark_2, operator)
+
+    spark_1 =(spark.PacketStream(sonata_1.qid))
+    spark_1.basic_headers = BASIC_HEADERS
+    red_key = sonata_1.reduction_key
+    spark_1.join(q=spark_2, join_key = [red_key], in_stream = 'self.training_data.')
+    for operator in sonata_1.operators:
+        copy_sonata_operators_to_spark(spark_1, operator)
+    print spark_1.compile()
+    """
+
+
 
 
 
