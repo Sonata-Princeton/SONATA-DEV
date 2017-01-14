@@ -4,6 +4,7 @@
 
 import random
 import pickle
+import copy
 
 from query_engine.sonata_operators import *
 from query_engine.sonata_queries import *
@@ -19,6 +20,52 @@ featuresPath = ''
 redKeysPath = ''
 
 basic_headers = ["dIP", "sIP", "sPort", "dPort", "nBytes", "proto", "sMac", "dMac"]
+
+def generate_composed_spark_queries(reduction_key, query_tree, qid_2_query, composed_queries = {}):
+    #print query_tree
+    root_qid = query_tree.keys()[0]
+    #print "##", root_qid, query_tree.keys(), qid_2_query
+    if root_qid in qid_2_query:
+        root_query_sonata = qid_2_query[root_qid]
+        root_query_spark = spark.PacketStream(root_qid)
+    else:
+        root_query_sonata = PacketStream(root_qid)
+        root_query_spark = spark.PacketStream(root_qid)
+
+    #print "%%", root_qid, root_query_sonata
+
+    if query_tree[root_qid] != {}:
+        left_qid = query_tree[root_qid].keys()[0]
+        right_qid = query_tree[root_qid].keys()[1]
+        left_query = generate_composed_spark_queries(reduction_key,
+                                                     {left_qid:query_tree[root_qid][left_qid]},
+                                                     qid_2_query, composed_queries)
+
+        right_query = generate_composed_spark_queries(reduction_key,
+                                                      {right_qid:query_tree[root_qid][right_qid]},
+                                                      qid_2_query, composed_queries)
+
+        #print "Left", left_qid, left_query
+
+        #print "Right", right_qid, right_query
+
+        composed_query = right_query.join(q=left_query, join_key = [reduction_key], in_stream = 'In.')
+        for operator in root_query_sonata.operators:
+            copy_sonata_operators_to_spark(composed_query, operator)
+
+        composed_queries[root_qid] = copy.deepcopy(composed_query)
+    else:
+        #print "Adding for", root_qid, root_query_sonata, root_query_sonata.qid
+        for operator in root_query_sonata.operators:
+            copy_sonata_operators_to_spark(root_query_spark, operator)
+
+        #print "##Updating key", root_qid
+        composed_queries[root_qid] = copy.deepcopy(root_query_spark)
+        composed_query = root_query_spark
+
+    #print "returning for ", root_qid, composed_queries
+
+    return composed_query
 
 def generate_composed_query(query_tree, qid_2_query):
     #print query_tree
@@ -74,7 +121,7 @@ def generate_query_tree(ctr, all_queries, depth):
         query_tree[qid_l] = generate_query_tree(ctr+1, all_queries,depth-1)
 
         qid_r =  all_queries[2*ctr]
-        query_tree[qid_r] = generate_query_tree(ctr+2, all_queries,depth-1)
+        query_tree[qid_r] = {}
     return query_tree
 
 def get_left_children(query_tree, out):
@@ -96,7 +143,7 @@ class QueryGenerator(object):
     refinement_headers = ["dIP", "sIP"]
     other_headers = ["sPort", "dPort", "nBytes", "proto", "sMac", "dMac"]
 
-    def __init__(self, n_queries, max_reduce_operators, query_tree_depth, max_filter_sigma):
+    def __init__(self, n_queries, max_reduce_operators, query_tree_depth, max_filter_frac):
         """
         Initialize QueryGenerator
 
@@ -108,7 +155,7 @@ class QueryGenerator(object):
         self.n_queries = n_queries
         self.max_reduce_operators = max_reduce_operators
         self.query_tree_depth = query_tree_depth
-        self.max_filter_sigma = max_filter_sigma
+        self.max_filter_sigma = max_filter_frac
         self.composed_queries = {}
         self.query_trees = {}
         self.qid_2_thresh = {}
@@ -121,6 +168,7 @@ class QueryGenerator(object):
 
             ctr = 1
             query_tree = {root_qid:generate_query_tree(ctr, all_queries, self.query_tree_depth)}
+            print "Query Tree", query_tree
             self.query_trees[n_query] = query_tree
             qid_2_query = {}
             reduction_key = random.choice(self.refinement_headers)
@@ -128,6 +176,7 @@ class QueryGenerator(object):
             out = []
             get_left_children(query_tree, out)
             single_queries = [root_qid]+out
+            print "Single Queries", single_queries
 
             for qid in single_queries:
                 if qid == root_qid:
@@ -205,43 +254,6 @@ class QueryGenerator(object):
         return q
 
 
-def generate_composed_queries(query_tree, qid_2_query, composed_queries = {}):
-    print query_tree
-    root_qid = query_tree.keys()[0]
-    #print "##", root_qid, query_tree.keys(), qid_2_query
-    if root_qid in qid_2_query:
-        root_query = qid_2_query[root_qid]
-    else:
-        root_query = PacketStream(root_qid)
-
-    print "%%", root_qid, root_query
-
-    if query_tree[root_qid] != {}:
-
-        left_qid = query_tree[root_qid].keys()[0]
-        right_qid = query_tree[root_qid].keys()[1]
-
-        left_query = generate_composed_queries({left_qid:query_tree[root_qid][left_qid]}, qid_2_query, composed_queries)
-        right_query = generate_composed_queries({right_qid:query_tree[root_qid][right_qid]}, qid_2_query, composed_queries)
-
-        left_query_keys = left_query.keys
-        #right_query = right_query.map(keys=left_query_keys, values=tuple(basic_headers))
-        """
-        print "Qid", root_qid
-        print "Root Query", root_query
-        print "Right Query", right_query
-        print "Left Query", left_query
-        """
-        composed_query = right_query.join(new_qid=root_qid, query=left_query)
-        for operator in root_query.operators:
-            copy_operators(composed_query, operator)
-        composed_queries[root_qid] = composed_query
-    else:
-        composed_query = root_query
-        composed_queries[root_qid] = composed_query
-
-    return composed_query
-
 if __name__ == "__main__":
     spark_conf = {'batch_interval': batch_interval, 'window_length': window_length,
                   'sliding_interval': sliding_interval, 'featuresPath': featuresPath, 'redKeysPath': redKeysPath,
@@ -258,28 +270,31 @@ if __name__ == "__main__":
 
 
     n_queries = 1
-    max_filter_sigma = 3
-    max_reduce_operators = 1
-    query_tree_depth = 2
+    max_filter_frac = 100
+    max_reduce_operators = 3
+    query_tree_depth = 1
     # TODO: make sure the queries are unique
-    query_generator = QueryGenerator(n_queries, max_reduce_operators, query_tree_depth, max_filter_sigma)
+    query_generator = QueryGenerator(n_queries, max_reduce_operators, query_tree_depth, max_filter_frac)
+    queries = query_generator.composed_queries.values()
+    print query_generator.qid_2_query
+    #runtime = Runtime(conf, queries)
 
-    def get_left_child(t):
-        if len(t.keys()) > 0:
-            return [t.keys()[0]]+get_left_child(t[t.keys()[0]])
-        else:
-            return []
-
-
+    """
     for n_query in query_generator.query_trees:
         composed_queries = {}
         query_tree = query_generator.query_trees[n_query]
-        generate_composed_queries(query_tree, query_generator.qid_2_query, composed_queries)
+        reduction_key = query_generator.qid_2_query[query_tree.keys()[0]].reduction_key
+        generate_composed_spark_queries(reduction_key, query_tree, query_generator.qid_2_query, composed_queries)
         print composed_queries
 
-    #runtime = Runtime(conf, queries)
+        for qid in composed_queries:
+            query_spark =  composed_queries[qid]
+            query_spark.in_stream = 'Out.'
+            query_spark.basic_headers = ['a','b']
+            print query_spark.compile()
 
-    fname = 'query_dumps/query_generator_object_1.pickle'
+    """
+    fname = 'query_engine/query_dumps/query_generator_object_1.pickle'
     with open(fname, 'w') as f:
         pickle.dump(query_generator, f)
 

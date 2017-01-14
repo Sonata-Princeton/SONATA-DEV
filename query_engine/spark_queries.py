@@ -34,6 +34,7 @@ class SparkQuery(object):
         return 0
 
 class Map(SparkQuery):
+    name = "Map"
     def __init__(self, *args, **kwargs):
         map_dict = dict(*args, **kwargs)
         self.keys = []
@@ -157,6 +158,7 @@ class Map(SparkQuery):
 
 
 class Reduce(SparkQuery):
+    name = 'Reduce'
     def __init__(self, *args, **kwargs):
         map_dict = dict(*args, **kwargs)
         self.keys = []
@@ -202,6 +204,7 @@ class Reduce(SparkQuery):
 
 
 class Distinct(SparkQuery):
+    name = 'Distinct'
     def __init__(self, *args, **kwargs):
         map_dict = dict(*args, **kwargs)
         self.keys = []
@@ -235,6 +238,7 @@ class Distinct(SparkQuery):
 
 
 class FilterInit(SparkQuery):
+    name = 'FilterInit'
     def __init__(self, *args, **kwargs):
         map_dict = dict(*args, **kwargs)
         self.qid = map_dict['qid']
@@ -251,6 +255,7 @@ class FilterInit(SparkQuery):
 
 
 class Filter(SparkQuery):
+    name = 'Filter'
     def __init__(self, *args, **kwargs):
         map_dict = dict(*args, **kwargs)
         self.keys = []
@@ -286,6 +291,9 @@ class Filter(SparkQuery):
         if 'filter_vals' in map_dict:
             self.filter_vals = map_dict['filter_vals']
 
+
+
+    def __repr__(self):
         self.filter_expr = '('
         for fld in self.filter_keys:
             if self.func[0] == 'eq':
@@ -303,12 +311,27 @@ class Filter(SparkQuery):
                 self.filter_expr += str(fld) + '<=' + str(self.func[1]) + '&&'
         self.filter_expr = self.filter_expr[:-2]
         self.filter_expr += ')'
-
-    def __repr__(self):
         out = '.filter(lambda (('+str(self.keys)+'), ('+str(self.values)+')): '+self.filter_expr+')'
         return out
 
     def compile(self):
+        self.filter_expr = '('
+        for fld in self.filter_keys:
+            if self.func[0] == 'eq':
+                self.filter_expr += str(fld) + '==' + str(self.func[1]) + ' &&'
+            elif self.func[0] == 'geq':
+                self.filter_expr += str(fld) + '>=' + str(self.func[1]) + ' &&'
+            elif self.func[0] == 'leq':
+                self.filter_expr += str(fld) + '<=' + str(self.func[1]) + '&&'
+        for fld in self.filter_vals:
+            if self.func[0] == 'eq':
+                self.filter_expr += str(fld) + '==' + str(self.func[1]) + ' &&'
+            elif self.func[0] == 'geq':
+                self.filter_expr += 'float(' + str(fld) + ')' + '>=' + str(self.func[1]) + ' &&'
+            elif self.func[0] == 'leq':
+                self.filter_expr += str(fld) + '<=' + str(self.func[1]) + '&&'
+        self.filter_expr = self.filter_expr[:-2]
+        self.filter_expr += ')'
         #print "Filter Keys: " + str(self.values)
         # .filter(keys=('dIP',), func=('geq', '3'))
         expr = '.filter(lambda ('
@@ -322,6 +345,7 @@ class Filter(SparkQuery):
 
 
 class Join(object):
+    name = 'Join'
     def __init__(self, *args, **kwargs):
         map_dict = dict(*args, **kwargs)
         self.keys = []
@@ -332,7 +356,6 @@ class Join(object):
         self.join_query = None
         self.expr = ''
         self.in_stream = ''
-
 
         if 'prev_keys' in map_dict:
             self.prev_keys = map_dict['prev_keys']
@@ -351,19 +374,18 @@ class Join(object):
         if 'in_stream' in map_dict:
             self.in_stream = map_dict['in_stream']
 
-
     def __repr__(self):
-        out = '.map(lambda s: (('+','.join([str(elem) for elem in self.join_key]) + '),s)'
+        out = '.map(lambda ('+','.join([str(elem) for elem in self.prev_keys])+'): (('+','.join([str(elem) for elem in self.join_key]) + '),('+','.join([str(elem) for elem in self.prev_keys])+')))'
         out += '.join('+self.join_query.__repr__()+')'
-        out += '.map(lambda s: s[0][0])'
+        out += '.map(lambda s: s[0][1])'
         return out
 
     def compile(self):
         #print "Filter Keys: " + str(self.values)
         # .filter(keys=('dIP',), func=('geq', '3'))
-        out = '.map(lambda s: (('+','.join([str(elem) for elem in self.join_key]) + '),s)'
+        out = '.map(lambda ('+','.join([str(elem) for elem in self.prev_keys])+'): (('+','.join([str(elem) for elem in self.join_key]) + '),('+','.join([str(elem) for elem in self.prev_keys])+')))'
         out += '.join('+self.in_stream+self.join_query.compile()+')'
-        out += '.map(lambda s: s[0][0])'
+        out += '.map(lambda s: s[0][1])'
 
         return out
 

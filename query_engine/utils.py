@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 #  Author:
 #  Arpit Gupta (arpitg@cs.princeton.edu)
+import query_engine.spark_queries as spark
+
 
 
 def get_original_wo_mask(lstOfFields):
@@ -57,6 +59,37 @@ def copy_sonata_operators_to_spark(query, optr):
 
     elif optr.name == "Distinct":
         query.distinct(keys=keys)
+
+def copy_spark_operators_to_spark(query, optr):
+    #print "Adding spark operator", optr.name
+    prev_keys = get_original_wo_mask(optr.prev_keys)
+    keys = get_original_wo_mask(optr.keys)
+    if optr.name == 'Filter':
+        query.filter(filter_keys=optr.filter_keys,
+                     filter_vals=optr.filter_vals,
+                     func=optr.func)
+    elif optr.name == "Map":
+        query.map(keys=keys,
+                  values=optr.values,
+                  map_keys=optr.map_keys,
+                  map_values=optr.map_values,
+                  func=optr.func)
+    elif optr.name == "Reduce":
+        query.reduce(keys=keys,
+                     func=optr.func)
+
+    elif optr.name == "Distinct":
+        query.distinct(keys=keys)
+
+    elif optr.name == 'Join':
+        #print "Before Joining", optr.join_query
+        optr.in_stream = 'self.training_data.'
+        new_join_query = spark.PacketStream(optr.join_query.qid)
+        new_join_query.basic_headers = query.basic_headers
+        for new_optr in optr.join_query.operators:
+            copy_spark_operators_to_spark(new_join_query, new_optr)
+        #print "After Updating the Join Query", new_join_query
+        query.join(q=new_join_query, join_key = optr.join_key, in_stream = optr.in_stream)
 
 
 def initialize_spark_query(p4_query, spark_query, qid):

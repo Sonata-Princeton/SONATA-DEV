@@ -42,7 +42,7 @@ class Runtime(object):
             if reduction_key != '':
                 print "Reduction key for Query", query.qid, " is ", reduction_key
                 # Tunable parameter
-                ref_levels = range(0, 33, 8)
+                ref_levels = range(0, 33, 4)
             else:
                 # TODO: better handle this case
                 print "Query", query.qid, " cannot be refined"
