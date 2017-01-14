@@ -325,7 +325,7 @@ class PacketStream(Query):
             ref_plan.sort()
             ctr = 1
             for ref_level in ref_plan:
-                refined_queryId = 10000 * orig_queryId + ctr
+                refined_queryId = 10000 * orig_queryId + ref_level
                 ctr += 1
                 orig_2_refined[(orig_queryId, ref_level)] = refined_queryId
                 refined_2_orig[refined_queryId] = (orig_queryId, ref_level)
@@ -432,7 +432,7 @@ class PacketStream(Query):
                 # print "Adding refined query for", queryId, ref_level
                 #print self.all_queries
                 original_query = self.all_queries[queryId]
-                new_qid = original_query.qid * 10000 + q_ctr
+                new_qid = original_query.qid * 10000 + ref_level
                 q_ctr += 1
                 refined_query = PacketStream(new_qid)
 
