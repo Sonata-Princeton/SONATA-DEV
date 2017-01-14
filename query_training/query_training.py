@@ -8,6 +8,7 @@ from utils import *
 from pyspark import SparkContext
 from netaddr import *
 import os
+import sys
 import numpy as np
 import pickle
 
@@ -28,6 +29,18 @@ BASIC_HEADERS = ["ts", "sIP", "sPort", "dIP", "dPort", "nBytes",
 
 def parse_log_line(logline):
     return tuple(logline.split(","))
+
+def update_query_tree(root, qt, rl, out):
+    #print root, qt
+    out[10000*root+rl] = {}
+    if len(qt[root]) > 0:
+        lc = qt[root].keys()[0]
+        #print lc, {lc:qt[root][lc]}
+        update_query_tree(lc, {lc:qt[root][lc]}, rl, out[10000*root+rl])
+        rc = qt[root].keys()[1]
+        #print rc, {rc:qt[root][rc]}
+        update_query_tree(rc, {rc:qt[root][rc]}, rl, out[10000*root+rl])
+    return out
 
 
 def add_timestamp_key(qid_2_query):
@@ -124,6 +137,9 @@ class QueryTraining(object):
     base_query = spark.PacketStream(0)
     base_query.basic_headers = BASIC_HEADERS
 
+    base_sonata_query = spark.PacketStream(0)
+    base_sonata_query.basic_headers = BASIC_HEADERS
+
     def __init__(self, refined_queries = None, fname_rq_read = '', fname_rq_write = '',
                  query_generator = None, fname_qg = ''):
         self.training_data = (self.sc.textFile(self.flows_File)
@@ -134,7 +150,7 @@ class QueryTraining(object):
         self.query_costs = {}
         self.composed_queries = {}
         self.qid_2_updated_filter = {}
-        """
+
 
         if refined_queries is None:
             if fname_rq_read == '':
@@ -144,7 +160,7 @@ class QueryTraining(object):
                     self.refined_queries = pickle.load(f)
         else:
             self.refined_queries = refined_queries
-        """
+
 
         # Update the query Generator Object (either passed directly, or filename specified)
         if query_generator is None:
@@ -157,31 +173,29 @@ class QueryTraining(object):
         self.max_reduce_operators = self.query_generator.max_reduce_operators
         self.qid_2_query = query_generator.qid_2_query
 
-        self.process_refined_queries('refined_queries.pickle')
+        #self.process_refined_queries('refined_queries.pickle')
 
     def process_refined_queries(self, fname_rq_write):
         # Add timestamp for each key
         self.add_timestamp_key()
-
-
 
         # Update the intermediate query mappings and filter mappings
         self.update_intermediate_queries()
 
         # Update filters for each SONATA Query
         self.update_filter()
-        print self.qid_2_query
+        #print self.qid_2_query
 
         # Update the input spark queries
-        self.get_composed_spark_queries()
-        self.update_composed_spark_queries()
+        #self.get_composed_spark_queries()
+        #self.update_composed_spark_queries()
 
         # Generate refined queries
         self.generate_refined_queries()
-        print self.refined_queries
+        #print self.refined_sonata_queries
 
         # Dump refined queries
-        #self.dump_refined_queries(fname_rq_write)
+        self.dump_refined_queries(fname_rq_write)
 
     def update_composed_spark_queries(self):
         for (qid, spark_query) in self.composed_queries.iteritems():
@@ -197,42 +211,80 @@ class QueryTraining(object):
         for n_query in self.query_generator.query_trees:
             composed_queries = {}
             query_tree = self.query_generator.query_trees[n_query]
-            reduction_key = self.query_generator.qid_2_query[query_tree.keys()[0]].reduction_key
+            reduction_key = ['ts', self.query_generator.qid_2_query[query_tree.keys()[0]].reduction_key]
             generate_composed_spark_queries(reduction_key, query_tree,
                                             self.query_generator.qid_2_query,
                                             composed_queries)
             self.composed_queries.update(composed_queries)
 
     def generate_refined_queries(self):
-        refined_queries = {}
-        for (qid, spark_query) in self.composed_queries.iteritems():
+        refined_sonata_queries = {}
+        qid_2_queries_refined = {}
+        # First update the Sonata queries for different levels
+        for (qid, sonata_query) in self.qid_2_query.iteritems():
             if qid in self.qid_2_query:
-                print "Exploring Sonata Query", qid
-                refined_queries[qid] = {}
+                #print "Exploring Sonata Query", qid
+                refined_sonata_queries[qid] = {}
                 reduction_key = self.qid_2_query[qid].reduction_key
-                print "Reduction Key:", reduction_key
+                #print "Reduction Key:", reduction_key
 
                 for ref_level in self.ref_levels[1:]:
-                    print "Refinement Level", ref_level
-                    refined_queries[qid][ref_level] = {}
-                    refined_query_id = 10000*qid+ref_level
-                    refined_spark_query = spark.PacketStream(refined_query_id)
-                    refined_spark_query.basic_headers = BASIC_HEADERS
 
-                    refined_spark_query.map(map_keys=(reduction_key,), func=("mask", ref_level))
-                    for operator in spark_query.operators:
+                    #print "Refinement Level", ref_level
+                    refined_sonata_queries[qid][ref_level] = {}
+                    refined_query_id = 10000*qid+ref_level
+                    refined_sonata_query = PacketStream(refined_query_id)
+                    refined_sonata_query.basic_headers = BASIC_HEADERS
+
+                    refined_sonata_query.map(map_keys=(reduction_key,), func=("mask", ref_level))
+                    for operator in sonata_query.operators:
                         if operator.name == 'Join':
                             operator.in_stream = 'self.training_data.'
-                        copy_spark_operators_to_spark(refined_spark_query, operator)
+                        copy_spark_operators_to_spark(refined_sonata_query, operator)
 
-                    tmp1, _ = get_intermediate_spark_queries(refined_spark_query)
+                    qid_2_queries_refined[refined_query_id] = refined_sonata_query
 
-                    refined_queries[qid][ref_level][0] = self.base_query
+                    tmp1, _ = get_intermediate_queries(refined_sonata_query)
+
+                    #refined_queries[qid][ref_level][0] = self.base_sonata_query
                     for iter_qid in tmp1:
                         #print "Adding intermediate Query:", iter_qid, type(tmp1[iter_qid])
-                        refined_queries[qid][ref_level][iter_qid] = tmp1[iter_qid]
+                        refined_sonata_queries[qid][ref_level][iter_qid] = tmp1[iter_qid]
 
-        self.refined_queries = refined_queries
+        self.refined_sonata_queries = refined_sonata_queries
+
+        refined_spark_queries = {}
+
+        # Use the processed Sonata queries to generated refined+composed Spark queries
+        for ref_level in self.ref_levels[1:]:
+            for n_query in self.query_generator.query_trees:
+                composed_queries = {}
+                query_tree = self.query_generator.query_trees[n_query]
+                updated_query_tree = {}
+                update_query_tree(query_tree.keys()[0], query_tree, ref_level, updated_query_tree)
+                #print updated_query_tree
+                reduction_key = ['ts', self.query_generator.qid_2_query[query_tree.keys()[0]].reduction_key]
+
+                generate_composed_spark_queries(reduction_key, BASIC_HEADERS, updated_query_tree,
+                                                qid_2_queries_refined,
+                                                composed_queries)
+                for ref_qid in composed_queries:
+                    #print ref_qid, composed_queries[ref_qid].qid
+                    if len(composed_queries[ref_qid].operators) > 0:
+                        tmp1, _ = get_intermediate_spark_queries(composed_queries[ref_qid])
+                        qid = ref_qid/10000
+                        if qid not in refined_spark_queries:
+                            refined_spark_queries[qid] = {}
+                        if ref_level not in refined_spark_queries[qid]:
+                            refined_spark_queries[qid][ref_level] = {}
+                        for iter_qid in tmp1:
+                            #print "Adding intermediate Query:", iter_qid, type(tmp1[iter_qid])
+                            refined_spark_queries[qid][ref_level][iter_qid] = tmp1[iter_qid]
+
+                #print composed_queries
+                self.composed_queries.update(composed_queries)
+        #print refined_spark_queries
+        self.refined_queries = refined_spark_queries
 
     def update_filter(self):
         for (prev_qid, curr_qid) in self.filter_mappings:
@@ -281,10 +333,15 @@ class QueryTraining(object):
         self.spark_intermediate_queries = spark_intermediate_queries
 
     def add_timestamp_key(self):
+        def add_timestamp_to_query(q):
+            # This function will be useful if we need to add ts in recursion
+            for operator in q.operators:
+                operator.keys = tuple(['ts'] + list(operator.keys))
+
         for qid in self.qid_2_query:
             query = self.qid_2_query[qid]
-            for operator in query.operators:
-                operator.keys = tuple(['ts'] + list(operator.keys))
+            add_timestamp_to_query(query)
+
 
     def get_thresh(self, spark_query, spread):
         query_string = 'self.training_data.'+spark_query.compile()+'.map(lambda s: s[1]).collect()'
@@ -311,6 +368,7 @@ class QueryTraining(object):
 
     def get_query_output(self):
         out0 = self.training_data.collect()
+        print "Out0", len(out0)
         # Iterate over each refined query and collect its output
         query_out = {}
         for qid in self.refined_queries:
@@ -322,7 +380,9 @@ class QueryTraining(object):
                         spark_query = self.refined_queries[qid][ref_level][iter_qid]
                         query_string = 'self.training_data.'+spark_query.compile()+'.collect()'
                         print("Processing Query", qid, "refinement level", ref_level, "iteration id", iter_qid)
+                        print query_string
                         query_out[qid][ref_level][iter_qid] = eval(query_string)
+                        print len(query_out[qid][ref_level][iter_qid])
 
                 query_out[qid][ref_level][0] = out0
 
@@ -372,6 +432,26 @@ class QueryTraining(object):
             #break
         print "Diff", len(diff_entries.keys())
         return diff_entries
+
+    def test_spark_query(self):
+        test = (self.training_data
+                      .map(lambda ((ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac)): ((ts,str(IPNetwork(str(str(sIP)+"/16")).network),sPort,dIP,dPort,nBytes,proto,sMac,dMac)))
+                      .map(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): ((ts,sIP),(ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac)))
+                      .join(self.training_data
+                            .map(lambda ((ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac)): ((ts,str(IPNetwork(str(str(sIP)+"/16")).network),sPort,dIP,dPort,nBytes,proto,sMac,dMac)))
+                            .map(lambda ((ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac)): ((ts,sIP,nBytes,sMac,proto),(1)))
+                            .reduceByKey(lambda x,y: x+y).filter(lambda ((ts,sIP,nBytes,sMac,proto),(count)): ((float(count)>=1.0 )))
+                            .map(lambda ((ts,sIP,nBytes,sMac,proto),(count)): ((ts,sIP),(1)))
+                            .reduceByKey(lambda x,y: x+y)
+                            .filter(lambda ((ts,sIP),(count)): ((float(count)>=1.0 )))
+                            .map(lambda ((ts,sIP),(count)): ((ts,sIP),1)))
+                      .map(lambda s: s[1][0])
+                      .map(lambda ((ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac)): ((ts,sIP,dMac,nBytes,dPort,sMac),(1)))
+                      .reduceByKey(lambda x,y: x+y).filter(lambda ((ts,sIP,dMac,nBytes,dPort,sMac),(count)): ((float(count)>=1.0 )))
+                      .map(lambda ((ts,sIP,dMac,nBytes,dPort,sMac),(count)): ((ts,sIP),(1)))
+                      .reduceByKey(lambda x,y: x+y).collect()
+                      )
+        print len(test)
 
     def get_query_costs(self):
         query_output_reformatted = self.query_output_reformatted
@@ -446,7 +526,7 @@ if __name__ == "__main__":
     print qt.refined_queries
     #qt.get_query_output()
 
-    print "Loading Query Out ..."
+
 
     with open('query_out.pickle','r') as f:
         qt.query_out = pickle.load(f)
@@ -462,26 +542,35 @@ if __name__ == "__main__":
     #print qt.query_out
     """
 
-    qt = QueryTraining()
-    #print qt.refined_queries
+    fname_rq_read = 'query_engine/query_dumps/refined_queries_1.pickle'
+    qt = QueryTraining(fname_rq_read=fname_rq_read)
+    """
+    print qt.refined_queries
+    qt.get_query_output()
+    qout = qt.query_out
+    #qt.test_spark_query()
+
+
+    with open('query_out.pickle','w') as f:
+        print "Dumping query out ...", sys.getsizeof(qout)
+        pickle.dump(qout, f)
 
     """
-    sonata_1 = qid_2_query[1]
-    sonata_2 = qid_2_query[2]
+    print "Loading Query Out ..."
+    with open('query_out.pickle','r') as f:
+        qt.query_out = pickle.load(f)
 
-    spark_2 =(spark.PacketStream(sonata_2.qid))
-    spark_2.basic_headers = BASIC_HEADERS
-    for operator in sonata_2.operators:
-        copy_sonata_operators_to_spark(spark_2, operator)
+    #print qt.query_out
+    qt.get_reformatted_output()
+    qt.get_query_costs()
 
-    spark_1 =(spark.PacketStream(sonata_1.qid))
-    spark_1.basic_headers = BASIC_HEADERS
-    red_key = sonata_1.reduction_key
-    spark_1.join(q=spark_2, join_key = [red_key], in_stream = 'self.training_data.')
-    for operator in sonata_1.operators:
-        copy_sonata_operators_to_spark(spark_1, operator)
-    print spark_1.compile()
-    """
+    with open('query_cost.pickle','w') as f:
+        print "Dumping query cost ..."
+        pickle.dump(qt.query_costs, f)
+
+
+
+
 
 
 
