@@ -149,7 +149,7 @@ class QueryGenerator(object):
     # separated from basic headers -
     # refinement headers will be used in all queries to define refinement and zoom in
     refinement_headers = ["dIP", "sIP"]
-    other_headers = ["sPort", "dPort", "nBytes", "proto", "sMac", "dMac"]
+    other_headers = ["proto", "sMac", "dMac"]
 
     def __init__(self, n_queries, max_reduce_operators, query_tree_depth, max_filter_frac):
         """
@@ -210,7 +210,7 @@ class QueryGenerator(object):
         @reduction_fields: fields to reduce query on
         """
 
-        thresh = float(random.choice(range(50, 1 + int(self.max_filter_sigma))))
+        thresh = float(random.choice(range(95, int(self.max_filter_sigma))))
         if qid not in self.qid_2_thresh:
             self.qid_2_thresh[qid] = []
         self.qid_2_thresh[qid].append(thresh)
@@ -234,11 +234,13 @@ class QueryGenerator(object):
         q = PacketStream(qid)
         q.reduction_key = reduction_key
 
-        other_headers = self.other_headers + [x for x in self.refinement_headers if x != reduction_key]
+        #other_headers = self.other_headers + [x for x in self.refinement_headers if x != reduction_key]
+        other_headers = self.other_headers
         if isLeft:
             other_headers = list(set(other_headers)-set(["payload"]))
         n_reduce_operators = random.choice(range(1, 1+self.max_reduce_operators))
-        number_header_fields = random.sample(range(1,len(other_headers)), n_reduce_operators-1)
+        number_header_fields = random.sample(range(1,1+n_reduce_operators), n_reduce_operators-1)
+        # Make sure the last keys for reduce operation are same as chosen reduction key
         number_header_fields.append(0)
         number_header_fields.sort(reverse=True)
 
@@ -279,7 +281,7 @@ if __name__ == "__main__":
 
     n_queries = 1
     max_filter_frac = 100
-    max_reduce_operators = 3
+    max_reduce_operators = 2
     query_tree_depth = 1
     # TODO: make sure the queries are unique
     query_generator = QueryGenerator(n_queries, max_reduce_operators, query_tree_depth, max_filter_frac)

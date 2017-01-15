@@ -121,16 +121,18 @@ def get_intermediate_queries(sonata_query):
         prev_qid = qid
     return sonata_intermediate_queries, filter_mappings
 
-
-T = 10000
+# 10 second window length
+T = 10*1000
 
 
 class QueryTraining(object):
     sc = SparkContext(appName="SONATA-Training")
     # Load data
-    baseDir = os.path.join('/home/vagrant/dev/data/sample_data/')
-    flows_File = os.path.join(baseDir, 'sample_data.csv')
-    ref_levels = range(0, 33, 16)
+    #baseDir = os.path.join('/home/vagrant/dev/data/sample_data/')
+    baseDir = os.path.join('/mnt/')
+    #flows_File = os.path.join(baseDir, 'sample_data.csv')
+    flows_File = os.path.join(baseDir, 'anon_all_flows_1min.csv')
+    ref_levels = range(0, 33, 8)
     # 10 second window length
     window_length = 10*1000
 
@@ -151,16 +153,17 @@ class QueryTraining(object):
         self.composed_queries = {}
         self.qid_2_updated_filter = {}
 
-
+        """
         if refined_queries is None:
             if fname_rq_read == '':
-                self.process_refined_queries(query_generator, fname_qg, fname_rq_write)
+                self.process_refined_queries(fname_rq_write)
             else:
                 with open(fname_rq_read, 'r') as f:
                     self.refined_queries = pickle.load(f)
         else:
             self.refined_queries = refined_queries
 
+        """
 
         # Update the query Generator Object (either passed directly, or filename specified)
         if query_generator is None:
@@ -173,7 +176,29 @@ class QueryTraining(object):
         self.max_reduce_operators = self.query_generator.max_reduce_operators
         self.qid_2_query = query_generator.qid_2_query
 
-        #self.process_refined_queries('refined_queries.pickle')
+        print "Generating Refined Queries ..."
+        self.process_refined_queries('refined_queries.pickle')
+
+
+        print "Processing Refined Queries with test data..."
+        self.get_query_output()
+
+        print "Reformatting output of Refined Queries ..."
+        self.get_reformatted_output()
+
+        print "Updating the Cost Matrix ..."
+        self.get_query_costs()
+
+        with open('query_cost.pickle','w') as f:
+            print "Dumping query cost ..."
+            pickle.dump(self.query_costs, f)
+
+        print "Success ..."
+
+
+
+
+
 
     def process_refined_queries(self, fname_rq_write):
         # Add timestamp for each key
@@ -183,7 +208,7 @@ class QueryTraining(object):
         self.update_intermediate_queries()
 
         # Update filters for each SONATA Query
-        self.update_filter()
+        #self.update_filter()
         #print self.qid_2_query
 
         # Update the input spark queries
@@ -191,8 +216,14 @@ class QueryTraining(object):
         #self.update_composed_spark_queries()
 
         # Generate refined queries
-        self.generate_refined_queries()
+        self.generate_refined_sonata_queries()
         #print self.refined_sonata_queries
+
+        self.update_filter()
+        print self.refined_sonata_queries
+
+        self.generate_refined_spark_queries()
+        print self.refined_queries
 
         # Dump refined queries
         self.dump_refined_queries(fname_rq_write)
@@ -217,7 +248,7 @@ class QueryTraining(object):
                                             composed_queries)
             self.composed_queries.update(composed_queries)
 
-    def generate_refined_queries(self):
+    def generate_refined_sonata_queries(self):
         refined_sonata_queries = {}
         qid_2_queries_refined = {}
         # First update the Sonata queries for different levels
@@ -250,10 +281,20 @@ class QueryTraining(object):
                     for iter_qid in tmp1:
                         #print "Adding intermediate Query:", iter_qid, type(tmp1[iter_qid])
                         refined_sonata_queries[qid][ref_level][iter_qid] = tmp1[iter_qid]
-
+        self.qid_2_queries_refined = qid_2_queries_refined
         self.refined_sonata_queries = refined_sonata_queries
 
+    def generate_refined_spark_queries(self):
         refined_spark_queries = {}
+        qid_2_queries_refined = {}
+        for qid in self.refined_sonata_queries:
+            for ref_level in self.refined_sonata_queries[qid]:
+                ref_qid = 10000*qid+ref_level
+                tmp = self.refined_sonata_queries[qid][ref_level].keys()
+                tmp.sort()
+                final_iter_qid = tmp[-1]
+
+                qid_2_queries_refined[ref_qid] = self.refined_sonata_queries[qid][ref_level][final_iter_qid]
 
         # Use the processed Sonata queries to generated refined+composed Spark queries
         for ref_level in self.ref_levels[1:]:
@@ -266,8 +307,7 @@ class QueryTraining(object):
                 reduction_key = ['ts', self.query_generator.qid_2_query[query_tree.keys()[0]].reduction_key]
 
                 generate_composed_spark_queries(reduction_key, BASIC_HEADERS, updated_query_tree,
-                                                qid_2_queries_refined,
-                                                composed_queries)
+                                                qid_2_queries_refined, composed_queries)
                 for ref_qid in composed_queries:
                     #print ref_qid, composed_queries[ref_qid].qid
                     if len(composed_queries[ref_qid].operators) > 0:
@@ -287,36 +327,74 @@ class QueryTraining(object):
         self.refined_queries = refined_spark_queries
 
     def update_filter(self):
-        for (prev_qid, curr_qid) in self.filter_mappings:
-            prev_query = self.spark_intermediate_queries[prev_qid]
-            curr_query = self.spark_intermediate_queries[curr_qid]
-            sonata_query_id, filter_id, spread = self.filter_mappings[(prev_qid, curr_qid)]
-            print "Update Computed for result of query", prev_query
-            thresh = self.get_thresh(prev_query, spread)
-            sonata_query = self.qid_2_query[sonata_query_id]
+        sonata_queries = {}
+        for ref_level in self.ref_levels[1:]:
+            for (prev_qid, curr_qid) in self.filter_mappings:
+                prev_ref_qid = 1000*(10000*(prev_qid/1000)+ref_level)+(prev_qid%1000)
+                curr_ref_qid = 1000*(10000*(curr_qid/1000)+ref_level)+(curr_qid%1000)
+                curr_ref_qids = filter(lambda x: x >=curr_ref_qid,
+                                       self.refined_sonata_queries[curr_qid/1000][ref_level].keys())
+                print prev_qid, curr_qid, prev_ref_qid, curr_ref_qid, self.refined_sonata_queries.keys()
+                prev_sonata_query = self.refined_sonata_queries[prev_qid/1000][ref_level][prev_ref_qid]
+                curr_sonata_query = self.refined_sonata_queries[curr_qid/1000][ref_level][curr_ref_qid]
 
-            # Update the intermediate Spark Query
-            filter_ctr = 1
-            for operator in curr_query.operators:
-                if operator.name == 'Filter':
-                    if filter_ctr == filter_id:
-                        #print "Before: ", curr_qid, operator
-                        operator.func = ('geq',thresh)
-                        print "Updated threshold for Intermediate Query", curr_qid, operator
-                        break
-                    else:
-                        filter_ctr += 1
+                # Get the Spark queries corresponding to the prev and curr sonata queries
+                if prev_ref_qid not in sonata_queries:
+                    prev_spark_query = spark.PacketStream(prev_ref_qid)
+                    prev_spark_query.basic_headers = BASIC_HEADERS
+                    for operator in prev_sonata_query.operators:
+                        copy_sonata_operators_to_spark(prev_spark_query, operator)
 
-            # Update the Sonata Query
-            filter_ctr = 1
-            for operator in sonata_query.operators:
-                if operator.name == 'Filter':
-                    if filter_ctr == filter_id:
-                        operator.func = ('geq',thresh)
-                        print "Updated threshold for ", sonata_query_id, operator
-                        break
-                    else:
-                        filter_ctr += 1
+                    sonata_queries[prev_ref_qid] = prev_spark_query
+                else:
+                    prev_spark_query = sonata_queries[prev_ref_qid]
+
+
+                if curr_ref_qid not in sonata_queries:
+                    curr_spark_query = spark.PacketStream(curr_ref_qid)
+                    curr_spark_query.basic_headers = BASIC_HEADERS
+                    for operator in curr_sonata_query.operators:
+                        copy_sonata_operators_to_spark(curr_spark_query, operator)
+
+                    sonata_queries[curr_ref_qid] = curr_spark_query
+                else:
+                    curr_spark_query = sonata_queries[curr_ref_qid]
+
+
+
+                _, filter_id, spread = self.filter_mappings[(prev_qid, curr_qid)]
+                print "Update Computed for result of query", prev_sonata_query
+                #thresh = -1
+                thresh = self.get_thresh(prev_spark_query, spread)
+
+                # Update the intermediate Spark Query
+                filter_ctr = 1
+                for operator in curr_spark_query.operators:
+                    if operator.name == 'Filter':
+                        if filter_ctr == filter_id:
+                            #print "Before: ", curr_qid, operator
+                            operator.func = ('geq',thresh)
+                            print "Updated threshold for Intermediate Query", curr_qid, operator
+                            break
+                        else:
+                            filter_ctr += 1
+                sonata_queries[curr_ref_qid] = copy.deepcopy(curr_spark_query)
+
+                # Update the Sonata Query
+                for tmp_qid in curr_ref_qids:
+                    filter_ctr = 1
+                    son_query = self.refined_sonata_queries[curr_qid/1000][ref_level][tmp_qid]
+                    for operator in son_query.operators:
+                        if operator.name == 'Filter':
+                            if filter_ctr == filter_id:
+                                operator.func = ('geq',thresh)
+                                print "Updated threshold for ", curr_ref_qid, operator
+                                break
+                            else:
+                                filter_ctr += 1
+                self.refined_sonata_queries[curr_qid/1000][ref_level][curr_ref_qid] = copy.deepcopy(curr_sonata_query)
+                #print "##Curr SONATA", curr_sonata_query
+                #print "$$Curr Spark", curr_spark_query
 
     def update_intermediate_queries(self):
         spark_intermediate_queries = {}
@@ -350,7 +428,8 @@ class QueryTraining(object):
         thresh = 0.0
         if len(data) > 0:
             thresh = np.percentile(data, int(spread))
-            print "Mean", np.mean(data), "Median", np.median(data)
+            print "Mean", np.mean(data), "Median", np.median(data), "75 %", np.percentile(data,75), \
+                "95 %", np.percentile(data,95), "99 %", np.percentile(data,99)
         print "Thresh:", thresh
         return thresh
 
@@ -363,6 +442,7 @@ class QueryTraining(object):
 
     def dump_refined_queries(self, fname_rq_write):
         with open(fname_rq_write,'w') as f:
+            print "Dumping refined Queries ..."
             pickle.dump(self.refined_queries, f)
 
 
@@ -435,23 +515,43 @@ class QueryTraining(object):
 
     def test_spark_query(self):
         test = (self.training_data
-                      .map(lambda ((ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac)): ((ts,str(IPNetwork(str(str(sIP)+"/16")).network),sPort,dIP,dPort,nBytes,proto,sMac,dMac)))
-                      .map(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): ((ts,sIP),(ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac)))
-                      .join(self.training_data
-                            .map(lambda ((ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac)): ((ts,str(IPNetwork(str(str(sIP)+"/16")).network),sPort,dIP,dPort,nBytes,proto,sMac,dMac)))
-                            .map(lambda ((ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac)): ((ts,sIP,nBytes,sMac,proto),(1)))
-                            .reduceByKey(lambda x,y: x+y).filter(lambda ((ts,sIP,nBytes,sMac,proto),(count)): ((float(count)>=1.0 )))
-                            .map(lambda ((ts,sIP,nBytes,sMac,proto),(count)): ((ts,sIP),(1)))
-                            .reduceByKey(lambda x,y: x+y)
-                            .filter(lambda ((ts,sIP),(count)): ((float(count)>=1.0 )))
-                            .map(lambda ((ts,sIP),(count)): ((ts,sIP),1)))
-                      .map(lambda s: s[1][0])
-                      .map(lambda ((ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac)): ((ts,sIP,dMac,nBytes,dPort,sMac),(1)))
-                      .reduceByKey(lambda x,y: x+y).filter(lambda ((ts,sIP,dMac,nBytes,dPort,sMac),(count)): ((float(count)>=1.0 )))
-                      .map(lambda ((ts,sIP,dMac,nBytes,dPort,sMac),(count)): ((ts,sIP),(1)))
-                      .reduceByKey(lambda x,y: x+y).collect()
-                      )
-        print len(test)
+                .map(lambda ((ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac)): ((ts,sIP,sPort,str(IPNetwork(str(str(dIP)+"/8")).network),dPort,nBytes,proto,sMac,dMac)))
+                #.filter(lambda s: str(s[6])=='17')
+                .map(lambda ((ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac)): (ts,dIP,dPort))
+                #.reduceByKey(lambda x,y: x+y)
+                #.filter(lambda s: s[1] > 2)
+                #.map(lambda x: x[0])
+                .distinct()
+                )
+        """
+        distinct_ts = test.map(lambda s: s[0]).distinct().count()
+        distinct_sIP = test.map(lambda s: s[1]).distinct().count()
+        distinct_sport = test.map(lambda s: s[2]).distinct().count()
+        distinct_dip = test.map(lambda s: s[3]).distinct().count()
+        distinct_dport = test.map(lambda s: s[4]).distinct().count()
+        distinct_nBytes = test.map(lambda s: s[5]).distinct().count()
+        distinct_proto = test.map(lambda s: s[6]).distinct().count()
+        distinct_sMac = test.map(lambda s: s[7]).distinct().count()
+        distinct_dMac = test.map(lambda s: s[8]).distinct().count()
+        print ("ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac")
+        print (distinct_ts, distinct_sIP, distinct_sport, distinct_dip, distinct_dport,distinct_nBytes,distinct_proto,distinct_sMac,distinct_dMac)
+        """
+        test = (self.training_data
+                .map(lambda ((ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac)): ((ts,sIP,sPort,str(IPNetwork(str(str(dIP)+"/8")).network),dPort,nBytes,proto,sMac,dMac)))
+                .map(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): ((ts,dIP),(ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac)))
+                .join(self.training_data.map(lambda ((ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac)): ((ts,sIP,sPort,str(IPNetwork(str(str(dIP)+"/8")).network),dPort,nBytes,proto,sMac,dMac)))
+                      .map(lambda ((ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac)): ((ts,dIP,dMac,sMac),(1)))
+                      .reduceByKey(lambda x,y: x+y)
+                      .filter(lambda ((ts,dIP,dMac,sMac),(count)): ((float(count)>=55.0 )))
+                      .map(lambda ((ts,dIP,dMac,sMac),(count)): ((ts,dIP),(1)))
+                      .reduceByKey(lambda x,y: x+y).filter(lambda ((ts,dIP),(count)): ((float(count)>=24.0 )))
+                      .map(lambda ((ts,dIP),(count)): ((ts,dIP))).map(lambda s: (s,1)))
+                .map(lambda s: s[1][0])
+                .map(lambda ((ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac)): ((ts,dIP),(1)))
+                .reduceByKey(lambda x,y: x+y)
+                )
+        print(test.count())
+
 
     def get_query_costs(self):
         query_output_reformatted = self.query_output_reformatted
@@ -460,10 +560,10 @@ class QueryTraining(object):
             query_costs[ts] = {}
             for qid in query_output_reformatted[ts]:
                 query_costs[ts][qid] = {}
-                query = qt.qid_2_query[qid]
+                query = self.qid_2_query[qid]
                 partition_plans = query.get_partition_plans()
                 print partition_plans
-                ref_levels = qt.refined_queries[qid].keys()
+                ref_levels = self.refined_queries[qid].keys()
                 for partition_plan in partition_plans[qid]:
                     print partition_plan
                     for ref_level_prev in ref_levels:
@@ -519,6 +619,10 @@ class QueryTraining(object):
 
 
 if __name__ == "__main__":
+    fname_rq_read = 'query_engine/query_dumps/refined_queries_1.pickle'
+    qt = QueryTraining()
+    #qt.test_spark_query()
+
     """
     fname_rq_read = 'query_engine/query_dumps/refined_queries_1.pickle'
     qt = QueryTraining(fname_rq_read=fname_rq_read)
@@ -542,8 +646,7 @@ if __name__ == "__main__":
     #print qt.query_out
     """
 
-    fname_rq_read = 'query_engine/query_dumps/refined_queries_1.pickle'
-    qt = QueryTraining(fname_rq_read=fname_rq_read)
+
     """
     print qt.refined_queries
     qt.get_query_output()
@@ -555,7 +658,7 @@ if __name__ == "__main__":
         print "Dumping query out ...", sys.getsizeof(qout)
         pickle.dump(qout, f)
 
-    """
+
     print "Loading Query Out ..."
     with open('query_out.pickle','r') as f:
         qt.query_out = pickle.load(f)
@@ -567,6 +670,7 @@ if __name__ == "__main__":
     with open('query_cost.pickle','w') as f:
         print "Dumping query cost ..."
         pickle.dump(qt.query_costs, f)
+    """
 
 
 
