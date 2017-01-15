@@ -1,7 +1,4 @@
-import logging
 from utils import get_out
-
-logging.getLogger(__name__)
 
 class Interfaces(object):
     inName = ""

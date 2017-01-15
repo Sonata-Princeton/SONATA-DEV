@@ -14,10 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
-
-logging.getLogger(__name__)
-
 from utils import *
 from mininet.net import Mininet
 from mininet.topo import Topo
@@ -32,7 +28,6 @@ class MyTopo(Topo):
     def __init__(self, sw_path, json_path, thrift_port, **opts):
         # Initialize topology and default options
         Topo.__init__(self, **opts)
-        logging.debug("Topology created")
         switch = self.addSwitch('s1',
                                 sw_path = sw_path,
                                 json_path = json_path,
@@ -58,8 +53,6 @@ def initialize_switch(behavioral_exe, p4_json_path, thrift_port, cli_path):
     send_commands_to_dp(cli_path, p4_json_path, thrift_port, P4_COMMANDS)
 
     sleep(1)
-
-    logging.debug("SWITCH Ready !")
 
     #CLI(net)
     #net.stop()
