@@ -6,20 +6,25 @@ coloredlogs.install(level='ERROR', )
 
 from runtime import *
 from query_engine.sonata_queries import *
-
+import os
 
 batch_interval = 1
 window_length = 10
 sliding_interval = 10
 T = 1000 * window_length
-emitter_log_file = "/home/vagrant/dev/emitter.log"
-fm_log_file = "/home/vagrant/dev/fm.log"
-rt_log_file = "/home/vagrant/dev/fm.log"
+
+result_folder = '/home/vagrant/dev/results/result1/'
+emitter_log_file = result_folder + "emitter.log"
+fm_log_file = result_folder + "fabric_manager.log"
+rt_log_file = result_folder + "runtime.log"
 
 featuresPath = ''
 redKeysPath = ''
 
 if __name__ == '__main__':
+    if not os.path.exists(result_folder):
+        os.makedirs(result_folder)
+
     spark_conf = {'batch_interval': batch_interval, 'window_length': window_length,
                   'sliding_interval': sliding_interval, 'featuresPath': featuresPath, 'redKeysPath': redKeysPath,
                   'sm_socket': ('localhost', 5555),

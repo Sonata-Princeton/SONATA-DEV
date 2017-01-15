@@ -9,7 +9,8 @@ import copy
 from query_engine.sonata_operators import *
 from query_engine.sonata_queries import *
 from query_engine.utils import *
-#from runtime.runtime import *
+from runtime.runtime import *
+import os
 
 batch_interval = 1
 window_length = 10
@@ -219,7 +220,9 @@ class QueryGenerator(object):
         @reduction_fields: fields to reduce query on
         """
 
+
         thresh = float(random.choice(range(95, int(self.max_filter_sigma))))
+
         if qid not in self.qid_2_thresh:
             self.qid_2_thresh[qid] = []
         self.qid_2_thresh[qid].append(thresh)
@@ -274,6 +277,16 @@ class QueryGenerator(object):
 
 
 if __name__ == "__main__":
+
+    result_folder = '/home/vagrant/dev/results/result1/'
+    emitter_log_file = result_folder + "emitter.log"
+    fm_log_file = result_folder + "fabric_manager.log"
+    rt_log_file = result_folder + "runtime.log"
+
+
+    if not os.path.exists(result_folder):
+            os.makedirs(result_folder)
+
     spark_conf = {'batch_interval': batch_interval, 'window_length': window_length,
                   'sliding_interval': sliding_interval, 'featuresPath': featuresPath, 'redKeysPath': redKeysPath,
                   'sm_socket': ('localhost', 5555),
@@ -281,14 +294,16 @@ if __name__ == "__main__":
 
     emitter_conf = {'spark_stream_address': 'localhost',
                     'spark_stream_port': 8989,
-                    'sniff_interface': "out-veth-2"}
+                    'sniff_interface': 'out-veth-2', 'log_file': emitter_log_file}
 
     conf = {'dp': 'p4', 'sp': 'spark',
-            'sm_conf': spark_conf, 'emitter_conf': emitter_conf,
-            'fm_socket': ('localhost', 6666)}
+            'sm_conf': spark_conf, 'emitter_conf': emitter_conf, 'log_file': rt_log_file,
+            'fm_conf': {'fm_socket': ('localhost', 6666), 'log_file': fm_log_file}}
+
 
 
     n_queries = 10
+
     max_filter_frac = 100
     max_reduce_operators = 2
     query_tree_depth = 2
@@ -296,7 +311,7 @@ if __name__ == "__main__":
     query_generator = QueryGenerator(n_queries, max_reduce_operators, query_tree_depth, max_filter_frac)
     queries = query_generator.composed_queries.values()
     print query_generator.qid_2_query
-    #runtime = Runtime(conf, queries)
+    runtime = Runtime(conf, queries)
 
     """
     for n_query in query_generator.query_trees:
@@ -312,9 +327,10 @@ if __name__ == "__main__":
             query_spark.basic_headers = ['a','b']
             print query_spark.compile()
 
-    """
+
     fname = 'query_engine/query_dumps/query_generator_object_10.pickle'
     with open(fname, 'w') as f:
         pickle.dump(query_generator, f)
+     """
 
 

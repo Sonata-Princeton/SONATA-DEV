@@ -99,7 +99,11 @@ def send_packets(time_slot):
                 send_packet(pkt_tuple[2:])
 
 while True:
+    T = 1000
+    send_packets(T)
+    """
     print "Sending dummy packets: ...."
     send_dummy_packets(0)
     send_dummy_packets(1)
     time.sleep(1)
+    """
