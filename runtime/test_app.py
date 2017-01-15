@@ -1,9 +1,5 @@
 #!/usr/bin/python
 # Initialize coloredlogs.
-import logging
-
-logging.getLogger('testApp')
-
 import coloredlogs
 
 coloredlogs.install(level='ERROR', )
@@ -16,6 +12,9 @@ batch_interval = 1
 window_length = 10
 sliding_interval = 10
 T = 1000 * window_length
+emitter_log_file = "/home/vagrant/dev/emitter.log"
+fm_log_file = "/home/vagrant/dev/fm.log"
+rt_log_file = "/home/vagrant/dev/fm.log"
 
 featuresPath = ''
 redKeysPath = ''
@@ -28,11 +27,11 @@ if __name__ == '__main__':
 
     emitter_conf = {'spark_stream_address': 'localhost',
                     'spark_stream_port': 8989,
-                    'sniff_interface': 'out-veth-2'}
+                    'sniff_interface': 'out-veth-2', 'log_file': emitter_log_file}
 
     conf = {'dp': 'p4', 'sp': 'spark',
-            'sm_conf': spark_conf, 'emitter_conf': emitter_conf,
-            'fm_socket': ('localhost', 6666)}
+            'sm_conf': spark_conf, 'emitter_conf': emitter_conf, 'log_file': rt_log_file,
+            'fm_conf': {'fm_socket': ('localhost', 6666), 'log_file': fm_log_file}}
 
     q0 = PacketStream()
     app_n = 1

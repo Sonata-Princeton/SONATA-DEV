@@ -2,8 +2,7 @@
 #  Author:
 #  Arpit Gupta (arpitg@cs.princeton.edu)
 
-from query_engine import *
-import json, time
+import time
 from multiprocessing.connection import Client, Listener
 import pickle
 from threading import Thread
@@ -11,15 +10,20 @@ from fabric_manager.fabric_manager import FabricManagerConfig
 from streaming_manager.streaming_manager import StreamingManager
 import logging
 
-logging.getLogger("runtime")
-
-
 class Runtime(object):
     def __init__(self, conf, queries):
         self.conf = conf
         self.queries = queries
         self.dp_queries = {}
         self.sp_queries = {}
+
+        # create a logger for the object
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.INFO)
+        # create file handler which logs messages
+        self.fh = logging.FileHandler(conf['log_file'])
+        self.fh.setLevel(logging.INFO)
+        self.logger.addHandler(self.fh)
 
         self.fm_thread = Thread(name='fm_manager', target=self.start_fabric_managers)
 
@@ -31,11 +35,14 @@ class Runtime(object):
         time.sleep(1)
 
         for query in self.queries:
-            logging.info("runtime: going through queries")
 
             query.get_query_tree()
             query.get_all_queries()
+
+            start = time.time()
             query.get_partition_plans()
+            self.logger.info("runtime,query_2_plans,"+str(start)+","+str(time.time()))
+
             tmp = query.get_reduction_key()
             print tmp
             reduction_key = list(tmp)[0]
@@ -48,17 +55,32 @@ class Runtime(object):
                 print "Query", query.qid, " cannot be refined"
                 ref_levels = []
             finest_plan = ref_levels[-1]
+
+            start = time.time()
             query.get_cost(ref_levels)
             query.get_refinement_plan(ref_levels)
+            self.logger.info("runtime,cost_refinement_plan,"+str(start)+","+str(time.time()))
+
             print query.query_2_final_plan
             query.query_in_mapping = {}
+            start = time.time()
             query.generate_query_in_mapping(finest_plan, query.query_2_final_plan, {}, [], False)
+            self.logger.info("runtime,query_in_mapping,"+str(start)+","+str(time.time()))
+
+
             print "Q2In", query.query_in_mapping
             print "Q2Out", query.generate_query_out_mapping()
+
             query.get_query_2_refinement_levels(finest_plan, query.query_2_final_plan, {})
             query.get_orig_refined_mapping()
+
+            start = time.time()
             query.generate_refined_queries(reduction_key)
+            self.logger.info("runtime,generate_refined_queries,"+str(start)+","+str(time.time()))
+
+            start = time.time()
             query.generate_partitioned_queries()
+            self.logger.info("runtime,generate_partitioned_queries,"+str(start)+","+str(time.time()))
             for qid in query.qid_2_dp_queries:
                 print "Adding DP queries for query", qid
                 self.dp_queries[qid] = query.qid_2_dp_queries[qid]
@@ -79,9 +101,8 @@ class Runtime(object):
 
         self.op_handler_thread.start()
 
-        #self.send_to_fm("delta", self.dp_queries)
-        self.fm_thread.join()
 
+        self.fm_thread.join()
         self.sm_thread.join()
         self.op_handler_thread.join()
 
@@ -100,10 +121,8 @@ class Runtime(object):
         # It receives output for each query in SP
         # It sends output of the coarser queries to the FM or
         # SM depending on where filter operation is applied (mostly DP)
-        logging.debug("runtime: " + "starting output handler")
         self.op_handler_socket = self.conf['sm_conf']['op_handler_socket']
         self.op_handler_listener = Listener(self.op_handler_socket)
-        logging.debug("OP Handler Running...")
         start = time.time()
         queries_received = {}
         updateDeltaConfig = False
@@ -124,32 +143,22 @@ class Runtime(object):
             delta_config = {}
             print "## Received output for query", src_qid, "at time", time.time()-start
             if updateDeltaConfig:
+                start = time.time()
                 for src_qid in queries_received:
                     table_match_entries = queries_received[src_qid]
-
                     for query in self.queries:
                         # find the queries that take the output of this query as input
-                        #print "Exploring ", query.qid, " with out-mappings:", query.query_out_mapping
                         original_qid, ref_level = query.refined_2_orig[src_qid]
                         if (original_qid, ref_level) in query.query_out_mapping:
-
                             target_queries = query.query_out_mapping[(original_qid, ref_level)]
-                            #print "Target Queries", target_queries
                             for (dst_orig_qid,dst_ref_level) in target_queries:
-                                #print "Found query", dst_orig_qid, " that requires o/p of", original_qid, "as i/p"
                                 dst_refined_qid = query.orig_2_refined[(dst_orig_qid,dst_ref_level)]
-
-                                #print "We need to update the filter table for query", dst_refined_qid
-
-                                dp_query = query.qid_2_dp_queries[dst_refined_qid]
-                                #print "Query is", dp_query.expr
                                 # get then name of the filter operator (and corresponding table)
-                                #print "For this query filter tables are:", dp_query.src_2_filter_operator
-                                filter_operator = dp_query.src_2_filter_operator[src_qid]
                                 # update the delta config dict
                                 delta_config[(dst_refined_qid, src_qid)] = table_match_entries
                 # reset these state variables
                 updateDeltaConfig = False
+                self.logger.info("runtime,create_delta_config,"+str(start)+","+str(time.time()))
                 queries_received = {}
 
             # TODO: Update the send_to_fm function logic
@@ -160,23 +169,17 @@ class Runtime(object):
 
     def start_fabric_managers(self):
         # Start the fabric managers local to each data plane element
-        logging.debug("runtime: " + "creating fabric managers")
-        fm = FabricManagerConfig(self.conf['fm_socket'], self.conf['emitter_conf'])
-        logging.debug("runtime: " + "starting fabric managers")
+        fm = FabricManagerConfig(self.conf['fm_conf'], self.conf['emitter_conf'])
         fm.start()
         while True:
-            logging.debug("Running...")
             time.sleep(5)
         return 0
 
     def start_streaming_managers(self):
         # Start streaming managers local to each stream processor
-        logging.debug("runtime: " + "creating streaming managers")
         sm = StreamingManager(self.conf['sm_conf'])
-        logging.debug("runtime: " + "starting streaming managers")
         sm.start()
         while True:
-            logging.debug("Running...")
             time.sleep(5)
         return 0
 
@@ -186,25 +189,22 @@ class Runtime(object):
             query_expressions.append(query.compile_sp())
         return query_expressions
 
-    def send_config(self):
-        self.send_to_sm()
-        self.send_to_fm()
-
     def send_to_sm(self):
         # Send compiled query expression to streaming manager
-        logging.info(self.sp_queries)
+        start = time.time()
         serialized_queries = pickle.dumps(self.sp_queries)
         conn = Client(self.conf['sm_conf']['sm_socket'])
         conn.send(serialized_queries)
+        self.logger.info("runtime,sm_init,"+str(start)+","+str(time.time()))
         time.sleep(3)
-        logging.debug("Config Sent to Streaming Manager ...")
 
     def send_to_fm(self, message_type, content):
         # Send compiled query expression to fabric manager
+        start = time.time()
         message = {message_type: content}
         serialized_queries = pickle.dumps(message)
-        conn = Client(self.conf['fm_socket'])
+        conn = Client(self.conf['fm_conf']['fm_socket'])
         conn.send(serialized_queries)
+        self.logger.info("runtime,fm_"+message_type+","+str(start)+","+str(time.time()))
         time.sleep(1)
-        logging.debug("Config Sent to Streaming Manager ...")
         return ''

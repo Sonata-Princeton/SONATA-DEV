@@ -2,9 +2,7 @@
 #  Author:
 #  Arpit Gupta (arpitg@cs.princeton.edu)
 
-import logging
 import json, time
-logging.getLogger(__name__)
 from multiprocessing.connection import Listener
 from threading import Thread
 from switch_config.utils import *
@@ -13,45 +11,54 @@ from switch_config.compile_p4 import compile_p4_2_json
 from switch_config.initialize_switch import initialize_switch
 from emitter.emitter import Emitter
 import pickle
+import logging
 
 
 class FabricManagerConfig(object):
-    def __init__(self, fm_socket, em_conf):
+    def __init__(self, fm_conf, em_conf):
         self.p4_src = ''
         self.queries = []
         self.id_2_query = {}
         self.p4_init_commands = []
-        self.fm_socket = fm_socket
+        self.fm_socket = fm_conf['fm_socket']
         self.em_conf = em_conf
+
+        # create a logger for the object
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.INFO)
+        # create file handler which logs messages
+        self.fh = logging.FileHandler(fm_conf['log_file'])
+        self.fh.setLevel(logging.INFO)
+        self.logger.addHandler(self.fh)
+
         self.reset_bool = False
         self.interfaces = {'reciever': ['m-veth-1', 'out-veth-1'],
                            'sender': ['m-veth-2', 'out-veth-2']}
         self.em_thread = Thread(name='emitter', target=self.start_emitter)
 
     def start(self):
-        logging.info("fm_manager: Starting")
         self.fm_listener = Listener(self.fm_socket)
         while True:
-            logging.debug("Listening again...")
+            start = time.time()
             conn = self.fm_listener.accept()
             raw_data = conn.recv()
             message = pickle.loads(raw_data)
             for key in message.keys():
                 if key == "init":
                     self.process_init_config(message[key])
+                    self.logger.info("fabric_manager,init,"+str(start)+","+ str(time.time()))
                 elif key == "delta":
+                    self.logger.info("fabric_manager,delta_in,"+str(start)+","+ str(time.time()))
                     self.process_delta_config(message[key])
+                    self.logger.info("fabric_manager,delta_out,"+str(start)+","+ str(time.time()))
                 else:
-                    logging.error("Unsupported Command: " + key)
+                    print "ERROR Unsupported Key"
 
     def start_emitter(self):
         # Start the packet parser
-        logging.debug("runtime: " + "creating")
         em = Emitter(self.em_conf, self.queries)
-        logging.debug("runtime: " + "starting emitter")
         em.start()
         while True:
-            logging.debug("Running...")
             time.sleep(5)
         return 0
 
@@ -69,7 +76,6 @@ class FabricManagerConfig(object):
         for queryID in message:
             self.add_query(message[queryID])
         self.compile_init_config()
-        logging.info("query compiled")
         print "FM: Received ", len(self.queries), " queries from Runtime"
 
         write_to_file(P4_COMPILED, self.p4_src)
@@ -81,7 +87,6 @@ class FabricManagerConfig(object):
         compile_p4_2_json()
         self.create_interfaces()
         cmd = SWITCH_PATH + " >/dev/null 2>&1"
-        logging.info(cmd)
         get_out(cmd)
         initialize_switch(SWITCH_PATH, JSON_P4_COMPILED, THRIFTPORT,
                           CLI_PATH)
@@ -95,11 +100,14 @@ class FabricManagerConfig(object):
         send_commands_to_dp(CLI_PATH, P4_COMPILED, THRIFTPORT, P4_COMMANDS)
 
     def process_delta_config(self, message):
-        logging.info("Sending deltas to Data Plane")
         commands = ''
         # Reset the data plane registers/tables before pushing the new delta config
+        start = time.time()
         self.reset_switch()
+        self.logger.info("fabric_manager,delta_reset,"+str(start)+","+ str(time.time()))
+
         for (qid,filter_id) in message:
+            start = time.time()
             query = self.id_2_query[qid]
             filter_operator = query.src_2_filter_operator[filter_id]
             filter_mask = filter_operator.filter_mask
@@ -115,6 +123,7 @@ class FabricManagerConfig(object):
 
             write_to_file(P4_DELTA_COMMANDS, commands)
             send_commands_to_dp(CLI_PATH, JSON_P4_COMPILED, THRIFTPORT, P4_DELTA_COMMANDS)
+            self.logger.info("fabric_manager,delta_compute_push,"+str(start)+","+ str(time.time()))
 
         return 0
 
@@ -127,8 +136,6 @@ class FabricManagerConfig(object):
 
     def compile_init_config(self):
         # Compile the initial config to P4 source code and json output
-
-        logging.info("FM: Compilation....")
 
         out = ''
         for q in self.queries:

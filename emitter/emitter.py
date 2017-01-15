@@ -1,7 +1,8 @@
 from scapy.all import *
 import struct
 from multiprocessing.connection import Listener
-
+import time
+import logging
 
 header_format = {"sIP":'BBBB', "dIP":'BBBB', "sPort": '>H', "dPort": '>H',
               "nBytes": '>H', "proto": '>H', "sMac": 'BBBBBB', "dMac":'BBBBBB',
@@ -14,6 +15,7 @@ header_size = {"sIP":32, "dIP":32, "sPort": 16, "dPort": 16,
 
 class Emitter(object):
     def __init__(self, conf, queries):
+
         self.spark_stream_address = conf['spark_stream_address']
         self.spark_stream_port = conf['spark_stream_port']
         self.sniff_interface = conf['sniff_interface']
@@ -21,6 +23,14 @@ class Emitter(object):
         self.listener = Listener((self.spark_stream_address, self.spark_stream_port))
         self.qid_2_query = {}
         self.qid_struct = struct.Struct('>H')
+
+        # create a logger for the object
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.INFO)
+        # create file handler which logs messages
+        self.fh = logging.FileHandler(conf['log_file'])
+        self.fh.setLevel(logging.INFO)
+        self.logger.addHandler(self.fh)
         for query in self.queries:
             self.qid_2_query[query.qid] = query
 
@@ -41,6 +51,7 @@ class Emitter(object):
         '''
         callback function executed for each capture packet
         '''
+        start = time.time()
         p_str = str(raw_packet)
         #raw_packet.show()
         #hexdump(raw_packet)
@@ -84,6 +95,8 @@ class Emitter(object):
                 self.send_data(send_tuple + "\n")
             else:
                 print "Sniffed unrelated packet."
+
+        self.logger.info("emitter,"+ str(qid) + ","+str(start)+","+str(time.time()))
 
 
 if __name__ == '__main__':

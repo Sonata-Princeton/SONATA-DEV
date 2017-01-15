@@ -49,6 +49,7 @@ class StreamingManager(object):
 
         # intialize streaming context
         self.sc = SparkContext(appName="Sonata-Streaming")
+        self.sc.setLogLevel("OFF")
         self.ssc = StreamingContext(self.sc, self.batch_interval)
         print("spark context initialized...")
 

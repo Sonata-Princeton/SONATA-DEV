@@ -2,7 +2,6 @@
 #  Author:
 #  Arpit Gupta (arpitg@cs.princeton.edu)
 
-import logging
 import math
 
 from query_engine.sonata_operators.distinct import Distinct
@@ -15,8 +14,6 @@ import query_engine.plans_search as rs
 import query_engine.spark_queries as spark
 from query_engine.sonata_operators.filter import Filter
 from query_engine.utils import *
-
-logging.getLogger("sonata_queries")
 
 pstream_qid = 1
 

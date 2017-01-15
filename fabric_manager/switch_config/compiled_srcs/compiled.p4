@@ -56,6 +56,7 @@ parser parse_out_header {
 	extract(out_header_10032);
 	extract(out_header_30012);
 	extract(out_header_10012);
+	extract(out_header_10028);
 	return parse_ethernet;
 }
 
@@ -99,16 +100,15 @@ header_type out_header_10032_t {
 	fields {
 		qid : 16;
 		dIP : 32;
-		count : 16;
-	}
+		sIP : 32;}
 }
 
 header out_header_10032_t out_header_10032;
 
 field_list copy_to_cpu_fields_10032{
 	standard_metadata;
-	hash_meta_reduce_5_10032;
-	meta_reduce_5_10032;
+	hash_meta_distinct_4_10032;
+	meta_distinct_4_10032;
 	meta_map_init_10032;
 	meta_fm;
 }
@@ -129,9 +129,9 @@ table encap_10032 {
 
 action do_encap_10032() {
 	add_header(out_header_10032);
-	modify_field(out_header_10032.qid, meta_reduce_5_10032.qid);
+	modify_field(out_header_10032.qid, meta_distinct_4_10032.qid);
 	modify_field(out_header_10032.dIP, meta_map_init_10032.dIP);
-	modify_field(out_header_10032.count, meta_reduce_5_10032.val);
+	modify_field(out_header_10032.sIP, meta_map_init_10032.sIP);
 }
 
 header_type out_header_30012_t {
@@ -209,6 +209,45 @@ action do_encap_10012() {
 	modify_field(out_header_10012.count, meta_reduce_4_10012.val);
 }
 
+header_type out_header_10028_t {
+	fields {
+		qid : 16;
+		dIP : 32;
+		count : 16;
+	}
+}
+
+header out_header_10028_t out_header_10028;
+
+field_list copy_to_cpu_fields_10028{
+	standard_metadata;
+	hash_meta_reduce_5_10028;
+	meta_reduce_5_10028;
+	meta_map_init_10028;
+	meta_fm;
+}
+
+action do_copy_to_cpu_10028() {
+	clone_ingress_pkt_to_egress(10228, copy_to_cpu_fields_10028);
+}
+
+table copy_to_cpu_10028 {
+	actions {do_copy_to_cpu_10028;}
+	size : 1;
+}
+
+table encap_10028 {
+	actions { do_encap_10028; }
+	size : 1;
+}
+
+action do_encap_10028() {
+	add_header(out_header_10028);
+	modify_field(out_header_10028.qid, meta_reduce_5_10028.qid);
+	modify_field(out_header_10028.dIP, meta_map_init_10028.dIP);
+	modify_field(out_header_10028.count, meta_reduce_5_10028.val);
+}
+
 table drop_distinct_4_10032_1 {
 	actions {mark_drop;}
 	size : 1;
@@ -220,16 +259,6 @@ table skip_distinct_4_10032_1 {
 }
 
 table drop_distinct_4_10032_2 {
-	actions {mark_drop;}
-	size : 1;
-}
-
-table skip_reduce_5_10032_1 {
-	actions {_nop;}
-	size : 1;
-}
-
-table drop_reduce_5_10032_1 {
 	actions {mark_drop;}
 	size : 1;
 }
@@ -255,6 +284,31 @@ table skip_reduce_4_10012_1 {
 }
 
 table drop_reduce_4_10012_1 {
+	actions {mark_drop;}
+	size : 1;
+}
+
+table drop_distinct_4_10028_1 {
+	actions {mark_drop;}
+	size : 1;
+}
+
+table skip_distinct_4_10028_1 {
+	actions {_nop;}
+	size : 1;
+}
+
+table drop_distinct_4_10028_2 {
+	actions {mark_drop;}
+	size : 1;
+}
+
+table skip_reduce_5_10028_1 {
+	actions {_nop;}
+	size : 1;
+}
+
+table drop_reduce_5_10028_1 {
 	actions {mark_drop;}
 	size : 1;
 }
@@ -391,72 +445,6 @@ action set_distinct_4_10032_count() {
 
 table set_distinct_4_10032_count {
 	actions {set_distinct_4_10032_count;}
-        size: 1;
-}
-
-header_type meta_reduce_5_10032_t {
-	fields {
-		qid : 16;
-		val : 32;
-		idx : 32;
-	}
-}
-
-metadata meta_reduce_5_10032_t meta_reduce_5_10032;
-
-header_type hash_meta_reduce_5_10032_t {
-	fields {
-		dIP : 32;
-	}
-}
-
-metadata hash_meta_reduce_5_10032_t hash_meta_reduce_5_10032;
-
-field_list reduce_5_10032_fields {
-	hash_meta_reduce_5_10032.dIP;
-}
-
-field_list_calculation reduce_5_10032_fields_hash {
-	input {
-		reduce_5_10032_fields;
-	}
-	algorithm : crc32;
-	output_width : 32;
-}
-
-register reduce_5_10032{
-	width : 32;
-	instance_count : 4096;
-}
-
-action update_reduce_5_10032_regs() {
-	add_to_field(meta_reduce_5_10032.val, 1);
-	register_write(reduce_5_10032,meta_reduce_5_10032.idx,meta_reduce_5_10032.val);
-}
-
-table update_reduce_5_10032_counts {
-	actions {update_reduce_5_10032_regs;}
-	size : 1;
-}
-
-action do_reduce_5_10032_hashes() {
-	modify_field(hash_meta_reduce_5_10032.dIP, meta_map_init_10032.dIP);
-	modify_field(meta_reduce_5_10032.qid, 10032);
-	modify_field_with_hash_based_offset(meta_reduce_5_10032.idx, 0, reduce_5_10032_fields_hash, 4096);
-	register_read(meta_reduce_5_10032.val, reduce_5_10032, meta_reduce_5_10032.idx);
-}
-
-table start_reduce_5_10032 {
-	actions {do_reduce_5_10032_hashes;}
-	size : 1;
-}
-
-action set_reduce_5_10032_count() {
-	modify_field(meta_reduce_5_10032.val, 1);
-}
-
-table set_reduce_5_10032_count {
-	actions {set_reduce_5_10032_count;}
         size: 1;
 }
 
@@ -661,12 +649,182 @@ table set_reduce_4_10012_count {
         size: 1;
 }
 
+table map_init_10028{
+	actions{
+		do_map_init_10028;
+	}
+}
+
+action do_map_init_10028(){
+	modify_field(meta_map_init_10028.qid, 10028);
+	modify_field(meta_map_init_10028.sIP, ipv4.srcAddr);
+	modify_field(meta_map_init_10028.dIP, ipv4.dstAddr);
+	modify_field(meta_map_init_10028.proto, ipv4.protocol);
+}
+
+header_type meta_map_init_10028_t {
+	 fields {
+		qid: 16;
+		sIP: 32;
+		dIP: 32;
+		proto: 16;
+	}
+}
+
+metadata meta_map_init_10028_t meta_map_init_10028;
+
+table map_10028_2{
+	actions{
+		do_map_10028_2;
+	}
+}
+
+action do_map_10028_2() {
+	bit_and(meta_map_init_10028.dIP, meta_map_init_10028.dIP, 0xfffffff0);
+}
+
+header_type meta_distinct_4_10028_t {
+	fields {
+		qid : 16;
+		val : 32;
+		idx : 32;
+	}
+}
+
+metadata meta_distinct_4_10028_t meta_distinct_4_10028;
+
+header_type hash_meta_distinct_4_10028_t {
+	fields {
+		sIP : 32;
+		dIP : 32;
+	}
+}
+
+metadata hash_meta_distinct_4_10028_t hash_meta_distinct_4_10028;
+
+field_list distinct_4_10028_fields {
+	hash_meta_distinct_4_10028.sIP;
+	hash_meta_distinct_4_10028.dIP;
+}
+
+field_list_calculation distinct_4_10028_fields_hash {
+	input {
+		distinct_4_10028_fields;
+	}
+	algorithm : crc32;
+	output_width : 32;
+}
+
+register distinct_4_10028{
+	width : 32;
+	instance_count : 4096;
+}
+
+action update_distinct_4_10028_regs() {
+	bit_or(meta_distinct_4_10028.val,meta_distinct_4_10028.val, 1);
+	register_write(distinct_4_10028,meta_distinct_4_10028.idx,meta_distinct_4_10028.val);
+}
+
+table update_distinct_4_10028_counts {
+	actions {update_distinct_4_10028_regs;}
+	size : 1;
+}
+
+action do_distinct_4_10028_hashes() {
+	modify_field(hash_meta_distinct_4_10028.sIP, meta_map_init_10028.sIP);
+	modify_field(hash_meta_distinct_4_10028.dIP, meta_map_init_10028.dIP);
+	modify_field(meta_distinct_4_10028.qid, 10028);
+	modify_field_with_hash_based_offset(meta_distinct_4_10028.idx, 0, distinct_4_10028_fields_hash, 4096);
+	register_read(meta_distinct_4_10028.val, distinct_4_10028, meta_distinct_4_10028.idx);
+}
+
+table start_distinct_4_10028 {
+	actions {do_distinct_4_10028_hashes;}
+	size : 1;
+}
+
+action set_distinct_4_10028_count() {
+	modify_field(meta_distinct_4_10028.val, 1);
+}
+
+table set_distinct_4_10028_count {
+	actions {set_distinct_4_10028_count;}
+        size: 1;
+}
+
+header_type meta_reduce_5_10028_t {
+	fields {
+		qid : 16;
+		val : 32;
+		idx : 32;
+	}
+}
+
+metadata meta_reduce_5_10028_t meta_reduce_5_10028;
+
+header_type hash_meta_reduce_5_10028_t {
+	fields {
+		dIP : 32;
+	}
+}
+
+metadata hash_meta_reduce_5_10028_t hash_meta_reduce_5_10028;
+
+field_list reduce_5_10028_fields {
+	hash_meta_reduce_5_10028.dIP;
+}
+
+field_list_calculation reduce_5_10028_fields_hash {
+	input {
+		reduce_5_10028_fields;
+	}
+	algorithm : crc32;
+	output_width : 32;
+}
+
+register reduce_5_10028{
+	width : 32;
+	instance_count : 4096;
+}
+
+action update_reduce_5_10028_regs() {
+	add_to_field(meta_reduce_5_10028.val, 1);
+	register_write(reduce_5_10028,meta_reduce_5_10028.idx,meta_reduce_5_10028.val);
+}
+
+table update_reduce_5_10028_counts {
+	actions {update_reduce_5_10028_regs;}
+	size : 1;
+}
+
+action do_reduce_5_10028_hashes() {
+	modify_field(hash_meta_reduce_5_10028.dIP, meta_map_init_10028.dIP);
+	modify_field(meta_reduce_5_10028.qid, 10028);
+	modify_field_with_hash_based_offset(meta_reduce_5_10028.idx, 0, reduce_5_10028_fields_hash, 4096);
+	register_read(meta_reduce_5_10028.val, reduce_5_10028, meta_reduce_5_10028.idx);
+}
+
+table start_reduce_5_10028 {
+	actions {do_reduce_5_10028_hashes;}
+	size : 1;
+}
+
+action set_reduce_5_10028_count() {
+	modify_field(meta_reduce_5_10028.val, 1);
+}
+
+table set_reduce_5_10028_count {
+	actions {set_reduce_5_10028_count;}
+        size: 1;
+}
+
 header_type meta_fm_t {
 	fields {
 		qid_30032 : 1;
 		qid_10032 : 1;
 		qid_30012 : 1;
 		qid_10012 : 1;
+		qid_10028 : 1;
 		f1 : 8;
 		is_drop : 1;
 	}
@@ -679,6 +837,7 @@ action init_meta_fm() {
 	modify_field(meta_fm.qid_10032, 1);
 	modify_field(meta_fm.qid_30012, 1);
 	modify_field(meta_fm.qid_10012, 1);
+	modify_field(meta_fm.qid_10028, 1);
 	modify_field(meta_fm.is_drop, 0);
 }
 
@@ -703,6 +862,10 @@ action set_meta_fm_10012(){
 	modify_field(meta_fm.qid_10012, 1);
 }
 
+action set_meta_fm_10028(){
+	modify_field(meta_fm.qid_10028, 1);
+}
+
 action reset_meta_fm_30032(){
 	modify_field(meta_fm.qid_30032, 0);
 	modify_field(meta_fm.is_drop, 1);
@@ -720,6 +883,11 @@ action reset_meta_fm_30012(){
 
 action reset_meta_fm_10012(){
 	modify_field(meta_fm.qid_10012, 0);
+	modify_field(meta_fm.is_drop, 1);
+}
+
+action reset_meta_fm_10028(){
+	modify_field(meta_fm.qid_10028, 0);
 	modify_field(meta_fm.is_drop, 1);
 }
 
@@ -793,6 +961,26 @@ table filter_10012_2{
 	}
 }
 
+table filter_10028_3{
+	reads {
+		ipv4.protocol: exact;
+	}
+	actions{
+		set_meta_fm_10028;
+		reset_meta_fm_10028;
+	}
+}
+
+table filter_10028_1{
+	reads {
+		ipv4.dstAddr: lpm;
+	}
+	actions{
+		set_meta_fm_10028;
+		reset_meta_fm_10028;
+	}
+}
+
 control ingress {
 	apply(init_meta_fm);
 	if (meta_fm.f1 == 0){
@@ -815,7 +1003,6 @@ control ingress {
 					apply(map_init_10032);
 			apply(map_10032_2);
 			apply(start_distinct_4_10032);
-			apply(start_reduce_5_10032);
 			if(meta_distinct_4_10032.val > 0) {
 				apply(drop_distinct_4_10032_1);
 			}
@@ -827,16 +1014,6 @@ control ingress {
 			}
 
 			apply(update_distinct_4_10032_counts);
-			apply(update_reduce_5_10032_counts);
-			if(meta_reduce_5_10032.val > 1) {
-				apply(set_reduce_5_10032_count);			}
-			else if(meta_reduce_5_10032.val == 1) {
-				apply(skip_reduce_5_10032_1);
-			}
-			else {
-				apply(drop_reduce_5_10032_1);
-			}
-
 			apply(copy_to_cpu_10032);
 		}
 	}
@@ -882,11 +1059,45 @@ control ingress {
 			apply(copy_to_cpu_10012);
 		}
 	}
+	if (meta_fm.f1 == 4){
+		apply(filter_10028_3);
+		if (meta_fm.qid_10028== 1){
+			apply(filter_10028_1);
+		}
+		if (meta_fm.qid_10028 == 1){
+					apply(map_init_10028);
+			apply(map_10028_2);
+			apply(start_distinct_4_10028);
+			apply(start_reduce_5_10028);
+			if(meta_distinct_4_10028.val > 0) {
+				apply(drop_distinct_4_10028_1);
+			}
+			else if(meta_distinct_4_10028.val == 0) {
+				apply(skip_distinct_4_10028_1);
+			}
+			else {
+				apply(drop_distinct_4_10028_2);
+			}
+
+			apply(update_distinct_4_10028_counts);
+			apply(update_reduce_5_10028_counts);
+			if(meta_reduce_5_10028.val > 1) {
+				apply(set_reduce_5_10028_count);			}
+			else if(meta_reduce_5_10028.val == 1) {
+				apply(skip_reduce_5_10028_1);
+			}
+			else {
+				apply(drop_reduce_5_10028_1);
+			}
+
+			apply(copy_to_cpu_10028);
+		}
+	}
 }
 
 control egress {
 	if (standard_metadata.instance_type != 1) {
-		if(meta_fm.f1 < 4) {
+		if(meta_fm.f1 < 5) {
 			apply(recirculate_to_ingress);
 		}
 		else {
@@ -910,6 +1121,9 @@ control egress {
 			}
 			if (meta_fm.f1 == 3){
 				apply(encap_10012);
+			}
+			if (meta_fm.f1 == 4){
+				apply(encap_10028);
 			}
 		}
 
