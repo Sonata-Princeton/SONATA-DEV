@@ -11,6 +11,11 @@ import os
 import sys
 import numpy as np
 import pickle
+import threading
+
+import multiprocessing as mp
+from multiprocessing import Process, Queue
+
 
 # Standard set of packet tuple headers
 BASIC_HEADERS = ["ts", "sIP", "sPort", "dIP", "dPort", "nBytes",
@@ -124,8 +129,8 @@ def get_intermediate_queries(sonata_query):
         prev_qid = qid
     return sonata_intermediate_queries, filter_mappings
 
-# 10 second window length
-T = 10*1000
+# 1 second window length
+T = 1
 
 
 class QueryTraining(object):
@@ -157,9 +162,9 @@ class QueryTraining(object):
         self.training_data = (self.sc.textFile(self.flows_File)
                               .map(parse_log_line)
                               # because the data provided has already applied 10 s windowing
-                              .map(lambda s:tuple([int(math.ceil(int(s[0])))]+(list(s[2:]))))
-                              .filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(proto)=='17')
-                              .filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(sPort) == '21')
+                              .map(lambda s:tuple([int(math.ceil(int(s[0])/T))]+(list(s[1:]))))
+                              #.filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(proto)=='17')
+                              #.filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(sPort) == '21')
                               )
         print "Collecting the training data for the first time ..."
         self.training_data = self.sc.parallelize(self.training_data.collect())
@@ -194,14 +199,16 @@ class QueryTraining(object):
         self.max_reduce_operators = self.query_generator.max_reduce_operators
         self.qid_2_query = query_generator.qid_2_query
 
+
         print "Generating Refined Queries ..."
         self.process_refined_queries('refined_queries.pickle')
-
         """
+
         fname_rq_read = 'refined_queries_10.pickle'
         with open(fname_rq_read, 'r') as f:
             self.refined_queries = pickle.load(f)
         """
+
 
         print "Processing Refined Queries with test data..."
         self.get_query_output()
@@ -209,7 +216,7 @@ class QueryTraining(object):
         print "Reformatting output of Refined Queries ..."
         self.get_reformatted_output()
 
-        print "Updating the Cost Matrix ..."
+        print "Updating the Cost Metrics ..."
         self.get_query_costs()
 
         with open('/mnt/query_cost.pickle','w') as f:
@@ -293,7 +300,6 @@ class QueryTraining(object):
                         copy_spark_operators_to_spark(refined_sonata_query, operator)
 
                     qid_2_queries_refined[refined_query_id] = refined_sonata_query
-
                     tmp1, _ = get_intermediate_queries(refined_sonata_query)
 
                     #refined_queries[qid][ref_level][0] = self.base_sonata_query
@@ -480,7 +486,7 @@ class QueryTraining(object):
                         if len(spark_query.compile()) > 0:
                             query_string = 'self.training_data.'+spark_query.compile()+'.collect()'
                             print("Processing Query", qid, "refinement level", ref_level, "iteration id", iter_qid)
-                            print query_string
+                            #print query_string
                             out = eval(query_string)
                         else:
                             print "No query to process for", qid, "refinement level", ref_level, "iteration id", iter_qid
@@ -527,6 +533,7 @@ class QueryTraining(object):
         else:
             keys = BASIC_HEADERS[1:]
 
+
         #print "Curr Out: ", len(curr_out.keys()), curr_out.keys()[0]
         prev_key_mapped = self.sc.parallelize(prev_out.keys()).map(lambda s: (s[0],1))
         if len(keys) > 1:
@@ -537,153 +544,182 @@ class QueryTraining(object):
         diff_entries= dict((x,1) for x in eval(map_string))
         return diff_entries
 
-
-    def get_query_costs(self):
+    def get_query_cost_multi_process(self, qid, q = None):
         query_output_reformatted = self.query_output_reformatted
         query_costs = {}
-
-        # Hierarchy
-        # ts
-        #   -> query
-        #        -> partition_plan
-        #
-
         for ts in query_output_reformatted:
             query_costs[ts] = {}
-            for qid in query_output_reformatted[ts]:
+            query_costs[ts][qid] = {}
+            query = self.qid_2_query[qid]
+            reduction_key = query.reduction_key
+            partition_plans = query.get_partition_plans()
+            #print partition_plans
+            ref_levels = self.ref_levels
+            diff_counts = {}
+            for partition_plan in partition_plans[qid]:
+                #print partition_plan
+                for ref_level_prev in ref_levels:
+                    for ref_level_curr in ref_levels:
+                        if ref_level_curr > ref_level_prev:
+                            if ref_level_prev > 0:
+                                transit = (ref_level_prev, ref_level_curr)
+                                iter_qids_prev = query_output_reformatted[ts][qid][ref_level_prev].keys()
+                                iter_qids_curr = query_output_reformatted[ts][qid][ref_level_curr].keys()
+                                iter_qids_prev.sort()
+                                iter_qids_curr.sort()
 
-                query_costs[ts][qid] = {}
-                query = self.qid_2_query[qid]
-                reduction_key = query.reduction_key
+                                print ts, qid, transit, iter_qids_prev, iter_qids_curr
+                                #break
+                                # output of the previous level helps us filter out crap from curr level
+                                prev_out = query_output_reformatted[ts][qid][ref_level_prev][iter_qids_prev[-1]]
 
-                partition_plans = query.get_partition_plans()
-                #print partition_plans
-                ref_levels = self.ref_levels
-                diff_counts = {}
-                for partition_plan in partition_plans[qid]:
-                    #print partition_plan
-                    for ref_level_prev in ref_levels:
-                        for ref_level_curr in ref_levels:
-                            if ref_level_curr > ref_level_prev:
-                                if ref_level_prev > 0:
-                                    transit = (ref_level_prev, ref_level_curr)
-                                    iter_qids_prev = query_output_reformatted[ts][qid][ref_level_prev].keys()
-                                    iter_qids_curr = query_output_reformatted[ts][qid][ref_level_curr].keys()
-                                    iter_qids_prev.sort()
-                                    iter_qids_curr.sort()
-
-                                    print ts, qid, transit, iter_qids_prev, iter_qids_curr
-                                    #break
-                                    # output of the previous level helps us filter out crap from curr level
-                                    prev_out = query_output_reformatted[ts][qid][ref_level_prev][iter_qids_prev[-1]]
-
-                                    bucket_count = 0
-                                    packet_count = 0
-                                    # Maximum number of packets that we will send to stream processor if all
-                                    # reduce operations are done at the stream processor. Note that we have implemented that
-                                    # for such cases filtering will still be done in the data plane, that's why we only
-                                    # count the difference (filtered packet tuples) and not the total
-                                    if (ref_level_prev, ref_level_curr, 0) not in diff_counts:
-                                        curr_in = query_output_reformatted[ts][qid][ref_level_curr][0]
-                                        in_query = self.base_query
-                                        prev_bucket_count = len(self.get_diff_buckets(prev_out, curr_in, ref_level_prev, in_query, reduction_key).keys())
-                                        diff_counts[(ref_level_prev, ref_level_curr, 0)] = prev_bucket_count
-                                    else:
-                                        prev_bucket_count = diff_counts[(ref_level_prev, ref_level_curr, 0)]
-
-                                    ctr = 1
-                                    #print ts, qid, ref_level_curr, query_output_reformatted[ts][qid][ref_level_curr].keys()
-                                    for elem in str(partition_plan):
-                                        curr_out = query_output_reformatted[ts][qid][ref_level_curr][iter_qids_curr[ctr]]
-
-                                        # To get the keys that we need to discard we need to know what entries are
-                                        # common between the output of prev level and keys in the current bucket
-                                        # For that we need to get a sense of position of reduction key
-                                        if (ref_level_prev, ref_level_curr, ctr) not in diff_counts:
-                                            curr_query = self.refined_queries[qid][ref_level_curr][iter_qids_curr[ctr]]
-                                            print curr_query
-                                            diff_entries = self.get_diff_buckets(prev_out, curr_out, ref_level_prev, curr_query, reduction_key)
-                                            diff_entries_count = len(diff_entries.keys())
-                                            diff_counts[(ref_level_prev, ref_level_curr, ctr)] = diff_entries_count
-                                        else:
-                                            diff_entries_count = diff_counts[(ref_level_prev, ref_level_curr, ctr)]
-
-
-                                        if elem == '0':
-                                            # This reduce operators is executed in the data plane, thus we need
-                                            # to count the buckets required for this operator
-                                            bucket_count += diff_entries_count
-                                            prev_bucket_count = diff_entries_count
-                                        else:
-                                            # This one goes to the stream processor, so the bucket for the
-                                            # previous operators is equal to the number of packets sent
-                                            # to the stream processor
-                                            packet_count = prev_bucket_count
-                                            break
-
-                                    if packet_count == 0:
-                                        # Case when all reduce operators are executed in the data plane
-                                        packet_count = len(query_output_reformatted[ts][qid][ref_level_curr][iter_qids_curr[-1]].keys())
-                                    #print ts, qid, partition_plan, transit, bucket_count, packet_count
-                                    query_costs[ts][qid][partition_plan, transit] = (bucket_count, packet_count)
+                                bucket_count = 0
+                                packet_count = 0
+                                # Maximum number of packets that we will send to stream processor if all
+                                # reduce operations are done at the stream processor. Note that we have implemented that
+                                # for such cases filtering will still be done in the data plane, that's why we only
+                                # count the difference (filtered packet tuples) and not the total
+                                if (ref_level_prev, ref_level_curr, 0) not in diff_counts:
+                                    curr_in = query_output_reformatted[ts][qid][ref_level_curr][0]
+                                    in_query = self.base_query
+                                    prev_bucket_count = len(self.get_diff_buckets(prev_out, curr_in, ref_level_prev, in_query, reduction_key).keys())
+                                    diff_counts[(ref_level_prev, ref_level_curr, 0)] = prev_bucket_count
                                 else:
-                                    # No need to do any diff for this case
-                                    transit = (ref_level_prev, ref_level_curr)
-                                    iter_qids_prev = []
-                                    iter_qids_curr = query_output_reformatted[ts][qid][ref_level_curr].keys()
-                                    iter_qids_prev.sort()
-                                    iter_qids_curr.sort()
+                                    prev_bucket_count = diff_counts[(ref_level_prev, ref_level_curr, 0)]
 
-                                    print ts, qid, transit, iter_qids_prev, iter_qids_curr
+                                ctr = 1
+                                #print ts, qid, ref_level_curr, query_output_reformatted[ts][qid][ref_level_curr].keys()
+                                for elem in str(partition_plan):
+                                    curr_out = query_output_reformatted[ts][qid][ref_level_curr][iter_qids_curr[ctr]]
 
-                                    bucket_count = 0
-                                    packet_count = 0
-
-                                    if (ref_level_prev, ref_level_curr, 0) not in diff_counts:
-                                        curr_in = query_output_reformatted[ts][qid][ref_level_curr][0]
-                                        prev_bucket_count = len(curr_in.keys())
-                                        # No diff required
-                                        diff_counts[(ref_level_prev, ref_level_curr, 0)] = prev_bucket_count
+                                    # To get the keys that we need to discard we need to know what entries are
+                                    # common between the output of prev level and keys in the current bucket
+                                    # For that we need to get a sense of position of reduction key
+                                    if (ref_level_prev, ref_level_curr, ctr) not in diff_counts:
+                                        curr_query = self.refined_queries[qid][ref_level_curr][iter_qids_curr[ctr]]
+                                        #print curr_query
+                                        diff_entries = self.get_diff_buckets(prev_out, curr_out, ref_level_prev, curr_query, reduction_key)
+                                        diff_entries_count = len(diff_entries.keys())
+                                        diff_counts[(ref_level_prev, ref_level_curr, ctr)] = diff_entries_count
                                     else:
-                                        prev_bucket_count = diff_counts[(ref_level_prev, ref_level_curr, 0)]
-
-                                    ctr = 1
-                                    #print ts, qid, ref_level_curr, query_output_reformatted[ts][qid][ref_level_curr].keys()
-                                    for elem in str(partition_plan):
-                                        curr_out = query_output_reformatted[ts][qid][ref_level_curr][iter_qids_curr[ctr]]
-
-                                        # To get the keys that we need to discard we need to know what entries are
-                                        # common between the output of prev level and keys in the current bucket
-                                        # For that we need to get a sense of position of reduction key
-                                        if (ref_level_prev, ref_level_curr, ctr) not in diff_counts:
-                                            curr_query = self.refined_queries[qid][ref_level_curr][iter_qids_curr[ctr]]
-                                            #print curr_query
-                                            diff_entries = curr_out
-                                            diff_entries_count = len(diff_entries.keys())
-                                            diff_counts[(ref_level_prev, ref_level_curr, ctr)] = diff_entries_count
-                                        else:
-                                            diff_entries_count = diff_counts[(ref_level_prev, ref_level_curr, ctr)]
+                                        diff_entries_count = diff_counts[(ref_level_prev, ref_level_curr, ctr)]
 
 
-                                        if elem == '0':
-                                            # This reduce operators is executed in the data plane, thus we need
-                                            # to count the buckets required for this operator
-                                            bucket_count += diff_entries_count
-                                            prev_bucket_count = diff_entries_count
-                                        else:
-                                            # This one goes to the stream processor, so the bucket for the
-                                            # previous operators is equal to the number of packets sent
-                                            # to the stream processor
-                                            packet_count = prev_bucket_count
-                                            break
+                                    if elem == '0':
+                                        # This reduce operators is executed in the data plane, thus we need
+                                        # to count the buckets required for this operator
+                                        bucket_count += diff_entries_count
+                                        prev_bucket_count = diff_entries_count
+                                    else:
+                                        # This one goes to the stream processor, so the bucket for the
+                                        # previous operators is equal to the number of packets sent
+                                        # to the stream processor
+                                        packet_count = prev_bucket_count
+                                        break
 
-                                    if packet_count == 0:
-                                        # Case when all reduce operators are executed in the data plane
-                                        packet_count = len(query_output_reformatted[ts][qid][ref_level_curr][iter_qids_curr[-1]].keys())
-                                    #print ts, qid, partition_plan, transit, bucket_count, packet_count
-                                    query_costs[ts][qid][partition_plan, transit] = (bucket_count, packet_count)
+                                if packet_count == 0:
+                                    # Case when all reduce operators are executed in the data plane
+                                    packet_count = len(query_output_reformatted[ts][qid][ref_level_curr][iter_qids_curr[-1]].keys())
+                                #print ts, qid, partition_plan, transit, bucket_count, packet_count
+                                query_costs[ts][qid][partition_plan, transit] = (bucket_count, packet_count)
+                            else:
+                                # No need to do any diff for this case
+                                transit = (ref_level_prev, ref_level_curr)
+                                iter_qids_prev = []
+                                iter_qids_curr = query_output_reformatted[ts][qid][ref_level_curr].keys()
+                                iter_qids_prev.sort()
+                                iter_qids_curr.sort()
+
+                                #print ts, qid, transit, iter_qids_prev, iter_qids_curr
+
+                                bucket_count = 0
+                                packet_count = 0
+
+                                if (ref_level_prev, ref_level_curr, 0) not in diff_counts:
+                                    curr_in = query_output_reformatted[ts][qid][ref_level_curr][0]
+                                    prev_bucket_count = len(curr_in.keys())
+                                    # No diff required
+                                    diff_counts[(ref_level_prev, ref_level_curr, 0)] = prev_bucket_count
+                                else:
+                                    prev_bucket_count = diff_counts[(ref_level_prev, ref_level_curr, 0)]
+
+                                ctr = 1
+                                #print ts, qid, ref_level_curr, query_output_reformatted[ts][qid][ref_level_curr].keys()
+                                for elem in str(partition_plan):
+                                    curr_out = query_output_reformatted[ts][qid][ref_level_curr][iter_qids_curr[ctr]]
+
+                                    # To get the keys that we need to discard we need to know what entries are
+                                    # common between the output of prev level and keys in the current bucket
+                                    # For that we need to get a sense of position of reduction key
+                                    if (ref_level_prev, ref_level_curr, ctr) not in diff_counts:
+                                        curr_query = self.refined_queries[qid][ref_level_curr][iter_qids_curr[ctr]]
+                                        #print curr_query
+                                        diff_entries = curr_out
+                                        diff_entries_count = len(diff_entries.keys())
+                                        diff_counts[(ref_level_prev, ref_level_curr, ctr)] = diff_entries_count
+                                    else:
+                                        diff_entries_count = diff_counts[(ref_level_prev, ref_level_curr, ctr)]
+
+
+                                    if elem == '0':
+                                        # This reduce operators is executed in the data plane, thus we need
+                                        # to count the buckets required for this operator
+                                        bucket_count += diff_entries_count
+                                        prev_bucket_count = diff_entries_count
+                                    else:
+                                        # This one goes to the stream processor, so the bucket for the
+                                        # previous operators is equal to the number of packets sent
+                                        # to the stream processor
+                                        packet_count = prev_bucket_count
+                                        break
+
+                                if packet_count == 0:
+                                    # Case when all reduce operators are executed in the data plane
+                                    packet_count = len(query_output_reformatted[ts][qid][ref_level_curr][iter_qids_curr[-1]].keys())
+                                #print ts, qid, partition_plan, transit, bucket_count, packet_count
+                                query_costs[ts][qid][partition_plan, transit] = (bucket_count, packet_count)
+        if q is not None:
+            q.put(query_costs)
+        else:
+            return query_costs
+
+
+    def get_query_costs(self):
+        query_costs = {}
+        process = {}
+        queue = {}
+
+
+        # Run in multi process mode
+        for qid in self.refined_queries:
+            queue[qid] = Queue()
+            process[qid] = threading.Thread(target = self.get_query_cost_multi_process, args = (qid,queue[qid]))
+            print "Started for Query", qid
+            process[qid].start()
+
+        for qid in self.refined_queries:
+            process[qid].join()
+            print "Joined for Query", qid
+            out = queue[qid].get()
+            for ts in self.timestamps:
+                if ts not in query_costs:
+                    query_costs[ts] = {}
+                if ts in out:
+                    query_costs[ts].update(out[ts])
+        """
+
+        # Run in sequence
+        for qid in self.refined_queries:
+            out = self.get_query_cost_multi_process(qid)
+            for ts in self.timestamps:
+                if ts not in query_costs:
+                    query_costs[ts] = {}
+                if ts in out:
+                    query_costs[ts].update(out[ts])
+        """
 
         self.query_costs = query_costs
+
 
     def test_spark_query(self):
         test = (self.training_data
