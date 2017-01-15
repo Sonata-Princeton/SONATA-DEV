@@ -1,8 +1,4 @@
-table_add filter_30032_1 set_meta_fm_30032 112.7.186.25/32 => 
-table_add filter_30032_1 set_meta_fm_30032 121.7.186.25/32 => 
-table_add filter_30012_1 set_meta_fm_30012 121.0.0.0/12 => 
-table_add filter_30012_1 set_meta_fm_30012 112.0.0.0/12 => 
-table_add filter_10028_1 set_meta_fm_10028 121.0.0.0/12 => 
-table_add filter_10028_1 set_meta_fm_10028 112.0.0.0/12 => 
-table_add filter_10032_1 set_meta_fm_10032 121.7.186.16/28 => 
-table_add filter_10032_1 set_meta_fm_10032 112.7.186.16/28 => 
+table_add filter_10032_1 set_meta_fm_10032 /32 => 
+table_add filter_20028_1 set_meta_fm_20028 /12 => 
+table_add filter_10012_1 set_meta_fm_10012 /12 => 
+table_add filter_20032_1 set_meta_fm_20032 /28 => 
