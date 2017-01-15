@@ -376,19 +376,17 @@ class Join(object):
 
     def __repr__(self):
         out = '.map(lambda ('+','.join([str(elem) for elem in self.prev_keys])+'): (('+','.join([str(elem) for elem in self.join_key]) + '),('+','.join([str(elem) for elem in self.prev_keys])+')))'
-        out += '.join('+self.join_query.__repr__()+')'
-        out += '.map(lambda s: s[0][1])'
+        out += '.join('+self.join_query.__repr__()+'.map(lambda s: (s,1)))'
+        out += '.map(lambda s: s[1][0])'
         return out
 
     def compile(self):
         #print "Filter Keys: " + str(self.values)
         # .filter(keys=('dIP',), func=('geq', '3'))
         out = '.map(lambda ('+','.join([str(elem) for elem in self.prev_keys])+'): (('+','.join([str(elem) for elem in self.join_key]) + '),('+','.join([str(elem) for elem in self.prev_keys])+')))'
-        out += '.join('+self.in_stream+self.join_query.compile()+')'
-        out += '.map(lambda s: s[0][1])'
-
+        out += '.join('+self.in_stream+self.join_query.compile()+'.map(lambda s: (s,1)))'
+        out += '.map(lambda s: s[1][0])'
         return out
-
 
 class PacketStream(SparkQuery):
     def __init__(self, id):

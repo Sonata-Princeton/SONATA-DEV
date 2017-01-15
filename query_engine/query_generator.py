@@ -21,37 +21,45 @@ redKeysPath = ''
 
 basic_headers = ["dIP", "sIP", "sPort", "dPort", "nBytes", "proto", "sMac", "dMac"]
 
-def generate_composed_spark_queries(reduction_key, query_tree, qid_2_query, composed_queries = {}):
+def generate_composed_spark_queries(reduction_key, basic_headers, query_tree, qid_2_query, composed_queries = {}):
     #print query_tree
     root_qid = query_tree.keys()[0]
     #print "##", root_qid, query_tree.keys(), qid_2_query
     if root_qid in qid_2_query:
         root_query_sonata = qid_2_query[root_qid]
         root_query_spark = spark.PacketStream(root_qid)
+        root_query_spark.basic_headers = basic_headers
     else:
         root_query_sonata = PacketStream(root_qid)
         root_query_spark = spark.PacketStream(root_qid)
+        root_query_spark.basic_headers = basic_headers
 
     #print "%%", root_qid, root_query_sonata
 
     if query_tree[root_qid] != {}:
         left_qid = query_tree[root_qid].keys()[0]
         right_qid = query_tree[root_qid].keys()[1]
-        left_query = generate_composed_spark_queries(reduction_key,
+        left_query = generate_composed_spark_queries(reduction_key, basic_headers,
                                                      {left_qid:query_tree[root_qid][left_qid]},
                                                      qid_2_query, composed_queries)
 
-        right_query = generate_composed_spark_queries(reduction_key,
+        right_query = generate_composed_spark_queries(reduction_key, basic_headers,
                                                       {right_qid:query_tree[root_qid][right_qid]},
                                                       qid_2_query, composed_queries)
 
         #print "Left", left_qid, left_query
 
         #print "Right", right_qid, right_query
-
-        composed_query = right_query.join(q=left_query, join_key = [reduction_key], in_stream = 'In.')
         for operator in root_query_sonata.operators:
-            copy_sonata_operators_to_spark(composed_query, operator)
+            if operator.name == 'Map' and len(operator.func) > 0 and operator.func[0] == 'mask':
+                copy_sonata_operators_to_spark(right_query, operator)
+
+        composed_query = right_query.join(q=left_query, join_key = reduction_key, in_stream = 'In.')
+        # This is important else the composed query will take the qid of the right child itself
+        composed_query.qid = root_qid
+        for operator in root_query_sonata.operators:
+            if not (operator.name == 'Map' and len(operator.func) > 0 and operator.func[0] == 'mask'):
+                copy_sonata_operators_to_spark(composed_query, operator)
 
         composed_queries[root_qid] = copy.deepcopy(composed_query)
     else:
@@ -202,7 +210,7 @@ class QueryGenerator(object):
         @reduction_fields: fields to reduce query on
         """
 
-        thresh = float(random.choice(range(1, 1 + int(self.max_filter_sigma))))
+        thresh = float(random.choice(range(50, 1 + int(self.max_filter_sigma))))
         if qid not in self.qid_2_thresh:
             self.qid_2_thresh[qid] = []
         self.qid_2_thresh[qid].append(thresh)
