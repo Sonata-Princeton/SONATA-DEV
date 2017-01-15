@@ -37,8 +37,10 @@ def generate_composed_spark_queries(reduction_key, basic_headers, query_tree, qi
     #print "%%", root_qid, root_query_sonata
 
     if query_tree[root_qid] != {}:
-        left_qid = query_tree[root_qid].keys()[0]
-        right_qid = query_tree[root_qid].keys()[1]
+        children = query_tree[root_qid].keys()
+        children.sort()
+        left_qid = children[0]
+        right_qid = children[1]
         left_query = generate_composed_spark_queries(reduction_key, basic_headers,
                                                      {left_qid:query_tree[root_qid][left_qid]},
                                                      qid_2_query, composed_queries)
@@ -87,9 +89,11 @@ def generate_composed_query(query_tree, qid_2_query):
     #print "%%", root_qid, root_query
 
     if query_tree[root_qid] != {}:
+        children = query_tree[root_qid].keys()
+        children.sort()
 
-        left_qid = query_tree[root_qid].keys()[0]
-        right_qid = query_tree[root_qid].keys()[1]
+        left_qid = children[0]
+        right_qid = children[1]
 
         left_query = generate_composed_query({left_qid:query_tree[root_qid][left_qid]}, qid_2_query)
         right_query = generate_composed_query({right_qid:query_tree[root_qid][right_qid]}, qid_2_query)
@@ -138,9 +142,13 @@ def get_left_children(query_tree, out):
     """
     qt = query_tree
     for parent in qt:
+        #print parent, qt
         if len(qt[parent].keys()) > 0:
-            out.append(qt[parent].keys()[0])
-            get_left_children(qt[parent], out)
+            children = qt[parent].keys()
+            children.sort()
+            #print "Sorted Children", children
+            out.append(children[0])
+            get_left_children({children[0]:qt[parent][children[0]]}, out)
         else:
             break
 
@@ -183,6 +191,7 @@ class QueryGenerator(object):
 
             out = []
             get_left_children(query_tree, out)
+            print "Left children", out
             single_queries = [root_qid]+out
             print "Single Queries", single_queries
 
@@ -279,10 +288,10 @@ if __name__ == "__main__":
             'fm_socket': ('localhost', 6666)}
 
 
-    n_queries = 1
+    n_queries = 10
     max_filter_frac = 100
     max_reduce_operators = 2
-    query_tree_depth = 1
+    query_tree_depth = 2
     # TODO: make sure the queries are unique
     query_generator = QueryGenerator(n_queries, max_reduce_operators, query_tree_depth, max_filter_frac)
     queries = query_generator.composed_queries.values()
@@ -304,7 +313,8 @@ if __name__ == "__main__":
             print query_spark.compile()
 
     """
-    fname = 'query_engine/query_dumps/query_generator_object_1.pickle'
+    fname = 'query_engine/query_dumps/query_generator_object_10.pickle'
     with open(fname, 'w') as f:
         pickle.dump(query_generator, f)
+
 
