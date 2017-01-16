@@ -9,7 +9,7 @@ import copy
 from query_engine.sonata_operators import *
 from query_engine.sonata_queries import *
 from query_engine.utils import *
-from runtime.runtime import *
+#from runtime.runtime import *
 import os
 
 batch_interval = 1
@@ -309,11 +309,13 @@ if __name__ == "__main__":
     query_tree_depth = 2
     # TODO: make sure the queries are unique
     query_generator = QueryGenerator(n_queries, max_reduce_operators, query_tree_depth, max_filter_frac)
+
     queries = query_generator.composed_queries.values()
     print query_generator.qid_2_query
+    """
     runtime = Runtime(conf, queries)
 
-    """
+
     for n_query in query_generator.query_trees:
         composed_queries = {}
         query_tree = query_generator.query_trees[n_query]
@@ -327,10 +329,10 @@ if __name__ == "__main__":
             query_spark.basic_headers = ['a','b']
             print query_spark.compile()
 
-
+    """
     fname = 'query_engine/query_dumps/query_generator_object_10.pickle'
     with open(fname, 'w') as f:
         pickle.dump(query_generator, f)
-     """
+
 
 
