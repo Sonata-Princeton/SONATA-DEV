@@ -2,32 +2,15 @@
 #  Author:
 #  Arpit Gupta (arpitg@cs.princeton.edu)
 
-from query_engine.query_generator import *
-from query_engine.sonata_queries import *
 from utils import *
 from pyspark import SparkContext, SparkConf
-from netaddr import *
-import os
-import sys
 import numpy as np
-import pickle
-import threading
-
-import multiprocessing as mp
-from multiprocessing import Process, Queue
-
-
-# Standard set of packet tuple headers
-BASIC_HEADERS = ["ts", "sIP", "sPort", "dIP", "dPort", "nBytes",
-                 "proto", "sMac", "dMac"]
-
-OUTPUT_COST_DIR = '/mnt/query_cost_all_10_queries_1min'
-#!/usr/bin/env python
-#  Author:
-#  Arpit Gupta (arpitg@cs.princeton.edu)
-
 from query_engine.query_generator import *
 from query_engine.sonata_queries import *
+
+
+OUTPUT_COST_DIR = '/mnt/query_cost_all_10_queries_5min'
+
 
 # Standard set of packet tuple headers
 BASIC_HEADERS = ["ts", "sIP", "sPort", "dIP", "dPort", "nBytes",
@@ -89,8 +72,6 @@ def get_intermediate_spark_queries(spark_query):
             else:
                 copy_spark_operators_to_spark(tmp_spark_query, operator)
 
-
-
         spark_intermediate_queries[qid] = tmp_spark_query
         prev_qid = qid
     return spark_intermediate_queries, filter_mappings
@@ -143,11 +124,12 @@ class QueryTraining(object):
             .set("spark.driver.memory","20g")
             .set("spark.cores.max","16"))
     sc = SparkContext(conf=conf)
+
     # Load data
     #baseDir = os.path.join('/home/vagrant/dev/data/sample_data/')
     baseDir = os.path.join('/mnt/')
     #flows_File = os.path.join(baseDir, 'sample_data.csv')
-    flows_File = os.path.join(baseDir, 'anon_all_flows_1min.csv')
+    flows_File = os.path.join(baseDir, 'anon_all_flows_5min.csv')
     ref_levels = range(0, 33, 8)
     # 10 second window length
     window_length = 10*1000
@@ -177,17 +159,6 @@ class QueryTraining(object):
         self.composed_queries = {}
         self.qid_2_updated_filter = {}
         self.query_costs_diff = {}
-        """
-        if refined_queries is None:
-            if fname_rq_read == '':
-                self.process_refined_queries(fname_rq_write)
-            else:
-                with open(fname_rq_read, 'r') as f:
-                    self.refined_queries = pickle.load(f)
-        else:
-            self.refined_queries = refined_queries
-
-        """
 
         # Update the query Generator Object (either passed directly, or filename specified)
         if query_generator is None:
@@ -200,30 +171,17 @@ class QueryTraining(object):
         self.max_reduce_operators = self.query_generator.max_reduce_operators
         self.qid_2_query = query_generator.qid_2_query
 
-
+        """
         print "Generating Refined Queries ..."
-        self.process_refined_queries('refined_queries_10_queries_1min.pickle')
+        self.process_refined_queries('refined_queries_10_queries_5min.pickle')
         """
 
-        fname_rq_read = 'refined_queries_10.pickle'
+        fname_rq_read = 'refined_queries_10_queries_5min.pickle'
         with open(fname_rq_read, 'r') as f:
             self.refined_queries = pickle.load(f)
-        """
-
 
         print "Processing Refined Queries with test data..."
         self.get_query_output_less_memory()
-
-        print "Reformatting output of Refined Queries ..."
-        #self.get_reformatted_output_with_ts()
-
-        print "Updating the Cost Metrics ..."
-        #self.get_query_costs()
-
-        print self.query_costs
-        with open(OUTPUT_COST_DIR +'/query_cost_all_10_queries_1min.pickle','w') as f:
-            print "Dumping query cost ..."
-            pickle.dump(self.query_costs, f)
 
         print "Success ..."
 
@@ -235,17 +193,8 @@ class QueryTraining(object):
         # Update the intermediate query mappings and filter mappings
         self.update_intermediate_queries()
 
-        # Update filters for each SONATA Query
-        #self.update_filter()
-        #print self.qid_2_query
-
-        # Update the input spark queries
-        #self.get_composed_spark_queries()
-        #self.update_composed_spark_queries()
-
         # Generate refined queries
         self.generate_refined_sonata_queries()
-        #print self.refined_sonata_queries
 
         self.update_filter()
         print self.refined_sonata_queries
@@ -448,7 +397,6 @@ class QueryTraining(object):
             query = self.qid_2_query[qid]
             add_timestamp_to_query(query)
 
-
     def get_thresh(self, spark_query, spread):
         query_string = 'self.training_data.'+spark_query.compile()+'.map(lambda s: s[1]).collect()'
         #print query_string
@@ -473,42 +421,17 @@ class QueryTraining(object):
             print "Dumping refined Queries ..."
             pickle.dump(self.refined_queries, f)
 
-    def get_query_output(self):
-        out0 = self.training_data.collect()
-        print "Out0", len(out0)
-        # Iterate over each refined query and collect its output
-        query_out = {}
-        for qid in self.refined_queries:
-            query_out[qid] = {}
-            for ref_level in self.refined_queries[qid]:
-                query_out[qid][ref_level] = {}
-                for iter_qid in self.refined_queries[qid][ref_level]:
-                    if iter_qid > 0:
-                        spark_query = self.refined_queries[qid][ref_level][iter_qid]
-                        if len(spark_query.compile()) > 0:
-                            query_string = 'self.training_data.'+spark_query.compile()+'.collect()'
-                            print("Processing Query", qid, "refinement level", ref_level, "iteration id", iter_qid)
-                            #print query_string
-                            out = eval(query_string)
-                        else:
-                            print "No query to process for", qid, "refinement level", ref_level, "iteration id", iter_qid
-                            out = []
-
-                        query_out[qid][ref_level][iter_qid] = out
-                        print len(query_out[qid][ref_level][iter_qid])
-
-                query_out[qid][ref_level][0] = out0
-
-
-        self.query_out = query_out
-
-
     def get_query_output_less_memory(self):
+        """
+        Computes per query costs
+        :return:
+        """
         out0 = self.training_data.collect()
         query_costs = {}
         print "Out0", len(out0)
         # Iterate over each refined query and collect its output
         for qid in self.refined_queries:
+
             query_costs[qid] = {}
             query_out = {}
             query_out[qid] = {}
@@ -530,11 +453,19 @@ class QueryTraining(object):
                         print len(query_out[qid][ref_level][iter_qid])
 
                 query_out[qid][ref_level][0] = out0
+
             query_output_reformatted = {}
             query_costs_diff = {}
-            query_output_reformatted[qid] = self.get_reformatted_output_with_ts(qid, query_out[qid])
-            query_costs_diff[qid] = self.get_query_cost_multi_process_without_ts(qid, query_output_reformatted)
+
+            print "Reformatting output of Refined Queries ...", qid
+            query_output_reformatted[qid] = self.get_reformatted_output_without_ts(qid, query_out[qid])
+
+            print "Updating the Diff Entries ...", qid
+            query_costs_diff[qid] = self.get_query_diff_entries_without_ts(qid, query_output_reformatted)
+
+            print "Updating the Cost Metrics ...", qid
             query_costs[qid] = self.get_query_cost_only(qid, query_output_reformatted, query_costs_diff)
+
             qid_cost_output = OUTPUT_COST_DIR + '/q_cost_' + str(qid) + '.pickle'
             with open(qid_cost_output,'w') as f:
                 print "Dumping query cost ..." + qid_cost_output
@@ -572,8 +503,7 @@ class QueryTraining(object):
 
         self.query_output_reformatted = query_output_reformatted
 
-
-    def get_reformatted_output_with_ts(self, qid, query_out):
+    def get_reformatted_output_without_ts(self, qid, query_out):
         query_output_reformatted = {}
 
         for ref_level in query_out:
@@ -595,9 +525,14 @@ class QueryTraining(object):
         return query_output_reformatted
 
     def get_per_timestamp_counts(self, keys):
+        """
+        Given dict of type (ts, reduction_key) collect and compute per timestamp key counts
+        :param keys:
+        :return:
+        """
         eval_string = "self.sc.parallelize(keys).map(lambda s: (s[0],1)).reduceByKey(lambda x,y: x+y).collect()"
         diff_entries= dict((x[0],x[1]) for x in eval(eval_string))
-        #print "Diff Entries", diff_entries
+
         return diff_entries
 
     def get_diff_buckets(self, prev_out, curr_out, ref_level_prev, curr_query, reduction_key):
@@ -616,154 +551,10 @@ class QueryTraining(object):
 
         return diff_entries
 
-    def get_query_cost_multi_process(self, qid, q = None):
-        query_output_reformatted = self.query_output_reformatted
-        query_costs = {}
-        for ts in query_output_reformatted:
-            query_costs[ts] = {}
-            query_costs[ts][qid] = {}
-            query = self.qid_2_query[qid]
-            reduction_key = query.reduction_key
-            partition_plans = query.get_partition_plans()
-            #print partition_plans
-            ref_levels = self.ref_levels
-            diff_counts = {}
-            for partition_plan in partition_plans[qid]:
-                #print partition_plan
-                for ref_level_prev in ref_levels:
-                    for ref_level_curr in ref_levels:
-                        if ref_level_curr > ref_level_prev:
-                            if ref_level_prev > 0:
-                                transit = (ref_level_prev, ref_level_curr)
-                                iter_qids_prev = query_output_reformatted[ts][qid][ref_level_prev].keys()
-                                iter_qids_curr = query_output_reformatted[ts][qid][ref_level_curr].keys()
-                                iter_qids_prev.sort()
-                                iter_qids_curr.sort()
-
-                                print ts, qid, transit, iter_qids_prev, iter_qids_curr
-                                #break
-                                # output of the previous level helps us filter out crap from curr level
-                                prev_out = query_output_reformatted[ts][qid][ref_level_prev][iter_qids_prev[-1]]
-
-                                bucket_count = 0
-                                packet_count = 0
-                                # Maximum number of packets that we will send to stream processor if all
-                                # reduce operations are done at the stream processor. Note that we have implemented that
-                                # for such cases filtering will still be done in the data plane, that's why we only
-                                # count the difference (filtered packet tuples) and not the total
-                                if (ref_level_prev, ref_level_curr, 0) not in diff_counts:
-                                    curr_in = query_output_reformatted[ts][qid][ref_level_curr][0]
-                                    in_query = self.base_query
-                                    prev_bucket_count = len(self.get_diff_buckets(prev_out, curr_in, ref_level_prev, in_query, reduction_key).keys())
-                                    diff_counts[(ref_level_prev, ref_level_curr, 0)] = prev_bucket_count
-                                else:
-                                    prev_bucket_count = diff_counts[(ref_level_prev, ref_level_curr, 0)]
-
-                                ctr = 1
-                                #print ts, qid, ref_level_curr, query_output_reformatted[ts][qid][ref_level_curr].keys()
-                                for elem in str(partition_plan):
-                                    curr_out = query_output_reformatted[ts][qid][ref_level_curr][iter_qids_curr[ctr]]
-
-                                    # To get the keys that we need to discard we need to know what entries are
-                                    # common between the output of prev level and keys in the current bucket
-                                    # For that we need to get a sense of position of reduction key
-                                    if (ref_level_prev, ref_level_curr, ctr) not in diff_counts:
-                                        curr_query = self.refined_queries[qid][ref_level_curr][iter_qids_curr[ctr]]
-                                        #print curr_query
-                                        diff_entries = self.get_diff_buckets(prev_out, curr_out, ref_level_prev, curr_query, reduction_key)
-                                        diff_entries_count = len(diff_entries.keys())
-                                        diff_counts[(ref_level_prev, ref_level_curr, ctr)] = diff_entries_count
-                                    else:
-                                        diff_entries_count = diff_counts[(ref_level_prev, ref_level_curr, ctr)]
-
-
-                                    if elem == '0':
-                                        # This reduce operators is executed in the data plane, thus we need
-                                        # to count the buckets required for this operator
-                                        bucket_count += diff_entries_count
-                                        prev_bucket_count = diff_entries_count
-                                    else:
-                                        # This one goes to the stream processor, so the bucket for the
-                                        # previous operators is equal to the number of packets sent
-                                        # to the stream processor
-                                        packet_count = prev_bucket_count
-                                        break
-
-                                if packet_count == 0:
-                                    # Case when all reduce operators are executed in the data plane
-                                    packet_count = len(query_output_reformatted[ts][qid][ref_level_curr][iter_qids_curr[-1]].keys())
-                                #print ts, qid, partition_plan, transit, bucket_count, packet_count
-                                query_costs[ts][qid][partition_plan, transit] = (bucket_count, packet_count)
-                            else:
-                                # No need to do any diff for this case
-                                transit = (ref_level_prev, ref_level_curr)
-                                iter_qids_prev = []
-                                iter_qids_curr = query_output_reformatted[ts][qid][ref_level_curr].keys()
-                                iter_qids_prev.sort()
-                                iter_qids_curr.sort()
-
-                                #print ts, qid, transit, iter_qids_prev, iter_qids_curr
-
-                                bucket_count = 0
-                                packet_count = 0
-
-                                if (ref_level_prev, ref_level_curr, 0) not in diff_counts:
-                                    curr_in = query_output_reformatted[ts][qid][ref_level_curr][0]
-                                    prev_bucket_count = len(curr_in.keys())
-                                    # No diff required
-                                    diff_counts[(ref_level_prev, ref_level_curr, 0)] = prev_bucket_count
-                                else:
-                                    prev_bucket_count = diff_counts[(ref_level_prev, ref_level_curr, 0)]
-
-                                ctr = 1
-                                #print ts, qid, ref_level_curr, query_output_reformatted[ts][qid][ref_level_curr].keys()
-                                for elem in str(partition_plan):
-                                    curr_out = query_output_reformatted[ts][qid][ref_level_curr][iter_qids_curr[ctr]]
-
-                                    # To get the keys that we need to discard we need to know what entries are
-                                    # common between the output of prev level and keys in the current bucket
-                                    # For that we need to get a sense of position of reduction key
-                                    if (ref_level_prev, ref_level_curr, ctr) not in diff_counts:
-                                        curr_query = self.refined_queries[qid][ref_level_curr][iter_qids_curr[ctr]]
-                                        #print curr_query
-                                        diff_entries = curr_out
-                                        diff_entries_count = len(diff_entries.keys())
-                                        diff_counts[(ref_level_prev, ref_level_curr, ctr)] = diff_entries_count
-                                    else:
-                                        diff_entries_count = diff_counts[(ref_level_prev, ref_level_curr, ctr)]
-
-
-                                    if elem == '0':
-                                        # This reduce operators is executed in the data plane, thus we need
-                                        # to count the buckets required for this operator
-                                        bucket_count += diff_entries_count
-                                        prev_bucket_count = diff_entries_count
-                                    else:
-                                        # This one goes to the stream processor, so the bucket for the
-                                        # previous operators is equal to the number of packets sent
-                                        # to the stream processor
-                                        packet_count = prev_bucket_count
-                                        break
-
-                                if packet_count == 0:
-                                    # Case when all reduce operators are executed in the data plane
-                                    packet_count = len(query_output_reformatted[ts][qid][ref_level_curr][iter_qids_curr[-1]].keys())
-                                #print ts, qid, partition_plan, transit, bucket_count, packet_count
-                                query_costs[ts][qid][partition_plan, transit] = (bucket_count, packet_count)
-        if q is not None:
-            q.put(query_costs)
-        else:
-            return query_costs
-
-
     def get_query_cost_only(self, qid, query_output_reformatted, query_costs_diff):
-        #query_output_reformatted = self.query_output_reformatted
-        #print self.query_costs_diff
-        #query_costs_diff = self.query_costs_diff
+
         query_costs = {}
         query = self.qid_2_query[qid]
-
-        #print partition_plans
         ref_levels = self.ref_levels
         partition_plans = query.get_partition_plans()
 
@@ -810,16 +601,12 @@ class QueryTraining(object):
                                 query_costs[partition_plan, transit][ts] = (bucket_count, packet_count)
         return query_costs
 
+    def get_query_diff_entries_without_ts(self, qid, query_output_reformatted):
 
-
-    def get_query_cost_multi_process_without_ts(self, qid, query_output_reformatted):
-        #query_output_reformatted = self.query_output_reformatted
-
-        query_costs_diff = {}
         query_costs_diff = {}
         query = self.qid_2_query[qid]
         reduction_key = query.reduction_key
-        #print partition_plans
+
         ref_levels = self.ref_levels
         diff_counts = {}
         for ref_level_prev in ref_levels:
@@ -871,81 +658,6 @@ class QueryTraining(object):
                                 diff_counts[(ref_level_prev, ref_level_curr, ctr)] = diff_entries
                             query_costs_diff[(transit,iter_qids_curr[ctr])] = diff_counts[(ref_level_prev, ref_level_curr, ctr)]
         return query_costs_diff
-
-    def get_query_costs(self):
-        query_costs_diff = {}
-        process = {}
-        queue = {}
-        query_costs = {}
-
-
-        # Run in multi process mode
-        for qid in self.refined_queries:
-            queue[qid] = Queue()
-            process[qid] = threading.Thread(target = self.get_query_cost_multi_process_without_ts, args = (qid,queue[qid]))
-            print "Started for Query", qid
-            process[qid].start()
-
-        for qid in self.refined_queries:
-            process[qid].join()
-            print "Joined for Query", qid
-            out = queue[qid].get()
-            query_costs_diff[qid] = out
-
-        self.query_costs_diff = query_costs_diff
-
-        for qid in self.refined_queries:
-            qid_costs = self.get_query_cost_only(qid)
-            query_costs[qid] = qid_costs
-        """
-        for qid in self.refined_queries:
-            process[qid].join()
-            print "Joined for Query", qid
-            out = queue[qid].get()
-            for ts in self.timestamps:
-                if ts not in query_costs:
-                    query_costs[ts] = {}
-                if ts in out:
-                    query_costs[ts].update(out[ts])
-
-
-        # Run in sequence
-        for qid in self.refined_queries:
-            out = self.get_query_cost_multi_process(qid)
-            for ts in self.timestamps:
-                if ts not in query_costs:
-                    query_costs[ts] = {}
-                if ts in out:
-                    query_costs[ts].update(out[ts])
-        """
-
-        self.query_costs = query_costs
-
-
-    def test_spark_query(self):
-        test = (self.training_data
-                .map(lambda ((ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac)): ((ts,sIP,sPort,str(IPNetwork(str(str(dIP)+"/8")).network),dPort,nBytes,proto,sMac,dMac)))
-                #.filter(lambda s: str(s[6])=='17')
-                .map(lambda ((ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac)): (ts,dIP,dPort))
-                #.reduceByKey(lambda x,y: x+y)
-                #.filter(lambda s: s[1] > 2)
-                #.map(lambda x: x[0])
-                .distinct()
-                )
-        """
-        distinct_ts = test.map(lambda s: s[0]).distinct().count()
-        distinct_sIP = test.map(lambda s: s[1]).distinct().count()
-        distinct_sport = test.map(lambda s: s[2]).distinct().count()
-        distinct_dip = test.map(lambda s: s[3]).distinct().count()
-        distinct_dport = test.map(lambda s: s[4]).distinct().count()
-        distinct_nBytes = test.map(lambda s: s[5]).distinct().count()
-        distinct_proto = test.map(lambda s: s[6]).distinct().count()
-        distinct_sMac = test.map(lambda s: s[7]).distinct().count()
-        distinct_dMac = test.map(lambda s: s[8]).distinct().count()
-        print ("ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac")
-        print (distinct_ts, distinct_sIP, distinct_sport, distinct_dip, distinct_dport,distinct_nBytes,distinct_proto,distinct_sMac,distinct_dMac)
-        """
-
 
 
 if __name__ == "__main__":
