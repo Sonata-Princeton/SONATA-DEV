@@ -7,9 +7,10 @@ from pyspark import SparkContext, SparkConf
 import numpy as np
 from query_engine.query_generator import *
 from query_engine.sonata_queries import *
+from netaddr import *
 
 
-OUTPUT_COST_DIR = '/mnt/query_cost_all_10_queries_5min'
+OUTPUT_COST_DIR = 'data/query_cost_all_10_queries_5min_aws'
 
 
 # Standard set of packet tuple headers
@@ -114,15 +115,15 @@ def get_intermediate_queries(sonata_query):
 # 1 second window length
 T = 1
 
-
 class QueryTraining(object):
 
     conf = (SparkConf()
-            .setMaster("local[*]")
-            .setAppName("SONATA-Training")
-            .set("spark.executor.memory","6g")
-            .set("spark.driver.memory","20g")
-            .set("spark.cores.max","16"))
+            #.setMaster("local[*]")
+            #.setMaster("")
+            .setAppName("SONATA-Training"))
+            #.set("spark.executor.memory","6g")
+            #.set("spark.driver.memory","20g"))
+            #.set("spark.cores.max","16"))
     sc = SparkContext(conf=conf)
 
     # Load data
@@ -130,6 +131,7 @@ class QueryTraining(object):
     baseDir = os.path.join('/mnt/')
     #flows_File = os.path.join(baseDir, 'sample_data.csv')
     flows_File = os.path.join(baseDir, 'anon_all_flows_5min.csv')
+
     ref_levels = range(0, 33, 8)
     # 10 second window length
     window_length = 10*1000
@@ -142,7 +144,9 @@ class QueryTraining(object):
 
     def __init__(self, refined_queries = None, fname_rq_read = '', fname_rq_write = '',
                  query_generator = None, fname_qg = ''):
-        self.training_data = (self.sc.textFile(self.flows_File)
+        dataFile = ("s3n://AKIAJZZYOKOOZNK2Z2GQ:4nUiAjQwiuapSoxEu0wAtRY3uWneAPkp3jNbdpqq@sonatasdx/data/anon_all_flows_1min.csv")
+
+        self.training_data = (self.sc.textFile("s3://sonatasdx/data/anon_all_flows_1min.csv/")
                               .map(parse_log_line)
                               # because the data provided has already applied 10 s windowing
                               .map(lambda s:tuple([int(math.ceil(int(s[0])/T))]+(list(s[1:]))))
@@ -176,7 +180,7 @@ class QueryTraining(object):
         self.process_refined_queries('refined_queries_10_queries_5min.pickle')
         """
 
-        fname_rq_read = 'refined_queries_10_queries_5min.pickle'
+        fname_rq_read = 'data/refined_queries_10_queries_5min.pickle'
         with open(fname_rq_read, 'r') as f:
             self.refined_queries = pickle.load(f)
 
