@@ -21,6 +21,7 @@ from multiprocessing import Process, Queue
 BASIC_HEADERS = ["ts", "sIP", "sPort", "dIP", "dPort", "nBytes",
                  "proto", "sMac", "dMac"]
 
+OUTPUT_COST_DIR = '/mnt/query_cost_all_10_queries_1min'
 #!/usr/bin/env python
 #  Author:
 #  Arpit Gupta (arpitg@cs.princeton.edu)
@@ -191,7 +192,7 @@ class QueryTraining(object):
         # Update the query Generator Object (either passed directly, or filename specified)
         if query_generator is None:
             if fname_qg == '':
-                fname_qg = 'query_engine/query_dumps/query_generator_object_1.pickle'
+                fname_qg = 'query_engine/query_dumps/query_generator_object_10.pickle'
             with open(fname_qg,'r') as f:
                 query_generator = pickle.load(f)
 
@@ -201,7 +202,7 @@ class QueryTraining(object):
 
 
         print "Generating Refined Queries ..."
-        self.process_refined_queries('refined_queries.pickle')
+        self.process_refined_queries('refined_queries_10_queries_1min.pickle')
         """
 
         fname_rq_read = 'refined_queries_10.pickle'
@@ -211,16 +212,16 @@ class QueryTraining(object):
 
 
         print "Processing Refined Queries with test data..."
-        self.get_query_output()
+        self.get_query_output_less_memory()
 
         print "Reformatting output of Refined Queries ..."
-        self.get_reformatted_output_with_ts()
+        #self.get_reformatted_output_with_ts()
 
         print "Updating the Cost Metrics ..."
-        self.get_query_costs()
+        #self.get_query_costs()
 
         print self.query_costs
-        with open('/mnt/query_cost_all.pickle','w') as f:
+        with open(OUTPUT_COST_DIR +'/query_cost_all_10_queries_1min.pickle','w') as f:
             print "Dumping query cost ..."
             pickle.dump(self.query_costs, f)
 
@@ -498,7 +499,50 @@ class QueryTraining(object):
 
                 query_out[qid][ref_level][0] = out0
 
+
         self.query_out = query_out
+
+
+    def get_query_output_less_memory(self):
+        out0 = self.training_data.collect()
+        query_costs = {}
+        print "Out0", len(out0)
+        # Iterate over each refined query and collect its output
+        for qid in self.refined_queries:
+            query_costs[qid] = {}
+            query_out = {}
+            query_out[qid] = {}
+            for ref_level in self.refined_queries[qid]:
+                query_out[qid][ref_level] = {}
+                for iter_qid in self.refined_queries[qid][ref_level]:
+                    if iter_qid > 0:
+                        spark_query = self.refined_queries[qid][ref_level][iter_qid]
+                        if len(spark_query.compile()) > 0:
+                            query_string = 'self.training_data.'+spark_query.compile()+'.collect()'
+                            print("Processing Query", qid, "refinement level", ref_level, "iteration id", iter_qid)
+                            #print query_string
+                            out = eval(query_string)
+                        else:
+                            print "No query to process for", qid, "refinement level", ref_level, "iteration id", iter_qid
+                            out = []
+
+                        query_out[qid][ref_level][iter_qid] = out
+                        print len(query_out[qid][ref_level][iter_qid])
+
+                query_out[qid][ref_level][0] = out0
+            query_output_reformatted = {}
+            query_costs_diff = {}
+            query_output_reformatted[qid] = self.get_reformatted_output_with_ts(qid, query_out[qid])
+            query_costs_diff[qid] = self.get_query_cost_multi_process_without_ts(qid, query_output_reformatted)
+            query_costs[qid] = self.get_query_cost_only(qid, query_output_reformatted, query_costs_diff)
+            qid_cost_output = OUTPUT_COST_DIR + '/q_cost_' + str(qid) + '.pickle'
+            with open(qid_cost_output,'w') as f:
+                print "Dumping query cost ..." + qid_cost_output
+                pickle.dump(query_costs[qid], f)
+            query_output_reformatted = {}
+            query_costs_diff = {}
+
+        self.query_costs = query_costs
 
     # noinspection PyShadowingNames
     def get_reformatted_output(self):
@@ -529,29 +573,26 @@ class QueryTraining(object):
         self.query_output_reformatted = query_output_reformatted
 
 
-    def get_reformatted_output_with_ts(self):
-        query_output = self.query_out
+    def get_reformatted_output_with_ts(self, qid, query_out):
         query_output_reformatted = {}
 
-        for qid in query_output:
-            query_output_reformatted[qid] = {}
-            for ref_level in query_output[qid]:
-                query_output_reformatted[qid][ref_level] = {}
-                for iter_qid in query_output[qid][ref_level]:
-                    query_output_reformatted[qid][ref_level][iter_qid] = {}
-                    out = query_output[qid][ref_level][iter_qid]
-                    if len(out) > 0:
-                        for entry in out:
-                            if type(entry[0]) == type(1):
-                                entry = (entry,1)
+        for ref_level in query_out:
+            query_output_reformatted[ref_level] = {}
+            for iter_qid in query_out[ref_level]:
+                query_output_reformatted[ref_level][iter_qid] = {}
+                out = query_out[ref_level][iter_qid]
+                if len(out) > 0:
+                    for entry in out:
+                        if type(entry[0]) == type(1):
+                            entry = (entry,1)
 
-                            k = tuple(entry[0][0:])
-                            v = entry[1]
-                            query_output_reformatted[qid][ref_level][iter_qid][k] = v
+                        k = tuple(entry[0][0:])
+                        v = entry[1]
+                        query_output_reformatted[ref_level][iter_qid][k] = v
 
-                print qid, ref_level, query_output_reformatted[qid][ref_level].keys()
+            print qid, ref_level, query_output_reformatted[ref_level].keys()
 
-        self.query_output_reformatted = query_output_reformatted
+        return query_output_reformatted
 
     def get_per_timestamp_counts(self, keys):
         eval_string = "self.sc.parallelize(keys).map(lambda s: (s[0],1)).reduceByKey(lambda x,y: x+y).collect()"
@@ -715,10 +756,10 @@ class QueryTraining(object):
             return query_costs
 
 
-    def get_query_cost_only(self, qid):
-        query_output_reformatted = self.query_output_reformatted
+    def get_query_cost_only(self, qid, query_output_reformatted, query_costs_diff):
+        #query_output_reformatted = self.query_output_reformatted
         #print self.query_costs_diff
-        query_costs_diff = self.query_costs_diff
+        #query_costs_diff = self.query_costs_diff
         query_costs = {}
         query = self.qid_2_query[qid]
 
@@ -771,8 +812,8 @@ class QueryTraining(object):
 
 
 
-    def get_query_cost_multi_process_without_ts(self, qid, q = None):
-        query_output_reformatted = self.query_output_reformatted
+    def get_query_cost_multi_process_without_ts(self, qid, query_output_reformatted):
+        #query_output_reformatted = self.query_output_reformatted
 
         query_costs_diff = {}
         query_costs_diff = {}
@@ -829,10 +870,7 @@ class QueryTraining(object):
                                 diff_entries = self.get_per_timestamp_counts(curr_out.keys())
                                 diff_counts[(ref_level_prev, ref_level_curr, ctr)] = diff_entries
                             query_costs_diff[(transit,iter_qids_curr[ctr])] = diff_counts[(ref_level_prev, ref_level_curr, ctr)]
-        if q is not None:
-            q.put(query_costs_diff)
-        else:
-            return query_costs_diff
+        return query_costs_diff
 
     def get_query_costs(self):
         query_costs_diff = {}
