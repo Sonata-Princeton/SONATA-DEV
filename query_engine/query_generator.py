@@ -11,6 +11,7 @@ from query_engine.sonata_queries import *
 from query_engine.utils import *
 #from runtime.runtime import *
 import os
+import itertools
 
 batch_interval = 1
 window_length = 10
@@ -179,6 +180,163 @@ class QueryGenerator(object):
 
         self.qid_2_query = {}
 
+        #self.generate_random_queries()
+        #self.generate_queries_case1()
+        #self.generate_queries_case2()
+        #self.generate_queries_case3()
+        self.generate_queries_case4()
+
+    def generate_single_query_case4(self, qid, reduction_key, other_headers, query_height, thresh, isLeft=True):
+
+        q = PacketStream(qid)
+        q.reduction_key = reduction_key
+        reduction_fields = [reduction_key]+other_headers[:query_height]
+        q.map(keys=tuple(reduction_fields), map_values = ('count',), func=('eq',1,))
+        q.reduce(keys=tuple(reduction_fields), func=('sum',))
+        q.filter(filter_vals=('count',), func=('geq', thresh))
+        q.map(keys=tuple(reduction_fields))
+
+        return q
+
+    def generate_queries_case4(self):
+        # Case where we vary the height of the query tree
+        other_headers = ["sPort", "dPort", "nBytes", "proto", "sMac", "dMac"]
+        heights = range(len(other_headers))
+        self.n_queries = len(heights)
+
+        reduction_key = 'dIP'
+        thresh = 95
+        qid_2_query = {}
+        for n_query in range(self.n_queries):
+            print "Depth of Query Tree", n_query
+            query_tree_depth = n_query
+            root_qid = int(math.pow(2, 1+len(heights))-1)*n_query+1
+            all_queries = range(root_qid, root_qid+int(math.pow(2, 1+query_tree_depth)-1))
+            ctr = 1
+            query_tree = {root_qid:generate_query_tree(ctr, all_queries, query_tree_depth)}
+            print "Query Tree", query_tree
+
+            self.query_trees[n_query] = query_tree
+
+            qid_2_query = {}
+            reduction_key = 'dIP'
+
+            out = []
+            get_left_children(query_tree, out)
+            single_queries = [root_qid]+out
+            single_queries.sort(reverse=True)
+            print "Single Queries", single_queries
+            query_height = 0
+            for qid in single_queries:
+
+                qid_2_query[qid] = self.generate_single_query_case4(qid, reduction_key, other_headers,
+                                                              query_height, thresh)
+                query_height += 1
+
+            composed_query = generate_composed_query(query_tree, qid_2_query)
+            self.composed_queries[n_query]= composed_query
+            self.qid_2_query.update(qid_2_query)
+        print "Total queries generated", len(self.qid_2_query.keys())
+
+
+    def generate_queries_case3(self):
+        # Case where we will vary the threshold
+        fracs = [1, 0.1, 0.01, .001, .0001]
+        self.n_queries = len(fracs)
+        reduction_key = 'dIP'
+        qid_2_query = {}
+        for n_query in range(self.n_queries):
+            query_tree = {n_query:{}}
+            self.query_trees[n_query] = query_tree
+
+            thresh = 100.0*float(1-fracs[n_query])
+            reduction_fields = [reduction_key]
+            qid = n_query
+            q = PacketStream(qid)
+            q.reduction_key = reduction_key
+            q.map(keys=tuple(reduction_fields), map_values = ('count',), func=('eq',1,))
+            q.reduce(keys=tuple(reduction_fields), func=('sum',))
+            q.filter(filter_vals=('count',), func=('geq', thresh))
+            q.map(keys=tuple(reduction_fields))
+
+            qid_2_query[qid] = q
+            composed_query = generate_composed_query(query_tree, qid_2_query)
+            self.composed_queries[n_query]= composed_query
+            self.qid_2_query.update(qid_2_query)
+
+
+
+    def generate_queries_case2(self):
+        # Case where the impact of combination of of reduction keys is highlighted
+        other_headers = ["sPort", "nBytes", "proto", "sMac"]
+        candidate_reduction_keys = []
+
+        stuff = other_headers
+        for L in range(0, len(stuff)+1):
+            for subset in itertools.combinations(stuff, L):
+                candidate_reduction_keys.append(subset)
+        print len(candidate_reduction_keys)
+        self.n_queries = len(candidate_reduction_keys)
+        reduction_key = 'dIP'
+        thresh = 95
+        qid_2_query = {}
+        for n_query in range(self.n_queries):
+            query_tree = {n_query:{}}
+            self.query_trees[n_query] = query_tree
+            qid = n_query
+
+            reduction_fields = [reduction_key]+list(candidate_reduction_keys[n_query])
+            q = PacketStream(qid)
+            q.reduction_key = reduction_key
+            q.map(keys=tuple(reduction_fields), map_values = ('count',), func=('eq',1,))
+            q.reduce(keys=tuple(reduction_fields), func=('sum',))
+            q.filter(filter_vals=('count',), func=('geq', thresh))
+            q.map(keys=tuple(reduction_fields))
+
+            qid_2_query[qid] = q
+            composed_query = generate_composed_query(query_tree, qid_2_query)
+            self.composed_queries[n_query]= composed_query
+            self.qid_2_query.update(qid_2_query)
+
+    def generate_queries_case1(self):
+        # Case where order of reduction keys is important
+        # generate two queries: reduce(dIP)..reduce(dIP, ....) vs. reduce(dIP,...)..reduce(dIP)
+        self.n_queries = 2
+        reduction_key = 'dIP'
+        thresh = 95
+        qid_2_query = {}
+        other_headers = ["sPort", "dPort", "nBytes", "proto", "sMac", "dMac"]
+        for n_query in range(self.n_queries):
+            query_tree = {n_query:{}}
+            self.query_trees[n_query] = query_tree
+            qid = n_query
+            other_headers = list(set(other_headers)-set(["payload"]))
+            if n_query == 0:
+                # build the query that makes sense
+                reduction_fields1 = [reduction_key]
+                reduction_fields2 = [reduction_key]+other_headers
+            else:
+                # build the query that makes no sense
+                reduction_fields2 = [reduction_key]
+                reduction_fields1 = [reduction_key]+other_headers
+
+            q = PacketStream(qid)
+            q.reduction_key = reduction_key
+            q.map(keys=tuple(reduction_fields1), map_values = ('count',), func=('eq',1,))
+            q.reduce(keys=tuple(reduction_fields1), func=('sum',))
+            q.filter(filter_vals=('count',), func=('geq', thresh))
+            q.map(keys=tuple(reduction_fields2), map_values = ('count',), func=('eq',1,))
+            q.reduce(keys=tuple(reduction_fields2), func=('sum',))
+            q.filter(filter_vals=('count',), func=('geq', thresh))
+            q.map(keys=tuple(reduction_fields2))
+            qid_2_query[qid] = q
+            composed_query = generate_composed_query(query_tree, qid_2_query)
+            self.composed_queries[n_query]= composed_query
+            self.qid_2_query.update(qid_2_query)
+
+
+    def generate_random_queries(self):
+        # Older set of operations to generate random queries given query tree depth
         for n_query in range(self.n_queries):
             root_qid = int(math.pow(2, 1+self.query_tree_depth)-1)*n_query+1
             all_queries = range(root_qid, root_qid+int(math.pow(2, 1+self.query_tree_depth)-1))
@@ -219,8 +377,6 @@ class QueryGenerator(object):
         @qid: query id for the query
         @reduction_fields: fields to reduce query on
         """
-
-
         thresh = float(random.choice(range(95, int(self.max_filter_sigma))))
 
         if qid not in self.qid_2_thresh:
@@ -277,7 +433,7 @@ class QueryGenerator(object):
 
 
 if __name__ == "__main__":
-
+    """
     result_folder = '/home/vagrant/dev/results/result1/'
     emitter_log_file = result_folder + "emitter.log"
     fm_log_file = result_folder + "fabric_manager.log"
@@ -299,7 +455,7 @@ if __name__ == "__main__":
     conf = {'dp': 'p4', 'sp': 'spark',
             'sm_conf': spark_conf, 'emitter_conf': emitter_conf, 'log_file': rt_log_file,
             'fm_conf': {'fm_socket': ('localhost', 6666), 'log_file': fm_log_file}}
-
+    """
 
 
     n_queries = 10
@@ -329,10 +485,11 @@ if __name__ == "__main__":
             query_spark.basic_headers = ['a','b']
             print query_spark.compile()
 
-    """
+
     fname = 'query_engine/query_dumps/query_generator_object_10.pickle'
     with open(fname, 'w') as f:
         pickle.dump(query_generator, f)
+    """
 
 
 
