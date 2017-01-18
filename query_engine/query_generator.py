@@ -181,10 +181,11 @@ class QueryGenerator(object):
         self.qid_2_query = {}
 
         #self.generate_random_queries()
-        #self.generate_queries_case1()
+        self.generate_queries_case1()
         #self.generate_queries_case2()
         #self.generate_queries_case3()
-        self.generate_queries_case4()
+        # Case where we vary the height of the query tree
+        #self.generate_queries_case4()
 
     def generate_single_query_case4(self, qid, reduction_key, other_headers, query_height, thresh, isLeft=True):
 
@@ -301,7 +302,8 @@ class QueryGenerator(object):
     def generate_queries_case1(self):
         # Case where order of reduction keys is important
         # generate two queries: reduce(dIP)..reduce(dIP, ....) vs. reduce(dIP,...)..reduce(dIP)
-        self.n_queries = 2
+        other_headers = ["sPort", "dPort", "nBytes", "proto", "sMac", "dMac"]
+        self.n_queries = 1+len(other_headers)
         reduction_key = 'dIP'
         thresh = 95
         qid_2_query = {}
@@ -309,26 +311,18 @@ class QueryGenerator(object):
         for n_query in range(self.n_queries):
             query_tree = {n_query:{}}
             self.query_trees[n_query] = query_tree
+            n_reduce_operations = 1+n_query
             qid = n_query
-            other_headers = list(set(other_headers)-set(["payload"]))
-            if n_query == 0:
-                # build the query that makes sense
-                reduction_fields1 = [reduction_key]
-                reduction_fields2 = [reduction_key]+other_headers
-            else:
-                # build the query that makes no sense
-                reduction_fields2 = [reduction_key]
-                reduction_fields1 = [reduction_key]+other_headers
-
             q = PacketStream(qid)
             q.reduction_key = reduction_key
-            q.map(keys=tuple(reduction_fields1), map_values = ('count',), func=('eq',1,))
-            q.reduce(keys=tuple(reduction_fields1), func=('sum',))
-            q.filter(filter_vals=('count',), func=('geq', thresh))
-            q.map(keys=tuple(reduction_fields2), map_values = ('count',), func=('eq',1,))
-            q.reduce(keys=tuple(reduction_fields2), func=('sum',))
-            q.filter(filter_vals=('count',), func=('geq', thresh))
-            q.map(keys=tuple(reduction_fields2))
+            for n_opr in range(n_reduce_operations):
+                reduction_fields = [reduction_key]+other_headers[n_opr:n_reduce_operations-1]
+                #print n_reduce_operations, n_opr, reduction_fields
+                q.map(keys=tuple(reduction_fields), map_values = ('count',), func=('eq',1,))
+                q.reduce(keys=tuple(reduction_fields), func=('sum',))
+                q.filter(filter_vals=('count',), func=('geq', thresh))
+            q.map(keys=tuple([reduction_key]))
+
             qid_2_query[qid] = q
             composed_query = generate_composed_query(query_tree, qid_2_query)
             self.composed_queries[n_query]= composed_query
