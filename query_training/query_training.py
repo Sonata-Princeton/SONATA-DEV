@@ -8,9 +8,14 @@ import numpy as np
 from query_engine.query_generator import *
 from query_engine.sonata_queries import *
 from netaddr import *
+#import tinys3
+from multiprocessing import Process, Queue
+import threading
 
-
-OUTPUT_COST_DIR = 'data/query_cost_all_10_queries_5min_aws'
+DURATION_TYPE = "5min_1depth"
+OUTPUT_COST_DIR = 'data/query_cost_all_10_queries_5min_1depth_aws'
+S3_ACCESS_KEY = "AKIAJZZYOKOOZNK2Z2GQ"
+S3_SECRET_KEY = "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"
 
 
 # Standard set of packet tuple headers
@@ -118,23 +123,26 @@ T = 1
 class QueryTraining(object):
 
     conf = (SparkConf()
-            #.setMaster("local[*]")
+            .setMaster("local[*]")
             #.setMaster("")
             .setAppName("SONATA-Training"))
             #.set("spark.executor.memory","6g")
             #.set("spark.driver.memory","20g"))
             #.set("spark.cores.max","16"))
-    sc = SparkContext(conf=conf)
 
+    sc = SparkContext(conf=conf)
+    logger = sc._jvm.org.apache.log4j
+    logger.LogManager.getLogger("org"). setLevel( logger.Level.ERROR )
+    logger.LogManager.getLogger("akka").setLevel( logger.Level.ERROR )
     # Load data
     #baseDir = os.path.join('/home/vagrant/dev/data/sample_data/')
     baseDir = os.path.join('/mnt/')
     #flows_File = os.path.join(baseDir, 'sample_data.csv')
-    flows_File = os.path.join(baseDir, 'anon_all_flows_5min.csv')
-
-    ref_levels = range(0, 33, 8)
+    flows_File = os.path.join(baseDir, 'anon_all_flows_1min.csv')
+    aws_File = "s3://sonatasdx/data/anon_all_flows_5min.csv/"
+    ref_levels = range(0, 33, 4)
     # 10 second window length
-    window_length = 10*1000
+    window_length = 1*1000
 
     base_query = spark.PacketStream(0)
     base_query.basic_headers = BASIC_HEADERS
@@ -144,9 +152,8 @@ class QueryTraining(object):
 
     def __init__(self, refined_queries = None, fname_rq_read = '', fname_rq_write = '',
                  query_generator = None, fname_qg = ''):
-        dataFile = ("s3n://AKIAJZZYOKOOZNK2Z2GQ:4nUiAjQwiuapSoxEu0wAtRY3uWneAPkp3jNbdpqq@sonatasdx/data/anon_all_flows_1min.csv")
 
-        self.training_data = (self.sc.textFile("s3://sonatasdx/data/anon_all_flows_1min.csv/")
+        self.training_data = (self.sc.textFile(self.flows_File)
                               .map(parse_log_line)
                               # because the data provided has already applied 10 s windowing
                               .map(lambda s:tuple([int(math.ceil(int(s[0])/T))]+(list(s[1:]))))
@@ -167,7 +174,7 @@ class QueryTraining(object):
         # Update the query Generator Object (either passed directly, or filename specified)
         if query_generator is None:
             if fname_qg == '':
-                fname_qg = 'query_engine/query_dumps/query_generator_object_10.pickle'
+                fname_qg = 'query_engine/query_dumps/query_generator_object_10_1depth.pickle'
             with open(fname_qg,'r') as f:
                 query_generator = pickle.load(f)
 
@@ -175,17 +182,20 @@ class QueryTraining(object):
         self.max_reduce_operators = self.query_generator.max_reduce_operators
         self.qid_2_query = query_generator.qid_2_query
 
-        """
-        print "Generating Refined Queries ..."
-        self.process_refined_queries('refined_queries_10_queries_5min.pickle')
-        """
 
+        print "Generating Refined Queries ..."
+        self.process_refined_queries('data/refined_queries_10_queries_1depth_5min.pickle')
+
+        """
         fname_rq_read = 'data/refined_queries_10_queries_5min.pickle'
         with open(fname_rq_read, 'r') as f:
             self.refined_queries = pickle.load(f)
+        """
 
-        print "Processing Refined Queries with test data..."
-        self.get_query_output_less_memory()
+        for qid in self.refined_queries:
+            print "Processing Refined Queries for cost...", qid
+            self.get_query_output_less_memory(qid)
+            break
 
         print "Success ..."
 
@@ -425,7 +435,7 @@ class QueryTraining(object):
             print "Dumping refined Queries ..."
             pickle.dump(self.refined_queries, f)
 
-    def get_query_output_less_memory(self):
+    def get_query_output_less_memory(self, qid):
         """
         Computes per query costs
         :return:
@@ -434,50 +444,58 @@ class QueryTraining(object):
         query_costs = {}
         print "Out0", len(out0)
         # Iterate over each refined query and collect its output
-        for qid in self.refined_queries:
+        #for qid in self.refined_queries:
 
-            query_costs[qid] = {}
-            query_out = {}
-            query_out[qid] = {}
-            for ref_level in self.refined_queries[qid]:
-                query_out[qid][ref_level] = {}
-                for iter_qid in self.refined_queries[qid][ref_level]:
-                    if iter_qid > 0:
-                        spark_query = self.refined_queries[qid][ref_level][iter_qid]
-                        if len(spark_query.compile()) > 0:
-                            query_string = 'self.training_data.'+spark_query.compile()+'.collect()'
-                            print("Processing Query", qid, "refinement level", ref_level, "iteration id", iter_qid)
-                            #print query_string
-                            out = eval(query_string)
-                        else:
-                            print "No query to process for", qid, "refinement level", ref_level, "iteration id", iter_qid
-                            out = []
+        query_costs[qid] = {}
+        query_out = {}
+        query_out[qid] = {}
+        for ref_level in self.refined_queries[qid]:
+            query_out[qid][ref_level] = {}
+            for iter_qid in self.refined_queries[qid][ref_level]:
+                if iter_qid > 0:
+                    spark_query = self.refined_queries[qid][ref_level][iter_qid]
+                    if len(spark_query.compile()) > 0:
+                        query_string = 'self.training_data.'+spark_query.compile()+'.collect()'
+                        print("Processing Query", qid, "refinement level", ref_level, "iteration id", iter_qid)
+                        #print query_string
+                        out = eval(query_string)
+                    else:
+                        print "No query to process for", qid, "refinement level", ref_level, "iteration id", iter_qid
+                        out = []
 
-                        query_out[qid][ref_level][iter_qid] = out
-                        print len(query_out[qid][ref_level][iter_qid])
+                    query_out[qid][ref_level][iter_qid] = out
+                    print len(query_out[qid][ref_level][iter_qid])
 
-                query_out[qid][ref_level][0] = out0
+            query_out[qid][ref_level][0] = out0
 
-            query_output_reformatted = {}
-            query_costs_diff = {}
+        query_output_reformatted = {}
+        query_costs_diff = {}
 
-            print "Reformatting output of Refined Queries ...", qid
-            query_output_reformatted[qid] = self.get_reformatted_output_without_ts(qid, query_out[qid])
+        print "Reformatting output of Refined Queries ...", qid
+        query_output_reformatted[qid] = self.get_reformatted_output_without_ts(qid, query_out[qid])
 
-            print "Updating the Diff Entries ...", qid
-            query_costs_diff[qid] = self.get_query_diff_entries_without_ts(qid, query_output_reformatted)
+        print "Updating the Diff Entries ...", qid
+        query_costs_diff[qid] = self.get_query_diff_entries_without_ts(qid, query_output_reformatted)
 
-            print "Updating the Cost Metrics ...", qid
-            query_costs[qid] = self.get_query_cost_only(qid, query_output_reformatted, query_costs_diff)
+        print "Updating the Cost Metrics ...", qid
+        query_costs[qid] = self.get_query_cost_only(qid, query_output_reformatted, query_costs_diff)
 
-            qid_cost_output = OUTPUT_COST_DIR + '/q_cost_' + str(qid) + '.pickle'
-            with open(qid_cost_output,'w') as f:
-                print "Dumping query cost ..." + qid_cost_output
-                pickle.dump(query_costs[qid], f)
-            query_output_reformatted = {}
-            query_costs_diff = {}
+        qid_cost_output = OUTPUT_COST_DIR + '/q_cost_' + str(DURATION_TYPE) + '_' + str(qid) + '.pickle'
+        with open(qid_cost_output,'w') as f:
+            print "Dumping query cost ..." + qid_cost_output
+            pickle.dump(query_costs[qid], f)
 
-        self.query_costs = query_costs
+        """
+        # write to S3 bucket
+        conn = tinys3.Connection(S3_ACCESS_KEY,S3_SECRET_KEY,tls=True)
+
+        f = open(qid_cost_output,'r')
+        conn.upload(qid_cost_output,f,'sonataresultsnew')
+        f.close()
+        """
+        query_output_reformatted = {}
+        query_costs_diff = {}
+
 
     # noinspection PyShadowingNames
     def get_reformatted_output(self):
@@ -665,7 +683,7 @@ class QueryTraining(object):
 
 
 if __name__ == "__main__":
-
+    #qid = sys.argv[1]
     #fname_rq_read = 'query_engine/query_dumps/refined_queries_1.pickle'
     qt = QueryTraining()
     #qt.test_spark_query()

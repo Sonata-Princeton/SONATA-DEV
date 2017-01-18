@@ -306,7 +306,7 @@ if __name__ == "__main__":
 
     max_filter_frac = 100
     max_reduce_operators = 2
-    query_tree_depth = 2
+    query_tree_depth = 1
     # TODO: make sure the queries are unique
     query_generator = QueryGenerator(n_queries, max_reduce_operators, query_tree_depth, max_filter_frac)
 
@@ -330,7 +330,7 @@ if __name__ == "__main__":
             print query_spark.compile()
 
     """
-    fname = 'query_engine/query_dumps/query_generator_object_10.pickle'
+    fname = 'query_engine/query_dumps/query_generator_object_10_1depth.pickle'
     with open(fname, 'w') as f:
         pickle.dump(query_generator, f)
 
