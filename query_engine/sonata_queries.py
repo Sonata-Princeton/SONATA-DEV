@@ -241,32 +241,64 @@ class PacketStream(Query):
         self.query_2_plans = query_2_plans
         return query_2_plans
 
+    def read_costs(self, qid, p2, transit, ts):
+        # We assume the qcost is already normalized
+        # Function that computes C = alpha*B+(1-alpha)*N
+        alpha = self.alpha
+        buckets = self.qcost[qid][(p2,transit)][ts][0]
+        packets = self.qcost[qid][(p2,transit)][ts][1]
+        cost = alpha*(buckets)+(1-alpha)*packets
+        #cost = buckets+packets
+        #cost = buckets
+        return cost
+
     def get_cost(self, ref_levels):
         query_2_cost = {}
-        for query_id in self.all_queries:
-            query_2_cost[query_id] = {}
-            plans = self.query_2_plans[query_id]
-            for p1 in plans:
-                for p2 in plans:
-                    # For each path combination for each query we generate cost using the cost function above.
-                    # TODO: replace this with cost model based on training data
-                    tmp = rs.generate_costs(p1, p2, ref_levels)
-                    for transit in tmp:
-                        query_2_cost[query_id][(p1, p2), transit] = tmp[transit]
+        for ts in self.training_timestamps:
+            query_2_cost[ts] = {}
+            for query_id in self.all_queries:
+                query_2_cost[ts][query_id] = {}
+                plans = self.query_2_plans[query_id]
+                for p1 in plans:
+                    for p2 in plans:
+                        # For each path combination for each query we generate cost using the cost function above.
+                        # TODO: replace this with cost model based on training data
+                        tmp = rs.generate_costs(query_id, p2, ref_levels)
+                        for ref_level_prev in ref_levels:
+                            for ref_level_curr in ref_levels:
+                                if ref_level_curr > ref_level_prev:
+                                    transit = (ref_level_prev, ref_level_curr)
+                                    query_2_cost[ts][query_id][(p1, p2), transit] = self.read_costs(query_id, p2, transit, ts)
         self.query_2_cost = query_2_cost
         #print "Cost", self.query_2_cost
         return query_2_cost
 
     def get_refinement_plan(self, ref_levels):
-        query_2_final_plan = {}
+        query_2_final_candidate_plans = {}
         memorized_plans = {}
-        for query_id in self.query_tree:
-            # We start with the finest refinement level, as expressed in the original query
-            rs.get_refinement_plan(ref_levels[0], ref_levels[-1], query_id, ref_levels, self.query_2_plans,
-                                   self.query_tree,
-                                   self.query_2_cost, query_2_final_plan, memorized_plans)
+        mapped_plans = {}
+        plan_hashmap = {}
+        plan_hashmap_list = []
+        #print "Timestamps", self.training_timestamps
+        for ts in self.training_timestamps:
+            query_2_final_plan = {}
+            for query_id in self.query_tree:
+                # We start with the finest refinement level, as expressed in the original query
+                rs.get_refinement_plan(ref_levels[0], ref_levels[-1], query_id, ref_levels,
+                                       self.query_2_plans, self.query_tree, self.query_2_cost[ts],
+                                       query_2_final_plan, memorized_plans, mapped_plans)
 
-        self.query_2_final_plan = query_2_final_plan
+            query_2_final_candidate_plans[ts] = query_2_final_plan
+            plan_hashmap[str(query_2_final_plan[self.qid].values()[0][0])] = query_2_final_plan
+            plan_hashmap_list.append(str(query_2_final_plan[self.qid].values()[0][0]))
+
+        # Pick the one with highest frequency
+        #print plan_hashmap_list
+        from collections import Counter
+        most_common,num_most_common = Counter(plan_hashmap_list).most_common(1)[0] # 4, 6 times
+        print "Most common plan for ", self.qid, self.alpha, most_common, "with freq", num_most_common
+
+        self.query_2_final_plan = plan_hashmap[most_common]
         return query_2_final_plan
 
     def get_reduction_key(self):

@@ -11,6 +11,8 @@ from netaddr import *
 #import tinys3
 from multiprocessing import Process, Queue
 import threading
+import pickle
+
 
 DURATION_TYPE = "1min"
 OUTPUT_COST_DIR = 'data/query_cost_queries_case2'
@@ -705,10 +707,14 @@ class QueryTraining(object):
         return query_costs_diff
 
 
+
+
 if __name__ == "__main__":
+
     #qid = sys.argv[1]
+
     #fname_rq_read = 'query_engine/query_dumps/refined_queries_1.pickle'
-    qt = QueryTraining()
+    #qt = QueryTraining()
     #qt.test_spark_query()
     """
 

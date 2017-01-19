@@ -101,7 +101,6 @@ class Runtime(object):
 
         self.op_handler_thread.start()
 
-
         self.fm_thread.join()
         self.sm_thread.join()
         self.op_handler_thread.join()
@@ -188,6 +187,8 @@ class Runtime(object):
         for query in self.queries:
             query_expressions.append(query.compile_sp())
         return query_expressions
+
+
 
     def send_to_sm(self):
         # Send compiled query expression to streaming manager
