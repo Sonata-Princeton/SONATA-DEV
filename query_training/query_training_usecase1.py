@@ -9,15 +9,15 @@ from query_engine.query_generator import *
 from query_engine.sonata_queries import *
 from netaddr import *
 import pickle
-#import tinys3
+import tinys3
 
 
 
 DURATION_TYPE = "1min"
-OUTPUT_COST_DIR = 'data/query_cost_queries_case3_udp'
+OUTPUT_COST_DIR = 'data/query_cost_queries_case1_aws'
 S3_ACCESS_KEY = "AKIAJZZYOKOOZNK2Z2GQ"
 S3_SECRET_KEY = "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"
-CASE_NUMBER = "_CASE3_"
+CASE_NUMBER = "_CASE1_"
 
 # Standard set of packet tuple headers
 BASIC_HEADERS = ["ts", "sIP", "sPort", "dIP", "dPort", "nBytes",
@@ -124,12 +124,12 @@ T = 1
 class QueryTraining(object):
 
     conf = (SparkConf()
-            .setMaster("local[*]")
+            #.setMaster("local[*]")
             #.setMaster("")
             .setAppName("SONATA-Training"))
-            #.set("spark.executor.memory","6g")
-            #.set("spark.driver.memory","20g"))
-            #.set("spark.cores.max","16"))
+    #.set("spark.executor.memory","6g")
+    #.set("spark.driver.memory","20g"))
+    #.set("spark.cores.max","16"))
 
     sc = SparkContext(conf=conf)
     logger = sc._jvm.org.apache.log4j
@@ -154,11 +154,11 @@ class QueryTraining(object):
     def __init__(self, refined_queries = None, fname_rq_read = '', fname_rq_write = '',
                  query_generator = None, fname_qg = ''):
 
-        self.training_data = (self.sc.textFile(self.flows_File)
+        self.training_data = (self.sc.textFile(self.aws_File)
                               .map(parse_log_line)
                               # because the data provided has already applied 10 s windowing
                               .map(lambda s:tuple([int(math.ceil(int(s[0])/T))]+(list(s[1:]))))
-                              .filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(proto)=='17')
+                              #.filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(proto)=='17')
                               #.filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(sPort) == '53')
                               )
         print "Collecting the training data for the first time ..."
@@ -176,8 +176,8 @@ class QueryTraining(object):
         # Update the query Generator Object (either passed directly, or filename specified)
         if query_generator is None:
             if fname_qg == '':
-                fname_qg = 'query_engine/use_cases_aws/query_generator_object_case3.pickle'
-                #self.write_to_s3(fname_qg)
+                fname_qg = 'query_engine/use_cases_aws/query_generator_object_case1.pickle'
+                self.write_to_s3(fname_qg)
             with open(fname_qg,'r') as f:
                 query_generator = pickle.load(f)
 
@@ -185,15 +185,15 @@ class QueryTraining(object):
         self.max_reduce_operators = self.query_generator.max_reduce_operators
         self.qid_2_query = query_generator.qid_2_query
 
-        REFINED_QUERY_PATH = 'data/refined_queries_queries_case3_1min_udp.pickle'
+        REFINED_QUERY_PATH = 'data/refined_queries_queries_case1_1min_aws.pickle'
         print "Generating Refined Queries ..."
         self.process_refined_queries(REFINED_QUERY_PATH)
 
-        #self.write_to_s3(REFINED_QUERY_PATH)
+        self.write_to_s3(REFINED_QUERY_PATH)
 
         """
 
-        fname_rq_read = 'data/refined_queries_queries_case3_1min_udp.pickle'
+        fname_rq_read = 'data/refined_queries_queries_case2_1min.pickle'
         with open(fname_rq_read, 'r') as f:
             self.refined_queries = pickle.load(f)
         """
@@ -201,7 +201,6 @@ class QueryTraining(object):
         for qid in self.refined_queries:
             print "Processing Refined Queries for cost...", qid
             self.get_query_output_less_memory(qid)
-
 
         print "Success ..."
 
@@ -475,7 +474,7 @@ class QueryTraining(object):
             print "Dumping refined Queries ..."
             pickle.dump(worst_cost, f)
 
-        #self.write_to_s3(worst_case_output)
+        self.write_to_s3(worst_case_output)
 
     def get_query_output_less_memory(self, qid):
         """
@@ -524,7 +523,7 @@ class QueryTraining(object):
             print "Dumping query cost ..." + qid_diff_output
             pickle.dump(query_costs_diff[qid], f)
 
-        #self.write_to_s3(qid_diff_output)
+        self.write_to_s3(qid_diff_output)
 
 
         print "Updating the Cost Metrics ...", qid
@@ -535,7 +534,7 @@ class QueryTraining(object):
             print "Dumping query cost ..." + qid_cost_output
             pickle.dump(query_costs[qid], f)
 
-        #self.write_to_s3(qid_cost_output)
+        self.write_to_s3(qid_cost_output)
 
         query_output_reformatted = {}
         query_costs_diff = {}
