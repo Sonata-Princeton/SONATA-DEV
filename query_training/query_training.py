@@ -12,8 +12,8 @@ from netaddr import *
 from multiprocessing import Process, Queue
 import threading
 
-DURATION_TYPE = "5min_1depth"
-OUTPUT_COST_DIR = 'data/query_cost_all_10_queries_5min_1depth_aws'
+DURATION_TYPE = "1min"
+OUTPUT_COST_DIR = 'data/query_cost_queries_case2'
 S3_ACCESS_KEY = "AKIAJZZYOKOOZNK2Z2GQ"
 S3_SECRET_KEY = "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"
 
@@ -139,7 +139,7 @@ class QueryTraining(object):
     baseDir = os.path.join('/mnt/')
     #flows_File = os.path.join(baseDir, 'sample_data.csv')
     flows_File = os.path.join(baseDir, 'anon_all_flows_1min.csv')
-    aws_File = "s3://sonatasdx/data/anon_all_flows_5min.csv/"
+    aws_File = "s3://sonatasdx/data/anon_all_flows_1min.csv/"
     ref_levels = range(0, 33, 4)
     # 10 second window length
     window_length = 1*1000
@@ -157,8 +157,8 @@ class QueryTraining(object):
                               .map(parse_log_line)
                               # because the data provided has already applied 10 s windowing
                               .map(lambda s:tuple([int(math.ceil(int(s[0])/T))]+(list(s[1:]))))
-                              #.filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(proto)=='17')
-                              #.filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(sPort) == '21')
+                              .filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(proto)=='17')
+                              .filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(sPort) == '53')
                               )
         print "Collecting the training data for the first time ..."
         self.training_data = self.sc.parallelize(self.training_data.collect())
@@ -174,7 +174,7 @@ class QueryTraining(object):
         # Update the query Generator Object (either passed directly, or filename specified)
         if query_generator is None:
             if fname_qg == '':
-                fname_qg = 'query_engine/query_dumps/query_generator_object_10_1depth.pickle'
+                fname_qg = 'query_engine/query_dumps/query_generator_object_case2.pickle'
             with open(fname_qg,'r') as f:
                 query_generator = pickle.load(f)
 
@@ -184,10 +184,10 @@ class QueryTraining(object):
 
 
         print "Generating Refined Queries ..."
-        self.process_refined_queries('data/refined_queries_10_queries_1depth_5min.pickle')
-
+        self.process_refined_queries('data/refined_queries_queries_case2_1min.pickle')
         """
-        fname_rq_read = 'data/refined_queries_10_queries_5min.pickle'
+
+        fname_rq_read = 'data/refined_queries_queries_case2_1min.pickle'
         with open(fname_rq_read, 'r') as f:
             self.refined_queries = pickle.load(f)
         """
@@ -195,7 +195,6 @@ class QueryTraining(object):
         for qid in self.refined_queries:
             print "Processing Refined Queries for cost...", qid
             self.get_query_output_less_memory(qid)
-            break
 
         print "Success ..."
 
@@ -477,6 +476,11 @@ class QueryTraining(object):
         print "Updating the Diff Entries ...", qid
         query_costs_diff[qid] = self.get_query_diff_entries_without_ts(qid, query_output_reformatted)
 
+        qid_diff_output = OUTPUT_COST_DIR + '/q_diff_' + str(DURATION_TYPE) + '_' + str(qid) + '.pickle'
+        with open(qid_diff_output,'w') as f:
+            print "Dumping query cost ..." + qid_diff_output
+            pickle.dump(query_costs_diff[qid], f)
+
         print "Updating the Cost Metrics ...", qid
         query_costs[qid] = self.get_query_cost_only(qid, query_output_reformatted, query_costs_diff)
 
@@ -495,7 +499,6 @@ class QueryTraining(object):
         """
         query_output_reformatted = {}
         query_costs_diff = {}
-
 
     # noinspection PyShadowingNames
     def get_reformatted_output(self):
@@ -541,6 +544,7 @@ class QueryTraining(object):
                         k = tuple(entry[0][0:])
                         v = entry[1]
                         query_output_reformatted[ref_level][iter_qid][k] = v
+                print qid, ref_level, iter_qid, len(query_output_reformatted[ref_level][iter_qid].keys())
 
             print qid, ref_level, query_output_reformatted[ref_level].keys()
 
@@ -585,41 +589,53 @@ class QueryTraining(object):
                 for ref_level_curr in ref_levels:
                     if ref_level_curr > ref_level_prev:
                         transit = (ref_level_prev, ref_level_curr)
+                        time_stamps = query_costs_diff[qid][((0,32), 0)].keys()
                         iter_qids_curr = query_output_reformatted[qid][ref_level_curr].keys()
                         iter_qids_curr.sort()
+
+                        assert query_costs_diff[qid][((0,32), 0)] == query_costs_diff[qid][((0,8), 0)]
+
                         query_costs[partition_plan, transit] = {}
 
-                        for ctr in range(len(iter_qids_curr)):
+                        for ts in time_stamps:
+                            query_costs[partition_plan, transit][ts] = (0,0)
 
-                            diff_entries = query_costs_diff[qid][(transit, iter_qids_curr[ctr])]
-                            #print diff_entries
-                            for ts in diff_entries.keys():
-                                query_costs[partition_plan, transit][ts] = {}
+                            if ts in query_costs_diff[qid][(transit, 0)]:
+
                                 bucket_count = 0
                                 packet_count = 0
+                                ctr = 0
+                                # Number of packets coming in for this query
+                                prev_bucket_count = query_costs_diff[qid][(transit, iter_qids_curr[ctr])][ts]
 
-                                diff_entries_count = diff_entries[ts]
-                                prev_bucket_count = diff_entries_count
+                                ctr = 1
                                 for elem in str(partition_plan):
-                                    if elem == '0':
-                                        # This reduce operators is executed in the data plane, thus we need
-                                        # to count the buckets required for this operator
-                                        bucket_count += diff_entries_count
-                                        prev_bucket_count = diff_entries_count
-                                    else:
-                                        # This one goes to the stream processor, so the bucket for the
-                                        # previous operators is equal to the number of packets sent
-                                        # to the stream processor
-                                        packet_count = prev_bucket_count
-                                        break
-
-                                    if packet_count == 0:
-                                        # Case when all reduce operators are executed in the data plane
-                                        if ts not in query_costs_diff[qid][(transit,iter_qids_curr[-1])]:
-                                            print qid, (transit,iter_qids_curr[-1]), query_costs_diff[qid][(transit,iter_qids_curr[-1])]
-                                            packet_count = 0
+                                    if ts in query_costs_diff[qid][(transit, iter_qids_curr[ctr])]:
+                                        diff_entries_count = query_costs_diff[qid][(transit, iter_qids_curr[ctr])][ts]
+                                        if elem == '0':
+                                            # This reduce operators is executed in the data plane, thus we need
+                                            # to count the buckets required for this operator
+                                            bucket_count += diff_entries_count
+                                            # Number of packets input to next set of reduce operations
+                                            prev_bucket_count = diff_entries_count
                                         else:
-                                            packet_count = query_costs_diff[qid][(transit,iter_qids_curr[-1])][ts]
+                                            # This one goes to the stream processor, so the bucket for the
+                                            # previous operators is equal to the number of packets sent
+                                            # to the stream processor
+                                            packet_count = prev_bucket_count
+                                            break
+
+                                        if packet_count == 0:
+                                            # Case when all reduce operators are executed in the data plane
+                                            if ts not in query_costs_diff[qid][(transit,iter_qids_curr[-1])]:
+                                                print qid, (transit,iter_qids_curr[-1]), query_costs_diff[qid][(transit,iter_qids_curr[-1])]
+                                                packet_count = 0
+                                            else:
+                                                packet_count = query_costs_diff[qid][(transit,iter_qids_curr[-1])][ts]
+                                        ctr += 1
+
+                                #print ts, "Part Plan", partition_plan, " transit", transit, "bucket cost", \
+                                #    bucket_count, "Packet cost", packet_count
                                 query_costs[partition_plan, transit][ts] = (bucket_count, packet_count)
         return query_costs
 
@@ -642,26 +658,27 @@ class QueryTraining(object):
                         iter_qids_curr.sort()
 
                         print qid, transit, iter_qids_prev, iter_qids_curr
-                        prev_out = query_output_reformatted[qid][ref_level_prev][iter_qids_prev[-1]]
+                        prev_out_final_query = query_output_reformatted[qid][ref_level_prev][iter_qids_prev[-1]]
 
                         if (ref_level_prev, ref_level_curr, 0) not in diff_counts:
-                            curr_in = query_output_reformatted[qid][ref_level_curr][0]
+                            out_zero_for_ctr_0 = query_output_reformatted[qid][ref_level_curr][0]
                             in_query = self.base_query
-                            prev_bucket_count = self.get_diff_buckets(prev_out, curr_in, ref_level_prev, in_query, reduction_key)
+                            prev_bucket_count = self.get_diff_buckets(prev_out_final_query, out_zero_for_ctr_0, ref_level_prev, in_query, reduction_key)
                             diff_counts[(ref_level_prev, ref_level_curr, 0)] = prev_bucket_count
                             query_costs_diff[(transit,0)] = diff_counts[(ref_level_prev, ref_level_curr, 0)]
 
-                        for ctr in range(len(iter_qids_curr)):
+                        for ctr in range(1, len(iter_qids_curr)):
+                            print qid, transit, iter_qids_prev, iter_qids_curr[ctr]
 
                             curr_out = query_output_reformatted[qid][ref_level_curr][iter_qids_curr[ctr]]
                             if (ref_level_prev, ref_level_curr, ctr) not in diff_counts:
 
                                 curr_query = self.refined_queries[qid][ref_level_curr][iter_qids_curr[ctr]]
-                                diff_entries = self.get_diff_buckets(prev_out, curr_out, ref_level_prev, curr_query, reduction_key)
+                                diff_entries = self.get_diff_buckets(prev_out_final_query, curr_out, ref_level_prev, curr_query, reduction_key)
                                 diff_counts[(ref_level_prev, ref_level_curr, ctr)] = diff_entries
 
                             query_costs_diff[(transit,iter_qids_curr[ctr])] = diff_counts[(ref_level_prev, ref_level_curr, ctr)]
-
+                            #print qid, transit, iter_qids_prev, iter_qids_curr[ctr], query_costs_diff[(transit,iter_qids_curr[ctr])].values()[0]
                     else:
                         # No need to do any diff for this case
                         transit = (ref_level_prev, ref_level_curr)
@@ -675,10 +692,16 @@ class QueryTraining(object):
                         for ctr in range(len(iter_qids_curr)):
 
                             curr_out = query_output_reformatted[qid][ref_level_curr][iter_qids_curr[ctr]]
+
                             if (ref_level_prev, ref_level_curr, ctr) not in diff_counts:
                                 diff_entries = self.get_per_timestamp_counts(curr_out.keys())
                                 diff_counts[(ref_level_prev, ref_level_curr, ctr)] = diff_entries
+                            else:
+                                print "This should not happen"
+
                             query_costs_diff[(transit,iter_qids_curr[ctr])] = diff_counts[(ref_level_prev, ref_level_curr, ctr)]
+                            #print qid, transit, iter_qids_prev, iter_qids_curr[ctr], query_costs_diff[(transit,iter_qids_curr[ctr])].values()[0]
+                            #print "Test", ctr, len(curr_out.keys()), transit, iter_qids_curr[ctr], diff_counts[(ref_level_prev, ref_level_curr, ctr)]
         return query_costs_diff
 
 

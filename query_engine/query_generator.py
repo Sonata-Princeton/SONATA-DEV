@@ -181,11 +181,11 @@ class QueryGenerator(object):
         self.qid_2_query = {}
 
         #self.generate_random_queries()
-        self.generate_queries_case1()
+        #self.generate_queries_case1()
         #self.generate_queries_case2()
         #self.generate_queries_case3()
         # Case where we vary the height of the query tree
-        #self.generate_queries_case4()
+        self.generate_queries_case4()
 
     def generate_single_query_case4(self, qid, reduction_key, other_headers, query_height, thresh, isLeft=True):
 
@@ -242,7 +242,7 @@ class QueryGenerator(object):
 
     def generate_queries_case3(self):
         # Case where we will vary the threshold
-        fracs = [1, 0.1, 0.01, .001, .0001]
+        fracs = [1, 0.8, 0.6, .4, .2, .01, 0.001]
         self.n_queries = len(fracs)
         reduction_key = 'dIP'
         qid_2_query = {}
@@ -305,10 +305,10 @@ class QueryGenerator(object):
         other_headers = ["sPort", "dPort", "nBytes", "proto", "sMac", "dMac"]
         self.n_queries = 1+len(other_headers)
         reduction_key = 'dIP'
-        thresh = 95
+        thresholds = [90, 80, 70, 60, 50, 40]
         qid_2_query = {}
         other_headers = ["sPort", "dPort", "nBytes", "proto", "sMac", "dMac"]
-        for n_query in range(self.n_queries):
+        for n_query in range(self.n_queries)[:-2]:
             query_tree = {n_query:{}}
             self.query_trees[n_query] = query_tree
             n_reduce_operations = 1+n_query
@@ -320,7 +320,7 @@ class QueryGenerator(object):
                 #print n_reduce_operations, n_opr, reduction_fields
                 q.map(keys=tuple(reduction_fields), map_values = ('count',), func=('eq',1,))
                 q.reduce(keys=tuple(reduction_fields), func=('sum',))
-                q.filter(filter_vals=('count',), func=('geq', thresh))
+                q.filter(filter_vals=('count',), func=('geq', thresholds[n_opr]))
             q.map(keys=tuple([reduction_key]))
 
             qid_2_query[qid] = q
@@ -479,11 +479,12 @@ if __name__ == "__main__":
             query_spark.basic_headers = ['a','b']
             print query_spark.compile()
 
+    """
 
-    fname = 'query_engine/query_dumps/query_generator_object_10.pickle'
+    fname = 'query_engine/query_dumps/query_generator_object_case2.pickle'
     with open(fname, 'w') as f:
         pickle.dump(query_generator, f)
-    """
+
 
 
 
