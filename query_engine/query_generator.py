@@ -182,10 +182,10 @@ class QueryGenerator(object):
 
         #self.generate_random_queries()
         #self.generate_queries_case1()
-        #self.generate_queries_case2()
+        self.generate_queries_case2()
         #self.generate_queries_case3()
         # Case where we vary the height of the query tree
-        self.generate_queries_case4()
+        #self.generate_queries_case4()
 
     def generate_single_query_case4(self, qid, reduction_key, other_headers, query_height, thresh, isLeft=True):
 
@@ -202,7 +202,7 @@ class QueryGenerator(object):
     def generate_queries_case4(self):
         # Case where we vary the height of the query tree
         other_headers = ["sPort", "dPort", "nBytes", "proto", "sMac", "dMac"]
-        heights = range(len(other_headers))
+        heights = range(len(other_headers)-2)
         self.n_queries = len(heights)
 
         reduction_key = 'dIP'
@@ -289,7 +289,7 @@ class QueryGenerator(object):
             reduction_fields = [reduction_key]+list(candidate_reduction_keys[n_query])
             q = PacketStream(qid)
             q.reduction_key = reduction_key
-            q.map(keys=tuple(reduction_fields), map_values = ('count',), func=('eq',1,))
+            q.map(keys=tuple(reduction_fields), map_values=('count',), func=('eq',1,))
             q.reduce(keys=tuple(reduction_fields), func=('sum',))
             q.filter(filter_vals=('count',), func=('geq', thresh))
             q.map(keys=tuple(reduction_fields))

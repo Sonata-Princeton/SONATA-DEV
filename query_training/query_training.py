@@ -8,17 +8,19 @@ import numpy as np
 from query_engine.query_generator import *
 from query_engine.sonata_queries import *
 from netaddr import *
+
 #import tinys3
 from multiprocessing import Process, Queue
 import threading
 import pickle
 
 
+
 DURATION_TYPE = "1min"
-OUTPUT_COST_DIR = 'data/query_cost_queries_case2'
+OUTPUT_COST_DIR = 'data/query_cost_queries_case2_all'
 S3_ACCESS_KEY = "AKIAJZZYOKOOZNK2Z2GQ"
 S3_SECRET_KEY = "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"
-
+CASE_NUMBER = "_CASE2_"
 
 # Standard set of packet tuple headers
 BASIC_HEADERS = ["ts", "sIP", "sPort", "dIP", "dPort", "nBytes",
@@ -159,8 +161,8 @@ class QueryTraining(object):
                               .map(parse_log_line)
                               # because the data provided has already applied 10 s windowing
                               .map(lambda s:tuple([int(math.ceil(int(s[0])/T))]+(list(s[1:]))))
-                              .filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(proto)=='17')
-                              .filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(sPort) == '53')
+                              #.filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(proto)=='17')
+                              #.filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(sPort) == '53')
                               )
         print "Collecting the training data for the first time ..."
         self.training_data = self.sc.parallelize(self.training_data.collect())
@@ -172,6 +174,7 @@ class QueryTraining(object):
         self.composed_queries = {}
         self.qid_2_updated_filter = {}
         self.query_costs_diff = {}
+        self.worst_case_queries = {}
 
         # Update the query Generator Object (either passed directly, or filename specified)
         if query_generator is None:
@@ -186,7 +189,7 @@ class QueryTraining(object):
 
 
         print "Generating Refined Queries ..."
-        self.process_refined_queries('data/refined_queries_queries_case2_1min.pickle')
+        self.process_refined_queries('data/refined_queries_queries_case2_1min_all.pickle')
         """
 
         fname_rq_read = 'data/refined_queries_queries_case2_1min.pickle'
@@ -197,6 +200,7 @@ class QueryTraining(object):
         for qid in self.refined_queries:
             print "Processing Refined Queries for cost...", qid
             self.get_query_output_less_memory(qid)
+
 
         print "Success ..."
 
@@ -212,7 +216,21 @@ class QueryTraining(object):
         self.generate_refined_sonata_queries()
 
         self.update_filter()
+
         print self.refined_sonata_queries
+
+
+        worst_case_queries = {}
+
+        for qid in self.refined_sonata_queries:
+            if 32 in self.refined_sonata_queries[qid]:
+                refined_query_id = 1000*(10000*(qid)+32)+1
+                worst_case_queries[qid] = self.refined_sonata_queries[qid][32][refined_query_id]
+
+        self.worst_case_queries = worst_case_queries
+
+        print self.worst_case_queries
+        self.get_query_output_for_worst_case()
 
         self.generate_refined_spark_queries()
         print self.refined_queries
@@ -435,6 +453,25 @@ class QueryTraining(object):
         with open(fname_rq_write,'w') as f:
             print "Dumping refined Queries ..."
             pickle.dump(self.refined_queries, f)
+
+    def get_query_output_for_worst_case(self):
+        worst_cost = {}
+
+        for qid in self.worst_case_queries:
+            sonata_query = self.worst_case_queries[qid]
+            spark_query = spark.PacketStream(qid)
+            spark_query.basic_headers = BASIC_HEADERS
+
+            for operator in sonata_query.operators:
+                copy_sonata_operators_to_spark(spark_query, operator)
+            query_string = 'self.training_data.'+spark_query.compile()+'.map(lambda s: (s[0][0],1)).reduceByKey(lambda x,y: x+y).collect()'
+            out = eval(query_string)
+            worst_cost[qid] = out
+            print "qid", qid, out
+
+        with open(OUTPUT_COST_DIR + "/q_worst_cost" + CASE_NUMBER + DURATION_TYPE +".pickle",'w') as f:
+            print "Dumping refined Queries ..."
+            pickle.dump(worst_cost, f)
 
     def get_query_output_less_memory(self, qid):
         """
