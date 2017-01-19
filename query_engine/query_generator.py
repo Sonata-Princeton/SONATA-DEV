@@ -201,12 +201,13 @@ class QueryGenerator(object):
 
     def generate_queries_case4(self):
         # Case where we vary the height of the query tree
-        other_headers = ["sPort", "dPort", "nBytes", "proto", "sMac", "dMac"]
-        heights = range(len(other_headers)-2)
+        other_headers = ["sPort", "dPort", "nBytes", "sMac", "dMac", "proto"]
+        heights = range(len(other_headers)-1)
         self.n_queries = len(heights)
 
         reduction_key = 'dIP'
         thresh = 95
+        thresholds = [90, 70, 50, 30, 10, 1]
         qid_2_query = {}
         for n_query in range(self.n_queries):
             print "Depth of Query Tree", n_query
@@ -231,7 +232,7 @@ class QueryGenerator(object):
             for qid in single_queries:
 
                 qid_2_query[qid] = self.generate_single_query_case4(qid, reduction_key, other_headers,
-                                                              query_height, thresh)
+                                                              query_height, thresholds[query_height])
                 query_height += 1
 
             composed_query = generate_composed_query(query_tree, qid_2_query)
@@ -300,8 +301,7 @@ class QueryGenerator(object):
             self.qid_2_query.update(qid_2_query)
 
     def generate_queries_case1(self):
-        # Case where order of reduction keys is important
-        # generate two queries: reduce(dIP)..reduce(dIP, ....) vs. reduce(dIP,...)..reduce(dIP)
+        # Case where we vary the number of reduce operators
         other_headers = ["sPort", "dPort", "nBytes", "proto", "sMac", "dMac"]
         self.n_queries = 1+len(other_headers)
         reduction_key = 'dIP'

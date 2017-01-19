@@ -127,9 +127,9 @@ class QueryTraining(object):
             .setMaster("local[*]")
             #.setMaster("")
             .setAppName("SONATA-Training"))
-            #.set("spark.executor.memory","6g")
-            #.set("spark.driver.memory","20g"))
-            #.set("spark.cores.max","16"))
+    #.set("spark.executor.memory","6g")
+    #.set("spark.driver.memory","20g"))
+    #.set("spark.cores.max","16"))
 
     sc = SparkContext(conf=conf)
     logger = sc._jvm.org.apache.log4j
@@ -475,7 +475,7 @@ class QueryTraining(object):
             print "Dumping refined Queries ..."
             pickle.dump(worst_cost, f)
 
-        #self.write_to_s3(worst_case_output)
+            #self.write_to_s3(worst_case_output)
 
     def get_query_output_less_memory(self, qid):
         """

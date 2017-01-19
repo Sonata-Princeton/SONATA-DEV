@@ -325,62 +325,73 @@ def get_ts_from_qcost(qcost):
 
 
 def process_cost_data(fname_qg, fname_rq, fname_qcost, case):
-    if case in [1, 2, 3]:
-        ref_levels = range(0, 33, 4)
-        finest_plan = ref_levels[-1]
-        alphas = [0, 0.0001, 0.001, 0.01, 0.1, 0.5, 0.99]
-        alphas = [0.1]
-        with open(fname_qg, 'r') as f:
-            query_generator = pickle.load(f)
-            queries = query_generator.composed_queries.values()
 
-            with open(fname_rq, 'r') as f:
-                refined_queries = pickle.load(f)
-                print refined_queries
-                query_cost = {}
-                for qid in refined_queries:
-                    fname = fname_qcost+'/q_cost_1min_'+str(qid)+'.pickle'
-                    with open(fname, 'r') as f:
-                        query_cost[qid] = pickle.load(f)
-                #qcost_normalized = normalize_qcost(query_cost)
-                qcost_normalized = query_cost
+    ref_levels = range(0, 33, 4)
+    finest_plan = ref_levels[-1]
+    alphas = [0, 0.0001, 0.001, 0.01, 0.05, 0.1, 0.2, 0.25, 0.3, .4, 0.5, 0.6, 0.7, 0.75, 0.8, 0.9, 0.99]
+    #alphas = [0.1]
+    with open(fname_qg, 'r') as f:
+        query_generator = pickle.load(f)
+        queries = query_generator.composed_queries.values()
 
-                total_timestamps = get_ts_from_qcost(query_cost)
+        with open(fname_rq, 'r') as f:
+            refined_queries = pickle.load(f)
+            print refined_queries
+            query_cost = {}
+            for qid in refined_queries:
+                fname = fname_qcost+'/q_cost_1min_'+str(qid)+'.pickle'
+                with open(fname, 'r') as f:
+                    query_cost[qid] = pickle.load(f)
+            if case == 4:
+                fname = fname_qcost+'/q_worst_costCASE4_1min.pickle'
+                with open(fname, 'r') as f:
+                    query_worst_cost = pickle.load(f)
+                    tmp = {}
+                    for qid in query_worst_cost:
+                        tmp[qid] = dict((x[0],x[1]) for x in query_worst_cost[qid])
+                    query_worst_cost = tmp
 
-            training_timestamps = total_timestamps[:30]
-            test_timestamps = total_timestamps[31:]
+
+            #qcost_normalized = normalize_qcost(query_cost)
+            qcost_normalized = query_cost
+
+            total_timestamps = get_ts_from_qcost(query_cost)
+
+        training_timestamps = total_timestamps[:10]
+        test_timestamps = total_timestamps[11:]
 
 
-            final_plan_sequences = {}
+        final_plan_sequences = {}
 
-            # First learn the refinement and partitioning plan for each query, and alpha given training data
-            for query in queries[:]:
-                final_plan_sequences[query.qid] = {}
-                for alpha in alphas:
-                    query.alpha = alpha
-                    query.training_timestamps = training_timestamps
-                    query.qcost = qcost_normalized
-                    query.get_query_tree()
-                    query.get_all_queries()
-                    query.get_partition_plans()
-                    query.get_cost(ref_levels)
-                    query.get_refinement_plan(ref_levels)
+        # First learn the refinement and partitioning plan for each query, and alpha given training data
+        for query in queries[:]:
+            final_plan_sequences[query.qid] = {}
+            for alpha in alphas:
+                query.alpha = alpha
+                query.training_timestamps = training_timestamps
+                query.qcost = qcost_normalized
+                query.get_query_tree()
+                query.get_all_queries()
+                query.get_partition_plans()
+                query.get_cost(ref_levels)
+                query.get_refinement_plan(ref_levels)
 
-                    query.query_in_mapping = {}
-                    final_level = ref_levels[-1]
-                    final_plan_sequence = rs.generate_query_in_mapping(ref_levels[0], final_level, query.query_2_final_plan, query.qid,
-                                                       query.query_tree)
+                query.query_in_mapping = {}
+                final_level = ref_levels[-1]
+                final_plan_sequence = rs.generate_query_in_mapping(ref_levels[0], final_level, query.query_2_final_plan, query.qid,
+                                                   query.query_tree)
 
-                    final_plan_sequences[query.qid][alpha] = final_plan_sequence
-            #return 0,0
+                final_plan_sequences[query.qid][alpha] = final_plan_sequence
+        #return 0,0
+        if case in [1, 2, 3]:
 
             output = {}
             # Now estimate the performance gains
             for ts in test_timestamps[1:]:
                 for query in queries[:]:
                     # estimate Nmax, and Bmax
-                    if query not in output:
-                        output[query] = {}
+                    if query.qid not in output:
+                        output[query.qid] = {}
 
 
                     query.get_all_queries()
@@ -393,10 +404,11 @@ def process_cost_data(fname_qg, fname_rq, fname_qcost, case):
                         N_max += query_cost[q][(plans[-1],(0,32))][ts][1]
                         B_max += query_cost[q][(plans[0],(0,32))][ts][0]
 
+
                     print "For query", query.qid, query.keys, "time", ts, "Nmax", N_max, "Bmax", B_max
                     for alpha in alphas:
-                        if alpha not in output[query]:
-                            output[query][alpha] = {}
+                        if alpha not in output[query.qid]:
+                            output[query.qid][alpha] = {}
                         final_plan_sequence = final_plan_sequences[query.qid][alpha]
                         ctr = 1
                         N = 0
@@ -409,14 +421,56 @@ def process_cost_data(fname_qg, fname_rq, fname_qcost, case):
 
                         print ts, "N", N, N_max, "Gain", float(N)/N_max, alpha
                         print ts, "B", B, B_max, "Gain", float(B)/B_max, alpha
-                        output[query][alpha][ts] = ((N,N_max), (B,B_max))
+                        output[query.qid][alpha][ts] = ((N,N_max), (B,B_max))
 
-            return output, final_plan_sequences
+        else:
+            print "Analysing data for Case 4"
+            output = {}
+            # Now estimate the performance gains
+            for ts in test_timestamps[1:]:
+                for query in queries[:]:
+                    # estimate Nmax, and Bmax
+                    if query.qid not in output:
+                        output[query.qid] = {}
 
+
+                    query.get_all_queries()
+                    all_queries = filter(lambda x: len(query.query_2_plans[x]) > 0, query.query_2_plans.keys())
+                    all_queries.sort(reverse=True)
+                    N_max = 0
+                    B_max = 0
+                    for q in all_queries:
+                        plans = query.query_2_plans[q]
+                        #assert (query_cost[query.qid][(plans[-1],(0,8))][ts] == query_cost[query.qid][(plans[-1],(0,32))][ts])
+                        N_max += query_cost[all_queries[0]][(plans[-1],(0,32))][ts][1]
+                        #B_max += query_cost[q][(plans[0],(0,32))][ts][0]
+                        #print query_worst_cost
+                        if ts in query_worst_cost[q]:
+                            B_max += query_worst_cost[q][ts]
+
+                    print "For query", query.qid, query.keys, "time", ts, "Nmax", N_max, "Bmax", B_max
+                    for alpha in alphas:
+                        if alpha not in output[query.qid]:
+                            output[query.qid][alpha] = {}
+                        final_plan_sequence = final_plan_sequences[query.qid][alpha]
+                        ctr = 1
+                        N = 0
+                        B = 0
+                        for (q_id, (part_plan,ref_transit)) in final_plan_sequence:
+                            print "for level", ctr, "query", q_id, " has part plan",part_plan, " and ref plan", ref_transit, "cost", query_cost[q_id][(part_plan,ref_transit)].values()[0]
+                            N += query_cost[q_id][(part_plan,ref_transit)][ts][1]
+                            B += query_cost[q_id][(part_plan,ref_transit)][ts][0]
+                            ctr += 1
+
+                        print ts, "N", N, N_max, "Gain", float(N)/N_max, alpha
+                        print ts, "B", B, B_max, "Gain", float(B)/B_max, alpha
+                        output[query.qid][alpha][ts] = ((N,N_max), (B,B_max))
+
+        return output, final_plan_sequences
 
 
 def analyse_qcost():
-    cases = [2]
+    cases = [1]
     for case in cases:
         if case == 3:
             fname_qg = 'data/query_generator_object_case3.pickle'
@@ -431,9 +485,9 @@ def analyse_qcost():
                 pickle.dump(final_plan_sequences,f)
 
         elif case == 1:
-            fname_qg = 'data/query_generator_object_case1.pickle'
-            fname_rq = 'data/refined_queries_queries_case1_1min.pickle'
-            fname_qcost = 'data/query_cost_queries_case1_exp'
+            fname_qg = 'data/use_cases_aws/query_generator_object_case1.pickle'
+            fname_rq = 'data/refined_queries_queries_case1_1min_udp.pickle'
+            fname_qcost = 'data/query_cost_queries_case1_udp'
 
             output, final_plan_sequences = process_cost_data(fname_qg, fname_rq, fname_qcost, case)
 
@@ -449,12 +503,22 @@ def analyse_qcost():
 
             output, final_plan_sequences = process_cost_data(fname_qg, fname_rq, fname_qcost, case)
 
-            with open('data/case_1_out_data.pickle','w') as f:
+            with open('data/case_2_out_data.pickle','w') as f:
                 pickle.dump(output,f)
-            with open('data/case_1_final_plan_sequences.pickle','w') as f:
+            with open('data/case_2_final_plan_sequences.pickle','w') as f:
                 pickle.dump(final_plan_sequences,f)
 
+        elif case == 4:
+            fname_qg = 'data/query_generator_object_case4.pickle'
+            fname_rq = 'data/refined_queries_queries_case4_1min.pickle'
+            fname_qcost = 'data/query_cost_queries_case4'
 
+            output, final_plan_sequences = process_cost_data(fname_qg, fname_rq, fname_qcost, case)
+
+            with open('data/case_4_out_data.pickle','w') as f:
+                pickle.dump(output,f)
+            with open('data/case_4_final_plan_sequences.pickle','w') as f:
+                pickle.dump(final_plan_sequences,f)
 
 
 if __name__ == '__main__':
