@@ -161,7 +161,7 @@ class QueryGenerator(object):
     refinement_headers = ["dIP", "sIP"]
     other_headers = ["proto", "sMac", "dMac"]
 
-    def __init__(self, n_queries, max_reduce_operators, query_tree_depth, max_filter_frac):
+    def __init__(self, case, n_queries, max_reduce_operators, query_tree_depth, max_filter_frac):
         """
         Initialize QueryGenerator
 
@@ -172,7 +172,7 @@ class QueryGenerator(object):
         """
         self.n_queries = n_queries
         self.max_reduce_operators = max_reduce_operators
-        self.query_tree_depth = query_tree_depth
+        self.max_query_tree_depth = query_tree_depth
         self.max_filter_sigma = max_filter_frac
         self.composed_queries = {}
         self.query_trees = {}
@@ -180,12 +180,19 @@ class QueryGenerator(object):
 
         self.qid_2_query = {}
 
-        #self.generate_random_queries()
-        #self.generate_queries_case1()
-        #self.generate_queries_case2()
-        #self.generate_queries_case3()
-        # Case where we vary the height of the query tree
-        self.generate_queries_case4()
+        self.case = case
+
+        if self.case == 0:
+            self.generate_random_queries()
+        elif self.case == 1:
+            self.generate_queries_case1()
+        elif self.case == 2:
+            self.generate_queries_case2()
+        elif self.case == 3:
+            self.generate_queries_case3()
+        elif self.case == 4:
+            # Case where we vary the height of the query tree
+            self.generate_queries_case4()
 
     def generate_single_query_case4(self, qid, reduction_key, other_headers, query_height, thresh, isLeft=True):
 
@@ -195,9 +202,56 @@ class QueryGenerator(object):
         q.map(keys=tuple(reduction_fields), map_values = ('count',), func=('eq',1,))
         q.reduce(keys=tuple(reduction_fields), func=('sum',))
         q.filter(filter_vals=('count',), func=('geq', thresh))
-        q.map(keys=tuple(reduction_fields))
+        q.map(keys=tuple([reduction_key]))
 
         return q
+
+    def generate_random_queries(self):
+        # Older set of operations to generate random queries given query tree depth
+        thresholds = [90, 70, 50, 30, 10, 1]
+        other_headers = ["sPort", "dPort", "nBytes", "sMac", "dMac", "proto"]
+        for n_query in range(self.n_queries):
+
+            root_qid = int(math.pow(2, 1 + self.max_query_tree_depth) - 1) * n_query + 1
+            query_depth = random.choice(range(1+self.max_query_tree_depth))
+            all_queries = range(root_qid, root_qid + int(math.pow(2, 1 + query_depth) - 1))
+
+            ctr = 1
+            query_tree = {root_qid:generate_query_tree(ctr, all_queries, query_depth)}
+            print "Query Tree", query_tree
+            self.query_trees[n_query] = query_tree
+            qid_2_query = {}
+            reduction_key = random.choice(self.refinement_headers)
+
+            out = []
+            get_left_children(query_tree, out)
+            #print "Left children", out
+            single_queries = [root_qid]+out
+            single_queries.sort(reverse=True)
+            print "Single Queries", single_queries
+            query_height = 0
+            for qid in single_queries:
+                random.shuffle(other_headers)
+                qid_2_query[qid] = self.generate_single_query_case4(qid, reduction_key, other_headers,
+                                                                    query_height, thresholds[query_height])
+                query_height += 1
+
+            composed_query = generate_composed_query(query_tree, qid_2_query)
+            self.composed_queries[n_query]= composed_query
+            self.qid_2_query.update(qid_2_query)
+
+            composed_query = generate_composed_query(query_tree, qid_2_query)
+            self.composed_queries[n_query]= composed_query
+            #print n_query, self.query_trees[n_query]
+            #print composed_query.qid, composed_query
+            self.qid_2_query.update(qid_2_query)
+            #tmp = composed_query.get_reduction_key()
+            #print tmp
+
+        fname = 'query_engine/use_cases_aws/query_generator_object_random_'+str(self.n_queries)+'.pickle'
+        with open(fname, 'w') as f:
+            pickle.dump(self, f)
+
 
     def generate_queries_case4(self):
         # Case where we vary the height of the query tree
@@ -208,7 +262,6 @@ class QueryGenerator(object):
         reduction_key = 'dIP'
         thresh = 95
         thresholds = [90, 70, 50, 30, 10, 1]
-        qid_2_query = {}
         for n_query in range(self.n_queries):
             print "Depth of Query Tree", n_query
             query_tree_depth = n_query
@@ -221,7 +274,6 @@ class QueryGenerator(object):
             self.query_trees[n_query] = query_tree
 
             qid_2_query = {}
-            reduction_key = 'dIP'
 
             out = []
             get_left_children(query_tree, out)
@@ -239,6 +291,9 @@ class QueryGenerator(object):
             self.composed_queries[n_query]= composed_query
             self.qid_2_query.update(qid_2_query)
         print "Total queries generated", len(self.qid_2_query.keys())
+        fname = 'query_engine/use_cases_aws/query_generator_object_case4_'+str(self.n_queries)+'.pickle'
+        with open(fname, 'w') as f:
+            pickle.dump(self, f)
 
 
     def generate_queries_case3(self):
@@ -265,6 +320,10 @@ class QueryGenerator(object):
             composed_query = generate_composed_query(query_tree, qid_2_query)
             self.composed_queries[n_query]= composed_query
             self.qid_2_query.update(qid_2_query)
+
+        fname = 'query_engine/use_cases_aws/query_generator_object_case3_'+str(self.n_queries)+'.pickle'
+        with open(fname, 'w') as f:
+            pickle.dump(self, f)
 
 
 
@@ -300,6 +359,10 @@ class QueryGenerator(object):
             self.composed_queries[n_query]= composed_query
             self.qid_2_query.update(qid_2_query)
 
+        fname = 'query_engine/use_cases_aws/query_generator_object_case2.pickle'
+        with open(fname, 'w') as f:
+            pickle.dump(self, f)
+
     def generate_queries_case1(self):
         # Case where we vary the number of reduce operators
         other_headers = ["sPort", "dPort", "nBytes", "proto", "sMac", "dMac"]
@@ -328,40 +391,11 @@ class QueryGenerator(object):
             self.composed_queries[n_query]= composed_query
             self.qid_2_query.update(qid_2_query)
 
+        fname = 'query_engine/use_cases_aws/query_generator_object_case1_'+str(self.n_queries)+'.pickle'
+        with open(fname, 'w') as f:
+            pickle.dump(self, f)
 
-    def generate_random_queries(self):
-        # Older set of operations to generate random queries given query tree depth
-        for n_query in range(self.n_queries):
-            root_qid = int(math.pow(2, 1+self.query_tree_depth)-1)*n_query+1
-            all_queries = range(root_qid, root_qid+int(math.pow(2, 1+self.query_tree_depth)-1))
 
-            ctr = 1
-            query_tree = {root_qid:generate_query_tree(ctr, all_queries, self.query_tree_depth)}
-            print "Query Tree", query_tree
-            self.query_trees[n_query] = query_tree
-            qid_2_query = {}
-            reduction_key = random.choice(self.refinement_headers)
-
-            out = []
-            get_left_children(query_tree, out)
-            print "Left children", out
-            single_queries = [root_qid]+out
-            print "Single Queries", single_queries
-
-            for qid in single_queries:
-                if qid == root_qid:
-                    qid_2_query[qid] = self.generate_single_query(qid, reduction_key, isLeft=False)
-                else:
-                    qid_2_query[qid] = self.generate_single_query(qid, reduction_key)
-                #print qid, qid_2_query[qid]
-
-            composed_query = generate_composed_query(query_tree, qid_2_query)
-            self.composed_queries[n_query]= composed_query
-            #print n_query, self.query_trees[n_query]
-            #print composed_query.qid, composed_query
-            self.qid_2_query.update(qid_2_query)
-            #tmp = composed_query.get_reduction_key()
-            #print tmp
 
     def generate_reduction_operators(self, q, qid, reduction_fields, operator):
         """
@@ -452,13 +486,12 @@ if __name__ == "__main__":
     """
 
 
-    n_queries = 10
-
+    n_queries = 1000
     max_filter_frac = 100
-    max_reduce_operators = 2
-    query_tree_depth = 1
+    max_reduce_operators = 1
+    query_tree_depth = 2
     # TODO: make sure the queries are unique
-    query_generator = QueryGenerator(n_queries, max_reduce_operators, query_tree_depth, max_filter_frac)
+    query_generator = QueryGenerator(4, n_queries, max_reduce_operators, query_tree_depth, max_filter_frac)
 
     queries = query_generator.composed_queries.values()
     print query_generator.qid_2_query
@@ -481,9 +514,7 @@ if __name__ == "__main__":
 
     """
 
-    fname = 'query_engine/use_cases_aws/query_generator_object_case4.pickle'
-    with open(fname, 'w') as f:
-        pickle.dump(query_generator, f)
+
 
 
 

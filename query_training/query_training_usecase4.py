@@ -158,7 +158,7 @@ class QueryTraining(object):
                               .map(parse_log_line)
                               # because the data provided has already applied 10 s windowing
                               .map(lambda s:tuple([int(math.ceil(int(s[0])/T))]+(list(s[1:]))))
-                              #.filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(proto)=='17')
+                              .filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(proto)=='17')
                               #.filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(sPort) == '53')
                               )
         print "Collecting the training data for the first time ..."
@@ -177,7 +177,7 @@ class QueryTraining(object):
         # Update the query Generator Object (either passed directly, or filename specified)
         if query_generator is None:
             if fname_qg == '':
-                fname_qg = 'query_engine/use_cases_aws/query_generator_object_case4.pickle'
+                fname_qg = 'query_engine/use_cases_aws/query_generator_object_case4_5.pickle'
                 self.write_to_s3(fname_qg)
             with open(fname_qg,'r') as f:
                 query_generator = pickle.load(f)
@@ -186,7 +186,7 @@ class QueryTraining(object):
         self.max_reduce_operators = self.query_generator.max_reduce_operators
         self.qid_2_query = query_generator.qid_2_query
 
-        REFINED_QUERY_PATH = 'data/refined_queries_queries_case4_1min_aws.pickle'
+        REFINED_QUERY_PATH = 'data/refined_queries_queries_case4_5_1min_aws.pickle'
         print "Generating Refined Queries ..."
         self.process_refined_queries(REFINED_QUERY_PATH)
 
