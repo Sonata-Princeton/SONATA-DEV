@@ -15,7 +15,7 @@ import numpy as np
 from matplotlib.ticker import MaxNLocator
 my_locator = MaxNLocator(6)
 
-def plotCDF(data, order, xlabel, ylabel, Xmax, Xmin, fname, labels = None):
+def plotCDF(data, order, xlabel, ylabel, Xmax, Xmin, fname, labels = None, isLog=False):
     xlab=[]
     raw={}
     fig = plt.figure()
@@ -51,10 +51,11 @@ def plotCDF(data, order, xlabel, ylabel, Xmax, Xmin, fname, labels = None):
     #pl.legend((p),legnd,'lower right')
     if len(labels)> 1:
         ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.15),
-                  ncol=3, fancybox=True, shadow=False)
+                  ncol=5, fancybox=True, shadow=False)
     pl.xlabel(xlabel)
     pl.ylabel(ylabel)
-    pl.xscale('log')
+    if isLog:
+        pl.xscale('log')
     if Xmin != 'N/A':
         ax.set_xlim(xmin=Xmin)
     if Xmax != 'N/A':
@@ -67,7 +68,7 @@ def plotCDF(data, order, xlabel, ylabel, Xmax, Xmin, fname, labels = None):
     plot_name_png= fname+'.png'
     plot_name_jpg= fname+'.jpg'
     pl.savefig(plot_name)
-    pl.savefig(plot_name_png)
+    #pl.savefig(plot_name_png)
     #pl.savefig(plot_name_jpg)
 
 

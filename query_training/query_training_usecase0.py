@@ -13,11 +13,12 @@ import pickle
 
 
 
-DURATION_TYPE = "1min"
-OUTPUT_COST_DIR = 'data/query_cost_queries_case4_aws'
+DURATION_TYPE = "5min"
+N_QUERIES = "10"
+OUTPUT_COST_DIR = 'data/use_case_0_filtered_data/query_cost_queries_case0_'+DURATION_TYPE+'_'+N_QUERIES+'_aws'
 S3_ACCESS_KEY = "AKIAJZZYOKOOZNK2Z2GQ"
 S3_SECRET_KEY = "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"
-CASE_NUMBER = "_CASE4_"
+CASE_NUMBER = "_CASE0_"
 
 # Standard set of packet tuple headers
 BASIC_HEADERS = ["ts", "sIP", "sPort", "dIP", "dPort", "nBytes",
@@ -139,7 +140,7 @@ class QueryTraining(object):
     #baseDir = os.path.join('/home/vagrant/dev/data/sample_data/')
     baseDir = os.path.join('/mnt/')
     #flows_File = os.path.join(baseDir, 'sample_data.csv')
-    flows_File = os.path.join(baseDir, 'anon_all_flows_1min.csv')
+    flows_File = os.path.join(baseDir, 'anon_all_flows_5min.csv')
     aws_File = "s3://sonatasdx/data/anon_all_flows_1min.csv/"
     ref_levels = range(0, 33, 8)
     # 10 second window length
@@ -177,7 +178,7 @@ class QueryTraining(object):
         # Update the query Generator Object (either passed directly, or filename specified)
         if query_generator is None:
             if fname_qg == '':
-                fname_qg = 'query_engine/use_cases_aws/query_generator_object_case4_5.pickle'
+                fname_qg = 'data/use_case_0_filtered_data/query_generator_object_case0_'+N_QUERIES+'.pickle'
                 self.write_to_s3(fname_qg)
             with open(fname_qg,'r') as f:
                 query_generator = pickle.load(f)
@@ -186,7 +187,7 @@ class QueryTraining(object):
         self.max_reduce_operators = self.query_generator.max_reduce_operators
         self.qid_2_query = query_generator.qid_2_query
 
-        REFINED_QUERY_PATH = 'data/refined_queries_queries_case4_5_1min_aws.pickle'
+        REFINED_QUERY_PATH = 'data/use_case_0_filtered_data/refined_queries_queries_case0_'+DURATION_TYPE+'_'+N_QUERIES+'_1min_aws.pickle'
         print "Generating Refined Queries ..."
         self.process_refined_queries(REFINED_QUERY_PATH)
 
@@ -194,7 +195,7 @@ class QueryTraining(object):
 
         """
 
-        fname_rq_read = 'data/refined_queries_queries_case4_1min_aws.pickle'
+        fname_rq_read = 'data/refined_queries_queries_case0_100_1min_aws.pickle'
         with open(fname_rq_read, 'r') as f:
             self.refined_queries = pickle.load(f)
         """

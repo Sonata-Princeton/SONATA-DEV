@@ -183,7 +183,7 @@ class QueryGenerator(object):
         self.case = case
 
         if self.case == 0:
-            self.generate_random_queries()
+            self.generate_queries_case0()
         elif self.case == 1:
             self.generate_queries_case1()
         elif self.case == 2:
@@ -196,19 +196,24 @@ class QueryGenerator(object):
 
     def generate_single_query_case4(self, qid, reduction_key, other_headers, query_height, thresh, isLeft=True):
 
+        thresh_random = random.choice(range(thresh, 100))
+        if query_height > 1:
+            query_height = 1
+
         q = PacketStream(qid)
         q.reduction_key = reduction_key
         reduction_fields = [reduction_key]+other_headers[:query_height]
         q.map(keys=tuple(reduction_fields), map_values = ('count',), func=('eq',1,))
         q.reduce(keys=tuple(reduction_fields), func=('sum',))
-        q.filter(filter_vals=('count',), func=('geq', thresh))
+        q.filter(filter_vals=('count',), func=('geq', thresh_random))
         q.map(keys=tuple([reduction_key]))
 
         return q
 
-    def generate_random_queries(self):
+    def generate_queries_case0(self):
         # Older set of operations to generate random queries given query tree depth
         thresholds = [90, 70, 50, 30, 10, 1]
+        thresholds = [95, 95, 95, 95, 95, 95]
         other_headers = ["sPort", "dPort", "nBytes", "sMac", "dMac", "proto"]
         for n_query in range(self.n_queries):
 
@@ -247,8 +252,8 @@ class QueryGenerator(object):
             self.qid_2_query.update(qid_2_query)
             #tmp = composed_query.get_reduction_key()
             #print tmp
-
-        fname = 'query_engine/use_cases_aws/query_generator_object_random_'+str(self.n_queries)+'.pickle'
+        fname = 'data/use_case_0_filtered_data/query_generator_object_case0_'+str(self.n_queries)+'.pickle'
+        print fname
         with open(fname, 'w') as f:
             pickle.dump(self, f)
 
@@ -262,6 +267,7 @@ class QueryGenerator(object):
         reduction_key = 'dIP'
         thresh = 95
         thresholds = [90, 70, 50, 30, 10, 1]
+        thresholds = [95, 95, 95, 95, 95, 1]
         for n_query in range(self.n_queries):
             print "Depth of Query Tree", n_query
             query_tree_depth = n_query
@@ -292,8 +298,8 @@ class QueryGenerator(object):
             self.qid_2_query.update(qid_2_query)
         print "Total queries generated", len(self.qid_2_query.keys())
         fname = 'query_engine/use_cases_aws/query_generator_object_case4_'+str(self.n_queries)+'.pickle'
-        with open(fname, 'w') as f:
-            pickle.dump(self, f)
+        #with open(fname, 'w') as f:
+        #    pickle.dump(self, f)
 
 
     def generate_queries_case3(self):
@@ -486,12 +492,12 @@ if __name__ == "__main__":
     """
 
 
-    n_queries = 1000
+    n_queries = 10
     max_filter_frac = 100
     max_reduce_operators = 1
     query_tree_depth = 2
     # TODO: make sure the queries are unique
-    query_generator = QueryGenerator(4, n_queries, max_reduce_operators, query_tree_depth, max_filter_frac)
+    query_generator = QueryGenerator(0, n_queries, max_reduce_operators, query_tree_depth, max_filter_frac)
 
     queries = query_generator.composed_queries.values()
     print query_generator.qid_2_query

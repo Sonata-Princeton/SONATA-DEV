@@ -296,8 +296,8 @@ class PacketStream(Query):
         #print plan_hashmap_list
         from collections import Counter
         most_common,num_most_common = Counter(plan_hashmap_list).most_common(1)[0] # 4, 6 times
-        print "Most common plan for ", self.qid, self.alpha, most_common, "with freq", num_most_common
-
+        #print "Most common plan for ", self.qid, self.alpha, most_common, "with freq", num_most_common
+        #print plan_hashmap[most_common]
         self.query_2_final_plan = plan_hashmap[most_common]
         return query_2_final_plan
 
