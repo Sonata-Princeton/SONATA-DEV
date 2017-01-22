@@ -1,4 +1,8 @@
-source env.sh
+THIS_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+
+export BMV2_PATH=/home/vagrant/bmv2
+
+export P4C_BM_PATH=/home/vagrant/p4c-bmv2
 
 P4C_BM_SCRIPT=$P4C_BM_PATH/p4c_bm/__main__.py
 
@@ -11,7 +15,7 @@ CLI_PATH=$BMV2_PATH/targets/simple_switch/sswitch_CLI
 $P4C_BM_SCRIPT p4src/join.p4 --json join.json
 # This gives libtool the opportunity to "warm-up"
 sudo $SWITCH_PATH >/dev/null 2>&1
-sudo PYTHONPATH=$PYTHONPATH:$BMV2_PATH/mininet/ python topo.py \
+sudo PYTHONPATH=$PYTHONPATH:/home/vagrant/bmv2/mininet/ python topo.py \
     --behavioral-exe $SWITCH_PATH \
     --json join.json \
     --cli $CLI_PATH
