@@ -319,5 +319,5 @@ if __name__ == '__main__':
     #plot_cases()
     #plot_case0()
     #plot_static_case0()
-    plot_alpha_search()
-    #plot_micro_bench()
+    #plot_alpha_search()
+    plot_micro_bench()

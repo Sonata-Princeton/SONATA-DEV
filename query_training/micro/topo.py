@@ -27,7 +27,7 @@ import os
 import subprocess
 
 ## Initialization of Switch
-BMV2_PATH = "/home/vagrant/bmv2"
+BMV2_PATH = "/home/arp/bmv2"
 BMV2_SWITCH_BASE = BMV2_PATH + "/targets/simple_switch"
 
 SWITCH_PATH = BMV2_SWITCH_BASE + "/simple_switch"
