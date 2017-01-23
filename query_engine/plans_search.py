@@ -612,13 +612,13 @@ def get_buckets_for_alpha(query, alpha,ts, qcost, ref_levels):
 
 def get_alpha_for_packets(nmax, query, ts, query_cost, ref_levels, alpha_start = 0.0,
                           alpha_end = 1.0, alpha_mid = 0.5):
+
     N_start = get_packets_for_alpha(query, alpha_start, ts, query_cost, ref_levels)
     N_end = get_packets_for_alpha(query, alpha_end, ts, query_cost, ref_levels)
     N_mid = get_packets_for_alpha(query, alpha_mid, ts, query_cost, ref_levels)
     print "for ", nmax, alpha_start, N_start, alpha_mid, N_mid, alpha_end, N_end
 
-
-    if (round(alpha_start,4) == round(alpha_mid,4)) and (round(alpha_mid,4) == round(alpha_end,4)):
+    if (abs(alpha_start-alpha_mid)<0.001) and (abs(alpha_end-alpha_mid)<0.001):
         return alpha_start
     elif nmax == N_start:
         print "Returning", alpha_start
@@ -744,7 +744,7 @@ def learn_alpha_for_buckets(queries, training_timestamps, query_cost, ref_levels
 
 
 def get_cost_savings(fname_qg, fname_rq, fname_qcost):
-    ref_levels = range(0, 33, 8)
+    ref_levels = range(0, 33, 4)
     finest_plan = ref_levels[-1]
     #alphas = [0, 0.0001, 0.001, 0.01, 0.05, 0.1, 0.2, 0.25, 0.3, .4, 0.5, 0.6, 0.7, 0.75, 0.8, 0.9, 0.99]
     alphas = [0.01, 0.1, 0.25, 0.5, 0.75]
@@ -777,13 +777,8 @@ def get_cost_savings(fname_qg, fname_rq, fname_qcost):
 
             total_timestamps = get_ts_from_qcost(query_cost)
 
-        training_timestamps = total_timestamps[:30]
+        training_timestamps = total_timestamps[:10]
         test_timestamps = total_timestamps[11:]
-
-
-
-
-
 
         final_plan_sequences = {}
 
@@ -809,7 +804,7 @@ def get_cost_savings(fname_qg, fname_rq, fname_qcost):
             #print query, refined_queries[query.qid]
 
             #break
-
+        """
         learned_nfrac_2_alpha = learn_alpha_for_packets(queries, training_timestamps, query_cost, ref_levels)
         print learned_nfrac_2_alpha
         return 0,0, 0,0
@@ -817,7 +812,7 @@ def get_cost_savings(fname_qg, fname_rq, fname_qcost):
         learned_bfrac_2_alpha = learn_alpha_for_buckets(queries, training_timestamps, query_cost, ref_levels, query_worst_cost)
         print learned_bfrac_2_alpha
         return 0,0, 0,0
-
+        """
 
         output_static_dp, output_static_sp = get_static_plan_costs(alphas, ref_levels, queries, query_cost,
                                                                    query_worst_cost, test_timestamps)
@@ -871,9 +866,9 @@ def get_cost_savings(fname_qg, fname_rq, fname_qcost):
 
 
 def case_0_analysis():
-    fname_qg = 'data/use_case_0_filtered_data/query_generator_object_case0_10.pickle'
-    fname_rq = 'data/use_case_0_filtered_data/refined_queries_queries_case0_10_1min_aws.pickle'
-    fname_qcost = 'data/use_case_0_filtered_data/query_cost_queries_case0_10_aws'
+    fname_qg = 'data/use_case_0_100_all_data/query_generator_object_case0_100.pickle'
+    fname_rq = 'data/use_case_0_100_all_data/refined_queries_queries_case0_1min_100_1min_aws.pickle'
+    fname_qcost = 'data/use_case_0_100_all_data/query_cost_queries_case0_1min_100_aws'
 
     # Get Cost Saving Result
     output, final_plan_sequences, output_static_dp, output_static_sp = get_cost_savings(fname_qg, fname_rq, fname_qcost)

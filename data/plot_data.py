@@ -225,7 +225,7 @@ def plot_static_case0():
         plotCDF(plot_data[2], alphas+['Static'], 'Detection Delay (second)',
                 'CDF of Queries', 'N/A', 'N/A', 'case0_delay_static_cdf', labels = None)
 
-def plot_alpha_search():
+def     plot_alpha_search():
     with open('case_0_learned_nfrac_2_alpha.pickle','r') as f:
         output = pickle.load(f)
         fracs = [0.001, 0.01, 0.1, 0.25, 0.5]
@@ -239,11 +239,85 @@ def plot_alpha_search():
         plotCDF(plot_data, fracs, 'alpha',
                 'CDF of Queries', 1, 0, 'case0_alpha_cdf', labels = None)
 
+def plot_micro_bench():
+    def plot_line(xlab, data, XLabel, YLabel, fname):
+
+        fig = plt.figure()
+        ax = fig.add_subplot(1,1,1)
+
+        pl.plot(range(xlab), data, color=color_n[0],linestyle=linestyles[0], linewidth=2.0)
+
+        pl.xlabel(XLabel)
+        pl.ylabel(YLabel)
+
+        ax.set_ylim(ymin=0.0)
+        ax.grid(True)
+        plt.tight_layout()
+
+        plot_name = fname+'.eps'
+        pl.savefig(plot_name)
 
 
+    with open('micro_bench/micro_bench.pickle','r') as f:
+        output = pickle.load(f)
+        N_OF_RK = [1, 10, 100, 1000, 10000]
+        plot_data = {}
+
+        print output['fm_send'][1].keys(), len(output['fm_send'][1].keys())
+
+
+        plot_data['fm_send'] = []
+        plot_data['switch_update'] = []
+        plot_data['switch_reset'] = []
+
+        for N in N_OF_RK:
+            plot_data['fm_send'].append(output['fm_send'][N]['end']-output['fm_send'][N]['start'])
+            plot_data['switch_update'].append(output['switch_update'][N]['end']-output['switch_update'][N]['start'])
+            plot_data['switch_reset'].append(output['switch_reset'][N]['end']-output['switch_reset'][N]['start'])
+
+
+        # data to plot
+        n_groups = 5
+
+        # create plot
+        fig, ax = plt.subplots()
+        index = np.arange(n_groups)
+        bar_width = 0.35
+        opacity = 0.5
+        ax2 = ax.twinx()
+
+
+        #rects1 = plt.plot(range(len(N_OF_RK)), , color='b',linestyle=linestyles[0], linewidth=2.0)
+        ax.plot(range(len(N_OF_RK)),plot_data['fm_send'], linestyle='-', marker='o',
+                linewidth=2.0,
+                label='Fabric Send')
+
+        rects2 = plt.bar(index + bar_width, plot_data['switch_update'], bar_width,
+                         alpha=opacity,
+                         color='g',
+                         label='Switch Update')
+
+        rects3 = plt.bar(index + bar_width + bar_width, plot_data['switch_reset'], bar_width,
+                         alpha=opacity,
+                         color='r',
+                         label='Switch Reset')
+
+
+        plt.xlabel('Number of Reduction keys to update')
+        plt.ylabel('Time (seconds)')
+        plt.title('Delay vs number of reduction key update')
+        plt.xticks(index + bar_width, ('1', '10', '100', '1000', '10000'))
+        plt.legend()
+
+        plt.tight_layout()
+        plt.show()
+
+        plot_name = 'micro_bench.eps'
+        pl.savefig(plot_name)
 
 if __name__ == '__main__':
     #plot_cases()
     #plot_case0()
     #plot_static_case0()
     plot_alpha_search()
+    #plot_micro_bench()
