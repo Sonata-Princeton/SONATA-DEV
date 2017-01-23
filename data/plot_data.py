@@ -260,10 +260,11 @@ def plot_micro_bench():
 
     with open('micro_bench/micro_bench.pickle','r') as f:
         output = pickle.load(f)
-        N_OF_RK = [1, 10, 100, 1000, 10000]
+        N_OF_RK = [200, 400, 600, 800, 1000]
+
         plot_data = {}
 
-        print output['fm_send'][1].keys(), len(output['fm_send'][1].keys())
+        #print output['fm_send'][1].keys(), len(output['fm_send'][1].keys())
 
 
         plot_data['fm_send'] = []
@@ -306,7 +307,7 @@ def plot_micro_bench():
         plt.xlabel('Number of Reduction keys to update')
         plt.ylabel('Time (seconds)')
         plt.title('Delay vs number of reduction key update')
-        plt.xticks(index + bar_width, ('1', '10', '100', '1000', '10000'))
+        plt.xticks(index + bar_width, N_OF_RK)
         plt.legend()
 
         plt.tight_layout()
