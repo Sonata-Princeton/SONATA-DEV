@@ -193,6 +193,69 @@ class QueryGenerator(object):
         elif self.case == 4:
             # Case where we vary the height of the query tree
             self.generate_queries_case4()
+        elif self.case == 5:
+            # Case where we vary the height of the query tree
+            self.generate_queries_case5()
+
+
+    def generate_queries_case5(self):
+
+        for n_query in range(self.n_queries):
+
+            root_qid = int(math.pow(2, 1 + self.max_query_tree_depth) - 1) * n_query + 1
+            query_depth = random.choice(range(1+self.max_query_tree_depth))
+            all_queries = range(root_qid, root_qid + int(math.pow(2, 1 + query_depth) - 1))
+
+            ctr = 1
+            query_tree = {root_qid:generate_query_tree(ctr, all_queries, query_depth)}
+            print "Query Tree", query_tree
+            self.query_trees[n_query] = query_tree
+            qid_2_query = {}
+            reduction_key = random.choice(self.refinement_headers)
+
+            out = []
+            get_left_children(query_tree, out)
+            #print "Left children", out
+            single_queries = [root_qid]+out
+            single_queries.sort(reverse=True)
+            print "Single Queries", single_queries
+            query_height = 0
+            for qid in single_queries:
+                if n_query == 0:
+                    qid_2_query[qid] = (PacketStream(qid)
+                          .filter(filter_keys=('sPort',), func=('eq', 53))
+                          .filter(filter_keys=('dPort',), func=('eq', 53))
+                          .map(keys=('dIP', 'sIP'))
+                          .distinct(keys=('dIP', 'sIP'))
+                          .map(keys=('dIP',), map_values = ('count',), func=('eq',1,))
+                          .reduce(keys=('dIP',), func=('sum',))
+                          .filter(filter_vals=('count',), func=('geq', '1'))
+                          .map(keys=('dIP',))
+                          )
+                if n_query == 1:
+                    qid_2_query[qid] = (PacketStream(qid+1)
+                          .filter(filter_keys=('sPort',), func=('eq', 443))
+                          .filter(filter_keys=('dPort',), func=('eq', 443))
+                          .map(keys=('dIP', 'sIP'))
+                          .distinct(keys=('dIP', 'sIP'))
+                          .map(keys=('dIP',), map_values = ('count',), func=('eq',1,))
+                          .reduce(keys=('dIP',), func=('sum',))
+                          .filter(filter_vals=('count',), func=('geq', '1'))
+                          .map(keys=('dIP',))
+                          )
+                query_height += 1
+
+            composed_query = generate_composed_query(query_tree, qid_2_query)
+            self.composed_queries[n_query]= composed_query
+            self.qid_2_query.update(qid_2_query)
+
+            composed_query = generate_composed_query(query_tree, qid_2_query)
+            self.composed_queries[n_query]= composed_query
+            self.qid_2_query.update(qid_2_query)
+        fname = 'data/use_case_0_filtered_data/query_generator_object_case5_'+str(self.n_queries)+'.pickle'
+        print fname
+        with open(fname, 'w') as f:
+            pickle.dump(self, f)
 
     def generate_single_query_case4(self, qid, reduction_key, other_headers, query_height, thresh, isLeft=True):
 
@@ -252,7 +315,7 @@ class QueryGenerator(object):
             self.qid_2_query.update(qid_2_query)
             #tmp = composed_query.get_reduction_key()
             #print tmp
-        fname = 'data/use_case_0_filtered_data/query_generator_object_case0_'+str(self.n_queries)+'.pickle'
+        fname = 'data/use_case_0_100_all_new_data/query_generator_object_case0_'+str(self.n_queries)+'.pickle'
         print fname
         with open(fname, 'w') as f:
             pickle.dump(self, f)
@@ -492,7 +555,7 @@ if __name__ == "__main__":
     """
 
 
-    n_queries = 10
+    n_queries = 100
     max_filter_frac = 100
     max_reduce_operators = 1
     query_tree_depth = 2

@@ -14,12 +14,12 @@ import pickle
 
 
 DURATION_TYPE = "1min"
-N_QUERIES = "100"
-BASE_PATH = "data/use_case_0_100_all_new_data/"
-OUTPUT_COST_DIR = BASE_PATH + 'query_cost_queries_case0_'+DURATION_TYPE+'_'+N_QUERIES+'_aws'
+N_QUERIES = "2"
+BASE_PATH = "data/use_case_5/"
+OUTPUT_COST_DIR = BASE_PATH +'query_cost_queries_case5_'+DURATION_TYPE+'_'+N_QUERIES+'_aws'
 S3_ACCESS_KEY = "AKIAJZZYOKOOZNK2Z2GQ"
 S3_SECRET_KEY = "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"
-CASE_NUMBER = "_CASE0_"
+CASE_NUMBER = "_CASE5_"
 
 # Standard set of packet tuple headers
 BASIC_HEADERS = ["ts", "sIP", "sPort", "dIP", "dPort", "nBytes",
@@ -160,7 +160,7 @@ class QueryTraining(object):
                               .map(parse_log_line)
                               # because the data provided has already applied 10 s windowing
                               .map(lambda s:tuple([int(math.ceil(int(s[0])/T))]+(list(s[1:]))))
-                              .filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(proto)=='17')
+                              #.filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(proto)=='17')
                               #.filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(sPort) == '53')
                               )
         print "Collecting the training data for the first time ..."
@@ -179,7 +179,7 @@ class QueryTraining(object):
         # Update the query Generator Object (either passed directly, or filename specified)
         if query_generator is None:
             if fname_qg == '':
-                fname_qg = BASE_PATH + 'query_generator_object_case0_'+N_QUERIES+'.pickle'
+                fname_qg = BASE_PATH + 'query_generator_object_case5_'+N_QUERIES+'.pickle'
                 self.write_to_s3(fname_qg)
             with open(fname_qg,'r') as f:
                 query_generator = pickle.load(f)
@@ -188,15 +188,16 @@ class QueryTraining(object):
         self.max_reduce_operators = self.query_generator.max_reduce_operators
         self.qid_2_query = query_generator.qid_2_query
 
-        REFINED_QUERY_PATH = BASE_PATH + 'refined_queries_queries_case0_'+DURATION_TYPE+'_'+N_QUERIES+'_1min_aws.pickle'
+        REFINED_QUERY_PATH = BASE_PATH+'refined_queries_queries_case5_'+DURATION_TYPE+'_'+N_QUERIES+'_1min_aws.pickle'
         print "Generating Refined Queries ..."
         self.process_refined_queries(REFINED_QUERY_PATH)
+        print self.refined_queries
 
         self.write_to_s3(REFINED_QUERY_PATH)
 
         """
 
-        fname_rq_read = 'data/refined_queries_queries_case0_100_1min_aws.pickle'
+        fname_rq_read = 'data/refined_queries_queries_case5_100_1min_aws.pickle'
         with open(fname_rq_read, 'r') as f:
             self.refined_queries = pickle.load(f)
         """
@@ -217,6 +218,8 @@ class QueryTraining(object):
 
         # Generate refined queries
         self.generate_refined_sonata_queries()
+
+        print self.refined_sonata_queries
 
         self.update_filter()
 
@@ -341,7 +344,7 @@ class QueryTraining(object):
     def update_filter(self):
         sonata_queries = {}
         for ref_level in self.ref_levels[1:]:
-            print "Refinement Level", ref_level
+            print "Refinement Level", ref_level, self.filter_mappings
             for (prev_qid, curr_qid) in self.filter_mappings:
                 prev_ref_qid = 1000*(10000*(prev_qid/1000)+ref_level)+(prev_qid%1000)
                 curr_ref_qid = 1000*(10000*(curr_qid/1000)+ref_level)+(curr_qid%1000)

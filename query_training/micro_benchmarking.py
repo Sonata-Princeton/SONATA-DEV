@@ -68,6 +68,7 @@ def get_out(args, commands):
             t.write(commands)
             t.seek(0, 0)
             out = subprocess.check_output(args, stdin=t, shell=True)
+            #print out
         except subprocess.CalledProcessError as e:
             #t.seek(0)
             print "ERROR: " + str(args) + str(e.returncode)
@@ -106,10 +107,8 @@ if __name__ == "__main__":
 
     recording = {}
 
-    recording['fm_send'] = {}
-    recording['switch_update'] = {}
-    recording['switch_reset'] = {}
 
+    NUMBER_OF_ITERATIONS = 10
 
     fm_thread = Thread(name='fabric_manager', target=start_fabric_managers)
     fm_thread.daemon = True
@@ -117,50 +116,55 @@ if __name__ == "__main__":
     start_switch_for_delta_update()
 
     json_for_reduction_keys = generate_random_reduction_keys()
-    print json_for_reduction_keys
+    #print json_for_reduction_keys
 
-    print "========================Testing FM send time========================"
+    for ITERATION in range(NUMBER_OF_ITERATIONS):
+        recording[ITERATION] = {}
+        recording[ITERATION]['fm_send'] = {}
+        recording[ITERATION]['switch_update'] = {}
+        recording[ITERATION]['switch_reset'] = {}
+        print "========================Testing FM send time========================"
 
-    for number_of_rk in json_for_reduction_keys:
-        recording['fm_send'][number_of_rk] = {}
-        start = time.time()
-        serialized_reduction_keys = pickle.dumps(json_for_reduction_keys[number_of_rk])
-        conn = Client(FM_SOCKET)
-        conn.send(serialized_reduction_keys)
-        recording['fm_send'][number_of_rk] = { 'start': start, 'end': time.time()}
-
-
-    print "========================Testing Switch update time========================"
-
-    for number_of_rk in json_for_reduction_keys:
-        recording['switch_update'][number_of_rk] = {}
-        recording['switch_reset'][number_of_rk] = {}
+        for number_of_rk in json_for_reduction_keys:
+            recording[ITERATION]['fm_send'][number_of_rk] = {}
+            start = time.time()
+            serialized_reduction_keys = pickle.dumps(json_for_reduction_keys[number_of_rk])
+            conn = Client(FM_SOCKET)
+            conn.send(serialized_reduction_keys)
+            recording[ITERATION]['fm_send'][number_of_rk] = { 'start': start, 'end': time.time()}
 
 
-        commands = []
-        for reduction_key in json_for_reduction_keys[number_of_rk]:
-            filter_table_fname = 'forward'
-            action = 'set_default_nhop'
-            command = 'table_add '+filter_table_fname+' '+ action + ' '+str(reduction_key) +' => 1 00:00:00:00:00:01\n'
-            commands.append(command)
+        print "========================Testing Switch update time========================"
 
-        write_to_file(DELTA_COMMANDS_FILE, "".join(commands))
+        for number_of_rk in json_for_reduction_keys:
+            recording[ITERATION]['switch_update'][number_of_rk] = {}
+            recording[ITERATION]['switch_reset'][number_of_rk] = {}
 
-        start = time.time()
-        #start, end = send_commands_to_dp(DELTA_COMMANDS_FILE)
-        if number_of_rk == 1:
-            send_switch_update(commands)
-        else:
-            send_switch_update_10000(commands)
-        end = time.time()
-        recording['switch_update'][number_of_rk] = { 'start': start, 'end': end}
-        print "Switch Updated for",number_of_rk, ":", str(end-start)
-        print "\t=========Testing Switch reset time========="
-        start = time.time()
-        reset_switch_state()
-        send_commands_to_dp(BASE_PATH + "commands.txt")
-        print "finished:", number_of_rk
-        recording['switch_reset'][number_of_rk] = { 'start': start, 'end': time.time()}
+
+            commands = []
+            for reduction_key in json_for_reduction_keys[number_of_rk]:
+                filter_table_fname = 'forward'
+                action = 'set_default_nhop'
+                command = 'table_add '+filter_table_fname+' '+ action + ' '+str(reduction_key) +' => 1 00:00:00:00:00:01\n'
+                commands.append(command)
+
+            write_to_file(DELTA_COMMANDS_FILE, "".join(commands))
+
+            start = time.time()
+            #start, end = send_commands_to_dp(DELTA_COMMANDS_FILE)
+            if number_of_rk == 1:
+                send_switch_update(commands)
+            else:
+                send_switch_update_10000(commands)
+            end = time.time()
+            recording[ITERATION]['switch_update'][number_of_rk] = { 'start': start, 'end': end}
+            print "Switch Updated for",number_of_rk, ":", str(end-start)
+            print "\t=========Testing Switch reset time========="
+            start = time.time()
+            reset_switch_state()
+            send_commands_to_dp(BASE_PATH + "commands.txt")
+            print "finished:", number_of_rk
+            recording[ITERATION]['switch_reset'][number_of_rk] = { 'start': start, 'end': time.time()}
 
     with open(MICRO_BENCHMARKING_PATH,'w') as f:
         print "Dumping refined Queries ..."
