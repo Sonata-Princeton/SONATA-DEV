@@ -261,55 +261,87 @@ def plot_micro_bench():
     with open('micro_bench/micro_bench.pickle','r') as f:
         output = pickle.load(f)
         N_OF_RK = [200, 400, 600, 800, 1000]
+        print output[0]['switch_reset'][800].keys()
 
         plot_data = {}
 
         #print output['fm_send'][1].keys(), len(output['fm_send'][1].keys())
 
 
-        plot_data['fm_send'] = []
-        plot_data['switch_update'] = []
-        plot_data['switch_reset'] = []
+        plot_data['fm_send'] = {}
+        plot_data['switch_update'] = {}
+        plot_data['switch_reset'] = {}
 
-        for N in N_OF_RK:
-            plot_data['fm_send'].append(output['fm_send'][N]['end']-output['fm_send'][N]['start'])
-            plot_data['switch_update'].append(output['switch_update'][N]['end']-output['switch_update'][N]['start'])
-            plot_data['switch_reset'].append(output['switch_reset'][N]['end']-output['switch_reset'][N]['start'])
+        for iter_id in output:
+            for n_updates in output[iter_id]['fm_send']:
+                if n_updates not in plot_data['fm_send']:
+                    plot_data['fm_send'][n_updates] = []
+                    plot_data['switch_update'][n_updates] = []
+                    plot_data['switch_reset'][n_updates] = []
 
+                plot_data['fm_send'][n_updates].append(output[iter_id]['fm_send'][n_updates]['end']-output[iter_id]['fm_send'][n_updates]['start'])
+                plot_data['switch_update'][n_updates].append(output[iter_id]['switch_update'][n_updates]['end']-output[iter_id]['switch_update'][n_updates]['start'])
+                plot_data['switch_reset'][n_updates].append(output[iter_id]['switch_reset'][n_updates]['end']-output[iter_id]['switch_reset'][n_updates]['start'])
 
+        out_data = {}
+        N_OF_RK = output[iter_id]['fm_send'].keys()
+        N_OF_RK.sort()
+        for k in plot_data:
+            out_data[k] = [(np.median(plot_data[k][z]), np.std(plot_data[k][z])) for z in N_OF_RK]
+
+        plot_data = out_data
+        print plot_data
+        #return 0
         # data to plot
-        n_groups = 5
+        n_groups = len(N_OF_RK)
 
         # create plot
         fig, ax = plt.subplots()
         index = np.arange(n_groups)
-        bar_width = 0.35
+        bar_width = 0.5
         opacity = 0.5
-        ax2 = ax.twinx()
+        #ax2 = ax.twinx()
 
 
         #rects1 = plt.plot(range(len(N_OF_RK)), , color='b',linestyle=linestyles[0], linewidth=2.0)
+        """
         ax.plot(range(len(N_OF_RK)),plot_data['fm_send'], linestyle='-', marker='o',
                 linewidth=2.0,
                 label='Fabric Send')
+        """
 
-        rects2 = plt.bar(index + bar_width, plot_data['switch_update'], bar_width,
-                         alpha=opacity,
-                         color='g',
-                         label='Switch Update')
 
-        rects3 = plt.bar(index + bar_width + bar_width, plot_data['switch_reset'], bar_width,
+        print index, [1000*x[0] for x in plot_data['switch_update']], [1000*x[0] for x in plot_data['fm_send']]
+        rects2 = plt.bar(index + 0.5*bar_width, [1000*x[0] for x in plot_data['switch_update']], bar_width,
+                         yerr = [1000*x[1] for x in plot_data['switch_update']],
                          alpha=opacity,
+                         color='w',
+                         label='Fabric Manager Overhead')
+
+        rects1 = plt.bar(index + 0.5*bar_width, [1000*x[0] for x in plot_data['fm_send']],
+                         bar_width,
+                         yerr = [1000*x[1] for x in plot_data['fm_send']],
+                         alpha=opacity,
+                         bottom=[1000*x[0] for x in plot_data['switch_update']],
+                         color='r',
+                         label='Runtime Overhead')
+        """
+        rects3 = plt.bar(index + bar_width, plot_data['switch_reset'], bar_width,
+                         alpha=opacity,
+                         bottom=([i+j for i,j in zip(plot_data['fm_send'],plot_data['switch_update'])]),
                          color='r',
                          label='Switch Reset')
+        """
 
 
-        plt.xlabel('Number of Reduction keys to update')
-        plt.ylabel('Time (seconds)')
-        plt.title('Delay vs number of reduction key update')
+        plt.xlabel('Number of Updates')
+        plt.ylabel('Time (ms)')
+        #plt.title('Delay vs number of reduction key update')
         plt.xticks(index + bar_width, N_OF_RK)
-        plt.legend()
-
+        plt.legend(loc='upper center', bbox_to_anchor=(0.5, 1.15),
+                   ncol=5, fancybox=True, shadow=False)
+        ax.grid(True)
+        plt.tight_layout()
         plt.tight_layout()
         plt.show()
 
