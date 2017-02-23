@@ -39,7 +39,7 @@ class CMSketch(object):
         self.p4_egress = ''
         self.p4_invariants = ''
         self.p4_init_commands = []
-        self.table_names = []
+        self.table_name = ''
 
         self.skip_id = 1
         self.drop_id = 1
@@ -118,21 +118,22 @@ class CMSketch(object):
 
     def add_action_update(self):
         out = ''
-        out += 'action update_'+self.operator_name+'_regs() {\n\t'
+        out += 'action update_'+self.operator_name+'_regs() {\n'
         for did in range(1, 1+self.depth):
-
-            out += 'add_to_field('+self.metadata.name+'.val_'+str(did)+', 1);\n\t'
-            out += 'register_write('+self.operator_name+'_'+str(did)+', '+self.metadata.name+'.idx_'+str(did)+', '+self.metadata.name+'.val_'+str(did)+');\n}\n\n'
+            out += '\tadd_to_field('+self.metadata.name+'.val_'+str(did)+', 1);\n\t'
+            out += 'register_write('+self.operator_name+'_'+str(did)+', '+self.metadata.name+'.idx_'+str(did)+', '+self.metadata.name+'.val_'+str(did)+');\n'
+        out += '}\n\n'
         return out
 
     def add_table_update(self):
         out = ''
-        for did in range(1, 1+self.depth):
-            self.table_names.append('update_'+self.operator_name+'_'+str(did)+'_counts')
-            out += 'table update_'+self.table_names[-1]+' {\n\t'
-            out += 'actions {update_'+self.operator_name+'_'+str(did)+'_regs;}\n\t'
-            out += 'size : 1;\n}\n\n'
-            self.p4_init_commands.append('table_set_default '+self.table_names[-1]+' update_'+self.operator_name+'_'+str(did)+'_regs')
+        self.table_name = 'update_'+self.operator_name+'_counts'
+        out += 'table update_'+self.table_name+' {\n\t'
+        out += 'actions {update_'+self.operator_name+'_regs;}\n\t'
+        out += 'size : 1;\n'
+        out += '}\n\n'
+        self.p4_init_commands.append('table_set_default '+self.table_name+' update_'+self.operator_name+'_regs')
+
         return out
 
     def add_table_start(self):
@@ -143,8 +144,6 @@ class CMSketch(object):
             meta_fld = 'meta_map_init_'+str(self.qid)+'.'+fld
             out += '\tmodify_field('+self.hash_metadata.name+'.'+fld+', '+str(meta_fld)+');\n\t'
             out += 'bit_xor('+self.hash_metadata.name+'.'+fld+', '+self.hash_metadata.name+'.'+fld+', '+str(self.hash_primes[did])+');\n\t'
-
-            out += 'modify_field('+self.metadata.name+'.'+self.metadata.fields.keys()[0]+', '+str(self.qid)+');\n\t'
             out += 'modify_field_with_hash_based_offset('+self.metadata.name+'.idx_'+str(did)+', 0, '
             out += self.operator_name+'_'+str(did)+'_fields_hash, '+str(self.instance_count)+');\n\t'
             out += 'register_read('+self.metadata.name+'.val_'+str(did)+', '+self.operator_name+'_'+str(did)+', '+self.metadata.name+'.idx_'+str(did)+');\n\n'
@@ -228,8 +227,30 @@ class CMSketch(object):
         #print out
         return out
 
+    def add_count_min_control(self):
+        out = ''
+        # Add all update actions
+        for did in range(1, 1+self.depth):
+            out += 'action updateMinCountFor_'+self.operator_name+'_'+str(did)+'() {\n\t'
+            out += 'modify_field('+self.metadata.name+'.val,'+self.metadata.name+'.val'+str(did)+');\n}\n\n'
+
+        # Add all update tables
+        for did in range(1, 1+self.depth):
+            out += 'table apply_minCount_'+self.operator_name+'_'+str(did)+'{\n\t'
+            out += 'actions{\n\t\t'
+            out += 'updateMinCountFor_'+self.operator_name+'_'+str(did)+';\n\t}\n\tsize: 1;\n}\n\n'
+
+        # Add the control function
+        out += 'control update_'+self.operator_name+'_count() {\n\t'
+        for did in range(1,1+self.depth):
+            out += 'if('+self.metadata.name+'.val > '+self.metadata.name+'.val_'+str(did)+'){\n\t\t'
+            out += 'apply('+'apply_minCount_'+self.operator_name+'_'+str(did)+');\n\t}\n\n\t'
+        out = out[:-1]
+        out += '}\n\n'
+        return out
+
     def add_action_set(self):
-        out = 'action set_'+self.operator_name+'_count() {\n'
+        out = 'action set_'+self.operator_name+'_count {\n'
         out += '\tmodify_field('+self.metadata.name+'.'+self.metadata.fields.keys()[1]+', 1);\n}\n\n'
         return out
 
@@ -238,6 +259,15 @@ class CMSketch(object):
         size: 1;\n}\n\n'
         self.p4_init_commands.append('table_set_default set_'+self.operator_name+'_count set_'+self.operator_name+'_count')
         return out
+
+    def add_sketch_control(self):
+        out = ''
+        out += self.add_register_preprocessing()
+        out += self.add_register_action()
+        out += '\t\t\t'+'update_'+self.operator_name+'_count_min();\n'
+        out += self.add_register_postprocessing()
+        return out
+
 
     def update_p4_state(self):
         self.p4_state += self.add_metadata()
@@ -251,13 +281,15 @@ class CMSketch(object):
         self.p4_state += self.add_action_start()
         self.p4_state += self.add_action_set()
         self.p4_state += self.add_table_set()
+        self.p4_state += self.add_count_min_control()
+        self.p4_state += self.add_sketch_control()
         return self.p4_state
 
     def update_p4_control(self):
-        self.p4_control += self.add_register_preprocessing()
-        self.p4_control += self.add_register_action()
-        self.p4_control += self.add_register_postprocessing()
-        return self.p4_control
+        out = ''
+        out += 'update_'+self.operator_name+'_count();'
+        self.p4_control = out
+        return out
 
     def add_out_header(self):
         out = 'header_type out_header_'+str(self.qid)+'_t {\n'
@@ -334,5 +366,5 @@ class CMSketch(object):
         return out
 
 if __name__ == "__main__":
-    s = CMSketch(1, 1, 10, 16,10, 2, 2, 16, keys=('dIP/24',))
+    s = CMSketch(1, 1, 10, 16,10, 2, 4, 16, keys=('dIP/24',))
     print s.compile_dp()

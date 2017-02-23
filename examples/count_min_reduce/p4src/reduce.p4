@@ -123,7 +123,6 @@ action do_cpu_encap_val() {
     modify_field(reduce_header.count, meta.minCount);
 }
 
-
 table redirect0 {
     actions { do_cpu_encap_val; }
     size : 1;
@@ -150,7 +149,6 @@ table apply_minCount2 {
 action updateMinCountFor2() {
     modify_field(meta.minCount, meta.reduceCount2);
 }
-
 
 control update_min_count {
     if(meta.minCount > meta.reduceCount1) {
