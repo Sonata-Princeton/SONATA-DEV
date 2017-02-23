@@ -11,7 +11,8 @@ sudo pip install -r ~/dev/setup/pip-ryu-requires
 
 #  Ryu install
 cd ~
-git clone -b $RYU_VERSION git://github.com/osrg/ryu.git
+#git clone -b $RYU_VERSION git://github.com/osrg/ryu.git
+git clone https://github.com/osrg/ryu.git
 sudo cp dev/setup/ryu-flags.py ryu/ryu/flags.py
 cd ryu
 
