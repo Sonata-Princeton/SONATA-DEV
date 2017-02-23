@@ -57,7 +57,6 @@ class Register(object):
         self.drop_id = 1
 
         self.qid_width = 8
-
         self.set_count = False
 
     def add_hash_metadata(self):

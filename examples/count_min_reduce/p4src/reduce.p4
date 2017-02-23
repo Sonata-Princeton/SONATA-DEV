@@ -66,13 +66,11 @@ action do_hashes() {
 
     modify_field(meta.dstAddr1, ipv4.dstAddr);
     bit_xor(meta.dstAddr1, meta.dstAddr1, HASH_PRIME1);
-
-    modify_field(meta.dstAddr2, ipv4.dstAddr);
-    bit_xor(meta.dstAddr2, meta.dstAddr2, HASH_PRIME2);
-
     modify_field_with_hash_based_offset(meta.dstHash1, 0, reduce_fields_hash1, TABLE_SIZE);
     register_read(meta.reduceCount1, reduce_hash1, meta.dstHash1);
 
+    modify_field(meta.dstAddr2, ipv4.dstAddr);
+    bit_xor(meta.dstAddr2, meta.dstAddr2, HASH_PRIME2);
     modify_field_with_hash_based_offset(meta.dstHash2, 0, reduce_fields_hash2, TABLE_SIZE);
     register_read(meta.reduceCount2, reduce_hash2, meta.dstHash2);
 }

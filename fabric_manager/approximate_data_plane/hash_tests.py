@@ -41,7 +41,8 @@ def estimate(item, sketch, item_2_indexes):
     return min(all_estimates)
 
 def get_random_prime_numbers(d):
-    prime_numbers = primes(900000, 1000000)
+    prime_numbers = primes(1, 64000)
+    print prime_numbers
     print "Total prime numbers", len(prime_numbers)
     random_prime_numbers = []
     for i in range(d):
