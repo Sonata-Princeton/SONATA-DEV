@@ -220,7 +220,6 @@ class QueryTraining(object):
 
         print self.refined_sonata_queries
 
-
         worst_case_queries = {}
 
         for qid in self.refined_sonata_queries:

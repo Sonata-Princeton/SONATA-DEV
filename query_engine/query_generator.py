@@ -196,6 +196,37 @@ class QueryGenerator(object):
         elif self.case == 5:
             # Case where we vary the height of the query tree
             self.generate_queries_case5()
+        elif self.case == 6:
+            self.generate_reflection_query()
+
+
+    def generate_reflection_query(self):
+        # Case where we will vary the threshold
+        reduction_key = 'dIP'
+        qid_2_query = {}
+        self.n_queries = 1
+        for n_query in range(1, 1+self.n_queries):
+            query_tree = {n_query:{}}
+            self.query_trees[n_query] = query_tree
+            thresh = '95'
+            qid = n_query
+            q = (PacketStream(qid)
+                 .map(keys=('dIP', 'sIP'))
+                 .distinct(keys=('dIP', 'sIP'))
+                 .map(keys=('dIP',), map_values = ('count',), func=('eq',1,))
+                 .reduce(keys=('dIP',), func=('sum',))
+                 .filter(filter_vals=('count',), func=('geq', thresh))
+                 .map(keys=('dIP',))
+                 )
+            q.reduction_key = 'dIP'
+            qid_2_query[qid] = q
+            composed_query = generate_composed_query(query_tree, qid_2_query)
+            self.composed_queries[n_query]= composed_query
+            self.qid_2_query.update(qid_2_query)
+
+        fname = 'query_training/dns_reflection/query_generator_object_reflection_'+str(self.n_queries)+'.pickle'
+        with open(fname, 'w') as f:
+            pickle.dump(self, f)
 
 
     def generate_queries_case5(self):
@@ -530,58 +561,17 @@ class QueryGenerator(object):
 
 
 if __name__ == "__main__":
-    """
-    result_folder = '/home/vagrant/dev/results/result1/'
-    emitter_log_file = result_folder + "emitter.log"
-    fm_log_file = result_folder + "fabric_manager.log"
-    rt_log_file = result_folder + "runtime.log"
-
-
-    if not os.path.exists(result_folder):
-            os.makedirs(result_folder)
-
-    spark_conf = {'batch_interval': batch_interval, 'window_length': window_length,
-                  'sliding_interval': sliding_interval, 'featuresPath': featuresPath, 'redKeysPath': redKeysPath,
-                  'sm_socket': ('localhost', 5555),
-                  'op_handler_socket': ('localhost', 4949)}
-
-    emitter_conf = {'spark_stream_address': 'localhost',
-                    'spark_stream_port': 8989,
-                    'sniff_interface': 'out-veth-2', 'log_file': emitter_log_file}
-
-    conf = {'dp': 'p4', 'sp': 'spark',
-            'sm_conf': spark_conf, 'emitter_conf': emitter_conf, 'log_file': rt_log_file,
-            'fm_conf': {'fm_socket': ('localhost', 6666), 'log_file': fm_log_file}}
-    """
-
-
-    n_queries = 100
+    n_queries = 1
     max_filter_frac = 100
-    max_reduce_operators = 1
-    query_tree_depth = 2
+    max_reduce_operators = 2
+    query_tree_depth = 1
+    case_number = 6
     # TODO: make sure the queries are unique
-    query_generator = QueryGenerator(0, n_queries, max_reduce_operators, query_tree_depth, max_filter_frac)
+    query_generator = QueryGenerator(case_number, n_queries, max_reduce_operators, query_tree_depth, max_filter_frac)
 
     queries = query_generator.composed_queries.values()
     print query_generator.qid_2_query
-    """
-    runtime = Runtime(conf, queries)
 
-
-    for n_query in query_generator.query_trees:
-        composed_queries = {}
-        query_tree = query_generator.query_trees[n_query]
-        reduction_key = query_generator.qid_2_query[query_tree.keys()[0]].reduction_key
-        generate_composed_spark_queries(reduction_key, query_tree, query_generator.qid_2_query, composed_queries)
-        print composed_queries
-
-        for qid in composed_queries:
-            query_spark =  composed_queries[qid]
-            query_spark.in_stream = 'Out.'
-            query_spark.basic_headers = ['a','b']
-            print query_spark.compile()
-
-    """
 
 
 

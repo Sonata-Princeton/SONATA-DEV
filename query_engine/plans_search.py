@@ -10,7 +10,7 @@ import networkx as nx
 
 from query_engine.query_generator import *
 from query_engine.sonata_queries import *
-from data.plotlib import *
+#from data.plotlib import *
 
 def swap(input, ind1, ind2):
     tmp = input[ind2]
