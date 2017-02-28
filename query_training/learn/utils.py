@@ -31,7 +31,7 @@ def add_timestamp_key(qid_2_query):
     return qid_2_query
 
 
-def generate_intermediate_queries(sonata_query, refinement_level):
+def generate_intermediate_sonata_queries(sonata_query, refinement_level):
     number_intermediate_queries = len(filter(lambda s: s in ['Distinct', 'Reduce', 'Filter'], [x.name for x in sonata_query.operators]))
     sonata_intermediate_queries = {}
     prev_qid = 0
@@ -43,10 +43,12 @@ def generate_intermediate_queries(sonata_query, refinement_level):
         tmp_query.basic_headers = BASIC_HEADERS
         ctr = 0
         filter_ctr = 0
+        prev_operator = None
         for operator in sonata_query.operators:
             if operator.name != 'Join':
                 if ctr < max_operators:
                     copy_operators(tmp_query, operator)
+                    prev_operator = operator
                 else:
                     break
                 if operator.name in ['Distinct', 'Reduce', 'Filter']:
@@ -57,9 +59,47 @@ def generate_intermediate_queries(sonata_query, refinement_level):
                         filters_marked[(qid, refinement_level, filter_ctr)] = sonata_query.qid
                         filter_mappings[(prev_qid, qid, refinement_level)] = (sonata_query.qid, filter_ctr, operator.func[1])
             else:
+                prev_operator = operator
                 copy_operators(tmp_query, operator)
 
         sonata_intermediate_queries[qid] = tmp_query
         prev_qid = qid
 
     return sonata_intermediate_queries, filter_mappings
+
+
+def generate_intermediate_spark_queries(spark_query, refinement_level):
+    number_intermediate_queries = len(filter(lambda s: s in ['Distinct', 'Reduce', 'Filter'], [x.name for x in spark_query.operators]))
+    spark_intermediate_queries = {}
+    prev_qid = 0
+    filter_mappings = {}
+    filters_marked = {}
+    for max_operators in range(1,2+number_intermediate_queries):
+        qid = (1000 * spark_query.qid) + max_operators
+        tmp_query = (spark.PacketStream(spark_query.qid))
+        tmp_query.basic_headers = BASIC_HEADERS
+        ctr = 0
+        filter_ctr = 0
+        prev_operator = None
+        for operator in spark_query.operators:
+            if operator.name != 'Join':
+                if ctr < max_operators:
+                    copy_sonata_operators_to_spark(tmp_query, operator)
+                    prev_operator = operator
+                else:
+                    break
+                if operator.name in ['Distinct', 'Reduce', 'Filter']:
+                    ctr += 1
+                if operator.name == 'Filter':
+                    filter_ctr += 1
+                    if (qid, refinement_level, filter_ctr) not in filters_marked:
+                        filters_marked[(qid, refinement_level, filter_ctr)] = spark_query.qid
+                        filter_mappings[(prev_qid, qid, refinement_level)] = (spark_query.qid, filter_ctr, operator.func[1])
+            else:
+                copy_sonata_operators_to_spark(tmp_query, operator)
+                prev_operator = operator
+
+        spark_intermediate_queries[qid] = tmp_query
+        prev_qid = qid
+
+    return spark_intermediate_queries, filter_mappings

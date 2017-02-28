@@ -2,6 +2,8 @@
 #  Author:
 #  Arpit Gupta (arpitg@cs.princeton.edu)
 import query_engine.spark_queries as spark
+from query_engine.sonata_queries import *
+import copy
 
 
 
@@ -15,6 +17,79 @@ def get_original_wo_mask(lstOfFields):
             fields.append(field)
 
     return fields
+
+
+def generate_composed_spark_queries(reduction_key, basic_headers, query_tree, qid_2_query, composed_queries = {}):
+    #print query_tree
+    root_qid = query_tree.keys()[0]
+    #print "##", root_qid, query_tree.keys(), qid_2_query
+    if root_qid in qid_2_query:
+        root_query_sonata = qid_2_query[root_qid]
+        root_query_spark = spark.PacketStream(root_qid)
+        root_query_spark.basic_headers = basic_headers
+    else:
+        root_query_sonata = PacketStream(root_qid)
+        root_query_spark = spark.PacketStream(root_qid)
+        root_query_spark.basic_headers = basic_headers
+
+    #print "%%", root_qid, root_query_sonata
+
+    if query_tree[root_qid] != {}:
+        children = query_tree[root_qid].keys()
+        children.sort()
+        left_qid = children[0]
+        right_qid = children[1]
+        left_query = generate_composed_spark_queries(reduction_key, basic_headers,
+                                                     {left_qid:query_tree[root_qid][left_qid]},
+                                                     qid_2_query, composed_queries)
+
+        right_query = generate_composed_spark_queries(reduction_key, basic_headers,
+                                                      {right_qid:query_tree[root_qid][right_qid]},
+                                                      qid_2_query, composed_queries)
+
+        #print "Left", left_qid, left_query
+
+        #print "Right", right_qid, right_query
+        for operator in root_query_sonata.operators:
+            if operator.name == 'Map' and len(operator.func) > 0 and operator.func[0] == 'mask':
+                copy_sonata_operators_to_spark(right_query, operator)
+
+        composed_query = right_query.join(q=left_query, join_key = reduction_key, in_stream = 'In.')
+        # This is important else the composed query will take the qid of the right child itself
+        composed_query.qid = root_qid
+        for operator in root_query_sonata.operators:
+            if not (operator.name == 'Map' and len(operator.func) > 0 and operator.func[0] == 'mask'):
+                copy_sonata_operators_to_spark(composed_query, operator)
+
+        composed_queries[root_qid] = copy.deepcopy(composed_query)
+    else:
+        #print "Adding for", root_qid, root_query_sonata, root_query_sonata.qid
+        for operator in root_query_sonata.operators:
+            copy_sonata_operators_to_spark(root_query_spark, operator)
+
+        #print "##Updating key", root_qid
+        composed_queries[root_qid] = copy.deepcopy(root_query_spark)
+        composed_query = root_query_spark
+
+    #print "returning for ", root_qid, composed_queries
+
+    return composed_query
+
+
+def update_query_tree(root, qt, rl, out):
+    #print root, qt
+    out[10000*root+rl] = {}
+    if len(qt[root]) > 0:
+        children = qt[root].keys()
+        children.sort()
+
+        lc = children[0]
+        #print lc, {lc:qt[root][lc]}
+        update_query_tree(lc, {lc:qt[root][lc]}, rl, out[10000*root+rl])
+        rc = children[1]
+        #print rc, {rc:qt[root][rc]}
+        update_query_tree(rc, {rc:qt[root][rc]}, rl, out[10000*root+rl])
+    return out
 
 
 def copy_operators(query, optr):

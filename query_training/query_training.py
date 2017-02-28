@@ -189,8 +189,6 @@ class QueryTraining(object):
         print "Generating Refined Queries ..."
         self.process_refined_queries(REFINED_QUERY_PATH)
 
-        #self.write_to_s3(REFINED_QUERY_PATH)
-
         """
 
         fname_rq_read = 'data/refined_queries_queries_case3_1min_udp.pickle'
@@ -201,7 +199,6 @@ class QueryTraining(object):
         for qid in self.refined_queries:
             print "Processing Refined Queries for cost...", qid
             self.get_query_output_less_memory(qid)
-
 
         print "Success ..."
 
@@ -624,7 +621,6 @@ class QueryTraining(object):
         return diff_entries
 
     def get_query_cost_only(self, qid, query_output_reformatted, query_costs_diff):
-
         query_costs = {}
         query = self.qid_2_query[qid]
         ref_levels = self.ref_levels

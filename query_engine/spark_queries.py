@@ -76,11 +76,13 @@ class Map(SparkQuery):
         #print "Map Keys: ",self.prev_keys, self.prev_values, self.keys, self.values
         #print self.map_keys, self.map_values
         expr = '.map(lambda (('
-        # There is mapping required either for key or value
         expr += ','.join([str(elem) for elem in self.prev_keys])
-        expr += '), ('
-        expr += ','.join([str(elem) for elem in self.prev_values])
-        expr += ')): (('
+        expr += ')'
+        if len(self.prev_values) > 0:
+            expr += ',('
+            expr += ','.join([str(elem) for elem in self.prev_values])
+            expr += ')'
+        expr += '): (('
         for elem in self.keys:
             if elem not in self.map_keys:
                 expr += elem+','
@@ -130,6 +132,7 @@ class Map(SparkQuery):
                     if self.func[0] == 'mask':
                         expr += 'str(IPNetwork(str(str('+str(elem)+')+\"/'+str(self.func[1])+'\")).network)'+','
                     else:
+                        print "WEIRD"
                         # TODO generalize for more mapping functions
                         pass
         expr = expr[:-1]
