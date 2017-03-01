@@ -30,209 +30,88 @@ class Hypothesis(object):
 
         for qid in self.refined_spark_queries:
             print "Processing Refined Queries for cost...", qid
-            self.get_query_output_less_memory(qid)
+            self.get_query_costs(qid)
 
-    def get_query_output_less_memory(self, qid):
-        """
-        Computes per query costs
-        :return:
-        """
-        out0 = self.query_training.training_data.collect()
-        query_costs = {}
-        print "Out0", len(out0)
-        # Iterate over each refined query and collect its output
-        # for qid in self.refined_queries:
-
-        query_costs[qid] = {}
-        query_out = {}
-        query_out[qid] = {}
+    def get_query_output(self, qid, out0):
+        # Get the query output for each refined intermediate queries
+        query_out_refinement_level = {}
+        query_out_refinement_level[qid] = {}
         for ref_level in self.refined_spark_queries[qid]:
-            query_out[qid][ref_level] = {}
+            query_out_refinement_level[qid][ref_level] = {}
             for iter_qid in self.refined_spark_queries[qid][ref_level]:
                 if iter_qid > 0:
                     spark_query = self.refined_spark_queries[qid][ref_level][iter_qid]
                     if len(spark_query.compile()) > 0:
                         tmp_compile = spark_query.compile()
-                        if spark_query.operators[-1].name == 'Distinct':
-                            # Add the count mapping result to the output of intermediate query for distinct operation
-                            # This makes it easier to perform the groupByKey operation
-                            tmp_compile += '.map(lambda s: (s,1))'
-
                         query_string = 'self.training_data.' + tmp_compile + '.collect()'
-                        query_string2 = "self.training_data." + tmp_compile + '.map(lambda s: (s[0][0], s[1])).groupByKey().map(lambda s: (s[0], list(s[1]))).collect()'
                         print("Processing Query", qid, "refinement level", ref_level, "iteration id", iter_qid)
-                        # print query_string
                         out = eval(query_string)
-                        out2 = eval(query_string2)
-                        print out2[:5]
                     else:
                         print "No query to process for", qid, "refinement level", ref_level, "iteration id", iter_qid
                         out = []
+                    query_out_refinement_level[qid][ref_level][iter_qid] = out
+                    print len(query_out_refinement_level[qid][ref_level][iter_qid])
 
-                    query_out[qid][ref_level][iter_qid] = out
-                    print len(query_out[qid][ref_level][iter_qid])
+            query_out_refinement_level[qid][ref_level][0] = out0
 
-            query_out[qid][ref_level][0] = out0
+        return query_out_refinement_level
 
-        query_output_reformatted = {}
-        query_costs_diff = {}
+    def get_query_costs(self, qid):
+        """
+        Computes per query costs
+        :return:
+        """
+        out0 = self.query_training.training_data.collect()
+        query_cost_transit = {}
+        print "Out0", len(out0)
+        # Iterate over each refined query and collect its output
+        # for qid in self.refined_queries:
 
-        print "Reformatting output of Refined Queries ...", qid
-        # query_output_reformatted[qid] = self.get_reformatted_output_without_ts(qid, query_out[qid])
+        query_cost_transit[qid] = {}
 
-        print "Updating the Diff Entries ...", qid
-        # query_costs_diff[qid] = self.get_query_diff_entries_without_ts(qid, query_output_reformatted)
 
-    def get_query_diff_entries_without_ts(self, qid, query_output_reformatted):
-        query_costs_diff = {}
         query = self.query_training.qid_2_query[qid]
         reduction_key = query.reduction_key
         ref_levels = self.ref_levels
-        diff_counts = {}
-        for ref_level_prev in ref_levels:
-            for ref_level_curr in ref_levels:
-                if ref_level_curr > ref_level_prev:
-                    if ref_level_prev > 0:
+
+        # Get the query output for each refined intermediate queries
+        query_out_refinement_level = self.get_query_output(qid, out0)
+
+        # Get the query cost for each refinement transit, i.e. edge in the refinement graph
+        # First get the cost for transit (0,ref_level)
+        for ref_level in ref_levels[1:]:
+            transit = (0,ref_level)
+            query_cost_transit[qid][transit] = {}
+            for iter_qid in self.refined_spark_queries[qid][ref_level]:
+                spark_query = self.refined_spark_queries[qid][ref_level][iter_qid]
+                out = query_out_refinement_level[qid][ref_level][iter_qid]
+                transit_query_string = 'self.sc.parallelize(out)'
+                transit_query_string = generate_query_to_collect_transit_cost(transit_query_string, spark_query.operators[-1].name)
+                query_cost_transit[qid][transit][iter_qid] = eval(transit_query_string)
+                print transit, iter_qid, spark_query.operators[-1].name, query_cost_transit[qid][transit][iter_qid][:2]
+                #break
+
+        # Then get the cost for transit (ref_level_prev, ref_level_current)
+        for ref_level_prev in ref_levels[1:]:
+                for ref_level_curr in ref_levels:
+                    if ref_level_curr > ref_level_prev:
                         transit = (ref_level_prev, ref_level_curr)
-                        iter_qids_prev = query_output_reformatted[qid][ref_level_prev].keys()
-                        iter_qids_curr = query_output_reformatted[qid][ref_level_curr].keys()
-                        iter_qids_prev.sort()
-                        iter_qids_curr.sort()
-
-                        # print qid, transit, iter_qids_prev, iter_qids_curr
-                        prev_out_final_query = query_output_reformatted[qid][ref_level_prev][iter_qids_prev[-1]]
-
-                        if (ref_level_prev, ref_level_curr, 0) not in diff_counts:
-                            out_zero_for_ctr_0 = query_output_reformatted[qid][ref_level_curr][0]
-                            in_query = self.query_training.base_query
-                            prev_bucket_count = self.get_diff_buckets(prev_out_final_query, out_zero_for_ctr_0,
-                                                                      ref_level_prev, in_query, reduction_key)
-
-                            diff_counts[(ref_level_prev, ref_level_curr, 0)] = prev_bucket_count
-                            query_costs_diff[(transit, 0)] = diff_counts[(ref_level_prev, ref_level_curr, 0)]
-
-                        for ctr in range(1, len(iter_qids_curr)):
-                            # print qid, transit, iter_qids_prev, iter_qids_curr[ctr]
-
-                            curr_out = query_output_reformatted[qid][ref_level_curr][iter_qids_curr[ctr]]
-                            if (ref_level_prev, ref_level_curr, ctr) not in diff_counts:
-                                curr_query = self.refined_spark_queries[qid][ref_level_curr][iter_qids_curr[ctr]]
-                                diff_entries = self.get_diff_buckets(prev_out_final_query, curr_out, ref_level_prev,
-                                                                     curr_query, reduction_key)
-                                diff_counts[(ref_level_prev, ref_level_curr, ctr)] = diff_entries
-
-                            query_costs_diff[(transit, iter_qids_curr[ctr])] = diff_counts[
-                                (ref_level_prev, ref_level_curr, ctr)]
-                            print qid, transit, iter_qids_prev, iter_qids_curr[ctr], query_costs_diff[
-                                (transit, iter_qids_curr[ctr])]
-                    else:
-                        # No need to do any diff for this case
-                        transit = (ref_level_prev, ref_level_curr)
-                        iter_qids_prev = []
-                        iter_qids_curr = query_output_reformatted[qid][ref_level_curr].keys()
-                        iter_qids_prev.sort()
-                        iter_qids_curr.sort()
-
-                        # print qid, transit, iter_qids_prev, iter_qids_curr
-
-                        for ctr in range(len(iter_qids_curr)):
-
-                            curr_out = query_output_reformatted[qid][ref_level_curr][iter_qids_curr[ctr]]
-
-                            if (ref_level_prev, ref_level_curr, ctr) not in diff_counts:
-                                diff_entries = self.get_per_timestamp_counts(curr_out.keys())
-                                diff_counts[(ref_level_prev, ref_level_curr, ctr)] = diff_entries
-                            else:
-                                print "This should not happen"
-
-                            query_costs_diff[(transit, iter_qids_curr[ctr])] = diff_counts[
-                                (ref_level_prev, ref_level_curr, ctr)]
-                            print qid, transit, iter_qids_prev, iter_qids_curr[ctr], query_costs_diff[
-                                (transit, iter_qids_curr[ctr])]
-                            # print "Test", ctr, len(curr_out.keys()), transit, iter_qids_curr[ctr], diff_counts[(ref_level_prev, ref_level_curr, ctr)]
-        return query_costs_diff
-
-    def get_reformatted_output(self):
-        query_output = self.query_out
-        query_output_reformatted = {}
-        for ts in self.query_training.timestamps:
-            query_output_reformatted[ts] = {}
-            for qid in query_output:
-                query_output_reformatted[ts][qid] = {}
-                for ref_level in query_output[qid]:
-                    query_output_reformatted[ts][qid][ref_level] = {}
-                    for iter_qid in query_output[qid][ref_level]:
-                        query_output_reformatted[ts][qid][ref_level][iter_qid] = {}
-                        out = query_output[qid][ref_level][iter_qid]
-                        if len(out) > 0:
-                            for entry in out:
-                                # print entry
-                                if type(entry[0]) == type(1):
-                                    entry = (entry, 1)
-                                ts_tmp = entry[0][0]
-                                if ts_tmp == ts:
-                                    k = tuple(entry[0][1:])
-                                    v = entry[1]
-                                    query_output_reformatted[ts][qid][ref_level][iter_qid][k] = v
-
-                    print ts, qid, ref_level, query_output_reformatted[ts][qid][ref_level].keys()
-
-        self.query_output_reformatted = query_output_reformatted
-
-    def get_reformatted_output_without_ts(self, qid, query_out):
-        query_output_reformatted = {}
-
-        for ref_level in query_out:
-            query_output_reformatted[ref_level] = {}
-            for iter_qid in query_out[ref_level]:
-                query_output_reformatted[ref_level][iter_qid] = {}
-                out = query_out[ref_level][iter_qid]
-                if len(out) > 0:
-                    for entry in out:
-                        if type(entry[0]) == type(1):
-                            entry = (entry, 1)
-
-                        k = tuple(entry[0][0:])
-                        v = entry[1]
-                        query_output_reformatted[ref_level][iter_qid][k] = v
-                print qid, ref_level, iter_qid, len(query_output_reformatted[ref_level][iter_qid].keys())
-
-            print qid, ref_level, query_output_reformatted[ref_level].keys()
-
-        return query_output_reformatted
-
-    def get_per_timestamp_counts(self, keys):
-        """
-        Given dict of type (ts, reduction_key) collect and compute per timestamp key counts
-        :param keys:
-        :return:
-        """
-        eval_string = "self.sc.parallelize(keys).map(lambda s: (s[0],1)).reduceByKey(lambda x,y: x+y).collect()"
-        diff_entries = dict((x[0], x[1]) for x in eval(eval_string))
-
-        return diff_entries
-
-    def get_diff_buckets(self, prev_out, curr_out, ref_level_prev, curr_query, reduction_key):
-        print "Get Diff Buckets called"
-        if len(curr_query.operators) > 0:
-            keys = curr_query.operators[-1].keys
-        else:
-            keys = BASIC_HEADERS
-
-        prev_key_mapped = self.query_training.sc.parallelize(prev_out.keys()).map(lambda s: (s, 1))
-        if len(keys) > 1:
-            map_string = 'self.sc.parallelize(curr_out.keys()).map(lambda (' + ",".join(keys) + '): (ts,' + str(
-                reduction_key) + ')).map(lambda (ts, dIP): ((ts, str(IPNetwork(str(dIP)+"/"+str(' + str(
-                ref_level_prev) + ')).network)),1)).join(prev_key_mapped).map(lambda x: (x[0],x[1][0])).reduceByKey(lambda x,y: x+y).collect()'
-        else:
-            map_string = 'self.sc.parallelize(curr_out.keys()).map(lambda s: (s[0],s[1])).map(lambda (' + ",".join(
-                keys) + '): (ts, ' + str(
-                reduction_key) + ')).map(lambda (ts, dIP): ((ts, str(IPNetwork(str(dIP)+"/"+str(' + str(
-                ref_level_prev) + ')).network)),1)).join(prev_key_mapped).map(lambda x: (x[0],x[1][0])).reduceByKey(lambda x,y: x+y).collect()'
-
-        diff_entries = dict((x[0], x[1]) for x in eval(map_string))
-
-        return diff_entries
+                        query_cost_transit[qid][transit] = {}
+                        prev_level_out_mapped_string, prev_level_out = generate_query_string_prev_level_out_mapped(qid, ref_level_prev,
+                                                            query_out_refinement_level, self.refined_spark_queries, out0,
+                                                            reduction_key)
+                        prev_level_out_mapped = eval(prev_level_out_mapped_string)
+                        print prev_level_out_mapped.collect()[:2]
+                        # For each intermediate query for `ref_level_curr` in transit (ref_level_prev, ref_level_current),
+                        # we filter out entries that do not satisfy the query at level `ref_level_prev`
+                        for iter_qid_curr in self.refined_spark_queries[qid][ref_level_curr]:
+                            if iter_qid_curr > 0:
+                                curr_level_out = query_out_refinement_level[qid][ref_level_curr][iter_qid_curr]
+                                curr_query = self.refined_spark_queries[qid][ref_level_curr][iter_qid_curr]
+                                transit_query_string = generate_transit_query(curr_query, curr_level_out,
+                                                                              prev_level_out_mapped, ref_level_prev)
+                                query_cost_transit[qid][transit][iter_qid_curr] = eval(transit_query_string)
+                                print transit, iter_qid_curr,query_cost_transit[qid][transit][iter_qid_curr][:2]
 
     def generate_refined_queries(self, fname_rq_write=''):
         # Add timestamp for each key
