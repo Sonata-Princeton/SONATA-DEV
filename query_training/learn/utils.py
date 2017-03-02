@@ -2,6 +2,8 @@ import math
 from query_engine.sonata_queries import *
 from config import *
 from netaddr import *
+import pickle
+
 def parse_log_line(logline):
     return tuple(logline.split(","))
 
@@ -16,7 +18,7 @@ def shard_training_data(sc, flows_File, T):
     training_data = sc.parallelize(training_data.collect())
     print "Collecting timestamps for the experiment ..."
     timestamps = training_data.map(lambda s: s[0]).distinct().collect()
-    print "Timestamps are: ", timestamps
+    #print "Timestamps are: ", timestamps
     return timestamps, training_data
 
 def add_timestamp_key(qid_2_query):
@@ -163,5 +165,55 @@ def generate_query_string_prev_level_out_mapped(qid, ref_level_prev, query_out_r
 
     return prev_level_out_mapped_string, prev_level_out
 
+def dump_data(data, fname):
+    with open(fname,'w') as f:
+        print "Dumping query cost ..." + fname
+        pickle.dump(data, f)
 
 
+def get_streaming_cost(last_operator_name, query_out):
+    return query_out
+
+
+def get_data_plane_cost(operator_name, transformation_function, query_out, thresh = 1, delta = 0.01):
+    # get data plane cost for given query output and operator name
+    n_bits = 0
+    if operator_name == "Distinct":
+        # here query_out is the number of distinct elements
+        bits_per_element = math.log(query_out, 2)
+        bits_per_element += 1
+
+        # total number of bits required for this data structure
+        n_bits = math.ceil(bits_per_element*query_out)
+
+    elif operator_name == "Reduce":
+        if transformation_function == 'sum':
+            # it can use count-min sketch, here query_out is list of count values
+
+            ## number of bits required w/o using any sketch
+            # number of bits required to maintain the count
+            bits_per_element = math.log(max(query_out), 2)
+
+            # number of bits required to maintain the indexes
+            bits_per_element += math.log(len(query_out), 2)
+
+            # total number of bits required for this data structure
+            n_bits_wo_cmsketch = math.ceil(bits_per_element*len(query_out))
+
+            ## number of bits required with count min sketch
+
+            # number of bits required to maintain the count
+            bits_per_element = math.log(max(query_out), 2)
+
+            d = math.ceil(math.log(int(1/delta),2))
+            # get the probability of threshold value for the given threshold
+            f_th = float(query_out.count(thresh))/len(query_out)
+            w = math.ceil(4*f_th/delta)
+
+            n_bits_sketch = math.ceil(d*w*bits_per_element)
+
+            n_bits = min([n_bits_wo_cmsketch, n_bits_sketch])
+
+        else:
+            print "Currently not supported"
+    return n_bits

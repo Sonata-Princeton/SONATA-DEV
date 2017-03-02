@@ -208,7 +208,7 @@ class QueryGenerator(object):
         for n_query in range(1, 1+self.n_queries):
             query_tree = {n_query:{}}
             self.query_trees[n_query] = query_tree
-            thresh = '95'
+            thresh = '99'
             qid = n_query
             q = (PacketStream(qid)
                  .map(keys=('dIP', 'sIP'))

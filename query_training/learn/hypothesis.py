@@ -8,6 +8,7 @@ from query_engine.sonata_queries import *
 from config import *
 import copy
 import numpy as np
+import pickle
 
 
 class Hypothesis(object):
@@ -22,46 +23,40 @@ class Hypothesis(object):
         self.query_training = query_training
         self.ref_levels = self.query_training.ref_levels
         self.query_generator = self.query_training.query_generator
-        self.training_data = self.query_training.training_data
         self.sc = self.query_training.sc
+        self.timestamps, self.training_data = shard_training_data(self.sc, self.query_training.training_data_path, T)
         print self.query_training.qid_2_query
 
         self.generate_refined_queries()
 
         for qid in self.refined_spark_queries:
             print "Processing Refined Queries for cost...", qid
-            self.get_query_costs(qid)
+            #self.get_transit_query_output(qid)
+            self.query_cost_transit_fname = 'query_cost_transit_'+str(qid)+'.pickle'
+            #dump_data(self.query_out_transit, self.query_cost_transit_fname)
+            with open(self.query_cost_transit_fname, 'r') as f:
+                self.query_out_transit = pickle.load(f)
 
-    def get_query_output(self, qid, out0):
-        # Get the query output for each refined intermediate queries
-        query_out_refinement_level = {}
-        query_out_refinement_level[qid] = {}
-        for ref_level in self.refined_spark_queries[qid]:
-            query_out_refinement_level[qid][ref_level] = {}
-            for iter_qid in self.refined_spark_queries[qid][ref_level]:
-                if iter_qid > 0:
-                    spark_query = self.refined_spark_queries[qid][ref_level][iter_qid]
-                    if len(spark_query.compile()) > 0:
-                        tmp_compile = spark_query.compile()
-                        query_string = 'self.training_data.' + tmp_compile + '.collect()'
-                        print("Processing Query", qid, "refinement level", ref_level, "iteration id", iter_qid)
-                        out = eval(query_string)
-                    else:
-                        print "No query to process for", qid, "refinement level", ref_level, "iteration id", iter_qid
-                        out = []
-                    query_out_refinement_level[qid][ref_level][iter_qid] = out
-                    print len(query_out_refinement_level[qid][ref_level][iter_qid])
 
-            query_out_refinement_level[qid][ref_level][0] = out0
+    def generate_refined_queries(self, fname_rq_write=''):
+        # Add timestamp for each key
+        self.query_training.qid_2_query = add_timestamp_key(self.query_training.qid_2_query)
 
-        return query_out_refinement_level
+        # Generate refined intermediate SONATA queries
+        self.generate_refined_intermediate_sonata_queries()
 
-    def get_query_costs(self, qid):
+        # Update the threshold for the filters operators for these SONATA queries
+        self.update_filter()
+
+        # Generate Spark queries for the composed & refined SONATA queries
+        self.generate_refined_spark_queries()
+
+    def get_transit_query_output(self, qid):
         """
         Computes per query costs
         :return:
         """
-        out0 = self.query_training.training_data.collect()
+        out0 = self.training_data.collect()
         query_cost_transit = {}
         print "Out0", len(out0)
         # Iterate over each refined query and collect its output
@@ -93,102 +88,27 @@ class Hypothesis(object):
 
         # Then get the cost for transit (ref_level_prev, ref_level_current)
         for ref_level_prev in ref_levels[1:]:
-                for ref_level_curr in ref_levels:
-                    if ref_level_curr > ref_level_prev:
-                        transit = (ref_level_prev, ref_level_curr)
-                        query_cost_transit[qid][transit] = {}
-                        prev_level_out_mapped_string, prev_level_out = generate_query_string_prev_level_out_mapped(qid, ref_level_prev,
-                                                            query_out_refinement_level, self.refined_spark_queries, out0,
-                                                            reduction_key)
-                        prev_level_out_mapped = eval(prev_level_out_mapped_string)
-                        print prev_level_out_mapped.collect()[:2]
-                        # For each intermediate query for `ref_level_curr` in transit (ref_level_prev, ref_level_current),
-                        # we filter out entries that do not satisfy the query at level `ref_level_prev`
-                        for iter_qid_curr in self.refined_spark_queries[qid][ref_level_curr]:
-                            if iter_qid_curr > 0:
-                                curr_level_out = query_out_refinement_level[qid][ref_level_curr][iter_qid_curr]
-                                curr_query = self.refined_spark_queries[qid][ref_level_curr][iter_qid_curr]
-                                transit_query_string = generate_transit_query(curr_query, curr_level_out,
-                                                                              prev_level_out_mapped, ref_level_prev)
-                                query_cost_transit[qid][transit][iter_qid_curr] = eval(transit_query_string)
-                                print transit, iter_qid_curr,query_cost_transit[qid][transit][iter_qid_curr][:2]
+            for ref_level_curr in ref_levels:
+                if ref_level_curr > ref_level_prev:
+                    transit = (ref_level_prev, ref_level_curr)
+                    query_cost_transit[qid][transit] = {}
+                    prev_level_out_mapped_string, prev_level_out = generate_query_string_prev_level_out_mapped(qid, ref_level_prev,
+                                                                                                               query_out_refinement_level, self.refined_spark_queries, out0,
+                                                                                                               reduction_key)
+                    prev_level_out_mapped = eval(prev_level_out_mapped_string)
+                    print prev_level_out_mapped.collect()[:2]
+                    # For each intermediate query for `ref_level_curr` in transit (ref_level_prev, ref_level_current),
+                    # we filter out entries that do not satisfy the query at level `ref_level_prev`
+                    for iter_qid_curr in self.refined_spark_queries[qid][ref_level_curr]:
+                        if iter_qid_curr > 0:
+                            curr_level_out = query_out_refinement_level[qid][ref_level_curr][iter_qid_curr]
+                            curr_query = self.refined_spark_queries[qid][ref_level_curr][iter_qid_curr]
+                            transit_query_string = generate_transit_query(curr_query, curr_level_out,
+                                                                          prev_level_out_mapped, ref_level_prev)
+                            query_cost_transit[qid][transit][iter_qid_curr] = eval(transit_query_string)
+                            print transit, iter_qid_curr, query_cost_transit[qid][transit][iter_qid_curr][:2]
 
-    def generate_refined_queries(self, fname_rq_write=''):
-        # Add timestamp for each key
-        self.query_training.qid_2_query = add_timestamp_key(self.query_training.qid_2_query)
-
-        # Generate refined intermediate SONATA queries
-        self.generate_refined_intermediate_sonata_queries()
-
-        # Update the threshold for the filters operators for these SONATA queries
-        self.update_filter()
-
-        # Generate Spark queries for the composed & refined SONATA queries
-        self.generate_refined_spark_queries()
-
-        """
-        print self.refined_sonata_queries
-
-        worst_case_queries = {}
-
-        for qid in self.refined_sonata_queries:
-            if 32 in self.refined_sonata_queries[qid]:
-                refined_query_id = 1000*(10000*(qid)+32)+1
-                worst_case_queries[qid] = self.refined_sonata_queries[qid][32][refined_query_id]
-
-        self.worst_case_queries = worst_case_queries
-
-        print self.worst_case_queries
-        self.get_query_output_for_worst_case()
-
-        self.generate_refined_spark_queries()
-        print self.refined_queries
-
-        # Dump refined queries
-        if fname_rq_write != '':
-            self.dump_refined_queries(fname_rq_write)
-        """
-
-    def generate_refined_spark_queries(self):
-        # Compose the updated SONATA queries for different refinement levels
-        refined_sonata_queries = {}
-        for parent_qid in self.refined_sonata_queries:
-            for ref_level in self.refined_sonata_queries[parent_qid]:
-                ref_qid = 10000 * parent_qid + ref_level
-                tmp = self.refined_sonata_queries[parent_qid][ref_level].keys()
-                tmp.sort()
-                final_iter_qid = tmp[-1]
-                refined_sonata_queries[ref_qid] = self.refined_sonata_queries[parent_qid][ref_level][final_iter_qid]
-
-        # Use the processed Sonata queries to generated refined+composed Spark queries
-        refined_spark_queries = {}
-        for ref_level in self.ref_levels[1:]:
-            for n_query in self.query_generator.query_trees:
-                composed_spark_queries = {}
-                query_tree = self.query_generator.query_trees[n_query]
-                updated_query_tree = {}
-                update_query_tree(query_tree.keys()[0], query_tree, ref_level, updated_query_tree)
-                print updated_query_tree
-
-                reduction_key = ['ts', self.query_generator.qid_2_query[query_tree.keys()[0]].reduction_key]
-
-                generate_composed_spark_queries(reduction_key, BASIC_HEADERS, updated_query_tree,
-                                                refined_sonata_queries, composed_spark_queries)
-                for ref_qid in composed_spark_queries:
-                    # print ref_qid, composed_queries[ref_qid].qid
-                    if len(composed_spark_queries[ref_qid].operators) > 0:
-                        tmp1, _ = generate_intermediate_spark_queries(composed_spark_queries[ref_qid], ref_level)
-                        qid = ref_qid / 10000
-                        if qid not in refined_spark_queries:
-                            refined_spark_queries[qid] = {}
-                        if ref_level not in refined_spark_queries[qid]:
-                            refined_spark_queries[qid][ref_level] = {}
-                        for iter_qid in tmp1:
-                            # print "Adding intermediate Query:", iter_qid, type(tmp1[iter_qid])
-                            refined_spark_queries[qid][ref_level][iter_qid] = tmp1[iter_qid]
-
-        # print refined_spark_queries
-        self.refined_spark_queries = refined_spark_queries
+        self.query_out_transit = query_cost_transit
 
     def generate_refined_intermediate_sonata_queries(self):
         qid_2_queries_refined = {}
@@ -297,30 +217,105 @@ class Hypothesis(object):
                     if ref_level == self.query_training.ref_levels[-1]:
                         level_32_sonata_query = copy.deepcopy(curr_sonata_query)
 
+    def generate_refined_spark_queries(self):
+        # Compose the updated SONATA queries for different refinement levels
+        refined_sonata_queries = {}
+        for parent_qid in self.refined_sonata_queries:
+            for ref_level in self.refined_sonata_queries[parent_qid]:
+                ref_qid = 10000 * parent_qid + ref_level
+                tmp = self.refined_sonata_queries[parent_qid][ref_level].keys()
+                tmp.sort()
+                final_iter_qid = tmp[-1]
+                refined_sonata_queries[ref_qid] = self.refined_sonata_queries[parent_qid][ref_level][final_iter_qid]
+
+        # Use the processed Sonata queries to generated refined+composed Spark queries
+        refined_spark_queries = {}
+        for ref_level in self.ref_levels[1:]:
+            for n_query in self.query_generator.query_trees:
+                composed_spark_queries = {}
+                query_tree = self.query_generator.query_trees[n_query]
+                updated_query_tree = {}
+                update_query_tree(query_tree.keys()[0], query_tree, ref_level, updated_query_tree)
+                #print updated_query_tree
+
+                reduction_key = ['ts', self.query_generator.qid_2_query[query_tree.keys()[0]].reduction_key]
+
+                generate_composed_spark_queries(reduction_key, BASIC_HEADERS, updated_query_tree,
+                                                refined_sonata_queries, composed_spark_queries)
+                for ref_qid in composed_spark_queries:
+                    # print ref_qid, composed_queries[ref_qid].qid
+                    if len(composed_spark_queries[ref_qid].operators) > 0:
+                        tmp1, _ = generate_intermediate_spark_queries(composed_spark_queries[ref_qid], ref_level)
+                        qid = ref_qid / 10000
+                        if qid not in refined_spark_queries:
+                            refined_spark_queries[qid] = {}
+                        if ref_level not in refined_spark_queries[qid]:
+                            refined_spark_queries[qid][ref_level] = {}
+                        for iter_qid in tmp1:
+                            # print "Adding intermediate Query:", iter_qid, type(tmp1[iter_qid])
+                            refined_spark_queries[qid][ref_level][iter_qid] = tmp1[iter_qid]
+
+        # print refined_spark_queries
+        self.refined_spark_queries = refined_spark_queries
+
     def get_thresh(self, spark_query, spread, refinement_level, satisfied_sonata_spark_query):
         if refinement_level == self.query_training.ref_levels[-1]:
-            query_string = 'self.query_training.training_data.' + spark_query.compile() + '.map(lambda s: s[1]).collect()'
+            query_string = 'self.training_data.' + spark_query.compile() + '.map(lambda s: s[1]).collect()'
             data = [float(x) for x in (eval(query_string))]
             thresh = 0.0
             if len(data) > 0:
                 thresh = int(np.percentile(data, int(spread)))
                 print "Mean", np.mean(data), "Median", np.median(data), "75 %", np.percentile(data, 75), \
                     "95 %", np.percentile(data, 95), "99 %", np.percentile(data, 99)
-            print "Thresh:", thresh
+            if thresh == 1:
+                thresh += 1
+            print "Thresh:", thresh, refinement_level
 
         else:
-            refined_satisfied_out = 'self.query_training.training_data.' + satisfied_sonata_spark_query.compile() + '.map(lambda s: (s, 1)).reduceByKey(lambda x,y: x+y)'
+            refined_satisfied_out = 'self.training_data.' + satisfied_sonata_spark_query.compile() + \
+                                    '.map(lambda s: (s, 1)).reduceByKey(lambda x,y: x+y)'
             # print refined_satisfied_out
-            query_string = 'self.query_training.training_data.' + spark_query.compile() + '.join(' + refined_satisfied_out + ').map(lambda s: s[1][0]).collect()'
+            query_string = 'self.training_data.' + spark_query.compile() + \
+                           '.join(' + refined_satisfied_out + ').map(lambda s: s[1][0]).collect()'
             # print query_string
             data = [float(x) for x in (eval(query_string))]
+            data.sort()
+            print "Values at refinement level", refinement_level
+            print data
             thresh = min(data)
+            if thresh == 1:
+                thresh += 1
             # print data, thresh
 
-            original_query_string = 'self.query_training.training_data.' + spark_query.compile() + '.map(lambda s: s[1]).collect()'
+            original_query_string = 'self.training_data.' + spark_query.compile() + '.map(lambda s: s[1]).collect()'
             data = [float(x) for x in (eval(original_query_string))]
             if len(data) > 0:
                 print "Mean", np.mean(data), "Median", np.median(data), "75 %", np.percentile(data, 75), \
                     "95 %", np.percentile(data, 95), "99 %", np.percentile(data, 99)
+            print "Thresh:", thresh, refinement_level
 
         return thresh
+
+    def get_query_output(self, qid, out0):
+        # Get the query output for each refined intermediate queries
+        query_out_refinement_level = {}
+        query_out_refinement_level[qid] = {}
+        for ref_level in self.refined_spark_queries[qid]:
+            query_out_refinement_level[qid][ref_level] = {}
+            for iter_qid in self.refined_spark_queries[qid][ref_level]:
+                if iter_qid > 0:
+                    spark_query = self.refined_spark_queries[qid][ref_level][iter_qid]
+                    if len(spark_query.compile()) > 0:
+                        tmp_compile = spark_query.compile()
+                        query_string = 'self.training_data.' + tmp_compile + '.collect()'
+                        #print("Processing Query", qid, "refinement level", ref_level, "iteration id", iter_qid)
+                        out = eval(query_string)
+                    else:
+                        print "No query to process for", qid, "refinement level", ref_level, "iteration id", iter_qid
+                        out = []
+                    query_out_refinement_level[qid][ref_level][iter_qid] = out
+                    #print len(query_out_refinement_level[qid][ref_level][iter_qid])
+
+            query_out_refinement_level[qid][ref_level][0] = out0
+
+        return query_out_refinement_level
