@@ -1,48 +1,53 @@
 from config import *
 from utils import *
 import math
+from itertools import repeat
 
 class CostModel(object):
     def __init__(self, hypothesis):
         self.hypothesis = hypothesis
+        self.sc = self.hypothesis.sc
+        # Get this from a config file
+        self.delta = 0.01
+
+
         self.generate_hypothesis_graph()
+
+
 
 
     def generate_hypothesis_graph(self):
         weights = {}
         for qid in self.hypothesis.query_out_transit:
+            weights[qid] = {}
             query = self.hypothesis.query_training.qid_2_query[qid]
             partition_plans = query.get_partition_plans()[qid]
-            height_partition_tree = len(partition_plans.split(','))
-            extreme_plan = [].append_multiple(1, height_partition_tree)
+            height_partition_tree = len(partition_plans[-1])
+            extreme_plan = [1]
+            extreme_plan.extend(repeat(1, height_partition_tree-1))
+            print extreme_plan, height_partition_tree, partition_plans[-1]
             for transit in self.hypothesis.query_out_transit[qid]:
+                weights[qid][transit] = {}
                 (ref_level_prev, ref_level_curr) = transit
                 iter_qids_curr = self.hypothesis.refined_spark_queries[qid][ref_level_curr].keys()
-                iter_qids_prev = self.hypothesis.refined_spark_queries[qid][ref_level_prev].keys()
                 iter_qids_curr.sort()
-                iter_qids_prev.sort()
-
                 for partition_plan in partition_plans:
-                    target_plan = ','.join(extreme_plan)
+
+                    target_plan = ','.join([str(x) for x in extreme_plan])
                     print partition_plan, transit, target_plan
 
                     bits_count = 0
-                    packet_count = self.hypothesis.query_out_transit[qid][(0,ref_level_prev)][iter_qids_prev[-1]]
+                    packet_count = self.sc.parallelize(self.hypothesis.query_out_transit[qid][transit][0])
+                    print type(packet_count)
+
                     ctr = 0
-                    for iter_qid in iter_qids_curr:
+                    for iter_qid in iter_qids_curr[1:-1]:
                         if target_plan == partition_plan:
                             break
-                        last_operator_name = self.hypothesis.refined_spark_queries[qid][ref_level_curr][iter_qid].operators[-1].name
-                        print iter_qid, last_operator_name
-                        if last_operator_name in ['Distinct','Reduce']:
-                            # Update the number of bits required to perform this operation
-                            query_out = self.hypothesis.query_out_transit[qid][transit][iter_qid]
-                            bits_count += get_data_plane_cost(last_operator_name, 'sum', query_out, thresh = 1, delta = 0.01)
+                        bits_count, packet_count, ctr, target_plan = update_counts(self.sc, self.hypothesis.refined_spark_queries[qid][ref_level_curr],
+                                                                      self.hypothesis.query_out_transit[qid][transit],
+                                                                      iter_qid, self.delta, bits_count, packet_count,
+                                                                       ctr, target_plan)
 
-                            next_operator_name = self.hypothesis.refined_spark_queries[qid][ref_level_curr][iter_qid+1].operators[-1].name
-                            if next_operator_name == 'Filter':
-                                query_out = self.hypothesis.query_out_transit[qid][transit][iter_qid+1]
-                            packet_count -= get_streaming_cost(last_operator_name, query_out)
-
-                            target_plan[ctr] = 0
-                            ctr += 1
+                    weights[qid][transit][partition_plan] = (bits_count.collect(), packet_count.collect())
+        self.weights = weights

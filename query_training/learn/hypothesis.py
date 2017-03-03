@@ -31,9 +31,9 @@ class Hypothesis(object):
 
         for qid in self.refined_spark_queries:
             print "Processing Refined Queries for cost...", qid
-            #self.get_transit_query_output(qid)
             self.query_cost_transit_fname = 'query_cost_transit_'+str(qid)+'.pickle'
-            #dump_data(self.query_out_transit, self.query_cost_transit_fname)
+            self.get_transit_query_output(qid)
+            dump_data(self.query_out_transit, self.query_cost_transit_fname)
             with open(self.query_cost_transit_fname, 'r') as f:
                 self.query_out_transit = pickle.load(f)
 
@@ -77,13 +77,13 @@ class Hypothesis(object):
         for ref_level in ref_levels[1:]:
             transit = (0,ref_level)
             query_cost_transit[qid][transit] = {}
-            for iter_qid in self.refined_spark_queries[qid][ref_level]:
+            for iter_qid in self.refined_spark_queries[qid][ref_level].keys():
                 spark_query = self.refined_spark_queries[qid][ref_level][iter_qid]
                 out = query_out_refinement_level[qid][ref_level][iter_qid]
                 transit_query_string = 'self.sc.parallelize(out)'
-                transit_query_string = generate_query_to_collect_transit_cost(transit_query_string, spark_query.operators[-1].name)
+                transit_query_string = generate_query_to_collect_transit_cost(transit_query_string, spark_query)
                 query_cost_transit[qid][transit][iter_qid] = eval(transit_query_string)
-                print transit, iter_qid, spark_query.operators[-1].name, query_cost_transit[qid][transit][iter_qid][:2]
+                print transit, iter_qid, query_cost_transit[qid][transit][iter_qid][:2]
                 #break
 
         # Then get the cost for transit (ref_level_prev, ref_level_current)
@@ -99,14 +99,14 @@ class Hypothesis(object):
                     print prev_level_out_mapped.collect()[:2]
                     # For each intermediate query for `ref_level_curr` in transit (ref_level_prev, ref_level_current),
                     # we filter out entries that do not satisfy the query at level `ref_level_prev`
-                    for iter_qid_curr in self.refined_spark_queries[qid][ref_level_curr]:
-                        if iter_qid_curr > 0:
-                            curr_level_out = query_out_refinement_level[qid][ref_level_curr][iter_qid_curr]
-                            curr_query = self.refined_spark_queries[qid][ref_level_curr][iter_qid_curr]
-                            transit_query_string = generate_transit_query(curr_query, curr_level_out,
-                                                                          prev_level_out_mapped, ref_level_prev)
-                            query_cost_transit[qid][transit][iter_qid_curr] = eval(transit_query_string)
-                            print transit, iter_qid_curr, query_cost_transit[qid][transit][iter_qid_curr][:2]
+                    for iter_qid_curr in self.refined_spark_queries[qid][ref_level_curr].keys():
+                        #if iter_qid_curr > 0:
+                        curr_level_out = query_out_refinement_level[qid][ref_level_curr][iter_qid_curr]
+                        curr_query = self.refined_spark_queries[qid][ref_level_curr][iter_qid_curr]
+                        transit_query_string = generate_transit_query(curr_query, curr_level_out,
+                                                                      prev_level_out_mapped, ref_level_prev)
+                        query_cost_transit[qid][transit][iter_qid_curr] = eval(transit_query_string)
+                        print transit, iter_qid_curr, query_cost_transit[qid][transit][iter_qid_curr][:2]
 
         self.query_out_transit = query_cost_transit
 
@@ -251,6 +251,9 @@ class Hypothesis(object):
                             refined_spark_queries[qid] = {}
                         if ref_level not in refined_spark_queries[qid]:
                             refined_spark_queries[qid][ref_level] = {}
+                        tmp_query = (spark.PacketStream(qid))
+                        tmp_query.basic_headers = BASIC_HEADERS
+                        refined_spark_queries[qid][ref_level][0] = tmp_query
                         for iter_qid in tmp1:
                             # print "Adding intermediate Query:", iter_qid, type(tmp1[iter_qid])
                             refined_spark_queries[qid][ref_level][iter_qid] = tmp1[iter_qid]
@@ -317,5 +320,7 @@ class Hypothesis(object):
                     #print len(query_out_refinement_level[qid][ref_level][iter_qid])
 
             query_out_refinement_level[qid][ref_level][0] = out0
+
+        self.query_out_refinement_level = query_out_refinement_level
 
         return query_out_refinement_level
