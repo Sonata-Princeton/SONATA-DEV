@@ -21,11 +21,9 @@ Vagrant.configure(2) do |config|
     sudo apt-get update
     sudo apt-get install -y python-dev
     #sudo apt-get install -y python-pip
-    #sudo pip install --upgrade ipython[all]
     wget https://bootstrap.pypa.io/get-pip.py 
     sudo python ./get-pip.py
     sudo apt-get install -y python-pip
-    sudo apt-get install -y gccgo-go
     sudo apt-get install -y apache2-utils
     sudo apt-get install -y git
     # The commands below are for assignment 2. We expect that the
@@ -37,6 +35,8 @@ Vagrant.configure(2) do |config|
      sudo apt-get update
      sudo apt-get install -y python-dateutil
      sudo pip install test_helper
+     sudo pip install coloredlogs
+     pip install --user scipy
      sudo apt-get install -y python-matplotlib
      sudo apt-get install -y mininet
      echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | sudo /usr/bin/debconf-set-selections
@@ -48,18 +48,12 @@ Vagrant.configure(2) do |config|
      sudo apt-get install -y vim-gtk
   SHELL
 
-  ## iSDX
-
-  # mount iSDX directory
-  #config.vm.synced_folder "../../iSDX", "/home/vagrant/iSDX"
-
   # mount platform directory
   config.vm.synced_folder ".", "/home/vagrant/dev"
 
   config.vm.provision :shell, privileged: false, :path => "setup/basic-setup.sh"
   config.vm.provision :shell, privileged: false, :path => "setup/ovs-setup.sh"
   config.vm.provision :shell, privileged: false, :path => "setup/ryu-setup.sh"
-  config.vm.provision :shell, privileged: false, :path => "setup/sdx-setup.sh"
   config.vm.provision :shell, privileged: false, :path => "setup/kafka-setup.sh"
   config.vm.provision :shell, privileged: false, :path => "setup/p4-setup.sh"
   config.vm.provision :shell, privileged: false, :path => "setup/syntax-highlight-setup.sh"
@@ -75,6 +69,6 @@ Vagrant.configure(2) do |config|
   config.vm.provider "virtualbox" do |vb|
     vb.customize ["modifyvm", :id, "--cpuexecutioncap", "100"]
     vb.memory = 4096
-    vb.cpus = 1
+    vb.cpus = 2
   end
 end
