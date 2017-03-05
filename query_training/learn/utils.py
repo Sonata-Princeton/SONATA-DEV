@@ -87,7 +87,7 @@ def generate_intermediate_spark_queries(spark_query, refinement_level):
         for operator in spark_query.operators:
             if operator.name != 'Join':
                 if ctr < max_operators:
-                    copy_sonata_operators_to_spark(tmp_query, operator)
+                    copy_spark_operators_to_spark(tmp_query, operator)
                     prev_operator = operator
                 else:
                     break
@@ -108,6 +108,7 @@ def generate_intermediate_spark_queries(spark_query, refinement_level):
     return spark_intermediate_queries, filter_mappings
 
 def generate_query_to_collect_transit_cost(transit_query_string, spark_query):
+    #print spark_query, spark_query.operators
     if len(spark_query.operators) > 0:
         last_operator_name = spark_query.operators[-1].name
         if last_operator_name == 'Reduce':
@@ -117,6 +118,9 @@ def generate_query_to_collect_transit_cost(transit_query_string, spark_query):
                 transit_query_string += '.map(lambda s: (s[0], 1)).reduceByKey(lambda x,y: x+y)'
             else:
                 transit_query_string += '.map(lambda s: (s[0][0], 1)).reduceByKey(lambda x,y: x+y)'
+    else:
+        transit_query_string += '.map(lambda s: (s[0], 1)).reduceByKey(lambda x,y: x+y)'
+
     transit_query_string += '.collect()'
     return transit_query_string
 
@@ -173,7 +177,7 @@ def dump_data(data, fname):
 
 
 def get_streaming_cost(sc, last_operator_name, query_out):
-    return query_out
+    return sc.parallelize(query_out)
 
 
 def get_data_plane_cost(sc, operator_name, transformation_function, query_out, thresh = 1, delta = 0.01):
@@ -198,19 +202,22 @@ def get_data_plane_cost(sc, operator_name, transformation_function, query_out, t
             # total number of bits required for this data structure
             tmp = sc.parallelize(query_out)
             n_bits_wo_cmsketch = bits_per_element.join(tmp).map(lambda s: (s[0], math.ceil(s[1][0]*(len(s[1][1])))))
-            n_bits_wo_cmsketch_median = np.median(n_bits_wo_cmsketch.map(lambda s: s[1]).collect())
+            n_bits_wo_cmsketch_median = max(n_bits_wo_cmsketch.map(lambda s: s[1]).collect())
+
             ## number of bits required with count min sketch
 
             # number of bits required to maintain the count
-            bits_per_element = sc.parallelize(query_out).map(lambda s:(s[0], (math.log(max(s[1]), 2))))
+            bits_per_element = sc.parallelize(query_out).map(lambda s:(s[0], math.ceil(math.log(max(s[1]), 2))))
+            #print bits_per_element.collect()
 
             d = math.ceil(math.log(int(1/delta),2))
             # get the probability of threshold value for the given threshold
             f_th = sc.parallelize(query_out).map(lambda s: (s[0], float(s[1].count(thresh))/len(s[1])))
             w = f_th.map(lambda s: (s[0], math.ceil(4*s[1]/delta)))
 
-            n_bits_sketch = w.join(bits_per_element).map(lambda s: (s[0][0], (s[1][0]*s[1][1]*d)))
-            n_bits_sketch_median = np.median(n_bits_sketch.map(lambda s: s[1]).collect())
+            n_bits_sketch = w.join(bits_per_element).map(lambda s: (s[0], (s[1][0]*s[1][1]*d)))
+            n_bits_sketch_median = max(n_bits_sketch.map(lambda s: s[1]).collect())
+            print "With Sketches", n_bits_sketch_median, "W/o Sketches", n_bits_wo_cmsketch_median
 
             n_bits_min = min([n_bits_wo_cmsketch_median, n_bits_sketch_median])
             if n_bits_min == n_bits_wo_cmsketch_median:
@@ -224,34 +231,36 @@ def get_data_plane_cost(sc, operator_name, transformation_function, query_out, t
 
 
 def update_counts(sc, queries, query_out, iter_qid, delta, bits_count, packet_count, ctr, target_plan):
-    print iter_qid
-    last_operator = queries[iter_qid].operators[-1]
-    last_query_out = query_out[iter_qid]
+    curr_operator = queries[iter_qid].operators[-1]
+    curr_query_out = query_out[iter_qid]
     next_operator = queries[iter_qid+1].operators[-1]
     next_query_out = query_out[iter_qid+1]
-    print iter_qid, last_operator
 
-    if last_operator.name in ['Distinct','Reduce']:
+    if curr_operator.name in ['Distinct','Reduce']:
         # Update the number of bits required to perform this operation
         if next_operator.name == 'Filter':
             thresh = int(next_operator.func[1])
+            packet_count = get_streaming_cost(sc, curr_operator.name, next_query_out)
         else:
             thresh = 1
-        if last_operator.name == 'Reduce':
-            delta_bits = get_data_plane_cost(sc, last_operator.name, last_operator.func[0],
-                                          last_query_out, thresh, delta )
+            packet_count = get_streaming_cost(sc, curr_operator.name, curr_query_out)
+        if curr_operator.name == 'Reduce':
+            delta_bits = get_data_plane_cost(sc, curr_operator.name, curr_operator.func[0],
+                                          curr_query_out, thresh, delta )
         else:
-            delta_bits = get_data_plane_cost(sc, last_operator.name, '',
-                                             last_query_out, thresh, delta )
+            delta_bits = get_data_plane_cost(sc, curr_operator.name, '',
+                                             curr_query_out, thresh, delta )
         if bits_count == 0:
             bits_count = delta_bits
         else:
             bits_count = bits_count.join(delta_bits).map(lambda s: (s[0], (s[1][0]+s[1][1])))
 
-        delta_packets = get_streaming_cost(sc, last_operator.name, next_query_out)
-        packet_count = packet_count.join(delta_packets).map(lambda s: (s[0], (s[1][0]-s[1][1])))
+        print "After executing ", curr_operator.name, " in Data Plane"
+        print "Bits Count Cost", bits_count.collect()[:2]
+        print "Packet Count Cost", packet_count.collect()[:2]
 
-        target_plan[ctr] = '0'
+        target_plan = target_plan[:ctr]+'0'+target_plan[1+ctr:]
+
         ctr += 1
     return bits_count, packet_count, ctr, target_plan
 

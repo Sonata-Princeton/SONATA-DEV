@@ -58,12 +58,11 @@ class Hypothesis(object):
         """
         out0 = self.training_data.collect()
         query_cost_transit = {}
-        print "Out0", len(out0)
+        print "Out0", out0[:2]
         # Iterate over each refined query and collect its output
         # for qid in self.refined_queries:
 
         query_cost_transit[qid] = {}
-
 
         query = self.query_training.qid_2_query[qid]
         reduction_key = query.reduction_key
@@ -96,7 +95,7 @@ class Hypothesis(object):
                                                                                                                query_out_refinement_level, self.refined_spark_queries, out0,
                                                                                                                reduction_key)
                     prev_level_out_mapped = eval(prev_level_out_mapped_string)
-                    print prev_level_out_mapped.collect()[:2]
+                    #print prev_level_out_mapped.collect()[:2]
                     # For each intermediate query for `ref_level_curr` in transit (ref_level_prev, ref_level_current),
                     # we filter out entries that do not satisfy the query at level `ref_level_prev`
                     for iter_qid_curr in self.refined_spark_queries[qid][ref_level_curr].keys():
@@ -253,6 +252,9 @@ class Hypothesis(object):
                             refined_spark_queries[qid][ref_level] = {}
                         tmp_query = (spark.PacketStream(qid))
                         tmp_query.basic_headers = BASIC_HEADERS
+
+                        #copy_spark_operators_to_spark(tmp_query, composed_spark_queries[ref_qid].operators[0])
+                        #tmp_query.operators[0].map_values = ['1']
                         refined_spark_queries[qid][ref_level][0] = tmp_query
                         for iter_qid in tmp1:
                             # print "Adding intermediate Query:", iter_qid, type(tmp1[iter_qid])

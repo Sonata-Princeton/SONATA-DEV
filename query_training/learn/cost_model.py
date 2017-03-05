@@ -7,6 +7,7 @@ class CostModel(object):
     def __init__(self, hypothesis):
         self.hypothesis = hypothesis
         self.sc = self.hypothesis.sc
+        self.timestamps = self.hypothesis.timestamps
         # Get this from a config file
         self.delta = 0.01
 
@@ -33,16 +34,21 @@ class CostModel(object):
                 iter_qids_curr.sort()
                 for partition_plan in partition_plans:
 
-                    target_plan = ','.join([str(x) for x in extreme_plan])
-                    print partition_plan, transit, target_plan
+                    target_plan = ''.join([str(x) for x in extreme_plan])
 
-                    bits_count = 0
+
+                    bits_count = self.sc.parallelize([(x,0) for x in self.timestamps])
                     packet_count = self.sc.parallelize(self.hypothesis.query_out_transit[qid][transit][0])
-                    print type(packet_count)
+
+                    print "W/O Partition"
+                    print "Bits Count Cost", bits_count.collect()[:2]
+                    print "Packet Count Cost", packet_count.collect()[:2]
 
                     ctr = 0
                     for iter_qid in iter_qids_curr[1:-1]:
+                        print partition_plan, transit, target_plan
                         if target_plan == partition_plan:
+                            print "======="
                             break
                         bits_count, packet_count, ctr, target_plan = update_counts(self.sc, self.hypothesis.refined_spark_queries[qid][ref_level_curr],
                                                                       self.hypothesis.query_out_transit[qid][transit],
