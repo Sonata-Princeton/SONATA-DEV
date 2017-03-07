@@ -13,13 +13,14 @@ def shard_training_data(sc, flows_File, T):
     training_data = (sc.textFile(flows_File)
                           .map(parse_log_line)
                           .map(lambda s:tuple([int(math.ceil(int(s[0])/T))]+(list(s[1:]))))
-                          .filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(sPort) == '53')
+                          .filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(proto) == '17')
+                          #.filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(sPort) == '53')
                           )
     print "Collecting the training data for the first time ..."
     training_data = sc.parallelize(training_data.collect())
     print "Collecting timestamps for the experiment ..."
     timestamps = training_data.map(lambda s: s[0]).distinct().collect()
-    #print "Timestamps are: ", timestamps
+    print "#Timestamps: ", len(timestamps)
     return timestamps, training_data
 
 def add_timestamp_key(qid_2_query):
@@ -202,28 +203,37 @@ def get_data_plane_cost(sc, operator_name, transformation_function, query_out, t
             # total number of bits required for this data structure
             tmp = sc.parallelize(query_out)
             n_bits_wo_cmsketch = bits_per_element.join(tmp).map(lambda s: (s[0], math.ceil(s[1][0]*(len(s[1][1])))))
-            n_bits_wo_cmsketch_median = max(n_bits_wo_cmsketch.map(lambda s: s[1]).collect())
+            print "W/O Sketches", n_bits_wo_cmsketch.collect()
+            n_bits_wo_cmsketch_max = max(n_bits_wo_cmsketch.map(lambda s: s[1]).collect())
 
             ## number of bits required with count min sketch
 
             # number of bits required to maintain the count
             bits_per_element = sc.parallelize(query_out).map(lambda s:(s[0], math.ceil(math.log(max(s[1]), 2))))
-            #print bits_per_element.collect()
+            print "bits/elem:", bits_per_element.collect()
 
             d = math.ceil(math.log(int(1/delta),2))
+            print "d:", d
             # get the probability of threshold value for the given threshold
+            print thresh
             f_th = sc.parallelize(query_out).map(lambda s: (s[0], float(s[1].count(thresh))/len(s[1])))
-            w = f_th.map(lambda s: (s[0], math.ceil(4*s[1]/delta)))
+            N = sc.parallelize(query_out).map(lambda s: (s[0], float(sum(s[1]))))
+            print "f_th:", f_th.collect()
+            print "N:", N.collect()
+            w = f_th.join(N).map(lambda s: (s[0], math.ceil(4*s[1][1]*s[1][0]/delta)))
+            print "w:", w.collect()
 
-            n_bits_sketch = w.join(bits_per_element).map(lambda s: (s[0], (s[1][0]*s[1][1]*d)))
-            n_bits_sketch_median = max(n_bits_sketch.map(lambda s: s[1]).collect())
-            print "With Sketches", n_bits_sketch_median, "W/o Sketches", n_bits_wo_cmsketch_median
+            n_bits_sketch = w.join(bits_per_element).map(lambda s: (s[0], int(s[1][0]*s[1][1]*d)))
+            print "With Sketches", n_bits_sketch.collect()
+            n_bits_sketch_max = max(n_bits_sketch.map(lambda s: s[1]).collect())
+            print "With Sketches", n_bits_sketch_max, "W/o Sketches", n_bits_wo_cmsketch_max
 
-            n_bits_min = min([n_bits_wo_cmsketch_median, n_bits_sketch_median])
-            if n_bits_min == n_bits_wo_cmsketch_median:
+            n_bits_min = min([n_bits_wo_cmsketch_max, n_bits_sketch_max])
+            print n_bits_min
+            if n_bits_min == n_bits_wo_cmsketch_max:
                 n_bits = n_bits_wo_cmsketch
             else:
-                n_bits = n_bits_wo_cmsketch
+                n_bits = n_bits_sketch
 
         else:
             print "Currently not supported"
@@ -250,10 +260,8 @@ def update_counts(sc, queries, query_out, iter_qid, delta, bits_count, packet_co
         else:
             delta_bits = get_data_plane_cost(sc, curr_operator.name, '',
                                              curr_query_out, thresh, delta )
-        if bits_count == 0:
-            bits_count = delta_bits
-        else:
-            bits_count = bits_count.join(delta_bits).map(lambda s: (s[0], (s[1][0]+s[1][1])))
+
+        bits_count = bits_count.join(delta_bits).map(lambda s: (s[0], (s[1][0]+s[1][1])))
 
         print "After executing ", curr_operator.name, " in Data Plane"
         print "Bits Count Cost", bits_count.collect()[:2]
@@ -263,4 +271,3 @@ def update_counts(sc, queries, query_out, iter_qid, delta, bits_count, packet_co
 
         ctr += 1
     return bits_count, packet_count, ctr, target_plan
-

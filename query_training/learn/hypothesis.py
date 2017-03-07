@@ -82,7 +82,7 @@ class Hypothesis(object):
                 transit_query_string = 'self.sc.parallelize(out)'
                 transit_query_string = generate_query_to_collect_transit_cost(transit_query_string, spark_query)
                 query_cost_transit[qid][transit][iter_qid] = eval(transit_query_string)
-                print transit, iter_qid, query_cost_transit[qid][transit][iter_qid][:2]
+                #print transit, iter_qid, query_cost_transit[qid][transit][iter_qid][:2]
                 #break
 
         # Then get the cost for transit (ref_level_prev, ref_level_current)
@@ -105,7 +105,7 @@ class Hypothesis(object):
                         transit_query_string = generate_transit_query(curr_query, curr_level_out,
                                                                       prev_level_out_mapped, ref_level_prev)
                         query_cost_transit[qid][transit][iter_qid_curr] = eval(transit_query_string)
-                        print transit, iter_qid_curr, query_cost_transit[qid][transit][iter_qid_curr][:2]
+                        #print transit, iter_qid_curr, query_cost_transit[qid][transit][iter_qid_curr][:2]
 
         self.query_out_transit = query_cost_transit
 
@@ -274,6 +274,7 @@ class Hypothesis(object):
                     "95 %", np.percentile(data, 95), "99 %", np.percentile(data, 99)
             if thresh == 1:
                 thresh += 1
+            thresh = 25
             print "Thresh:", thresh, refinement_level
 
         else:
