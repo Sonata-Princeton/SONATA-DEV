@@ -280,10 +280,10 @@ class Hypothesis(object):
         else:
             refined_satisfied_out = 'self.training_data.' + satisfied_sonata_spark_query.compile() + \
                                     '.map(lambda s: (s, 1)).reduceByKey(lambda x,y: x+y)'
-            # print refined_satisfied_out
+            print refined_satisfied_out
             query_string = 'self.training_data.' + spark_query.compile() + \
                            '.join(' + refined_satisfied_out + ').map(lambda s: s[1][0]).collect()'
-            # print query_string
+            print query_string
             data = [float(x) for x in (eval(query_string))]
             data.sort()
             print "Values at refinement level", refinement_level
@@ -291,7 +291,7 @@ class Hypothesis(object):
             thresh = min(data)
             if thresh == 1:
                 thresh += 1
-            # print data, thresh
+            print data, thresh
 
             original_query_string = 'self.training_data.' + spark_query.compile() + '.map(lambda s: s[1]).collect()'
             data = [float(x) for x in (eval(original_query_string))]

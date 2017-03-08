@@ -199,7 +199,6 @@ class QueryGenerator(object):
         elif self.case == 6:
             self.generate_reflection_query()
 
-
     def generate_reflection_query(self):
         # Case where we will vary the threshold
         reduction_key = 'dIP'
