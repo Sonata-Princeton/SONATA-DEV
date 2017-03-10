@@ -12,7 +12,7 @@ import struct
 import time, pickle, logging
 import subprocess
 from micro.topo import CLI_PATH, THRIFTPORT, BASE_PATH
-from fabric_manager.switch_config.utils import reset_switch_state
+from dataplane_driver.switch_config.utils import reset_switch_state
 from tempfile import TemporaryFile
 
 
