@@ -701,6 +701,8 @@ class Queue:
     def __init__(self):
         abstract
 
+
+
     def extend(self, items):
         for item in items: self.append(item)
 
@@ -712,6 +714,8 @@ class FIFOQueue(Queue):
     """A First-In-First-Out Queue."""
     def __init__(self):
         self.A = []; self.start = 0
+    def __repr__(self):
+        return str(self.A)
     def append(self, item):
         self.A.append(item)
     def __len__(self):
@@ -735,6 +739,8 @@ class PriorityQueue(Queue):
     Also supports dict-like lookup."""
     def __init__(self, order=min, f=lambda x: x):
         update(self, A=[], order=order, f=f)
+    def __repr__(self):
+        return str(self.A)
     def append(self, item):
         bisect.insort(self.A, (self.f(item), item))
     def __len__(self):
