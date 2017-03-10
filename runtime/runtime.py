@@ -49,7 +49,7 @@ class Runtime(object):
             if reduction_key != '':
                 print "Reduction key for Query", query.qid, " is ", reduction_key
                 # Tunable parameter
-                ref_levels = range(0, 33, 4)
+                ref_levels = range(0, 33, 8)
             else:
                 # TODO: better handle this case
                 print "Query", query.qid, " cannot be refined"
@@ -89,6 +89,9 @@ class Runtime(object):
                 print "Adding SP queries for query ", qid
                 self.sp_queries[qid] = query.qid_2_sp_queries[qid]
 
+            print query.query_2_refinement_levels[query.qid].keys()
+            print query.refined_2_orig
+
         time.sleep(2)
         if self.dp_queries:
             self.send_to_fm("init", self.dp_queries)
@@ -100,6 +103,7 @@ class Runtime(object):
             self.send_to_sm()
 
         self.op_handler_thread.start()
+
 
         self.fm_thread.join()
         self.sm_thread.join()
@@ -146,6 +150,7 @@ class Runtime(object):
                 for src_qid in queries_received:
                     table_match_entries = queries_received[src_qid]
                     for query in self.queries:
+                        print query.refined_2_orig
                         # find the queries that take the output of this query as input
                         original_qid, ref_level = query.refined_2_orig[src_qid]
                         if (original_qid, ref_level) in query.query_out_mapping:
@@ -187,8 +192,6 @@ class Runtime(object):
         for query in self.queries:
             query_expressions.append(query.compile_sp())
         return query_expressions
-
-
 
     def send_to_sm(self):
         # Send compiled query expression to streaming manager

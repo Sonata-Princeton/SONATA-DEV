@@ -1,19 +1,18 @@
 #!/usr/bin/python
 # Initialize coloredlogs.
-import coloredlogs
+#import coloredlogs
 
-coloredlogs.install(level='ERROR', )
+#coloredlogs.install(level='ERROR', )
 
 from runtime import *
 from query_engine.sonata_queries import *
 import os
 
 batch_interval = 1
-window_length = 10
-sliding_interval = 10
-T = 1000 * window_length
+window_length = 1
+sliding_interval = 1
 
-result_folder = '/home/vagrant/dev/results/result1/'
+result_folder = '/home/arp/SONATA-DEV/results/result1/'
 emitter_log_file = result_folder + "emitter.log"
 fm_log_file = result_folder + "fabric_manager.log"
 rt_log_file = result_folder + "runtime.log"
@@ -39,57 +38,33 @@ if __name__ == '__main__':
             'fm_conf': {'fm_socket': ('localhost', 6666), 'log_file': fm_log_file}}
 
     q0 = PacketStream()
-    app_n = 1
-    if app_n == 1:
-        # New Queries
-        q1 = (PacketStream(1)
-              .filter(filter_keys=('proto',), func=('eq', 6))
-              .map(keys=('dIP', 'sIP'))
-              .distinct(keys=('dIP', 'sIP'))
-              .map(keys=('dIP',), map_values = ('count',), func=('eq',1,))
-              .reduce(keys=('dIP',), func=('sum',))
-              .filter(filter_vals=('count',), func=('geq', '1'))
-              .map(keys=('dIP',))
-              )
 
-        q2 = (PacketStream(2)
-              .filter(filter_keys=('proto',), func=('eq', 6))
-              .map(keys=('dIP','payload'))
-              )
+    # New Queries
+    q1 = (PacketStream(1)
+          #.filter(filter_keys=('proto',), func=('eq', 6))
+          .map(keys=('dIP', 'sIP'))
+          .distinct(keys=('dIP', 'sIP'))
+          .map(keys=('dIP',), map_values = ('count',), func=('eq',1,))
+          .reduce(keys=('dIP',), func=('sum',))
+          .filter(filter_vals=('count',), func=('geq', '500'))
+          .map(keys=('dIP',))
+          )
 
-        q3 = (q2.join(new_qid=3, query=q1)
-              .map(keys=('dIP', 'payload'), map_values=('count',), func=('eq', 1))
-              .reduce(keys=('dIP','payload'),func=('sum',))
-              .filter(filter_vals=('count',), func = ('geq', 1))
-              .map(keys=('dIP',))
-              .distinct(keys=('dIP',))
-              )
-        #print q3
-        q5 = (PacketStream(5)
-              .filter(filter_keys=('proto',), func=('eq', 6))
-              .distinct(keys=('dIP', 'sIP'))
-              .reduce(keys=('dIP',), func=('sum',))
-              )
+    q2 = (PacketStream(2)
+          #.filter(filter_keys=('proto',), func=('eq', 6))
+          .map(keys=('dIP','payload'))
+          )
 
-        q6 = (PacketStream(6)
-              .distinct(keys=('dIP', 'sIP'))
-              .reduce(keys=('sIP',), func=('sum',))
-              .filter(filter_keys=('proto',), func=('eq', 17))
-              )
-        #queries = [q5, q6]
-        queries = [q3]
+    q3 = (q2.join(new_qid=3, query=q1)
+          .map(keys=('dIP', 'payload'), map_values=('count',), func=('eq', 1))
+          .reduce(keys=('dIP','payload'),func=('sum',))
+          .filter(filter_vals=('count',), func = ('geq', 1))
+          .map(keys=('dIP',))
+          .distinct(keys=('dIP',))
+          )
 
-    elif app_n == 2:
-        q1 = (PacketStream(1).filter(keys = ('proto',),values = ('6',))
-              .filter(keys = ('dIP',),values = ('112.7.186.25',))
-              .map(keys=('dIP', 'sIP'))
-              .distinct(keys=('dIP', 'sIP'))
-            )
+    queries = [q3]
 
-        q2 = (PacketStream(2)
-              .map(keys=('dIP',), values=('1',))
-              .reduce(keys=('dIP',), func='sum', values=('count',))
-              )
-        queries = [q1]
+
 
     runtime = Runtime(conf, queries)
