@@ -12,9 +12,9 @@ batch_interval = 1
 window_length = 1
 sliding_interval = 1
 
-result_folder = '/home/arp/SONATA-DEV/results/result1/'
+result_folder = '/home/vagrant/SONATA-DEV/results/result1/'
 emitter_log_file = result_folder + "emitter.log"
-fm_log_file = result_folder + "fabric_manager.log"
+fm_log_file = result_folder + "dataplane_driver.log"
 rt_log_file = result_folder + "runtime.log"
 
 featuresPath = ''

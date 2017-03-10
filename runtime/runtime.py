@@ -6,7 +6,7 @@ import time
 from multiprocessing.connection import Client, Listener
 import pickle
 from threading import Thread
-from fabric_manager.fabric_manager import FabricManagerConfig
+from dataplane_driver.fabric_manager import FabricManagerConfig
 from streaming_manager.streaming_manager import StreamingManager
 import logging
 

@@ -1,4 +1,3 @@
-table_add filter_10032_1 set_meta_fm_10032 /32 => 
-table_add filter_20028_1 set_meta_fm_20028 /12 => 
-table_add filter_10012_1 set_meta_fm_10012 /12 => 
-table_add filter_20032_1 set_meta_fm_20032 /28 => 
+table_add filter_30008_1 set_meta_fm_30008 /8 => 
+table_add filter_10032_1 set_meta_fm_10032 /8 => 
+table_add filter_30032_1 set_meta_fm_30032 /32 => 
