@@ -8,14 +8,19 @@ import time
 from multiprocessing.connection import Client, Listener
 from threading import Thread
 
+from sonata.core.training.hypothesis.hypothesis import Hypothesis
 from sonata.dataplane_driver.dataplane_driver import DPDriverConfig
 from sonata.streaming_manager.streaming_manager import StreamingManager
+
+#from sonata.core.training.weights.training_data import TrainingData
+from sonata.core.training.utils import get_spark_context_batch
 
 
 class Runtime(object):
     def __init__(self, conf, queries):
         self.conf = conf
         self.queries = queries
+        (self.sc, self.timestamps, self.training_data) = get_spark_context_batch()
         self.dp_queries = {}
         self.sp_queries = {}
 
@@ -38,95 +43,69 @@ class Runtime(object):
         time.sleep(1)
 
         for query in self.queries:
+            # Generate weights graph for each query
+            hypothesis = Hypothesis(self, query)
 
-            query.get_query_tree()
-            query.get_all_queries()
+            # Learn query plan
+            # learn = Learn(weights)
 
-            start = time.time()
-            # Related to partitionig, enumerate set P
-            # TODO: flow should be get all sub queries,
-            # check if they can be executed in data plane using a call to dp driver,
-            # then enumerate all possible sub-queries for partitioning
-            query.get_partition_plans()
-            self.logger.info("runtime,query_2_plans,"+str(start)+","+str(time.time()))
-
-            tmp = query.get_reduction_key()
-            print tmp
-
-            # Related to iterative refinement, enumerate set R
-            reduction_key = list(tmp)[0]
-            if reduction_key != '':
-                print "Reduction key for Query", query.qid, " is ", reduction_key
-                # Tunable parameter
-                # TODO: push this in system config
-                ref_levels = range(0, 33, 8)
-            else:
-                # TODO: better handle this case
-                print "Query", query.qid, " cannot be refined"
-                ref_levels = []
-            finest_plan = ref_levels[-1]
-
-            # Add vertices for the hypothesis graph
-
-            # Use training data to update the weights for each edge in G
-            start = time.time()
-            query.get_cost(ref_levels)
+            # Execute learned query plan
 
 
-            # Apply learning algorithm to determine the final hypothesis
-            query.get_refinement_plan(ref_levels)
-            self.logger.info("runtime,cost_refinement_plan,"+str(start)+","+str(time.time()))
-
-            # Generate dataplane and streaming abstract queries for refinement and partitioning
-            print query.query_2_final_plan
-            query.query_in_mapping = {}
-            start = time.time()
-            query.generate_query_in_mapping(finest_plan, query.query_2_final_plan, {}, [], False)
-            self.logger.info("runtime,query_in_mapping,"+str(start)+","+str(time.time()))
-
-
-            print "Q2In", query.query_in_mapping
-            print "Q2Out", query.generate_query_out_mapping()
-
-            query.get_query_2_refinement_levels(finest_plan, query.query_2_final_plan, {})
-            query.get_orig_refined_mapping()
-
-            start = time.time()
-
-
-            query.generate_refined_queries(reduction_key)
-            self.logger.info("runtime,generate_refined_queries,"+str(start)+","+str(time.time()))
-
-            start = time.time()
-            query.generate_partitioned_queries()
-            self.logger.info("runtime,generate_partitioned_queries,"+str(start)+","+str(time.time()))
-            for qid in query.qid_2_dp_queries:
-                print "Adding DP queries for query", qid
-                self.dp_queries[qid] = query.qid_2_dp_queries[qid]
-
-            for qid in query.qid_2_sp_queries:
-                print "Adding SP queries for query ", qid
-                self.sp_queries[qid] = query.qid_2_sp_queries[qid]
-
-            print query.query_2_refinement_levels[query.qid].keys()
-            print query.refined_2_orig
-
-        time.sleep(2)
-        if self.dp_queries:
-            self.send_to_fm("init", self.dp_queries)
-
-        # Start SM after everything is set in DP
-        self.streaming_driver_thread.start()
-
-        if self.sp_queries:
-            self.send_to_sm()
-
-        self.op_handler_thread.start()
-
-
-        self.dp_driver_thread.join()
-        self.streaming_driver_thread.join()
-        self.op_handler_thread.join()
+        #     # Apply learning algorithm to determine the final weights
+        #     query.get_refinement_plan(ref_levels)
+        #     self.logger.info("runtime,cost_refinement_plan,"+str(start)+","+str(time.time()))
+        #
+        #     # Generate dataplane and streaming abstract queries for refinement and partitioning
+        #     print query.query_2_final_plan
+        #     query.query_in_mapping = {}
+        #     start = time.time()
+        #     query.generate_query_in_mapping(finest_plan, query.query_2_final_plan, {}, [], False)
+        #     self.logger.info("runtime,query_in_mapping,"+str(start)+","+str(time.time()))
+        #
+        #
+        #     print "Q2In", query.query_in_mapping
+        #     print "Q2Out", query.generate_query_out_mapping()
+        #
+        #     query.get_query_2_refinement_levels(finest_plan, query.query_2_final_plan, {})
+        #     query.get_orig_refined_mapping()
+        #
+        #     start = time.time()
+        #
+        #
+        #     query.generate_refined_queries(reduction_key)
+        #     self.logger.info("runtime,generate_refined_queries,"+str(start)+","+str(time.time()))
+        #
+        #     start = time.time()
+        #     query.generate_partitioned_queries()
+        #     self.logger.info("runtime,generate_partitioned_queries,"+str(start)+","+str(time.time()))
+        #     for qid in query.qid_2_dp_queries:
+        #         print "Adding DP queries for query", qid
+        #         self.dp_queries[qid] = query.qid_2_dp_queries[qid]
+        #
+        #     for qid in query.qid_2_sp_queries:
+        #         print "Adding SP queries for query ", qid
+        #         self.sp_queries[qid] = query.qid_2_sp_queries[qid]
+        #
+        #     print query.query_2_refinement_levels[query.qid].keys()
+        #     print query.refined_2_orig
+        #
+        # time.sleep(2)
+        # if self.dp_queries:
+        #     self.send_to_dp_driver("init", self.dp_queries)
+        #
+        # # Start SM after everything is set in DP
+        # self.streaming_driver_thread.start()
+        #
+        # if self.sp_queries:
+        #     self.send_to_sm()
+        #
+        # self.op_handler_thread.start()
+        #
+        #
+        # self.dp_driver_thread.join()
+        # self.streaming_driver_thread.join()
+        # self.op_handler_thread.join()
 
     def start_op_handler(self):
         """
@@ -184,10 +163,10 @@ class Runtime(object):
                 self.logger.info("runtime,create_delta_config,"+str(start)+","+str(time.time()))
                 queries_received = {}
 
-            # TODO: Update the send_to_fm function logic
+            # TODO: Update the send_to_dp_driver function logic
             # now send this delta config to fabric manager and update the filter tables
             if delta_config != {}:
-                self.send_to_fm("delta", delta_config)
+                self.send_to_dp_driver("delta", delta_config)
         return 0
 
     def start_dataplane_driver(self):
@@ -221,7 +200,7 @@ class Runtime(object):
         self.logger.info("runtime,sm_init,"+str(start)+","+str(time.time()))
         time.sleep(3)
 
-    def send_to_fm(self, message_type, content):
+    def send_to_dp_driver(self, message_type, content):
         # Send compiled query expression to fabric manager
         start = time.time()
         message = {message_type: content}

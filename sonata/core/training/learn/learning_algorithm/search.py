@@ -114,10 +114,10 @@ class Graph:
     """
     A graph connects nodes (verticies) by edges (links).  Each edge can also
     have a length associated with it.  The constructor call is something like:
-        g = Graph({'A': {'B': 1, 'C': 2})
+        g = Hypothesis({'A': {'B': 1, 'C': 2})
     this makes a graph with 3 nodes, A, B, and C, with an edge of length 1 from
     A to B,  and an edge of length 2 from A to C.  You can also do:
-        g = Graph({'A': {'B': 1, 'C': 2}, directed=False)
+        g = Hypothesis({'A': {'B': 1, 'C': 2}, directed=False)
     This makes an undirected graph, so inverse links are also added. The graph
     stays undirected; if you add more links with g.connect('B', 'C', 3), then
     inverse link is also added.  You can use g.nodes() to get a list of nodes,

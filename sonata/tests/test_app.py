@@ -6,14 +6,14 @@
 
 import os
 
-from sonata.core.runtime import *
 from sonata.query_engine.sonata_queries import *
+from sonata.core.runtime import Runtime
 
 batch_interval = 1
 window_length = 1
 sliding_interval = 1
 
-result_folder = '/home/vagrant/SONATA-DEV/results/result1/'
+result_folder = '/home/vagrant/dev/results/result1/'
 emitter_log_file = result_folder + "emitter.log"
 fm_log_file = result_folder + "dataplane_driver.log"
 rt_log_file = result_folder + "runtime.log"
@@ -47,7 +47,7 @@ if __name__ == '__main__':
           .distinct(keys=('dIP', 'sIP'))
           .map(keys=('dIP',), map_values = ('count',), func=('eq',1,))
           .reduce(keys=('dIP',), func=('sum',))
-          .filter(filter_vals=('count',), func=('geq', '500'))
+          .filter(filter_vals=('count',), func=('geq', '99'))
           .map(keys=('dIP',))
           )
 
@@ -64,7 +64,7 @@ if __name__ == '__main__':
           .distinct(keys=('dIP',))
           )
 
-    queries = [q3]
+    queries = [q1]
 
 
 

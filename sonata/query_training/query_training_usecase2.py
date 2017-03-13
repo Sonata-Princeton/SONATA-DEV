@@ -778,7 +778,7 @@ if __name__ == "__main__":
 
 
     fname_rq_read = 'query_engine/query_dumps/refined_queries_1.pickle'
-    qt = QueryTraining(fname_rq_read=fname_rq_read)
+    qt = TrainingData(fname_rq_read=fname_rq_read)
     qt.get_reformatted_output()
     print qt.refined_queries
     #qt.get_query_output()

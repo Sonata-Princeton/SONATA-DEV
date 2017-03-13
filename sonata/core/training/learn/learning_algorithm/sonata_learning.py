@@ -4,7 +4,7 @@ from search import *
 from utils import *
 
 def DirectedGraph(dict=None):
-    "Build a Graph where every edge (including future ones) goes both ways."
+    "Build a Hypothesis where every edge (including future ones) goes both ways."
     return Graph(dict=dict, directed=True)
 
 

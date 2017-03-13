@@ -3,7 +3,7 @@
 #  Arpit Gupta (arpitg@cs.princeton.edu)
 import copy
 
-import query_engine.spark_queries as spark
+#import query_engine.spark_queries as spark
 
 from sonata.query_engine.sonata_queries import *
 

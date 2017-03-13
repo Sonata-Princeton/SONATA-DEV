@@ -37,7 +37,7 @@ THRIFTPORT = 22222
 _THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 _THRIFT_BASE_PORT = 22222
 
-BASE_PATH = "query_training/micro/"
+BASE_PATH = "training_data/micro/"
 
 class MyTopo(Topo):
     def __init__(self, sw_path, json_path, nb_hosts, nb_switches, links, **opts):

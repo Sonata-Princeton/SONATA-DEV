@@ -2,7 +2,7 @@ import pickle
 
 from netaddr import *
 
-from config import *
+from sonata.core.training.config import *
 from sonata.query_engine.sonata_queries import *
 
 
@@ -166,7 +166,7 @@ def generate_query_string_prev_level_out_mapped(qid, ref_level_prev, query_out_r
     else:
         keys = BASIC_HEADERS
         values = ()
-    prev_level_out_mapped_string = 'self.query_training.sc.parallelize(prev_level_out)'
+    prev_level_out_mapped_string = 'self.training_data.sc.parallelize(prev_level_out)'
     prev_level_out_mapped_string += '.map(lambda (('+",".join(keys)+ '),('+",".join(values)+')):'
     prev_level_out_mapped_string += '((ts,'+str(reduction_key)+'), 1))'
 
@@ -176,69 +176,6 @@ def dump_data(data, fname):
     with open(fname,'w') as f:
         print "Dumping query cost ..." + fname
         pickle.dump(data, f)
-
-
-def get_streaming_cost(sc, last_operator_name, query_out):
-    return sc.parallelize(query_out)
-
-
-def get_data_plane_cost(sc, operator_name, transformation_function, query_out, thresh = 1, delta = 0.01):
-    # get data plane cost for given query output and operator name
-    n_bits = 0
-    if operator_name == "Distinct":
-        # here query_out query_out = [(ts,#distinct elements), ...]
-        bits_per_element = sc.parallelize(query_out).map(lambda s: (s[0],1))
-
-        # total number of bits required for this data structure
-        tmp = sc.parallelize(query_out)
-        n_bits = bits_per_element.join(tmp).map(lambda s: (s[0],math.ceil(s[1][0]*s[1][1])))
-
-    elif operator_name == "Reduce":
-        if transformation_function == 'sum':
-            # it can use count-min sketch, here query_out = [(ts,[count1, count2, ...]), ...]
-
-            ## number of bits required w/o using any sketch
-            # number of bits required to maintain the count
-            bits_per_element = sc.parallelize(query_out).map(lambda s:(s[0], math.log(max(s[1]), 2)))
-
-            # total number of bits required for this data structure
-            tmp = sc.parallelize(query_out)
-            n_bits_wo_cmsketch = bits_per_element.join(tmp).map(lambda s: (s[0], math.ceil(s[1][0]*(len(s[1][1])))))
-            print "W/O Sketches", n_bits_wo_cmsketch.collect()
-            n_bits_wo_cmsketch_max = max(n_bits_wo_cmsketch.map(lambda s: s[1]).collect())
-
-            ## number of bits required with count min sketch
-
-            # number of bits required to maintain the count
-            bits_per_element = sc.parallelize(query_out).map(lambda s:(s[0], math.ceil(math.log(max(s[1]), 2))))
-            print "bits/elem:", bits_per_element.collect()
-
-            d = math.ceil(math.log(int(1/delta),2))
-            print "d:", d
-            # get the probability of threshold value for the given threshold
-            print thresh
-            f_th = sc.parallelize(query_out).map(lambda s: (s[0], float(s[1].count(thresh))/len(s[1])))
-            N = sc.parallelize(query_out).map(lambda s: (s[0], float(sum(s[1]))))
-            print "f_th:", f_th.collect()
-            print "N:", N.collect()
-            w = f_th.join(N).map(lambda s: (s[0], math.ceil(4*s[1][1]*s[1][0]/delta)))
-            print "w:", w.collect()
-
-            n_bits_sketch = w.join(bits_per_element).map(lambda s: (s[0], int(s[1][0]*s[1][1]*d)))
-            print "With Sketches", n_bits_sketch.collect()
-            n_bits_sketch_max = max(n_bits_sketch.map(lambda s: s[1]).collect())
-            print "With Sketches", n_bits_sketch_max, "W/o Sketches", n_bits_wo_cmsketch_max
-
-            n_bits_min = min([n_bits_wo_cmsketch_max, n_bits_sketch_max])
-            print n_bits_min
-            if n_bits_min == n_bits_wo_cmsketch_max:
-                n_bits = n_bits_wo_cmsketch
-            else:
-                n_bits = n_bits_sketch
-
-        else:
-            print "Currently not supported"
-    return n_bits
 
 
 def update_counts(sc, queries, query_out, iter_qid, delta, bits_count, packet_count, ctr, target_plan):
@@ -272,3 +209,23 @@ def update_counts(sc, queries, query_out, iter_qid, delta, bits_count, packet_co
 
         ctr += 1
     return bits_count, packet_count, ctr, target_plan
+
+
+def get_spark_context_batch():
+    from pyspark import SparkContext, SparkConf
+    from sonata.core.training.config import TD_PATH, T
+    conf = (SparkConf()
+            .setMaster("local[*]")
+            .setAppName("SONATA-Training")
+            .set("spark.executor.memory","6g")
+            .set("spark.driver.memory","20g")
+            .set("spark.cores.max","16"))
+
+    sc = SparkContext(conf=conf)
+    logger = sc._jvm.org.apache.log4j
+    logger.LogManager.getLogger("org"). setLevel( logger.Level.ERROR )
+    logger.LogManager.getLogger("akka").setLevel( logger.Level.ERROR )
+
+    # Load training data
+    timestamps, training_data = shard_training_data(sc, TD_PATH, T)
+    return sc, timestamps, training_data

@@ -222,7 +222,7 @@ class QueryGenerator(object):
             self.composed_queries[n_query]= composed_query
             self.qid_2_query.update(qid_2_query)
 
-        fname = 'query_training/dns_reflection/query_generator_object_reflection_'+str(self.n_queries)+'.pickle'
+        fname = 'training_data/dns_reflection/query_generator_object_reflection_'+str(self.n_queries)+'.pickle'
         with open(fname, 'w') as f:
             pickle.dump(self, f)
 

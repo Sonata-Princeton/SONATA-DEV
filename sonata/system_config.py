@@ -1,0 +1,4 @@
+ALPHA = 0.5
+BETA = 0.5
+GRAN = 8
+GRAN_MAX = 32

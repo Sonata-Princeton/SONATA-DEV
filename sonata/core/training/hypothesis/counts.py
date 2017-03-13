@@ -3,18 +3,13 @@ This module translates each shard of size W into
 hypothesis graph
 """
 
-import copy
-import pickle
-
 import numpy as np
 
-from config import *
-from sonata.query_engine.sonata_queries import *
-from utils import *
+from sonata.core.training.utils import *
 
 
-class Hypothesis(object):
-    def __init__(self, query_training):
+class Counts(object):
+    def __init__(self, sc, timestamps, training_data, ref_levels, qid_2_query, query_tree):
 
         self.query_out = None
         self.filter_mappings = {}
@@ -22,12 +17,14 @@ class Hypothesis(object):
         self.refined_sonata_queries = {}
         self.composed_refined_sonata_queries = {}
 
-        self.query_training = query_training
-        self.ref_levels = self.query_training.ref_levels
-        self.query_generator = self.query_training.query_generator
-        self.sc = self.query_training.sc
-        self.timestamps, self.training_data = shard_training_data(self.sc, self.query_training.training_data_path, T)
-        print self.query_training.qid_2_query
+        self.timestamps = timestamps
+        self.ref_levels = ref_levels
+        self.sc = sc
+        self.qid_2_query = qid_2_query
+        self.training_data = training_data
+        self.query_tree = query_tree
+
+        print self.qid_2_query
 
         self.generate_refined_queries()
 
@@ -42,7 +39,7 @@ class Hypothesis(object):
 
     def generate_refined_queries(self, fname_rq_write=''):
         # Add timestamp for each key
-        self.query_training.qid_2_query = add_timestamp_key(self.query_training.qid_2_query)
+        self.qid_2_query = add_timestamp_key(self.qid_2_query)
 
         # Generate refined intermediate SONATA queries
         self.generate_refined_intermediate_sonata_queries()
@@ -66,7 +63,7 @@ class Hypothesis(object):
 
         query_cost_transit[qid] = {}
 
-        query = self.query_training.qid_2_query[qid]
+        query = self.qid_2_query[qid]
         reduction_key = query.reduction_key
         ref_levels = self.ref_levels
 
@@ -116,12 +113,12 @@ class Hypothesis(object):
         refined_sonata_queries = {}
 
         # First update the Sonata queries for different levels
-        for (qid, sonata_query) in self.query_training.qid_2_query.iteritems():
-            if qid in self.query_training.qid_2_query:
+        for (qid, sonata_query) in self.qid_2_query.iteritems():
+            if qid in self.qid_2_query:
                 refined_sonata_queries[qid] = {}
-                reduction_key = self.query_training.qid_2_query[qid].reduction_key
+                reduction_key = self.qid_2_query[qid].reduction_key
 
-                for ref_level in self.query_training.ref_levels[1:]:
+                for ref_level in self.ref_levels[1:]:
                     refined_sonata_queries[qid][ref_level] = {}
                     refined_query_id = 10000 * qid + ref_level
 
@@ -154,7 +151,7 @@ class Hypothesis(object):
 
     def update_filter(self):
         spark_queries = {}
-        reversed_ref_levels = self.query_training.ref_levels[1:]
+        reversed_ref_levels = self.ref_levels[1:]
         reversed_ref_levels.sort(reverse=True)
         level_32_sonata_query = None
         satisfied_spark_query = None
@@ -165,14 +162,14 @@ class Hypothesis(object):
                     prev_parent_qid = prev_qid / 10000000
                     current_parent_qid = curr_qid / 10000000
 
-                    reduction_key = self.query_training.qid_2_query[current_parent_qid].reduction_key
+                    reduction_key = self.qid_2_query[current_parent_qid].reduction_key
                     qids_after_this_filter = filter(lambda x: x >= curr_qid,
                                                     self.refined_sonata_queries[current_parent_qid][ref_level].keys())
 
                     prev_sonata_query = self.refined_sonata_queries[prev_parent_qid][ref_level][prev_qid]
                     curr_sonata_query = self.refined_sonata_queries[current_parent_qid][ref_level][curr_qid]
 
-                    if ref_level != self.query_training.ref_levels[-1]:
+                    if ref_level != self.ref_levels[-1]:
                         satisfied_sonata_query = PacketStream(level_32_sonata_query.qid)
                         satisfied_sonata_query.basic_headers = BASIC_HEADERS
                         for operator in level_32_sonata_query.operators:
@@ -215,7 +212,7 @@ class Hypothesis(object):
                     self.refined_sonata_queries[current_parent_qid][ref_level][curr_qid] = copy.deepcopy(
                         curr_sonata_query)
 
-                    if ref_level == self.query_training.ref_levels[-1]:
+                    if ref_level == self.ref_levels[-1]:
                         level_32_sonata_query = copy.deepcopy(curr_sonata_query)
 
     def generate_refined_spark_queries(self):
@@ -232,14 +229,14 @@ class Hypothesis(object):
         # Use the processed Sonata queries to generated refined+composed Spark queries
         refined_spark_queries = {}
         for ref_level in self.ref_levels[1:]:
-            for n_query in self.query_generator.query_trees:
+            for n_query in self.query_tree:
                 composed_spark_queries = {}
-                query_tree = self.query_generator.query_trees[n_query]
+                query_tree = self.query_tree[n_query]
                 updated_query_tree = {}
                 update_query_tree(query_tree.keys()[0], query_tree, ref_level, updated_query_tree)
                 #print updated_query_tree
 
-                reduction_key = ['ts', self.query_generator.qid_2_query[query_tree.keys()[0]].reduction_key]
+                reduction_key = ['ts', self.qid_2_query[query_tree.keys()[0]].reduction_key]
 
                 generate_composed_spark_queries(reduction_key, BASIC_HEADERS, updated_query_tree,
                                                 refined_sonata_queries, composed_spark_queries)
@@ -266,7 +263,7 @@ class Hypothesis(object):
         self.refined_spark_queries = refined_spark_queries
 
     def get_thresh(self, spark_query, spread, refinement_level, satisfied_sonata_spark_query):
-        if refinement_level == self.query_training.ref_levels[-1]:
+        if refinement_level == self.ref_levels[-1]:
             query_string = 'self.training_data.' + spark_query.compile() + '.map(lambda s: s[1]).collect()'
             data = [float(x) for x in (eval(query_string))]
             thresh = 0.0

@@ -52,8 +52,10 @@ class DPDriverConfig(object):
                     self.logger.info("fabric_manager,delta_in,"+str(start)+","+ str(time.time()))
                     self.process_delta_config(message[key])
                     self.logger.info("fabric_manager,delta_out,"+str(start)+","+ str(time.time()))
+                elif key == "is_supported":
+                    raise NotImplementedError
                 else:
-                    print "ERROR Unsupported Key"
+                    print "dataplane driver:: start:: ERROR Unsupported Key"
 
     def start_emitter(self):
         # Start the packet parser
