@@ -4,6 +4,9 @@ BETA = 0.5
 GRAN = 8
 GRAN_MAX = 32
 
+# Fold size for learning
+FOLD_SIZE = 10
+
 # 1 second window length
 T = 1
 

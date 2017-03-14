@@ -15,6 +15,8 @@ from sonata.streaming_manager.streaming_manager import StreamingManager
 #from sonata.core.training.weights.training_data import TrainingData
 from sonata.core.training.utils import get_spark_context_batch
 
+from sonata.core.training.learn.learn import Learn
+
 
 class Runtime(object):
     def __init__(self, conf, queries):
@@ -23,6 +25,7 @@ class Runtime(object):
         (self.sc, self.timestamps, self.training_data) = get_spark_context_batch()
         self.dp_queries = {}
         self.sp_queries = {}
+        self.query_plans = {}
 
         # TODO: create function for logging setup
         # create a logger for the object
@@ -45,67 +48,25 @@ class Runtime(object):
         for query in self.queries:
             # Generate weights graph for each query
             hypothesis = Hypothesis(self, query)
+            learn = Learn(hypothesis)
+            self.query_plans[queries.qid] = learn.final_plan
 
-            # Learn query plan
-            # learn = Learn(weights)
+        self.generate_dp_queries()
+        self.generate_sp_queries()
+        time.sleep(2)
+        if self.dp_queries:
+            self.send_to_dp_driver("init", self.dp_queries)
 
-            # Execute learned query plan
+        # Start SM after everything is set in DP
+        self.streaming_driver_thread.start()
 
+        if self.sp_queries:
+            self.send_to_sm()
 
-        #     # Apply learning algorithm to determine the final weights
-        #     query.get_refinement_plan(ref_levels)
-        #     self.logger.info("runtime,cost_refinement_plan,"+str(start)+","+str(time.time()))
-        #
-        #     # Generate dataplane and streaming abstract queries for refinement and partitioning
-        #     print query.query_2_final_plan
-        #     query.query_in_mapping = {}
-        #     start = time.time()
-        #     query.generate_query_in_mapping(finest_plan, query.query_2_final_plan, {}, [], False)
-        #     self.logger.info("runtime,query_in_mapping,"+str(start)+","+str(time.time()))
-        #
-        #
-        #     print "Q2In", query.query_in_mapping
-        #     print "Q2Out", query.generate_query_out_mapping()
-        #
-        #     query.get_query_2_refinement_levels(finest_plan, query.query_2_final_plan, {})
-        #     query.get_orig_refined_mapping()
-        #
-        #     start = time.time()
-        #
-        #
-        #     query.generate_refined_queries(reduction_key)
-        #     self.logger.info("runtime,generate_refined_queries,"+str(start)+","+str(time.time()))
-        #
-        #     start = time.time()
-        #     query.generate_partitioned_queries()
-        #     self.logger.info("runtime,generate_partitioned_queries,"+str(start)+","+str(time.time()))
-        #     for qid in query.qid_2_dp_queries:
-        #         print "Adding DP queries for query", qid
-        #         self.dp_queries[qid] = query.qid_2_dp_queries[qid]
-        #
-        #     for qid in query.qid_2_sp_queries:
-        #         print "Adding SP queries for query ", qid
-        #         self.sp_queries[qid] = query.qid_2_sp_queries[qid]
-        #
-        #     print query.query_2_refinement_levels[query.qid].keys()
-        #     print query.refined_2_orig
-        #
-        # time.sleep(2)
-        # if self.dp_queries:
-        #     self.send_to_dp_driver("init", self.dp_queries)
-        #
-        # # Start SM after everything is set in DP
-        # self.streaming_driver_thread.start()
-        #
-        # if self.sp_queries:
-        #     self.send_to_sm()
-        #
-        # self.op_handler_thread.start()
-        #
-        #
-        # self.dp_driver_thread.join()
-        # self.streaming_driver_thread.join()
-        # self.op_handler_thread.join()
+        self.op_handler_thread.start()
+        self.dp_driver_thread.join()
+        self.streaming_driver_thread.join()
+        self.op_handler_thread.join()
 
     def start_op_handler(self):
         """

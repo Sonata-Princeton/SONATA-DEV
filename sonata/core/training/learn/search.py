@@ -5,9 +5,9 @@ then create problem instances and solve them with calls to the various search
 functions."""
 # Source: https://github.com/aimacode/aima-python/blob/master/search.py
 
-from utils import *
-import math, random, sys, time, bisect, string
+from sonata.core.training.learn.utils import *
 
+# Abstract Classes
 class Problem(object):
     """The abstract class for a formal problem.  You should subclass
     this and implement the methods actions and result, and possibly
