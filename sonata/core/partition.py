@@ -22,7 +22,10 @@ def get_query_2_plans(flattened_queries, runtime):
         partitioning_plans = []
         for partition in partitions:
             partitioning_plans.append((partition, n_operators-partition))
+        # TODO: get rid of this hardcoding
+        partitioning_plans = ['00', '01', '11']
         query_2_plans[query.qid] = partitioning_plans
+    print "Partitioning Plans", query_2_plans
 
     return query_2_plans
 

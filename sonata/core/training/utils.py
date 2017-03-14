@@ -2,8 +2,10 @@ import pickle
 
 from netaddr import *
 
-from sonata.core.training.config import *
+#from sonata.system_config import *
 from sonata.query_engine.sonata_queries import *
+from sonata.core.training.hypothesis.costs.dp_cost import get_data_plane_cost
+from sonata.core.training.hypothesis.costs.sp_cost import get_streaming_cost
 
 
 def parse_log_line(logline):
@@ -166,7 +168,7 @@ def generate_query_string_prev_level_out_mapped(qid, ref_level_prev, query_out_r
     else:
         keys = BASIC_HEADERS
         values = ()
-    prev_level_out_mapped_string = 'self.training_data.sc.parallelize(prev_level_out)'
+    prev_level_out_mapped_string = 'self.sc.parallelize(prev_level_out)'
     prev_level_out_mapped_string += '.map(lambda (('+",".join(keys)+ '),('+",".join(values)+')):'
     prev_level_out_mapped_string += '((ts,'+str(reduction_key)+'), 1))'
 
@@ -213,7 +215,7 @@ def update_counts(sc, queries, query_out, iter_qid, delta, bits_count, packet_co
 
 def get_spark_context_batch():
     from pyspark import SparkContext, SparkConf
-    from sonata.core.training.config import TD_PATH, T
+    from sonata.system_config import TD_PATH, T
     conf = (SparkConf()
             .setMaster("local[*]")
             .setAppName("SONATA-Training")

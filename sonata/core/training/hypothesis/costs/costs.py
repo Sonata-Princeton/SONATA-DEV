@@ -1,17 +1,18 @@
 from itertools import repeat
 
-from sonata.core.training.config import *
+from sonata.system_config import *
 
 from sonata.core.training.utils import *
 
 
 class Costs(object):
-    def __init__(self, counts):
+    def __init__(self, counts, P):
         self.counts = counts
+        self.partitioning_plans = P
         self.sc = self.counts.sc
         self.timestamps = self.counts.timestamps
         # Get this from a config file
-        self.delta = 0.01
+        self.delta = DELTA
         self.generate_hypothesis_graph()
 
     def generate_hypothesis_graph(self):
@@ -19,7 +20,12 @@ class Costs(object):
         for qid in self.counts.query_out_transit:
             costs[qid] = {}
             query = self.counts.qid_2_query[qid]
-            partition_plans = query.get_partition_plans()[qid]
+
+            # TODO: get rid of this hardcoding
+            partition_plans = self.partitioning_plans[qid]
+            partition_plans = ['00', '01', '11']
+
+            print "Partitioning Plans:", partition_plans
             height_partition_tree = len(partition_plans[-1])
             extreme_plan = [1]
             extreme_plan.extend(repeat(1, height_partition_tree-1))

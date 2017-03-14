@@ -7,8 +7,8 @@ import itertools
 import pickle
 import random
 
-from query_engine.sonata_operators import *
-from query_engine.utils import *
+from sonata.query_engine.sonata_operators import *
+from sonata.core.utils import *
 
 from sonata.query_engine.sonata_queries import *
 
@@ -22,136 +22,6 @@ redKeysPath = ''
 
 basic_headers = ["dIP", "sIP", "sPort", "dPort", "nBytes", "proto", "sMac", "dMac"]
 
-def generate_composed_spark_queries(reduction_key, basic_headers, query_tree, qid_2_query, composed_queries = {}):
-    #print query_tree
-    root_qid = query_tree.keys()[0]
-    #print "##", root_qid, query_tree.keys(), qid_2_query
-    if root_qid in qid_2_query:
-        root_query_sonata = qid_2_query[root_qid]
-        root_query_spark = spark.PacketStream(root_qid)
-        root_query_spark.basic_headers = basic_headers
-    else:
-        root_query_sonata = PacketStream(root_qid)
-        root_query_spark = spark.PacketStream(root_qid)
-        root_query_spark.basic_headers = basic_headers
-
-    #print "%%", root_qid, root_query_sonata
-
-    if query_tree[root_qid] != {}:
-        children = query_tree[root_qid].keys()
-        children.sort()
-        left_qid = children[0]
-        right_qid = children[1]
-        left_query = generate_composed_spark_queries(reduction_key, basic_headers,
-                                                     {left_qid:query_tree[root_qid][left_qid]},
-                                                     qid_2_query, composed_queries)
-
-        right_query = generate_composed_spark_queries(reduction_key, basic_headers,
-                                                      {right_qid:query_tree[root_qid][right_qid]},
-                                                      qid_2_query, composed_queries)
-
-        #print "Left", left_qid, left_query
-
-        #print "Right", right_qid, right_query
-        for operator in root_query_sonata.operators:
-            if operator.name == 'Map' and len(operator.func) > 0 and operator.func[0] == 'mask':
-                copy_sonata_operators_to_spark(right_query, operator)
-
-        composed_query = right_query.join(q=left_query, join_key = reduction_key, in_stream = 'In.')
-        # This is important else the composed query will take the qid of the right child itself
-        composed_query.qid = root_qid
-        for operator in root_query_sonata.operators:
-            if not (operator.name == 'Map' and len(operator.func) > 0 and operator.func[0] == 'mask'):
-                copy_sonata_operators_to_spark(composed_query, operator)
-
-        composed_queries[root_qid] = copy.deepcopy(composed_query)
-    else:
-        #print "Adding for", root_qid, root_query_sonata, root_query_sonata.qid
-        for operator in root_query_sonata.operators:
-            copy_sonata_operators_to_spark(root_query_spark, operator)
-
-        #print "##Updating key", root_qid
-        composed_queries[root_qid] = copy.deepcopy(root_query_spark)
-        composed_query = root_query_spark
-
-    #print "returning for ", root_qid, composed_queries
-
-    return composed_query
-
-def generate_composed_query(query_tree, qid_2_query):
-    #print query_tree
-    root_qid = query_tree.keys()[0]
-    #print "##", root_qid, query_tree.keys(), qid_2_query
-    if root_qid in qid_2_query:
-        root_query = qid_2_query[root_qid]
-    else:
-        root_query = PacketStream(root_qid)
-
-    #print "%%", root_qid, root_query
-
-    if query_tree[root_qid] != {}:
-        children = query_tree[root_qid].keys()
-        children.sort()
-
-        left_qid = children[0]
-        right_qid = children[1]
-
-        left_query = generate_composed_query({left_qid:query_tree[root_qid][left_qid]}, qid_2_query)
-        right_query = generate_composed_query({right_qid:query_tree[root_qid][right_qid]}, qid_2_query)
-
-        left_query_keys = left_query.keys
-        #right_query = right_query.map(keys=left_query_keys, values=tuple(basic_headers))
-        """
-        print "Qid", root_qid
-        print "Root Query", root_query
-        print "Right Query", right_query
-        print "Left Query", left_query
-        """
-        composed_query = right_query.join(new_qid=root_qid, query=left_query)
-        for operator in root_query.operators:
-            copy_operators(composed_query, operator)
-    else:
-        composed_query = root_query
-
-    return composed_query
-
-
-
-def generate_query_tree(ctr, all_queries, depth):
-    """
-    Generate Query Tree
-
-    arguments:
-    @depth: depth of the query tree to be generated
-    @all_queries: list of all queries in the tree
-    @qid: query id for the query
-    """
-    query_tree = {}
-    if depth > 0:
-        if ctr > len(all_queries)/2:
-            return query_tree
-        qid_l = all_queries[2*ctr-1]
-        query_tree[qid_l] = generate_query_tree(ctr+1, all_queries,depth-1)
-
-        qid_r =  all_queries[2*ctr]
-        query_tree[qid_r] = {}
-    return query_tree
-
-def get_left_children(query_tree, out):
-    """
-    return all the left children for query_tree
-    """
-    qt = query_tree
-    for parent in qt:
-        #print parent, qt
-        if len(qt[parent].keys()) > 0:
-            children = qt[parent].keys()
-            children.sort()
-            #print "Sorted Children", children
-            out.append(children[0])
-            get_left_children({children[0]:qt[parent][children[0]]}, out)
-        else:
-            break
 
 
 class QueryGenerator(object):
@@ -199,8 +69,6 @@ class QueryGenerator(object):
             self.generate_reflection_query()
 
     def generate_reflection_query(self):
-        # Case where we will vary the threshold
-        reduction_key = 'dIP'
         qid_2_query = {}
         self.n_queries = 1
         for n_query in range(1, 1+self.n_queries):
@@ -221,8 +89,9 @@ class QueryGenerator(object):
             composed_query = generate_composed_query(query_tree, qid_2_query)
             self.composed_queries[n_query]= composed_query
             self.qid_2_query.update(qid_2_query)
+        print self.query_trees
 
-        fname = 'training_data/dns_reflection/query_generator_object_reflection_'+str(self.n_queries)+'.pickle'
+        fname = 'sonata/query_training/dns_reflection/query_generator_object_reflection_'+str(self.n_queries)+'.pickle'
         with open(fname, 'w') as f:
             pickle.dump(self, f)
 

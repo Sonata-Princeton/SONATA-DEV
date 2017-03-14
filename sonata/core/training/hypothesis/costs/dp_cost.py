@@ -24,6 +24,7 @@ def get_data_plane_cost(sc, operator_name, transformation_function, query_out, t
             bits_per_element = sc.parallelize(query_out).map(lambda s:(s[0], math.log(max(s[1]), 2)))
 
             # total number of bits required for this data structure
+            print query_out
             tmp = sc.parallelize(query_out)
             n_bits_wo_cmsketch = bits_per_element.join(tmp).map(lambda s: (s[0], math.ceil(s[1][0]*(len(s[1][1])))))
             print "W/O Sketches", n_bits_wo_cmsketch.collect()

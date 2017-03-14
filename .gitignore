@@ -13,3 +13,11 @@
 *.pcap
 *.checkpoint*
 *.DS_Store
+.idea/
+data/anon_all_flows_1min.csv.tar.gz
+data/anon_all_flows_1min.csv/
+data/anon_all_flows_5min.csv.tar.gz
+data/anon_all_flows_5min.csv/
+pycallgraph.png
+query_cost_transit_1.pickle
+results/

@@ -10,6 +10,9 @@ from sonata.core.training.hypothesis.costs.costs import Costs
 
 
 class Hypothesis(object):
+    """
+    Generates the hypothesis graphs using the input query and training data (from runtime) as input
+    """
     def __init__(self, runtime, query):
         self.query = query
         self.runtime = runtime
@@ -34,17 +37,17 @@ class Hypothesis(object):
         self.refinement_levels = ref_levels
         R = []
         for ref_level in ref_levels:
-            R.append(str(refinement_key)+'/'+str(ref_level))
+            R.append(ref_level)
         self.R = R
 
     def get_partitioning_plans(self):
         self.flattened_queries = get_flattened_sub_queries(self.query)
         query_2_plans = get_query_2_plans(self.flattened_queries, self.runtime)
-        P = {}
-        for qid in query_2_plans:
-            P[qid] = query_2_plans[qid]
         # TODO: add support for queries with join operations
-        self.P = P.values()[0]
+        #P = {}
+        for qid in query_2_plans:
+            P = query_2_plans[qid]
+        self.P = P
 
     def get_iteration_levels(self):
         self.L = range(1, len(self.R))
@@ -57,21 +60,19 @@ class Hypothesis(object):
                 for l in self.L:
                     vertices.append((r,p,l))
         # Add start node
-        vertices.append((str(self.refinement_key)+'/'+str(self.refinement_levels[0]),0,0))
+        vertices.append((self.refinement_levels[0],0,0))
         # Add target node
-        vertices.append((str(self.refinement_key)+'/'+str(self.refinement_levels[-1]),0,0))
+        vertices.append((self.refinement_levels[-1],0,0))
         self.V = vertices
 
     def add_edges(self):
-        qid_2_query = get_qid_2_query(self.query)
-        query_tree = get_query_tree(self.query)
-
         # Run the query over training data to get various counts
-        counts = Counts(self.runtime.sc, self.runtime.timestamps,
-                         self.runtime.training_data, self.refinement_levels, qid_2_query, query_tree)
+        counts = Counts(self.runtime.sc, self.runtime.timestamps, self.refinement_key,
+                         self.runtime.training_data, self.refinement_levels, self.query)
 
         # Apply the costs model over counts to estimate costs for different edges
-        costs = Costs(counts)
+        costs = Costs(counts, self.P).costs
+        print costs
 
         E = {}
         timestamps = []
@@ -82,18 +83,17 @@ class Hypothesis(object):
                     transit = (r1,r2)
                     partition_plan = p2
                     qid = self.query.qid
+                    print qid, transit, partition_plan
                     for (ts, w) in costs[qid][transit][partition_plan]:
                         if ts not in E:
                             E[ts] = {}
                         E[ts][edge] = w
-                        timestamps[ts] = 0
+                        #timestamps[ts] = 0
         self.E = E
-        self.timestamps = timestamps
+        #self.timestamps = timestamps
 
     def update_graphs(self):
         G = {}
-        for ts in self.timestamps:
+        for ts in self.runtime.timestamps:
             G[ts] = (self.V, self.E[ts])
         self.G = G
-
-

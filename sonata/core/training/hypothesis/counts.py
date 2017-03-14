@@ -6,11 +6,22 @@ hypothesis graph
 import numpy as np
 
 from sonata.core.training.utils import *
+from sonata.core.utils import *
 
 
 class Counts(object):
-    def __init__(self, sc, timestamps, training_data, ref_levels, qid_2_query, query_tree):
-
+    """
+    Compute counts (number of packets, bytes) for each edge in the hypothesis graph.
+    1. Computes threshold
+    2. Generates refined queries
+    3. Executes generated refined queries (uses Spark batch processing) to compute the
+       counts for each window interval in the data set.
+    """
+    def __init__(self, sc, timestamps, refinement_key, training_data, ref_levels, query):
+        self.query = query
+        self.qid_2_query = get_qid_2_query(query)
+        self.query_tree = {}
+        self.query_tree[query.qid] = get_query_tree(query)
         self.query_out = None
         self.filter_mappings = {}
         self.qid_2_queries_refined = {}
@@ -20,11 +31,10 @@ class Counts(object):
         self.timestamps = timestamps
         self.ref_levels = ref_levels
         self.sc = sc
-        self.qid_2_query = qid_2_query
         self.training_data = training_data
-        self.query_tree = query_tree
+        self.refinement_key = refinement_key
 
-        print self.qid_2_query
+        print self.qid_2_query, self.query_tree
 
         self.generate_refined_queries()
 
@@ -64,7 +74,7 @@ class Counts(object):
         query_cost_transit[qid] = {}
 
         query = self.qid_2_query[qid]
-        reduction_key = query.reduction_key
+        refinement_key = self.refinement_key
         ref_levels = self.ref_levels
 
         # Get the query output for each refined intermediate queries
@@ -73,7 +83,7 @@ class Counts(object):
         # Get the query cost for each refinement transit, i.e. edge in the refinement graph
         # First get the cost for transit (0,ref_level)
         for ref_level in ref_levels[1:]:
-            transit = (0,ref_level)
+            transit = (0, ref_level)
             query_cost_transit[qid][transit] = {}
             for iter_qid in self.refined_spark_queries[qid][ref_level].keys():
                 spark_query = self.refined_spark_queries[qid][ref_level][iter_qid]
@@ -81,7 +91,7 @@ class Counts(object):
                 transit_query_string = 'self.sc.parallelize(out)'
                 transit_query_string = generate_query_to_collect_transit_cost(transit_query_string, spark_query)
                 query_cost_transit[qid][transit][iter_qid] = eval(transit_query_string)
-                #print transit, iter_qid, query_cost_transit[qid][transit][iter_qid][:2]
+                print transit, iter_qid, query_cost_transit[qid][transit][iter_qid][:2]
                 #break
 
         # Then get the cost for transit (ref_level_prev, ref_level_current)
@@ -90,11 +100,15 @@ class Counts(object):
                 if ref_level_curr > ref_level_prev:
                     transit = (ref_level_prev, ref_level_curr)
                     query_cost_transit[qid][transit] = {}
-                    prev_level_out_mapped_string, prev_level_out = generate_query_string_prev_level_out_mapped(qid, ref_level_prev,
-                                                                                                               query_out_refinement_level, self.refined_spark_queries, out0,
-                                                                                                               reduction_key)
+                    prev_level_out_mapped_string, prev_level_out = generate_query_string_prev_level_out_mapped(qid,
+                                                                                           ref_level_prev,
+                                                                                           query_out_refinement_level,
+                                                                                           self.refined_spark_queries,
+                                                                                           out0,
+                                                                                           refinement_key)
+                    print prev_level_out_mapped_string
                     prev_level_out_mapped = eval(prev_level_out_mapped_string)
-                    #print prev_level_out_mapped.collect()[:2]
+                    print prev_level_out_mapped.collect()[:2]
                     # For each intermediate query for `ref_level_curr` in transit (ref_level_prev, ref_level_current),
                     # we filter out entries that do not satisfy the query at level `ref_level_prev`
                     for iter_qid_curr in self.refined_spark_queries[qid][ref_level_curr].keys():
@@ -104,7 +118,7 @@ class Counts(object):
                         transit_query_string = generate_transit_query(curr_query, curr_level_out,
                                                                       prev_level_out_mapped, ref_level_prev)
                         query_cost_transit[qid][transit][iter_qid_curr] = eval(transit_query_string)
-                        #print transit, iter_qid_curr, query_cost_transit[qid][transit][iter_qid_curr][:2]
+                        print transit, iter_qid_curr, query_cost_transit[qid][transit][iter_qid_curr][:2]
 
         self.query_out_transit = query_cost_transit
 
@@ -116,7 +130,7 @@ class Counts(object):
         for (qid, sonata_query) in self.qid_2_query.iteritems():
             if qid in self.qid_2_query:
                 refined_sonata_queries[qid] = {}
-                reduction_key = self.qid_2_query[qid].reduction_key
+                refinement_key = self.refinement_key
 
                 for ref_level in self.ref_levels[1:]:
                     refined_sonata_queries[qid][ref_level] = {}
@@ -127,7 +141,7 @@ class Counts(object):
                     refined_sonata_query.basic_headers = BASIC_HEADERS
 
                     # Add refinement level, eg: 32, 24
-                    refined_sonata_query.map(map_keys=(reduction_key,), func=("mask", ref_level))
+                    refined_sonata_query.map(map_keys=(refinement_key,), func=("mask", ref_level))
 
                     # Copy operators to the new refined sonata query
                     for operator in sonata_query.operators:
@@ -147,6 +161,8 @@ class Counts(object):
 
         self.qid_2_queries_refined = qid_2_queries_refined
         self.refined_sonata_queries = refined_sonata_queries
+        # This can be used by the runtime to generate final refined queries
+        self.query.refined_sonata_queries = refined_sonata_queries
         # print self.refined_sonata_queries
 
     def update_filter(self):
@@ -162,7 +178,7 @@ class Counts(object):
                     prev_parent_qid = prev_qid / 10000000
                     current_parent_qid = curr_qid / 10000000
 
-                    reduction_key = self.qid_2_query[current_parent_qid].reduction_key
+                    refinement_key = self.refinement_key
                     qids_after_this_filter = filter(lambda x: x >= curr_qid,
                                                     self.refined_sonata_queries[current_parent_qid][ref_level].keys())
 
@@ -174,7 +190,7 @@ class Counts(object):
                         satisfied_sonata_query.basic_headers = BASIC_HEADERS
                         for operator in level_32_sonata_query.operators:
                             copy_operators(satisfied_sonata_query, operator)
-                        satisfied_sonata_query.map(map_keys=(reduction_key,), func=("mask", ref_level))
+                        satisfied_sonata_query.map(map_keys=(refinement_key,), func=("mask", ref_level))
 
                         satisfied_spark_query = spark.PacketStream(prev_qid)
                         satisfied_spark_query.basic_headers = BASIC_HEADERS
@@ -234,11 +250,11 @@ class Counts(object):
                 query_tree = self.query_tree[n_query]
                 updated_query_tree = {}
                 update_query_tree(query_tree.keys()[0], query_tree, ref_level, updated_query_tree)
-                #print updated_query_tree
+                print updated_query_tree
 
-                reduction_key = ['ts', self.qid_2_query[query_tree.keys()[0]].reduction_key]
+                refinement_key = ['ts', self.refinement_key]
 
-                generate_composed_spark_queries(reduction_key, BASIC_HEADERS, updated_query_tree,
+                generate_composed_spark_queries(refinement_key, BASIC_HEADERS, updated_query_tree,
                                                 refined_sonata_queries, composed_spark_queries)
                 for ref_qid in composed_spark_queries:
                     # print ref_qid, composed_queries[ref_qid].qid
