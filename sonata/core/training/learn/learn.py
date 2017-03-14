@@ -4,8 +4,7 @@
 
 from sonata.system_config import FOLD_SIZE
 from utils import min_error, get_min_error_path, partition_data
-from sonata_search import Search
-from utils import Path
+from sonata_search import Search, Path
 import math
 
 class Learn(object):

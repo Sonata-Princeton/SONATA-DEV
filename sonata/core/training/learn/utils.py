@@ -19,24 +19,6 @@ assert (2, 5) <= sys.version_info < (3,)
 infinity = 1.0e400
 
 
-class Path(object):
-    cost = 0
-
-    def __init__(self, g, p):
-        self.graph = g
-        self.path = p
-        self.get_cost()
-
-    def __repr__(self):
-        return ",".join([str(e) for e in self.path])
-
-    def get_cost(self):
-        cost = 0
-        for (A, B) in self.path:
-            cost += self.graph.get(A, B)
-        self.cost = cost
-
-
 def min_error(candidates):
     min_err = infinity
     out_plan = None
