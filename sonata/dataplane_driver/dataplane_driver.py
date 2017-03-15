@@ -8,11 +8,12 @@ import time
 from multiprocessing.connection import Listener
 from threading import Thread
 
+from p4.switch_config.compile_p4 import compile_p4_2_json
+from p4.switch_config.initialize_switch import initialize_switch
+from p4.switch_config.utils import *
+
 from sonata.dataplane_driver.emitter.emitter import Emitter
-from switch_config.compile_p4 import compile_p4_2_json
-from switch_config.initialize_switch import initialize_switch
-from switch_config.interfaces import Interfaces
-from switch_config.utils import *
+from sonata.dataplane_driver.p4.switch_config.interfaces import Interfaces
 
 
 class DPDriverConfig(object):

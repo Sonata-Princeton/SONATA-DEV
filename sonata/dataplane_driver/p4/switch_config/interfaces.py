@@ -1,5 +1,6 @@
 from utils import get_out
 
+
 class Interfaces(object):
     inName = ""
     outName = ""
@@ -12,7 +13,7 @@ class Interfaces(object):
 
     def setup(self):
 
-        if(self.check_link()):
+        if self.check_link():
             self.set_peer()
             self.put_link_up(self.inName)
             self.put_link_up(self.outName)
@@ -24,7 +25,6 @@ class Interfaces(object):
         cmd = "ip link show  %s &> /dev/null"%(self.inName)
         (returncode, error) = get_out(cmd)
         return returncode
-
 
     def set_peer(self):
         base = "ip link add name %s type veth peer name %s"%(self.inName, self.outName)

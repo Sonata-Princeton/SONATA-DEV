@@ -1,11 +1,13 @@
 from subprocess import check_output, CalledProcessError
 from tempfile import TemporaryFile
 
+import subprocess
+
+
 ## Code Compilation
 COMPILED_SRCS = "/home/vagrant/dev/dataplane_driver/switch_config/compiled_srcs/"
 JSON_P4_COMPILED = COMPILED_SRCS + "compiled.json"
 P4_COMPILED = COMPILED_SRCS + "compiled.p4"
-import subprocess
 
 ## Initialization of Switch
 BMV2_PATH = "/home/vagrant/bmv2"
@@ -24,6 +26,7 @@ def reset_switch_state():
     print "Running ##########:" + cmd
     get_out(cmd)
 
+
 def send_commands_to_dp(cli_path, p4_json_path, thrift_port, COMMAND_PATH):
     cmd = [cli_path, p4_json_path, str(thrift_port)]
     with open(COMMAND_PATH, "r") as f:
@@ -40,6 +43,7 @@ def send_commands_to_dp(cli_path, p4_json_path, thrift_port, COMMAND_PATH):
 def send_delta_commands_to_dp(cli_path, p4_json_path, thrift_port, commands):
     cmd = [cli_path, p4_json_path, str(thrift_port)]
     get_in(cmd, commands)
+
 
 def get_out(args):
     with TemporaryFile() as t:
