@@ -38,6 +38,7 @@ class Problem(object):
         """Return True if the state is a goal. The default method compares the
         state to self.goal, as specified in the constructor. Override this
         method if checking against a single self.goal is not enough."""
+        #print "Goal state ", self.goal, "is compared with", state
         return state == self.goal
 
     def path_cost(self, c, state1, action, state2):
@@ -151,8 +152,9 @@ class Graph:
         .get(a,b) returns the distance or None;
         .get(a) returns a dict of {node: distance} entries, possibly {}."""
         links = self.dict.setdefault(a, {})
-        print "links", links
-        if b is None: return links
+        #print "links", links, a, b
+        if b is None:
+            return links
         else:
             print "cost", links.get(b)
             return links.get(b)

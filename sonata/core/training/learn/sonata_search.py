@@ -8,6 +8,19 @@ def DirectedGraph(dict=None):
     "Build a Hypothesis where every edge (including future ones) goes both ways."
     return Graph(dict=dict, directed=True)
 
+def map_input_graph(G):
+    (V, E) = G
+    graph = {}
+    for v in V:
+        for (v1, v2) in E:
+            if v1 == v:
+                if v not in graph:
+                    graph[v] = {}
+                # TODO: make sure that their single weight metric for each edge
+                graph[v1][v2] = E[(v1, v2)]
+    # TODO: take care of the corner cases
+    return DirectedGraph(graph)
+
 
 class GraphProblem(Problem):
     "The problem of searching a graph from one node to another."
@@ -19,8 +32,8 @@ class GraphProblem(Problem):
 
     def actions(self, A):
         "The actions at a graph node are just its neighbors."
-        print "actions for A: ",self.graph
-        print "A: ",A
+        #print "actions for A: ",self.graph
+        #print "A: ",A
         out = self.graph.get(A).keys()
         # Sort the neighbor tuples, TODO: make sure we don't need more sophisticated sort operation
         out.sort()
@@ -68,8 +81,8 @@ class Path(object):
 
     def get_cost(self):
         cost = 0
-        for (A, B) in self.path:
-            cost += self.graph.get(A, B)
+        for (A, B) in zip(self.path,self.path[1:]):
+            cost += self.graph.get(A.state, B.state)
         self.cost = cost
 
 
@@ -80,34 +93,26 @@ class Search(object):
 
     def __init__(self, G):
         self.G = G
-        self.map_input_graph()
+        self.graph = map_input_graph(self.G)
+        print self.graph
         # (0, '11', 2)
         #self.problem = GraphProblem('S', 'G', self.graph)
-        self.problem = GraphProblem((0, '11', 2), 'G', self.graph)
+        # TODO: hardcoding fix required
+        self.problem = GraphProblem((0, 0, 0), (32, 0, 0), self.graph)
         # No heuristics in f ==> uniform cost search algorithm
         self.best_first_graph_search(lambda node: node.path_cost)
+        #print "Best path is", self.target_node.path()
         self.generate_final_plan()
 
-    def map_input_graph(self):
-        (V, E) = self.G
-        graph = {}
-        for v in V:
-            for (v1, v2) in E:
-                if v1 == v:
-                    if v not in graph:
-                        graph[v] = {}
-                    # TODO: make sure that their single weight metric for each edge
-                    graph[v1][v2] = E[(v1, v2)]
-        # TODO: take care of the corner cases
-        self.graph = graph
 
     def generate_final_plan(self):
-        self.final_plan = Path(self.graph, self.target_node.path)
+        self.final_plan = Path(self.graph, self.target_node.path())
 
     def best_first_graph_search(self, f):
         problem = self.problem
         f = memoize(f, 'f')
         node = Node(problem.initial)
+        print "Initial Node", node
         if problem.goal_test(node.state):
             return node
         frontier = PriorityQueue(min, f)
@@ -121,13 +126,15 @@ class Search(object):
             explored.add(node.state)
             for child in node.expand(problem):
                 if child.state not in explored and child not in frontier:
-                    print "Adding child", child, "to the priority queue."
-                    if problem.is_qualified(child, f):
-                        frontier.append(child)
+                    print "Adding child", child, "to frontier."
+                    #if problem.is_qualified(child, f):
+                    frontier.append(child)
                 elif child in frontier:
                     incumbent = frontier[child]
                     if f(child) < f(incumbent):
+                        print "Deleting incumbent", incumbent, "from frontier"
                         del frontier[incumbent]
+                        print "Adding child", child, "to frontier."
                         frontier.append(child)
 
-        print 'Failed to find the best path'
+        #print 'Failed to find the best path'

@@ -3,6 +3,7 @@
 #  Arpit Gupta (arpitg@cs.princeton.edu)
 #  Ankita Pawar (ankscircle@gmail.com)
 
+# from __future__ import print_function
 from sonata.core.partition import get_query_2_plans
 from sonata.core.utils import *
 from counts import *
@@ -13,9 +14,12 @@ class Hypothesis(object):
     """
     Generates the hypothesis graphs using the input query and training data (from runtime) as input
     """
+
     def __init__(self, runtime, query):
         self.query = query
         self.runtime = runtime
+        self.alpha = ALPHA
+        self.beta = BETA
         self.get_refinement_levels()
         self.get_partitioning_plans()
         self.get_iteration_levels()
@@ -28,15 +32,16 @@ class Hypothesis(object):
         # TODO: support multiple candidate refinement keys
         refinement_key = list(refinement_keys)[0]
         ref_levels = range(0, GRAN_MAX, GRAN)
+
         if refinement_key != '':
-            print "Reduction key for Query", self.query.qid, " is ", refinement_key
+            print('Reduction key for Query', self.query.qid, " is ", refinement_key)
         else:
-            print "Query", self.query.qid, " cannot be refined"
+            print ('Query', self.query.qid, " cannot be refined")
             ref_levels = []
         self.refinement_key = refinement_key
         self.refinement_levels = ref_levels
         R = []
-        for ref_level in ref_levels:
+        for ref_level in ref_levels[1:]:
             R.append(ref_level)
         self.R = R
 
@@ -44,13 +49,13 @@ class Hypothesis(object):
         self.flattened_queries = get_flattened_sub_queries(self.query)
         query_2_plans = get_query_2_plans(self.flattened_queries, self.runtime)
         # TODO: add support for queries with join operations
-        #P = {}
+        # P = {}
         for qid in query_2_plans:
             P = query_2_plans[qid]
         self.P = P
 
     def get_iteration_levels(self):
-        self.L = range(1, len(self.R))
+        self.L = range(1, 1+len(self.R))
 
     def get_vertices(self):
         # TODO: add support for queries with join operations
@@ -58,18 +63,17 @@ class Hypothesis(object):
         for r in self.R:
             for p in self.P:
                 for l in self.L:
-                    vertices.append((r,p,l))
+                    vertices.append((r, p, l))
         # Add start node
-        vertices.append((self.refinement_levels[0],0,0))
+        vertices.append((self.refinement_levels[0], 0, 0))
         # Add target node
-        vertices.append((self.refinement_levels[-1],0,0))
+        vertices.append((self.refinement_levels[-1], 0, 0))
         self.V = vertices
 
     def add_edges(self):
-
         usePickle = True
         if usePickle:
-            with open('costs.pickle','r') as f:
+            with open('costs.pickle', 'r') as f:
                 print "Loading costs from pickle..."
                 costs = pickle.load(f)
         else:
@@ -79,27 +83,41 @@ class Hypothesis(object):
             # Apply the costs model over counts to estimate costs for different edges
             costs = Costs(counts, self.P).costs
             print costs
-            with open('costs.pickle','w') as f:
+            with open('costs.pickle', 'w') as f:
                 print "Dumping costs into pickle..."
                 pickle.dump(costs, f)
 
         E = {}
-        timestamps = []
-        for (r1,p1,l1) in self.V:
-            for (r2,p2,l2) in self.V:
-                if r1 < r2 and l2 == l1+1:
-                    edge = ((r1,p1,l1), (r2,p2,l2))
-                    transit = (r1,r2)
+        print self.V
+        timestamps = {}
+        for (r1, p1, l1) in self.V:
+            for (r2, p2, l2) in self.V:
+                if r1 < r2 and l2 == l1 + 1:
+                    edge = ((r1, p1, l1), (r2, p2, l2))
+                    transit = (r1, r2)
                     partition_plan = p2
                     qid = self.query.qid
                     print qid, transit, partition_plan
-                    for (ts, w) in costs[qid][transit][partition_plan]:
-                        if ts not in E:
-                            E[ts] = {}
-                        E[ts][edge] = w
-                        #timestamps[ts] = 0
+                    if partition_plan in costs[qid][transit]:
+                        for (ts, (b, n)) in costs[qid][transit][partition_plan]:
+                            if ts not in E:
+                                E[ts] = {}
+                            E[ts][edge] = (self.alpha * n + (1 - self.alpha) * b)
+                            timestamps[ts] = 0
+
+        # Add edges for the final refinement level and the final target (T) node
+        for (r, p, l) in self.V:
+            if r == self.refinement_levels[-1] and p != 0:
+                edge = ((r, p, l), (r, 0, 0))
+                for ts in timestamps:
+                    if ts not in E:
+                        E[ts] = {}
+                    E[ts][edge] = 0
+
+        #print E
+
         self.E = E
-        #self.timestamps = timestamps
+        # self.timestamps = timestamps
 
     def update_graphs(self):
         G = {}

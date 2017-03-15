@@ -50,8 +50,9 @@ class Runtime(object):
             # Generate weights graph for each query
             hypothesis = Hypothesis(self, query)
             learn = Learn(hypothesis)
-            self.query_plans[queries.qid] = learn.final_plan
+            self.query_plans[query.qid] = learn.final_plan
 
+        """
         self.generate_dp_queries()
         self.generate_sp_queries()
         time.sleep(2)
@@ -68,6 +69,7 @@ class Runtime(object):
         self.dp_driver_thread.join()
         self.streaming_driver_thread.join()
         self.op_handler_thread.join()
+        """
 
     def start_op_handler(self):
         """

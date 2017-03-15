@@ -22,27 +22,11 @@ infinity = 1.0e400
 def min_error(candidates):
     min_err = infinity
     out_plan = None
-    for (h,e) in candidates:
+    for (h,e) in candidates.iteritems():
         if e < min_err:
             min_err = e
             out_plan = h
     return out_plan
-
-
-def get_min_error_path(G, H):
-    unique_candidates = dict((x.__repr__(), x) for x in H.values)
-    error = {}
-    for candidate in unique_candidates:
-        error_candidate = 0
-        for ts in G:
-            path1 = unique_candidates[candidate]
-            path2 = H[ts]
-            path3 = Path(G[ts], path1.path)
-            error_candidate += (path2.cost - path3.cost) * (path2.cost - path3.cost)
-        error[candidate] = error_candidate
-
-    min_error_candidate = min(error, key=error.get)[0]
-    return unique_candidates[min_error_candidate]
 
 
 def partition_data(G, fold, k):
