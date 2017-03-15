@@ -14,6 +14,8 @@ class Hypothesis(object):
     """
     Generates the hypothesis graphs using the input query and training data (from runtime) as input
     """
+    E = {}
+    G = {}
 
     def __init__(self, runtime, query):
         self.query = query
@@ -88,36 +90,38 @@ class Hypothesis(object):
                 pickle.dump(costs, f)
 
         E = {}
-        print self.V
-        timestamps = {}
+        print "Vertices", self.V
         for (r1, p1, l1) in self.V:
             for (r2, p2, l2) in self.V:
                 if r1 < r2 and l2 == l1 + 1:
                     edge = ((r1, p1, l1), (r2, p2, l2))
+
+                    # initialize edges for all timestamps
+                    for ts in self.runtime.timestamps:
+                        if ts not in E:
+                            E[ts] = {}
+                        E[ts][edge] = 0
+
+                    # for timestamps for which we have cost data, we will update the edge values
+                    # this ensures that we graphs for every timestamp.
                     transit = (r1, r2)
                     partition_plan = p2
                     qid = self.query.qid
                     print qid, transit, partition_plan
                     if partition_plan in costs[qid][transit]:
                         for (ts, (b, n)) in costs[qid][transit][partition_plan]:
-                            if ts not in E:
-                                E[ts] = {}
                             E[ts][edge] = (self.alpha * n + (1 - self.alpha) * b)
-                            timestamps[ts] = 0
 
         # Add edges for the final refinement level and the final target (T) node
         for (r, p, l) in self.V:
-            if r == self.refinement_levels[-1] and p != 0:
+            if r == self.refinement_levels[-1] and p != -1:
                 edge = ((r, p, l), (r, 0, 0))
-                for ts in timestamps:
+                for ts in self.runtime.timestamps:
                     if ts not in E:
                         E[ts] = {}
                     E[ts][edge] = 0
 
-        #print E
-
         self.E = E
-        # self.timestamps = timestamps
 
     def update_graphs(self):
         G = {}

@@ -97,7 +97,7 @@ class Node:
             path_back.append(node)
             node = node.parent
         out = list(reversed(path_back))
-        print out
+        #print out
         return out
 
     # We want for a queue of nodes in breadth_first_search or
@@ -156,7 +156,7 @@ class Graph:
         if b is None:
             return links
         else:
-            print "cost", links.get(b)
+            #print "cost", links.get(b)
             return links.get(b)
 
     def nodes(self):

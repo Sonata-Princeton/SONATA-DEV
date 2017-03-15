@@ -22,10 +22,12 @@ infinity = 1.0e400
 def min_error(candidates):
     min_err = infinity
     out_plan = None
-    for (h,e) in candidates.iteritems():
+    for (h, e) in candidates:
         if e < min_err:
             min_err = e
             out_plan = h
+    from query_plan import QueryPlan
+    assert isinstance(out_plan, QueryPlan)
     return out_plan
 
 
@@ -180,10 +182,12 @@ class PriorityQueue(Queue):
                 self.A.pop(i)
                 return
 
-#______________________________________________________________________________
+
+# ______________________________________________________________________________
 # Simple Data Structures: infinity, Dict, Struct
 
 infinity = 1.0e400
+
 
 def Dict(**entries):
     """Create a dict out of the argument=value arguments.
@@ -192,8 +196,10 @@ def Dict(**entries):
     """
     return entries
 
+
 class DefaultDict(dict):
     """Dictionary with a default value for unknown keys."""
+
     def __init__(self, default):
         self.default = default
 
@@ -206,9 +212,11 @@ class DefaultDict(dict):
         copy.update(self)
         return copy
 
+
 class Struct:
     """Create an instance with argument=value slots.
     This is for making a lightweight object whose class doesn't matter."""
+
     def __init__(self, **entries):
         self.__dict__.update(entries)
 
@@ -221,6 +229,7 @@ class Struct:
     def __repr__(self):
         args = ['%s=%s' % (k, repr(v)) for (k, v) in vars(self).items()]
         return 'Struct(%s)' % ', '.join(sorted(args))
+
 
 def update(x, **entries):
     """Update a dict; or an object with slots; according to entries.
