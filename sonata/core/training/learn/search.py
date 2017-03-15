@@ -151,8 +151,11 @@ class Graph:
         .get(a,b) returns the distance or None;
         .get(a) returns a dict of {node: distance} entries, possibly {}."""
         links = self.dict.setdefault(a, {})
+        print "links", links
         if b is None: return links
-        else: return links.get(b)
+        else:
+            print "cost", links.get(b)
+            return links.get(b)
 
     def nodes(self):
         "Return a list of nodes in the graph."

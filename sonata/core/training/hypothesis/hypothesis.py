@@ -66,13 +66,22 @@ class Hypothesis(object):
         self.V = vertices
 
     def add_edges(self):
-        # Run the query over training data to get various counts
-        counts = Counts(self.runtime.sc, self.runtime.timestamps, self.refinement_key,
-                         self.runtime.training_data, self.refinement_levels, self.query)
 
-        # Apply the costs model over counts to estimate costs for different edges
-        costs = Costs(counts, self.P).costs
-        print costs
+        usePickle = True
+        if usePickle:
+            with open('costs.pickle','r') as f:
+                print "Loading costs from pickle..."
+                costs = pickle.load(f)
+        else:
+            # Run the query over training data to get various counts
+            counts = Counts(self.runtime.sc, self.runtime.timestamps, self.refinement_key,
+                            self.runtime.training_data, self.refinement_levels, self.query)
+            # Apply the costs model over counts to estimate costs for different edges
+            costs = Costs(counts, self.P).costs
+            print costs
+            with open('costs.pickle','w') as f:
+                print "Dumping costs into pickle..."
+                pickle.dump(costs, f)
 
         E = {}
         timestamps = []

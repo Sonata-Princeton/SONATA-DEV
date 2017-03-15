@@ -23,6 +23,7 @@ class Runtime(object):
         self.conf = conf
         self.queries = queries
         (self.sc, self.timestamps, self.training_data) = get_spark_context_batch()
+
         self.dp_queries = {}
         self.sp_queries = {}
         self.query_plans = {}

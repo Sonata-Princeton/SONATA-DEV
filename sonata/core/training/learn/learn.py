@@ -11,7 +11,7 @@ class Learn(object):
     def __init__(self, hypothesis):
         self.hypothesis = hypothesis
         self.query_plan = {}
-        self.K = int(len(self.hypothesis.timestamps)/FOLD_SIZE)
+        self.K = int(len(self.hypothesis.runtime.timestamps)/FOLD_SIZE)
         self.learn_query_plan()
 
     def learn_query_plan(self):
@@ -26,6 +26,7 @@ class Learn(object):
         for fold in range(1, 1+self.K):
             (G_t, G_v) = partition_data(self.hypothesis.G, fold, self.K)
             H_T[fold] = get_min_error_path(G_t, H_S)
+
             error_fold = 0
             for ts in G_v:
                 path1 = H_S[ts]
@@ -36,8 +37,3 @@ class Learn(object):
             candidates[fold] = (H_T[fold], E_V[fold])
 
         self.final_plan = min_error(candidates)
-
-
-
-
-

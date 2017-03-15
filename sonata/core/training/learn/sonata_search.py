@@ -19,6 +19,8 @@ class GraphProblem(Problem):
 
     def actions(self, A):
         "The actions at a graph node are just its neighbors."
+        print "actions for A: ",self.graph
+        print "A: ",A
         out = self.graph.get(A).keys()
         # Sort the neighbor tuples, TODO: make sure we don't need more sophisticated sort operation
         out.sort()
@@ -29,6 +31,7 @@ class GraphProblem(Problem):
         return action
 
     def path_cost(self, cost_so_far, A, action, B):
+        print "path_cost:",A, B, cost_so_far
         return cost_so_far + (self.graph.get(A, B) or infinity)
 
     def is_qualified(self, A, f):
@@ -78,9 +81,11 @@ class Search(object):
     def __init__(self, G):
         self.G = G
         self.map_input_graph()
-        self.problem = GraphProblem('S', 'G', self.graph)
+        # (0, '11', 2)
+        #self.problem = GraphProblem('S', 'G', self.graph)
+        self.problem = GraphProblem((0, '11', 2), 'G', self.graph)
         # No heuristics in f ==> uniform cost search algorithm
-        self.best_first_graph_search(self.problem, lambda node: node.path_cost)
+        self.best_first_graph_search(lambda node: node.path_cost)
         self.generate_final_plan()
 
     def map_input_graph(self):
