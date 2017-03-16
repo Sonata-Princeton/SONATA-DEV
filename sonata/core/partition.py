@@ -8,6 +8,7 @@ from integration import *
 from sonata.dataplane_driver.query_object import QueryObject as DP_QO
 from sonata.streaming_driver.query_object import PacketStream as SP_QO
 
+
 # TODO fix this mess
 def get_query_2_plans(flattened_queries):
     query_2_plans = {}
@@ -58,7 +59,7 @@ def get_dataplane_query(query, qid, partition_plan):
         for operator in query.operators[:n_operators_dp]:
             # passing the operators as-is based on discussions with Rudy
             dp_query.operators.append(operator)
-            #copy_sonata_operators_to_dp_query(dp_query, operator)
+            # copy_sonata_operators_to_dp_query(dp_query, operator)
         dp_query.parse_payload = requires_payload_processing(query)
 
     return dp_query

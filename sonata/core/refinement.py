@@ -4,6 +4,7 @@
 #  Ankita Pawar (ankscircle@gmail.com)
 
 from sonata.core.utils import *
+import sonata.streaming_driver.query_object as spark
 
 
 def get_refined_query_id(query, ref_level):
@@ -101,6 +102,7 @@ class Refinement(object):
             if qid in self.qid_2_query:
                 refined_sonata_queries[qid] = {}
                 refinement_key = self.refinement_key
+                ref_levels = self.ref_levels
 
                 for ref_level in ref_levels[1:]:
                     refined_sonata_queries[qid][ref_level] = {}
@@ -122,7 +124,7 @@ class Refinement(object):
 
     def update_filter(self, training_data):
         spark_queries = {}
-        reversed_ref_levels = ref_levels[1:]
+        reversed_ref_levels = self.ref_levels[1:]
         reversed_ref_levels.sort(reverse=True)
         level_32_sonata_query = None
         satisfied_spark_query = None
@@ -140,7 +142,7 @@ class Refinement(object):
                     prev_sonata_query = self.refined_sonata_queries[prev_parent_qid][ref_level][prev_qid]
                     curr_sonata_query = self.refined_sonata_queries[current_parent_qid][ref_level][curr_qid]
 
-                    if ref_level != ref_levels[-1]:
+                    if ref_level != self.ref_levels[-1]:
                         satisfied_sonata_query = PacketStream(level_32_sonata_query.qid)
                         satisfied_sonata_query.basic_headers = BASIC_HEADERS
                         for operator in level_32_sonata_query.operators:
@@ -167,7 +169,7 @@ class Refinement(object):
                     # thresh = -1
 
                     thresh = get_thresh(training_data, prev_spark_query, spread, ref_level, satisfied_spark_query,
-                                        ref_levels)
+                                        self.ref_levels)
 
                     # Update all the following intermediate Sonata Queries
                     for tmp_qid in qids_after_this_filter:
@@ -183,5 +185,5 @@ class Refinement(object):
                                     filter_ctr += 1
                     self.refined_sonata_queries[current_parent_qid][ref_level][curr_qid] = copy.deepcopy(curr_sonata_query)
 
-                    if ref_level == ref_levels[-1]:
+                    if ref_level == self.ref_levels[-1]:
                         level_32_sonata_query = copy.deepcopy(curr_sonata_query)
