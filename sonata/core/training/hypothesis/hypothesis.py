@@ -17,14 +17,14 @@ class Hypothesis(object):
     E = {}
     G = {}
 
-    def __init__(self, sc, training_data, timestamps, query, refinement_object):
+    def __init__(self, query, sc, training_data, timestamps, refinement_object):
         self.sc = sc
         self.training_data = training_data
         self.timestamps = timestamps
         self.query = query
         self.refinement_object = refinement_object
         
-        self.refinement_key = refinement_object.refinement_keys
+        self.refinement_key = refinement_object.refinement_key
         self.alpha = ALPHA
         self.beta = BETA
         self.get_refinement_levels()

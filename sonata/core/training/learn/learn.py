@@ -38,7 +38,7 @@ class Learn(object):
 
     def __init__(self, hypothesis):
         self.hypothesis = hypothesis
-        self.K = int(len(self.hypothesis.runtime.timestamps)/FOLD_SIZE)
+        self.K = int(len(self.hypothesis.timestamps)/FOLD_SIZE)
         # print "Total Folds", self.K
         self.learn_query_plan()
 

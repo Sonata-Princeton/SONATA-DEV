@@ -69,6 +69,7 @@ def apply_refinement_plan(sonata_query, refinement_key, refined_query_id, ref_le
 class Refinement(object):
     refined_sonata_queries = {}
     filter_mappings = {}
+    qid_2_refined_queries = {}
 
     def __init__(self, query):
         self.query = query
@@ -81,6 +82,12 @@ class Refinement(object):
 
         # Generate refined intermediate SONATA queries
         self.generate_refined_intermediate_sonata_queries()
+
+    def get_refined_updated_query(self, ref_level):
+        # return query with updated threshold values and map operation---masking based on refinement level
+        iter_qids = self.refined_sonata_queries[self.query.qid][ref_level].keys()
+        iter_qids.sort()
+        return self.refined_sonata_queries[self.query.qid][ref_level][iter_qids[-1]]
 
     def add_timestamp_key(self):
         def add_timestamp_to_query(q):
@@ -121,6 +128,7 @@ class Refinement(object):
 
         self.refined_sonata_queries = refined_sonata_queries
         self.filter_mappings = filter_mappings
+        self.qid_2_refined_queries = qid_2_queries_refined
 
     def update_filter(self, training_data):
         spark_queries = {}

@@ -35,26 +35,12 @@ class Runtime(object):
         self.queries = queries
         (self.sc, self.timestamps, self.training_data) = get_spark_context_batch()
 
-        # TODO: create function for logging setup
-        # create a logger for the object
-        self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.INFO)
-        # create file handler which logs messages
-        self.fh = logging.FileHandler(conf['log_file'])
-        self.fh.setLevel(logging.INFO)
-        self.logger.addHandler(self.fh)
-        # ================
-
-        self.dp_driver_thread = Thread(name='dp_driver', target=self.start_dataplane_driver)
-        self.streaming_driver_thread = Thread(name='streaming_driver', target=self.start_streaming_driver)
-        self.op_handler_thread = Thread(name='op_handler', target=self.start_op_handler)
-        # self.fm_thread.setDaemon(True)
-
-        self.dp_driver_thread.start()
-        time.sleep(1)
+        self.initialize_logging()
+        self.initialize_handlers()
 
         for query in self.queries:
             refinement_object = Refinement(query)
+            print refinement_object.qid_2_refined_queries
             self.refinement_keys[query.qid] = refinement_object.refinement_key
 
             # update the threshold for the refined queries
@@ -62,13 +48,15 @@ class Runtime(object):
 
             # Learn the query plan
             fname = "plan_" + str(query.qid) + ".pickle"
-            usePickledPlan = True
+            usePickledPlan = False
             if usePickledPlan:
                 with open(fname, 'r') as f:
                     self.query_plans[query.qid] = pickle.load(f)
             else:
                 # Generate hypothesis graph for each query
-                hypothesis = Hypothesis(self, query, self.refinement_keys[query.qid], refinement_object)
+                # query, sc, training_data, timestamps, refinement_object
+                hypothesis = Hypothesis(query, self.sc, self.training_data, self.timestamps,
+                                        refinement_object)
 
                 # Learn the query plan using the hypothesis graphs
                 learn = Learn(hypothesis)
@@ -83,10 +71,11 @@ class Runtime(object):
             self.update_query_mappings(query, final_plan)
             print "# of iteration levels", len(final_plan)
             for (r, p, l) in final_plan:
-                # Generate query for this refinement level
-                refinement_key = self.refinement_keys[query.qid]
+                # Get the query id
                 refined_query_id = get_refined_query_id(query, r)
-                refined_sonata_query = apply_refinement_plan(query, refinement_key, refined_query_id, r)
+
+                # Generate query for this refinement level
+                refined_sonata_query = refinement_object.get_refined_updated_query(r)
 
                 # Apply the partitioning plan for this refinement level
                 # TODO: clean this hardcoding
@@ -247,3 +236,21 @@ class Runtime(object):
         self.logger.info("runtime,fm_" + message_type + "," + str(start) + "," + str(time.time()))
         time.sleep(1)
         return ''
+
+    def initialize_handlers(self):
+        self.dp_driver_thread = Thread(name='dp_driver', target=self.start_dataplane_driver)
+        self.streaming_driver_thread = Thread(name='streaming_driver', target=self.start_streaming_driver)
+        self.op_handler_thread = Thread(name='op_handler', target=self.start_op_handler)
+        # self.fm_thread.setDaemon(True)
+        self.dp_driver_thread.start()
+        time.sleep(1)
+
+    def initialize_logging(self):
+        # create a logger for the object
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.INFO)
+        # create file handler which logs messages
+        self.fh = logging.FileHandler(self.conf['log_file'])
+        self.fh.setLevel(logging.INFO)
+        self.logger.addHandler(self.fh)
+
