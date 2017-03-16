@@ -2,18 +2,15 @@
 #  Author:
 #  Arpit Gupta (arpitg@cs.princeton.edu)
 
-import math
 
-#import sonata.query_engine.plans_search as rs
-import sonata.query_engine.spark_queries as spark
 from sonata.query_engine.sonata_operators.distinct import Distinct
-from sonata.query_engine.sonata_operators.filter import Filter
 from sonata.query_engine.sonata_operators.map import Map
 from sonata.query_engine.sonata_operators.query import Query
 from sonata.query_engine.sonata_operators.reduce import Reduce
+from sonata.query_engine.sonata_operators.filter import Filter
+
 from sonata.query_engine.utils import *
 
-import sonata.query_engine.p4_queries as p4
 from sonata.system_config import *
 
 pstream_qid = 1

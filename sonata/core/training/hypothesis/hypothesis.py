@@ -17,7 +17,8 @@ class Hypothesis(object):
     E = {}
     G = {}
 
-    def __init__(self, runtime, query):
+    def __init__(self, runtime, query, refinement_keys):
+        self.refinement_keys = refinement_keys
         self.query = query
         self.runtime = runtime
         self.alpha = ALPHA
@@ -30,9 +31,9 @@ class Hypothesis(object):
         self.update_graphs()
 
     def get_refinement_levels(self):
-        refinement_keys = get_refinement_keys(self.query)
+
         # TODO: support multiple candidate refinement keys
-        refinement_key = list(refinement_keys)[0]
+        refinement_key = list(self.refinement_keys)[0]
         ref_levels = range(0, GRAN_MAX, GRAN)
 
         if refinement_key != '':

@@ -32,7 +32,7 @@ def send_reduction_keys(rdd, op_handler_socket, start_time, qid='0'):
 def processLogLine(flow):
     return tuple(flow.split(","))
 
-class StreamingManager(object):
+class StreamingDriver(object):
     def __init__(self, conf):
         # initialize config params
         self.batch_interval = conf['batch_interval']
@@ -86,5 +86,5 @@ if __name__ == "__main__":
     conf = {'batch_interval': batch_interval, 'window_length': window_length,
             'sliding_interval': sliding_interval, 'featuresPath': featuresPath,
             'redKeysPath': redKeysPath, 'sm_socket':('localhost', 5555)}
-    sm = StreamingManager(conf)
+    sm = StreamingDriver(conf)
     sm.start()

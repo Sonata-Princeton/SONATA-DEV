@@ -35,7 +35,7 @@ def get_min_error_path(G, H):
 class Learn(object):
     final_plan = None
     query_plan = {}
-    
+
     def __init__(self, hypothesis):
         self.hypothesis = hypothesis
         self.K = int(len(self.hypothesis.runtime.timestamps)/FOLD_SIZE)

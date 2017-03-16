@@ -6,9 +6,9 @@ import json, time
 from multiprocessing.connection import Client
 from netaddr import *
 
-class SparkQuery(object):
+class StreamingQuery(object):
     """
-    Abstract SparkQuery Class
+    Abstract StreamingQuery Class
     """
     def __init__(self):
         self.fields = []
@@ -33,7 +33,8 @@ class SparkQuery(object):
         """
         return 0
 
-class Map(SparkQuery):
+
+class Map(StreamingQuery):
     name = "Map"
     def __init__(self, *args, **kwargs):
         map_dict = dict(*args, **kwargs)
@@ -160,7 +161,7 @@ class Map(SparkQuery):
         return expr
 
 
-class Reduce(SparkQuery):
+class Reduce(StreamingQuery):
     name = 'Reduce'
     def __init__(self, *args, **kwargs):
         map_dict = dict(*args, **kwargs)
@@ -206,7 +207,7 @@ class Reduce(SparkQuery):
         return expr
 
 
-class Distinct(SparkQuery):
+class Distinct(StreamingQuery):
     name = 'Distinct'
     def __init__(self, *args, **kwargs):
         map_dict = dict(*args, **kwargs)
@@ -240,7 +241,7 @@ class Distinct(SparkQuery):
         return expr
 
 
-class FilterInit(SparkQuery):
+class FilterInit(StreamingQuery):
     name = 'FilterInit'
     def __init__(self, *args, **kwargs):
         map_dict = dict(*args, **kwargs)
@@ -257,7 +258,7 @@ class FilterInit(SparkQuery):
         return expr
 
 
-class Filter(SparkQuery):
+class Filter(StreamingQuery):
     name = 'Filter'
     def __init__(self, *args, **kwargs):
         map_dict = dict(*args, **kwargs)
@@ -395,73 +396,3 @@ class Join(object):
             out += '.join('+self.in_stream+self.join_query.compile()+'.map(lambda s: (s,1)))'
             out += '.map(lambda s: s[1][0])'
         return out
-
-
-class PacketStream(SparkQuery):
-    def __init__(self, id):
-        self.basic_headers = ["qid", "ts", "te","sIP", "sPort","dIP", "dPort", "nBytes",
-                              "proto", "sMac", "dMac"]
-        self.fields = tuple(self.basic_headers)
-        self.keys = tuple([self.basic_headers[0]])
-        self.values = tuple(self.basic_headers[1:])
-        self.fields = self.keys + self.values
-        self.operators = []
-        self.expr = 'In'
-        self.qid = id
-
-    def __repr__(self):
-        out = 'In\n'
-        for operator in self.operators:
-            out += ''+operator.__repr__()+'\n'
-        return out
-
-    def compile(self):
-        expr_sp = ''
-        for operator in self.operators:
-            expr_sp += ''+operator.compile()
-
-        return expr_sp[1:]
-
-    def get_prev_keys(self):
-        if len(self.operators) > 0:
-            prev_keys = self.operators[-1].keys
-        else:
-            prev_keys = self.basic_headers
-        return prev_keys
-
-    def get_prev_values(self):
-        if len(self.operators) > 0:
-            prev_values = self.operators[-1].values
-        else:
-            prev_values = ()
-        return prev_values
-
-    def map(self, *args, **kwargs):
-        operator = Map(prev_keys=self.get_prev_keys(), prev_values=self.get_prev_values(), *args, **kwargs)
-        self.operators.append(operator)
-        return self
-
-    def reduce(self, *args, **kwargs):
-        operator = Reduce(prev_keys=self.get_prev_keys(), prev_values=self.get_prev_values(), *args, **kwargs)
-        self.operators.append(operator)
-        return self
-
-    def distinct(self, *args, **kwargs):
-        operator = Distinct(prev_keys=self.get_prev_keys(), prev_values=self.get_prev_values(), *args, **kwargs)
-        self.operators.append(operator)
-        return self
-
-    def filter(self, *args, **kwargs):
-        operator = Filter(prev_keys=self.get_prev_keys(), prev_values=self.get_prev_values(), *args, **kwargs)
-        self.operators.append(operator)
-        return self
-
-    def filter_init(self,*args, **kwargs):
-        operator = FilterInit(*args, **kwargs)
-        self.operators.append(operator)
-        return self
-
-    def join(self, *args, **kwargs):
-        operator = Join(prev_keys=self.get_prev_keys(), prev_values=self.get_prev_values(), *args, **kwargs)
-        self.operators.append(operator)
-        return self

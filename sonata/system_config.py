@@ -23,3 +23,6 @@ REFINEMENT_LEVELS = range(0, 33, 16)
 #REFINEMENT_LEVELS = [0, 4,32]
 QG_FNAME = '/home/vagrant/dev/training_data/dns_reflection/query_generator_object_reflection_1.pickle'
 CM_FNAME = '/home/vagrant/dev/training_data/weights_udp.pickle'
+
+TARGET_SP = 'SPARK'
+TARGET_DP = 'P4'
