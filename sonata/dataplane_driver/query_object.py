@@ -5,7 +5,7 @@ class QueryObject(object):
         self.parse_payload = False
 
     def __repr__(self):
-        out = 'In.'
+        out = 'In'
         for operator in self.operators:
             out += operator.__repr__()
         return out

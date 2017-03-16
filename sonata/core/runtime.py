@@ -73,6 +73,7 @@ class Runtime(object):
             # Generate queries for the data plane and stream processor after learning the final plan
             final_plan = self.query_plans[query.qid][1:-1]
             print final_plan
+            #final_plan = [(16, [5,2], 1), (32, [3,4], 1)]
             self.update_query_mappings(query, final_plan)
             print "# of iteration levels", len(final_plan)
             for (r, p, l) in final_plan:
@@ -83,7 +84,7 @@ class Runtime(object):
 
                 # Apply the partitioning plan for this refinement level
                 # TODO: clean this hardcoding
-                p = [3, 4]
+                p = [5, 2]
                 dp_query = get_dataplane_query(refined_sonata_query, refined_query_id, p)
                 self.dp_queries[refined_query_id] = dp_query
 
@@ -91,8 +92,14 @@ class Runtime(object):
                 sp_query = get_streaming_query(refined_sonata_query, refined_query_id, p)
                 self.sp_queries[refined_query_id] = sp_query
 
+
+
         print self.dp_queries
+        with open('dp_queries.pickle', 'w') as f:
+            pickle.dump(self.dp_queries, f)
         print self.sp_queries
+
+
 
         """
         time.sleep(2)

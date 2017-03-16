@@ -50,6 +50,11 @@ def get_dataplane_query(query, qid, partition_plan):
     if n_operators_dp > 0:
         # create a dp query object
         dp_query = DP_QO(qid)
+        border_operator = query.operators[n_operators_dp - 1]
+        if border_operator.name == "Reduce":
+            # We need to ensure that we also execute the next filter operator in the data plane
+            n_operators_dp += 1
+
         for operator in query.operators[:n_operators_dp]:
             # passing the operators as-is based on discussions with Rudy
             dp_query.operators.append(operator)
@@ -80,7 +85,7 @@ def get_streaming_query(query, qid, partition_plan):
         sp_query = sp_query.filter_init(qid=qid, keys=sp_query.basic_headers)
 
         # Update the remainder operators
-        for operator in query.operators[n_operators_dp - 1:]:
+        for operator in query.operators[n_operators_dp:]:
             copy_sonata_operators_to_sp_query(sp_query, operator)
         sp_query.parse_payload = requires_payload_processing(query)
 
