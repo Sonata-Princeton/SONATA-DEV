@@ -1,18 +1,26 @@
 #!/usr/bin/env python
 
 
-from sonata.dataplane_driver.p4.switch_config.initialize_switch import initialize_switch
-from sonata.dataplane_driver.p4.switch_config.utils import write_to_file, get_out
+from threading import Thread
 
 from p4_queries import QueryPipeline
-from sonata.dataplane_driver.p4.switch_config.interfaces import Interfaces
+from sonata.dataplane_driver.emitter.emitter import Emitter
+from sonata.dataplane_driver.p4.p4_dataplane import P4DataPlane
+from sonata.dataplane_driver.p4.utils import write_to_file
+
+from collections import namedtuple
+
+
+Operator = namedtuple('Operator', 'name keys')
 
 
 class P4Target(object):
-    def __init__(self):
-        # TODO Move to config
+    def __init__(self, em_conf, target_conf):
+        self.em_conf = em_conf
+
+        # TODO Move to target_conf
         # Code Compilation
-        self.COMPILED_SRCS = "/home/vagrant/dev/dataplane_driver/switch_config/compiled_srcs/"
+        self.COMPILED_SRCS = "/home/vagrant/dev/dataplane_driver/compiled_srcs/"
         self.JSON_P4_COMPILED = self.COMPILED_SRCS + "compiled.json"
         self.P4_COMPILED = self.COMPILED_SRCS + "compiled.p4"
         self.P4C_BM_SCRIPT = "/home/vagrant/p4c-bmv2/p4c_bm/__main__.py"
@@ -28,12 +36,19 @@ class P4Target(object):
         self.P4_COMMANDS = self.COMPILED_SRCS + "commands.txt"
         self.P4_DELTA_COMMANDS = self.COMPILED_SRCS + "delta_commands.txt"
 
+        # interfaces
         self.interfaces = {
                 'receiver': ['m-veth-1', 'out-veth-1'],
                 'sender': ['m-veth-2', 'out-veth-2']
         }
 
-        self.supported_operations = ['map_init', 'Map', 'Filter', 'Reduce', 'Distinct']
+        self.supported_operations = ['Map', 'Filter', 'Reduce', 'Distinct']
+
+        # init dataplane
+        self.dataplane = P4DataPlane(self.interfaces, self.SWITCH_PATH, self.CLI_PATH, self.THRIFTPORT, self.P4C_BM_SCRIPT)
+
+        # query object
+        self.queries = dict()
 
     def get_supported_operators(self):
         return self.supported_operations
@@ -42,19 +57,27 @@ class P4Target(object):
         # Transform general DP application to list of P4 query pipelines
         p4_queries = list()
         for query_object in app:
+            self.queries[query_object.id] = query_object
             query_pipeline = QueryPipeline(query_object.id)
 
             # Set Parse Payload
             query_pipeline.parse_payload = query_object.parse_payload
+
+            # Add map init
+            keys = set()
+            for operator in query_object.operators:
+                if operator.name in {'Filter', 'Map', 'Reduce', 'Distinct'}:
+                    keys.union(set(operator.keys))
+            keys.remove('payload')
+            keys.remove('count')
+            query_pipeline.map_init(keys)
 
             for operator in query_object.operators:
 
                 # filter payload from keys
                 keys = filter(lambda x: x != 'payload', operator.keys)
 
-                if operator.name == 'map_init':
-                    query_pipeline.map_init(keys)
-                elif operator.name == 'Filter':
+                if operator.name == 'Filter':
                     # TODO: get rid of this hardcoding
                     if operator.func[0] != 'geq':
                         query_pipeline.filter(keys=keys,
@@ -195,25 +218,40 @@ class P4Target(object):
         return p4_src, p4_commands
 
     def run(self, app):
+        # compile app to p4
         p4_src, p4_commands = self.compile_app(app)
         write_to_file(self.P4_COMPILED, p4_src)
 
         commands_string = "\n".join(p4_commands)
         write_to_file(self.P4_COMMANDS, commands_string)
 
-        self.compile_p4_2_json(self.P4C_BM_SCRIPT, self.P4_COMPILED, self.JSON_P4_COMPILED)
+        # compile p4 to json
+        self.dataplane.compile_p4(self.P4_COMPILED, self.JSON_P4_COMPILED)
 
-        self.create_interfaces()
+        # initialize dataplane and run the configuration
+        self.dataplane.initialize(self.JSON_P4_COMPILED, self.P4_COMMANDS)
 
-        cmd = self.SWITCH_PATH + " >/dev/null 2>&1"
-        get_out(cmd)
-        initialize_switch(self.SWITCH_PATH, self.JSON_P4_COMPILED, self.THRIFTPORT, self.CLI_PATH, self.P4_COMMANDS)
+        # start the emitter
+        em = Emitter(self.em_conf, app)
+        em_thread = Thread(name='emitter', target=em.start)
+        em_thread.setDaemon(True)
+        em_thread.start()
 
-    def create_interfaces(self):
-        for key in self.interfaces.keys():
-            inter = Interfaces(self.interfaces[key][0], self.interfaces[key][1])
-            inter.setup()
+    def update(self, filter_update):
+        commands = ''
+        # Reset the data plane registers/tables before pushing the new delta config
+        self.dataplane.reset_switch_state()
 
-    def compile_p4_2_json(self, bm_script, p4_compiled, json_p4_compiled):
-        CMD = bm_script + " " + p4_compiled + " --json " + json_p4_compiled
-        get_out(CMD)
+        for qid, filter_id in filter_update:
+            query = self.queries[qid]
+            filter_operator = query.src_2_filter_operator[filter_id]
+            filter_mask = filter_operator.filter_mask
+            filter_table_fname = filter_operator.operator_name
+
+            for dip in filter_update[(qid,filter_id)]:
+                dip = dip.strip('\n')
+                command = 'table_add '+filter_table_fname+' set_meta_fm_'+str(qid)+' '+str(dip)+'/'+str(filter_mask)+' => \n'
+                commands += command
+
+            write_to_file(self.P4_DELTA_COMMANDS, commands)
+            self.dataplane.send_commands(self.JSON_P4_COMPILED, self.P4_DELTA_COMMANDS)

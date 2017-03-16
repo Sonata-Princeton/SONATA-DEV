@@ -2,15 +2,18 @@
 
 
 from sonata.dataplane_driver.openflow.openflow import OFTarget
-from sonata.dataplane_driver.p4.p4_old import P4Target
+from sonata.dataplane_driver.p4.p4_target_old import P4Target
 
 
 class DataplaneDriver(object):
-    def __init__(self):
-        pass
+    def __init__(self, dpd_socket, runtime_socket):
+        self.dpd_socket = dpd_socket
+        self.runtime_socket = runtime_socket
 
-    def is_supportable(self, application, target_type):
-        target = self.get_target(target_type)
+        self.targets = dict()
+
+    def is_supportable(self, application, target_type, target_id):
+        target = self.get_target(target_type, target_id)
 
         if not isinstance(application, list):
             application = [application]
@@ -23,8 +26,8 @@ class DataplaneDriver(object):
                     return False
         return True
 
-    def get_cost(self, application, target_type):
-        target = self.get_target(target_type)
+    def get_cost(self, application, target_type, target_id):
+        target = self.get_target(target_type, target_id)
 
         if isinstance(application, list):
             pass
@@ -32,19 +35,28 @@ class DataplaneDriver(object):
             pass
         return 999
 
-    def configure(self, application, target_type):
-        target = self.get_target(target_type)
+    def configure(self, application, target_type, target_id):
+        target = self.get_target(target_type, target_id)
         target.run(application)
 
-    def get_target(self, target_type):
-        target = None
+    def update_configuration(self, target_type, target_id):
+        target = self.get_target(target_type, target_id)
+        target.update()
 
-        if target_type == 'p4':
-            target = P4Target()
+    def get_target(self, target_type, target_id, **kwargs):
+        if target_id in self.targets:
+            return self.targets[target_id]
+        else:
+            target = None
+            if target_type == 'p4':
+                if 'em_conf' in kwargs:
+                    print 'Error: Missing Emitter Configuration'
+                em_conf = kwargs['em_conf']
+                target = P4Target(em_conf)
+            elif target_type == 'openflow':
+                target = OFTarget()
 
-        elif target_type == 'openflow':
-            target = OFTarget()
-
+            self.targets[target_id] = target
         return target
 
 
