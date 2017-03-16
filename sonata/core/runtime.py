@@ -17,7 +17,7 @@ from sonata.core.training.utils import get_spark_context_batch
 from sonata.core.utils import get_refinement_keys
 
 from sonata.core.training.learn.learn import Learn
-from sonata.core.refinement import apply_refinement_plan, get_refined_query_id
+from sonata.core.refinement import apply_refinement_plan, get_refined_query_id, Refinement
 from sonata.core.partition import get_dataplane_query, get_streaming_query
 
 
@@ -54,15 +54,21 @@ class Runtime(object):
         time.sleep(1)
 
         for query in self.queries:
-            self.refinement_keys[query.qid] = get_refinement_keys(query)
+            refinement_object = Refinement(query)
+            self.refinement_keys[query.qid] = refinement_object.refinement_key
+
+            # update the threshold for the refined queries
+            refinement_object.update_filter(self.training_data)
+
+            # Learn the query plan
             fname = "plan_" + str(query.qid) + ".pickle"
-            usePickledPlan = False
+            usePickledPlan = True
             if usePickledPlan:
                 with open(fname, 'r') as f:
                     self.query_plans[query.qid] = pickle.load(f)
             else:
                 # Generate hypothesis graph for each query
-                hypothesis = Hypothesis(self, query, self.refinement_keys[query.qid])
+                hypothesis = Hypothesis(self, query, self.refinement_keys[query.qid], refinement_object)
 
                 # Learn the query plan using the hypothesis graphs
                 learn = Learn(hypothesis)

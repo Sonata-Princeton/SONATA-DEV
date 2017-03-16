@@ -17,10 +17,14 @@ class Hypothesis(object):
     E = {}
     G = {}
 
-    def __init__(self, runtime, query, refinement_keys):
-        self.refinement_keys = refinement_keys
+    def __init__(self, sc, training_data, timestamps, query, refinement_object):
+        self.sc = sc
+        self.training_data = training_data
+        self.timestamps = timestamps
         self.query = query
-        self.runtime = runtime
+        self.refinement_object = refinement_object
+        
+        self.refinement_key = refinement_object.refinement_keys
         self.alpha = ALPHA
         self.beta = BETA
         self.get_refinement_levels()
@@ -32,16 +36,14 @@ class Hypothesis(object):
 
     def get_refinement_levels(self):
 
-        # TODO: support multiple candidate refinement keys
-        refinement_key = list(self.refinement_keys)[0]
-        ref_levels = range(0, GRAN_MAX, GRAN)
+        ref_levels = self.refinement_object.ref_levels
 
-        if refinement_key != '':
-            print('Reduction key for Query', self.query.qid, " is ", refinement_key)
+        if self.refinement_key != '':
+            print('Reduction key for Query', self.query.qid, " is ", self.refinement_key)
         else:
             print ('Query', self.query.qid, " cannot be refined")
             ref_levels = []
-        self.refinement_key = refinement_key
+        self.refinement_key = self.refinement_key
         self.refinement_levels = ref_levels
         R = []
         for ref_level in ref_levels[1:]:
@@ -50,7 +52,7 @@ class Hypothesis(object):
 
     def get_partitioning_plans(self):
         self.flattened_queries = get_flattened_sub_queries(self.query)
-        query_2_plans = get_query_2_plans(self.flattened_queries, self.runtime)
+        query_2_plans = get_query_2_plans(self.flattened_queries)
         # TODO: add support for queries with join operations
         # P = {}
         for qid in query_2_plans:
@@ -81,8 +83,7 @@ class Hypothesis(object):
                 costs = pickle.load(f)
         else:
             # Run the query over training data to get various counts
-            counts = Counts(self.runtime.sc, self.runtime.timestamps, self.refinement_key,
-                            self.runtime.training_data, self.refinement_levels, self.query)
+            counts = Counts(self.query, self.sc, self.training_data, self.timestamps, self.refinement_object)
             # Apply the costs model over counts to estimate costs for different edges
             costs = Costs(counts, self.P).costs
             print costs
@@ -98,7 +99,7 @@ class Hypothesis(object):
                     edge = ((r1, p1, l1), (r2, p2, l2))
 
                     # initialize edges for all timestamps
-                    for ts in self.runtime.timestamps:
+                    for ts in self.timestamps:
                         if ts not in E:
                             E[ts] = {}
                         E[ts][edge] = 0
@@ -117,7 +118,7 @@ class Hypothesis(object):
         for (r, p, l) in self.V:
             if r == self.refinement_levels[-1] and p != -1:
                 edge = ((r, p, l), (r, 0, 0))
-                for ts in self.runtime.timestamps:
+                for ts in self.timestamps:
                     if ts not in E:
                         E[ts] = {}
                     E[ts][edge] = 0
@@ -126,6 +127,6 @@ class Hypothesis(object):
 
     def update_graphs(self):
         G = {}
-        for ts in self.runtime.timestamps:
+        for ts in self.timestamps:
             G[ts] = (self.V, self.E[ts])
         self.G = G

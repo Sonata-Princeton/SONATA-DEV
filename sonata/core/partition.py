@@ -8,8 +8,8 @@ from integration import *
 from sonata.dataplane_driver.query_object import QueryObject as DP_QO
 from sonata.streaming_driver.query_object import PacketStream as SP_QO
 
-
-def get_query_2_plans(flattened_queries, runtime):
+# TODO fix this mess
+def get_query_2_plans(flattened_queries):
     query_2_plans = {}
     print flattened_queries
     for query in flattened_queries:

@@ -4,6 +4,10 @@
 #  Ankita Pawar (ankscircle@gmail.com)
 
 from sonata.query_engine.sonata_queries import *
+import sonata.streaming_manager.spark_queries as spark
+from sonata.core.training.utils import *
+import numpy as np
+
 
 def get_refinement_keys(query):
     red_keys = set([])
