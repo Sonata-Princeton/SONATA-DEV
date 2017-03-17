@@ -376,6 +376,7 @@ class Reduce(Register):
         out += '}\n\n'
         return out
 
+
 class Map(object):
     def __init__(self, *args, **kwargs):
         self.name = "Map"
