@@ -20,6 +20,8 @@ from sonata.core.training.learn.learn import Learn
 from sonata.core.refinement import apply_refinement_plan, get_refined_query_id, Refinement
 from sonata.core.partition import get_dataplane_query, get_streaming_query
 
+from sonata.core.integration import Target
+
 
 class Runtime(object):
     dp_queries = {}
@@ -39,7 +41,9 @@ class Runtime(object):
         self.initialize_handlers()
 
         for query in self.queries:
-            refinement_object = Refinement(query)
+            target = Target()
+            assert hasattr(target, 'costly_operators')
+            refinement_object = Refinement(query, target)
             print refinement_object.qid_2_refined_queries
             self.refinement_keys[query.qid] = refinement_object.refinement_key
 
@@ -56,7 +60,7 @@ class Runtime(object):
                 # Generate hypothesis graph for each query
                 # query, sc, training_data, timestamps, refinement_object
                 hypothesis = Hypothesis(query, self.sc, self.training_data, self.timestamps,
-                                        refinement_object)
+                                        refinement_object, target)
 
                 # Learn the query plan using the hypothesis graphs
                 learn = Learn(hypothesis)

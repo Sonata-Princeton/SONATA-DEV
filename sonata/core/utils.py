@@ -9,6 +9,59 @@ from sonata.core.training.utils import *
 import numpy as np
 
 
+
+def requires_payload_processing(query):
+    parse_payload = False
+    for operator in query.operators:
+        if 'payload' in operator.keys:
+            parse_payload = False
+
+    return parse_payload
+
+
+def copy_sonata_operators_to_sp_query(query, optr):
+    if optr.name == 'Filter':
+        query.filter(filter_keys=optr.filter_keys,
+                     filter_vals=optr.filter_vals,
+                     func=optr.func)
+    elif optr.name == "Map":
+        query.map(keys=optr.keys,
+                  values=optr.values,
+                  map_keys=optr.map_keys,
+                  map_values=optr.map_values,
+                  func=optr.func)
+    elif optr.name == "Reduce":
+        query.reduce(keys=optr.keys,
+                     func=optr.func)
+
+    elif optr.name == "Distinct":
+        query.distinct(keys=optr.keys)
+
+
+def filter_payload(keys):
+    return filter(lambda x: x != 'payload', keys)
+
+
+def copy_sonata_operators_to_dp_query(query, optr):
+    keys = filter_payload(optr.keys)
+    if optr.name == 'Filter':
+        # TODO: get rid of this hardcoding
+        if optr.func[0] != 'geq':
+            query.filter(keys=keys,
+                         filter_keys=optr.filter_keys,
+                         func=optr.func,
+                         src=optr.src)
+    elif optr.name == "Map":
+        query.map(keys=keys,
+                  map_keys=optr.map_keys,
+                  func=optr.func)
+    elif optr.name == "Reduce":
+        query.reduce(keys=keys)
+
+    elif optr.name == "Distinct":
+        query.distinct(keys=keys)
+
+
 def get_refinement_keys(query):
     red_keys = set([])
     if query.left_child is not None:

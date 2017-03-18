@@ -5,6 +5,7 @@
 
 from sonata.core.utils import *
 import sonata.streaming_driver.query_object as spark
+from partition import Partition
 
 
 def get_refined_query_id(query, ref_level):
@@ -71,8 +72,9 @@ class Refinement(object):
     filter_mappings = {}
     qid_2_refined_queries = {}
 
-    def __init__(self, query):
+    def __init__(self, query, target):
         self.query = query
+        self.target = target
         self.ref_levels = range(0, GRAN_MAX, GRAN)
         self.refinement_key = get_refinement_keys(self.query)
         self.qid_2_query = get_qid_2_query(self.query)
@@ -118,13 +120,18 @@ class Refinement(object):
                                                                  ref_level)
                     qid_2_queries_refined[refined_query_id] = refined_sonata_query
 
-                    # generate intermediate queries for this refinement level
-                    sonata_intermediate_queries, filter_mappings_tmp = generate_intermediate_sonata_queries(
-                        refined_sonata_query, ref_level)
+                    # Create target-specific partition object for this refined query
+                    partition_object = Partition(refined_sonata_query, self.target, ref_level)
+                    # generate intermediate queries for learning
+                    partition_object.generate_partitioned_queries_learning()
+                    # update intermediate queries and filter mappings
+                    sonata_intermediate_queries = partition_object.intermediate_learning_queries
+                    filter_mappings_tmp = partition_object.filter_mappings
                     filter_mappings.update(filter_mappings_tmp)
 
-                    for iter_qid in sonata_intermediate_queries:
-                        refined_sonata_queries[qid][ref_level][iter_qid] = sonata_intermediate_queries[iter_qid]
+                    # Update refined sonata queries
+                    for part_qid in sonata_intermediate_queries:
+                        refined_sonata_queries[qid][ref_level][part_qid] = sonata_intermediate_queries[part_qid]
 
         self.refined_sonata_queries = refined_sonata_queries
         self.filter_mappings = filter_mappings
@@ -162,7 +169,7 @@ class Refinement(object):
                         for operator in satisfied_sonata_query.operators:
                             copy_sonata_operators_to_spark(satisfied_spark_query, operator)
 
-                            # Get the Spark queries corresponding to the prev and curr sonata queries
+                    # Get the Spark queries corresponding to the prev and curr sonata queries
                     if prev_qid not in spark_queries:
                         prev_spark_query = spark.PacketStream(prev_qid)
                         prev_spark_query.basic_headers = BASIC_HEADERS

@@ -3,45 +3,15 @@
 #  Arpit Gupta (arpitg@cs.princeton.edu)
 #  Ankita Pawar (ankscircle@gmail.com)
 
-from integration import *
+#from integration import *
 
 from sonata.dataplane_driver.query_object import QueryObject as DP_QO
 from sonata.streaming_driver.query_object import PacketStream as SP_QO
-
-
-# TODO fix this mess
-def get_query_2_plans(flattened_queries):
-    query_2_plans = {}
-    print flattened_queries
-    for query in flattened_queries:
-
-        # query = flattened_queries[query_id]
-        n_operators = len(query.operators)
-        # We do not support join operations explicitly in
-        # the data plane, so we are only concerned with the flattened queries.
-        dp_query = sonata_2_dp_query(query)
-
-        # TODO:: Call the real socket based function -- dummy used right now
-        # partitions = runtime.send_to_dp_driver('is_supported', dp_query)
-        partitions = send_to_dp_driver('is_supported', dp_query)
-        partitioning_plans = []
-        for partition in partitions:
-            partitioning_plans.append((partition, n_operators - partition))
-        # TODO: get rid of this hardcoding
-        partitioning_plans = ['00', '01', '11']
-        query_2_plans[query.qid] = partitioning_plans
-    print "Partitioning Plans", query_2_plans
-
-    return query_2_plans
-
-
-def requires_payload_processing(query):
-    parse_payload = False
-    for operator in query.operators:
-        if 'payload' in operator.keys:
-            parse_payload = False
-
-    return parse_payload
+from sonata.query_engine.utils import copy_operators
+from sonata.core.utils import requires_payload_processing, copy_sonata_operators_to_sp_query, get_flattened_sub_queries
+from sonata.query_engine.sonata_queries import PacketStream
+from sonata.system_config import BASIC_HEADERS
+from integration import sonata_2_dp_query
 
 
 def get_dataplane_query(query, qid, partition_plan):
@@ -93,44 +63,81 @@ def get_streaming_query(query, qid, partition_plan):
         return sp_query
 
 
-def copy_sonata_operators_to_sp_query(query, optr):
-    if optr.name == 'Filter':
-        query.filter(filter_keys=optr.filter_keys,
-                     filter_vals=optr.filter_vals,
-                     func=optr.func)
-    elif optr.name == "Map":
-        query.map(keys=optr.keys,
-                  values=optr.values,
-                  map_keys=optr.map_keys,
-                  map_values=optr.map_values,
-                  func=optr.func)
-    elif optr.name == "Reduce":
-        query.reduce(keys=optr.keys,
-                     func=optr.func)
+class Partition(object):
+    intermediate_learning_queries = {}
+    filter_mappings = {}
 
-    elif optr.name == "Distinct":
-        query.distinct(keys=optr.keys)
+    def __init__(self, query, target, ref_level = 32):
+        self.query = query
+        self.target = target
+        self.ref_level = ref_level
 
+    def generate_partitioned_queries_learning(self):
+        sonata_query = self.query
+        number_intermediate_learning_queries = len(
+            filter(lambda s: s in self.target.learning_operators, [x.name for x in self.query.operators]))
+        intermediate_learning_queries = {}
+        prev_qid = 0
+        filter_mappings = {}
+        filters_marked = {}
+        for max_operators in range(1, 1 + number_intermediate_learning_queries):
+            qid = (1000 * sonata_query.qid) + max_operators
+            tmp_query = (PacketStream(sonata_query.qid))
+            tmp_query.basic_headers = BASIC_HEADERS
+            ctr = 0
+            filter_ctr = 0
+            prev_operator = None
+            for operator in sonata_query.operators:
+                if operator.name != 'Join':
+                    if ctr < max_operators:
+                        copy_operators(tmp_query, operator)
+                        prev_operator = operator
+                    else:
+                        break
+                    if operator.name in self.target.learning_operators:
+                        ctr += 1
+                    if operator.name == 'Filter':
+                        filter_ctr += 1
+                        if (qid, self.ref_level, filter_ctr) not in filters_marked:
+                            filters_marked[(qid, self.ref_level, filter_ctr, )] = sonata_query.qid
+                            filter_mappings[(prev_qid, qid, self.ref_level)] = (sonata_query.qid, filter_ctr, operator.func[1])
+                else:
+                    prev_operator = operator
+                    copy_operators(tmp_query, operator)
 
-def filter_payload(keys):
-    return filter(lambda x: x != 'payload', keys)
+            intermediate_learning_queries[qid] = tmp_query
+            prev_qid = qid
 
+        self.intermediate_learning_queries = intermediate_learning_queries
+        self.filter_mappings = filter_mappings
 
-def copy_sonata_operators_to_dp_query(query, optr):
-    keys = filter_payload(optr.keys)
-    if optr.name == 'Filter':
-        # TODO: get rid of this hardcoding
-        if optr.func[0] != 'geq':
-            query.filter(keys=keys,
-                         filter_keys=optr.filter_keys,
-                         func=optr.func,
-                         src=optr.src)
-    elif optr.name == "Map":
-        query.map(keys=keys,
-                  map_keys=optr.map_keys,
-                  func=optr.func)
-    elif optr.name == "Reduce":
-        query.reduce(keys=keys)
+    def get_query_2_plans(self):
+        query_2_plans = {}
+        for q in get_flattened_sub_queries(self.query):
+            n_operators = len(q.operators)
+            dp_query = sonata_2_dp_query(q)
+            partitioning_plans = self.get_partition_plans(dp_query)
+            # TODO: get rid of this hardcoding
+            #partitioning_plans = ['00', '01', '11']
+            query_2_plans[q.qid] = partitioning_plans
+        print "Partitioning Plans", query_2_plans
 
-    elif optr.name == "Distinct":
-        query.distinct(keys=keys)
+        return query_2_plans
+
+    def get_partition_plans(self, dp_query):
+        # receives dp_query object.
+        total_operators = len(dp_query.operators)
+        partition_plans = [(0, total_operators)]
+        ctr = 1
+        for operator in dp_query.operators:
+            if operator.name in self.target.supported_operators.keys():
+                if hasattr(operator, 'func') and len(operator.func) > 0:
+                    if operator.func[0] in self.target.supported_operators[operator.name]:
+                        if operator.name in self.target.costly_operators:
+                            partition_plans.append((ctr, total_operators - ctr))
+                    else:
+                        break
+            else:
+                break
+
+        return partition_plans

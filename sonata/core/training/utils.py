@@ -82,7 +82,7 @@ def generate_intermediate_spark_queries(spark_query, refinement_level):
     prev_qid = 0
     filter_mappings = {}
     filters_marked = {}
-    for max_operators in range(1,2+number_intermediate_queries):
+    for max_operators in range(1, 2+number_intermediate_queries):
         qid = (1000 * spark_query.qid) + max_operators
         tmp_query = (spark.PacketStream(spark_query.qid))
         tmp_query.basic_headers = BASIC_HEADERS

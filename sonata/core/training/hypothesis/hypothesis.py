@@ -4,10 +4,10 @@
 #  Ankita Pawar (ankscircle@gmail.com)
 
 # from __future__ import print_function
-from sonata.core.partition import get_query_2_plans
 from sonata.core.utils import *
 from counts import *
 from sonata.core.training.hypothesis.costs.costs import Costs
+from sonata.core.partition import Partition
 
 
 class Hypothesis(object):
@@ -17,14 +17,16 @@ class Hypothesis(object):
     E = {}
     G = {}
 
-    def __init__(self, query, sc, training_data, timestamps, refinement_object):
+    def __init__(self, query, sc, training_data, timestamps, refinement_object, target):
         self.sc = sc
         self.training_data = training_data
         self.timestamps = timestamps
         self.query = query
         self.refinement_object = refinement_object
+        self.target = target
         
         self.refinement_key = refinement_object.refinement_key
+        self.refinement_levels = self.refinement_object.ref_levels
         self.alpha = ALPHA
         self.beta = BETA
         self.get_refinement_levels()
@@ -35,24 +37,12 @@ class Hypothesis(object):
         self.update_graphs()
 
     def get_refinement_levels(self):
-
-        ref_levels = self.refinement_object.ref_levels
-
-        if self.refinement_key != '':
-            print('Reduction key for Query', self.query.qid, " is ", self.refinement_key)
-        else:
-            print ('Query', self.query.qid, " cannot be refined")
-            ref_levels = []
-        self.refinement_key = self.refinement_key
-        self.refinement_levels = ref_levels
-        R = []
-        for ref_level in ref_levels[1:]:
-            R.append(ref_level)
-        self.R = R
+        self.R = self.refinement_object.ref_levels[1:]
 
     def get_partitioning_plans(self):
-        self.flattened_queries = get_flattened_sub_queries(self.query)
-        query_2_plans = get_query_2_plans(self.flattened_queries)
+        partition_object = Partition(self.query, self.target)
+        query_2_plans = partition_object.get_query_2_plans()
+
         # TODO: add support for queries with join operations
         # P = {}
         for qid in query_2_plans:
