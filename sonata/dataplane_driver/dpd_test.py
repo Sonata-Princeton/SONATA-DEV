@@ -12,6 +12,10 @@ from multiprocessing.connection import Client
 from dp_driver import DataplaneDriver
 
 
+import sys
+sys.path.append("/home/vagrant/sonata/query_engine/sonata_operators")
+
+
 class DPDTest(object):
     def __init__(self, pickled_file, dpd_socket):
         self.dpd_socket = dpd_socket
@@ -49,7 +53,7 @@ class DPDTest(object):
         config = {
             'em_conf': None,
             'switch_conf': {
-                'compiled_srcs': '/home/vagrant/dev/dataplane_driver/compiled_srcs/',
+                'compiled_srcs': '/home/vagrant/sonata/dataplane_driver/p4/compiled_srcs/',
                 'json_p4_compiled': 'compiled.json',
                 'p4_compiled': 'compiled.p4',
                 'p4c_bm_script': '/home/vagrant/p4c-bmv2/p4c_bm/__main__.py',

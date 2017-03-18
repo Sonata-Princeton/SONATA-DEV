@@ -3,7 +3,7 @@ I10016
 ccopy_reg
 _reconstructor
 p1
-(csonata.dataplane_driver.query_object
+(cquery_object
 QueryObject
 p2
 c__builtin__
@@ -16,7 +16,7 @@ S'operators'
 p7
 (lp8
 g1
-(csonata.query_engine.sonata_operators.map
+(cmap
 Map
 p9
 g3
@@ -114,7 +114,7 @@ g40
 sg41
 (lp52
 sbag1
-(csonata.query_engine.sonata_operators.distinct
+(cdistinct
 Distinct
 p53
 g3
@@ -175,7 +175,7 @@ g40
 sg41
 (lp73
 sbag1
-(csonata.query_engine.sonata_operators.reduce
+(creduce
 Reduce
 p74
 g3
@@ -204,7 +204,7 @@ tp83
 sg39
 g40
 sbag1
-(csonata.query_engine.sonata_operators.filter
+(cfilter
 Filter
 p84
 g3
