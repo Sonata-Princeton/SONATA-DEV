@@ -41,6 +41,7 @@ class DataplaneDriver(object):
                     self.logger.debug('received "init" message')
                     application = message[key][0]
                     target_id = message[key][1]
+                    print "application", application
                     self.configure(application, target_id)
                 elif key == 'delta':
                     self.logger.debug('received "delta" message')

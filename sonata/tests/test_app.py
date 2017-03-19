@@ -1,8 +1,8 @@
 #!/usr/bin/python
 # Initialize coloredlogs.
-#import coloredlogs
+# import coloredlogs
 
-#coloredlogs.install(level='ERROR', )
+# coloredlogs.install(level='ERROR', )
 
 import os
 
@@ -42,30 +42,28 @@ if __name__ == '__main__':
 
     # New Queries
     q1 = (PacketStream(1)
-          #.filter(filter_keys=('proto',), func=('eq', 6))
+          # .filter(filter_keys=('proto',), func=('eq', 6))
           .map(keys=('dIP', 'sIP'))
           .distinct(keys=('dIP', 'sIP'))
-          .map(keys=('dIP',), map_values = ('count',), func=('eq',1,))
+          .map(keys=('dIP',), map_values=('count',), func=('eq', 1,))
           .reduce(keys=('dIP',), func=('sum',))
           .filter(filter_vals=('count',), func=('geq', '99'))
           .map(keys=('dIP',))
           )
 
     q2 = (PacketStream(2)
-          #.filter(filter_keys=('proto',), func=('eq', 6))
-          .map(keys=('dIP','payload'))
+          # .filter(filter_keys=('proto',), func=('eq', 6))
+          .map(keys=('dIP', 'payload'))
           )
 
     q3 = (q2.join(new_qid=3, query=q1)
           .map(keys=('dIP', 'payload'), map_values=('count',), func=('eq', 1))
-          .reduce(keys=('dIP','payload'),func=('sum',))
-          .filter(filter_vals=('count',), func = ('geq', 1))
+          .reduce(keys=('dIP', 'payload'), func=('sum',))
+          .filter(filter_vals=('count',), func=('geq', 1))
           .map(keys=('dIP',))
           .distinct(keys=('dIP',))
           )
 
     queries = [q1]
-
-
 
     runtime = Runtime(conf, queries)

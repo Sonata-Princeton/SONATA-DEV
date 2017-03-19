@@ -68,17 +68,18 @@ class P4Target(object):
     def compile_app(self, app):
         # Transform general DP application to list of P4 query pipelines
         p4_queries = list()
-        for query_object in app:
-            self.logger.debug('create query pipeline for qid: %i' % (query_object.id, ))
-            self.queries[query_object.id] = query_object
-            query_pipeline = QueryPipeline(query_object.id)
+        for qid in app:
+            print app[qid]
+            self.logger.debug('create query pipeline for qid: %i' % (qid, ))
+            self.queries[qid] = app[qid]
+            query_pipeline = QueryPipeline(qid)
 
             # Set Parse Payload
-            query_pipeline.parse_payload = query_object.parse_payload
+            query_pipeline.parse_payload = app[qid].parse_payload
 
             # Add map init
             keys = set()
-            for operator in query_object.operators:
+            for operator in app[qid].operators:
                 if operator.name in {'Filter', 'Map', 'Reduce', 'Distinct'}:
                     keys = keys.union(set(operator.keys))
             if 'payload' in keys:
@@ -91,7 +92,7 @@ class P4Target(object):
             self.logger.debug('add map_init with keys: %s' % (', '.join(keys), ))
             query_pipeline.map_init(keys=keys)
 
-            for operator in query_object.operators:
+            for operator in app[qid].operators:
                 self.logger.debug('add %s operator' % (operator.name, ))
                 # filter payload from keys
                 keys = filter(lambda x: x != 'payload' and x != 'ts', operator.keys)
@@ -104,9 +105,10 @@ class P4Target(object):
                                               func=operator.func,
                                               src=operator.src)
                 elif operator.name == 'Map':
-                    query_pipeline.map(keys=keys,
-                                       map_keys=operator.map_keys,
-                                       func=operator.func)
+                    if len(operator.func) > 0 and operator.func[0] == 'mask':
+                        query_pipeline.map(keys=keys,
+                                           map_keys=operator.map_keys,
+                                           func=operator.func)
                 elif operator.name == 'Reduce':
                     query_pipeline.reduce(keys=keys)
 
@@ -235,13 +237,13 @@ class P4Target(object):
         for q in p4_queries:
             p4_commands.append('mirroring_add '+str(q.mirror_id)+' 12')
 
-        return p4_src, p4_commands
+        return p4_queries, p4_src, p4_commands
 
     def run(self, app):
         self.logger.info('run')
         # compile app to p4
         self.logger.info('generate p4 code and commands')
-        p4_src, p4_commands = self.compile_app(app)
+        p4_queries, p4_src, p4_commands = self.compile_app(app)
         write_to_file(self.P4_COMPILED, p4_src)
 
         commands_string = "\n".join(p4_commands)
@@ -258,7 +260,7 @@ class P4Target(object):
         # start the emitter
         if self.em_conf:
             self.logger.info('start the emitter')
-            em = Emitter(self.em_conf, app)
+            em = Emitter(self.em_conf, p4_queries)
             em_thread = Thread(name='emitter', target=em.start)
             em_thread.setDaemon(True)
             em_thread.start()

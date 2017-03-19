@@ -9,11 +9,10 @@ from multiprocessing.connection import Client, Listener
 from threading import Thread
 
 from sonata.core.training.hypothesis.hypothesis import Hypothesis
-from sonata.dataplane_driver.dataplane_driver import DPDriverConfig
 from sonata.streaming_driver.streaming_driver import StreamingDriver
 
 # from sonata.core.training.weights.training_data import TrainingData
-from sonata.core.training.utils import get_spark_context_batch
+from sonata.core.training.utils import get_spark_context_batch, create_spark_context
 from sonata.core.utils import get_refinement_keys
 
 from sonata.core.training.learn.learn import Learn
@@ -21,7 +20,7 @@ from sonata.core.refinement import apply_refinement_plan, get_refined_query_id, 
 from sonata.core.partition import get_dataplane_query, get_streaming_query
 
 from sonata.core.integration import Target
-
+from sonata.dataplane_driver.dp_driver import DataplaneDriver
 
 class Runtime(object):
     dp_queries = {}
@@ -35,85 +34,84 @@ class Runtime(object):
     def __init__(self, conf, queries):
         self.conf = conf
         self.queries = queries
-        (self.sc, self.timestamps, self.training_data) = get_spark_context_batch()
-
         self.initialize_logging()
+        self.target_id = 1
+        #self.sc = create_spark_context()
+
+        use_pickled_queries = True
+        if use_pickled_queries:
+            with open('pickled_queries.pickle', 'r') as f:
+                pickled_queries = pickle.load(f)
+                self.dp_queries = pickled_queries[0]
+                self.sp_queries = pickled_queries[1]
+        else:
+            (self.timestamps, self.training_data) = get_spark_context_batch(self.sc)
+
+            for query in self.queries:
+                target = Target()
+                assert hasattr(target, 'costly_operators')
+                refinement_object = Refinement(query, target)
+                print refinement_object.qid_2_refined_queries
+                self.refinement_keys[query.qid] = refinement_object.refinement_key
+
+                # update the threshold for the refined queries
+                refinement_object.update_filter(self.training_data)
+
+                # Learn the query plan
+                fname = "plan_" + str(query.qid) + ".pickle"
+                usePickledPlan = True
+                if usePickledPlan:
+                    with open(fname, 'r') as f:
+                        self.query_plans[query.qid] = pickle.load(f)
+                else:
+                    # Generate hypothesis graph for each query
+                    # query, sc, training_data, timestamps, refinement_object
+                    hypothesis = Hypothesis(query, self.sc, self.training_data, self.timestamps,
+                                            refinement_object, target)
+
+                    # Learn the query plan using the hypothesis graphs
+                    learn = Learn(hypothesis)
+                    self.query_plans[query.qid] = [x.state for x in learn.final_plan.path]
+                    with open(fname, 'w') as f:
+                        pickle.dump(self.query_plans[query.qid], f)
+
+                # Generate queries for the data plane and stream processor after learning the final plan
+                final_plan = self.query_plans[query.qid][1:-1]
+                print final_plan
+                final_plan = [(16, 5, 1), (32, 1, 1)]
+                self.update_query_mappings(query, final_plan)
+                print "# of iteration levels", len(final_plan)
+                for (r, p, l) in final_plan:
+                    # Get the query id
+                    refined_query_id = get_refined_query_id(query, r)
+
+                    # Generate query for this refinement level
+                    refined_sonata_query = refinement_object.get_refined_updated_query(r)
+
+                    # Apply the partitioning plan for this refinement level
+                    dp_query = get_dataplane_query(refined_sonata_query, refined_query_id, p)
+                    self.dp_queries[refined_query_id] = dp_query
+
+                    # Generate input and output mappings
+                    sp_query = get_streaming_query(refined_sonata_query, refined_query_id, p)
+                    self.sp_queries[refined_query_id] = sp_query
+            #sc.stop()
+            with open('pickled_queries.pickle', 'w') as f:
+                pickle.dump({0: self.dp_queries, 1: self.sp_queries}, f)
+
+        time.sleep(10)
         self.initialize_handlers()
-
-        for query in self.queries:
-            target = Target()
-            assert hasattr(target, 'costly_operators')
-            refinement_object = Refinement(query, target)
-            print refinement_object.qid_2_refined_queries
-            self.refinement_keys[query.qid] = refinement_object.refinement_key
-
-            # update the threshold for the refined queries
-            refinement_object.update_filter(self.training_data)
-
-            # Learn the query plan
-            fname = "plan_" + str(query.qid) + ".pickle"
-            usePickledPlan = False
-            if usePickledPlan:
-                with open(fname, 'r') as f:
-                    self.query_plans[query.qid] = pickle.load(f)
-            else:
-                # Generate hypothesis graph for each query
-                # query, sc, training_data, timestamps, refinement_object
-                hypothesis = Hypothesis(query, self.sc, self.training_data, self.timestamps,
-                                        refinement_object, target)
-
-                # Learn the query plan using the hypothesis graphs
-                learn = Learn(hypothesis)
-                self.query_plans[query.qid] = [x.state for x in learn.final_plan.path]
-                with open(fname, 'w') as f:
-                    pickle.dump(self.query_plans[query.qid], f)
-
-            # Generate queries for the data plane and stream processor after learning the final plan
-            final_plan = self.query_plans[query.qid][1:-1]
-            print final_plan
-            #final_plan = [(16, [5,2], 1), (32, [3,4], 1)]
-            self.update_query_mappings(query, final_plan)
-            print "# of iteration levels", len(final_plan)
-            for (r, p, l) in final_plan:
-                # Get the query id
-                refined_query_id = get_refined_query_id(query, r)
-
-                # Generate query for this refinement level
-                refined_sonata_query = refinement_object.get_refined_updated_query(r)
-
-                # Apply the partitioning plan for this refinement level
-                # TODO: clean this hardcoding
-                p = [5, 2]
-                dp_query = get_dataplane_query(refined_sonata_query, refined_query_id, p)
-                self.dp_queries[refined_query_id] = dp_query
-
-                # Generate input and output mappings
-                sp_query = get_streaming_query(refined_sonata_query, refined_query_id, p)
-                self.sp_queries[refined_query_id] = sp_query
-
         print self.dp_queries
-        with open('dp_queries.pickle', 'w') as f:
-            pickle.dump(self.dp_queries, f)
         print self.sp_queries
 
-
-
-        """
         time.sleep(2)
-        if self.dp_queries:
-            self.send_to_dp_driver("init", self.dp_queries)
-
-        # Start SM after everything is set in DP
-        self.streaming_driver_thread.start()
-
+        self.send_to_dp_driver('init', self.dp_queries)
         if self.sp_queries:
             self.send_to_sm()
 
-        self.op_handler_thread.start()
-        self.dp_driver_thread.join()
         self.streaming_driver_thread.join()
-        self.op_handler_thread.join()
-        """
+        self.dp_driver_thread.join()
+        self.dpd_thread.join()
 
     def update_query_mappings(self, query, final_plan):
         if len(final_plan) > 1:
@@ -168,25 +166,22 @@ class Runtime(object):
             print "DP Queries: ", str(len(self.dp_queries.keys())), " Received keys:", str(len(queries_received.keys()))
             if len(queries_received.keys()) == len(self.dp_queries.keys()):
                 updateDeltaConfig = True
-
+            print self.query_out_mappings
             delta_config = {}
             print "## Received output for query", src_qid, "at time", time.time() - start
             if updateDeltaConfig:
                 start = time.time()
                 for src_qid in queries_received:
-                    table_match_entries = queries_received[src_qid]
-                    for query in self.queries:
-                        print query.refined_2_orig
-                        # find the queries that take the output of this query as input
-                        original_qid, ref_level = query.refined_2_orig[src_qid]
-                        if (original_qid, ref_level) in query.query_out_mapping:
-                            target_queries = query.query_out_mapping[(original_qid, ref_level)]
-                            for (dst_orig_qid, dst_ref_level) in target_queries:
-                                dst_refined_qid = query.orig_2_refined[(dst_orig_qid, dst_ref_level)]
-                                # get then name of the filter operator (and corresponding table)
-                                # update the delta config dict
-                                delta_config[(dst_refined_qid, src_qid)] = table_match_entries
-                # reset these state variables
+                    if src_qid in self.query_out_mappings:
+                        table_match_entries = queries_received[src_qid]
+                        if len(table_match_entries) > 0:
+                            out_queries = self.query_out_mappings[src_qid]
+                            for out_qid in out_queries:
+                                # find the queries that take the output of this query as input
+                                print out_qid, src_qid
+                                delta_config[(out_qid, src_qid)] = table_match_entries
+                    # reset these state variables
+                print "delta: ",delta_config
                 updateDeltaConfig = False
                 self.logger.info("runtime,create_delta_config," + str(start) + "," + str(time.time()))
                 queries_received = {}
@@ -199,14 +194,38 @@ class Runtime(object):
 
     def start_dataplane_driver(self):
         # Start the fabric managers local to each data plane element
-        fm = DPDriverConfig(self.conf['fm_conf'], self.conf['emitter_conf'])
-        fm.start()
-        while True:
-            time.sleep(5)
-        return 0
+        dpd = DataplaneDriver(self.conf['fm_conf']['fm_socket'])
+        self.dpd_thread = Thread(name='dp_driver', target=dpd.start)
+        self.dpd_thread.setDaemon(True)
+
+        config = {
+            'em_conf': self.conf['emitter_conf'],
+            'switch_conf': {
+                'compiled_srcs': '/home/vagrant/dev/sonata/dataplane_driver/p4/compiled_srcs/',
+                'json_p4_compiled': 'compiled.json',
+                'p4_compiled': 'compiled.p4',
+                'p4c_bm_script': '/home/vagrant/p4c-bmv2/p4c_bm/__main__.py',
+                'bmv2_path': '/home/vagrant/bmv2',
+                'bmv2_switch_base': '/targets/simple_switch',
+                'switch_path': '/simple_switch',
+                'cli_path': '/sswitch_CLI',
+                'thriftport': 22222,
+                'p4_commands': 'commands.txt',
+                'p4_delta_commands': 'delta_commands.txt'
+            }
+        }
+        dpd.add_target('p4', self.target_id, config)
+        self.dpd_thread.start()
+
+        # fm = DPDriverConfig(self.conf['fm_conf'], self.conf['emitter_conf'])
+        # fm.start()
+        # while True:
+        #     time.sleep(5)
+        # return 0
 
     def start_streaming_driver(self):
         # Start streaming managers local to each stream processor
+        #self.conf['sm_conf']['sc']=self.sc
         sm = StreamingDriver(self.conf['sm_conf'])
         sm.start()
         while True:
@@ -231,20 +250,22 @@ class Runtime(object):
     def send_to_dp_driver(self, message_type, content):
         # Send compiled query expression to fabric manager
         start = time.time()
-        message = {message_type: content}
+        message = {message_type: {0: content, 1: self.target_id}}
         serialized_queries = pickle.dumps(message)
         conn = Client(self.conf['fm_conf']['fm_socket'])
         conn.send(serialized_queries)
         self.logger.info("runtime,fm_" + message_type + "," + str(start) + "," + str(time.time()))
         time.sleep(1)
+        conn.close()
         return ''
 
     def initialize_handlers(self):
-        self.dp_driver_thread = Thread(name='dp_driver', target=self.start_dataplane_driver)
+        target=self.start_dataplane_driver()
         self.streaming_driver_thread = Thread(name='streaming_driver', target=self.start_streaming_driver)
         self.op_handler_thread = Thread(name='op_handler', target=self.start_op_handler)
         # self.fm_thread.setDaemon(True)
-        self.dp_driver_thread.start()
+        self.streaming_driver_thread.start()
+        self.op_handler_thread.start()
         time.sleep(1)
 
     def initialize_logging(self):

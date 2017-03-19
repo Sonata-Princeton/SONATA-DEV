@@ -253,8 +253,7 @@ def update_counts(sc, queries, query_out, iter_qid, delta, bits_count, packet_co
         ctr += 1
     return bits_count, packet_count, ctr
 
-
-def get_spark_context_batch():
+def create_spark_context():
     from pyspark import SparkContext, SparkConf
     from sonata.system_config import TD_PATH, T
     conf = (SparkConf()
@@ -269,6 +268,11 @@ def get_spark_context_batch():
     logger.LogManager.getLogger("org"). setLevel( logger.Level.ERROR )
     logger.LogManager.getLogger("akka").setLevel( logger.Level.ERROR )
 
+    return sc
+
+def get_spark_context_batch(sc):
+
+
     # Load training data
     timestamps, training_data = shard_training_data(sc, TD_PATH, T)
-    return sc, timestamps, training_data
+    return timestamps, training_data

@@ -411,8 +411,8 @@ class Map(object):
         self.p4_init_commands.append('table_set_default '+self.operator_name+' do_'+str(self.operator_name))
 
         if len(self.func) > 0:
-            out += 'action do_'+self.operator_name+'() {\n'
             if self.func[0] == 'mask':
+                out += 'action do_'+self.operator_name+'() {\n'
                 # TODO: add more functions to generalize this map operator
                 mask = self.func[1]
 
@@ -430,7 +430,7 @@ class Map(object):
                 out += '}\n\n'
             else:
                 # TODO add more functions for map operations
-                raise NotImplementedError
+                #raise NotImplementedError
                 pass
 
         self.p4_state += out

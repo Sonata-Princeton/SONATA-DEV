@@ -6,7 +6,7 @@ from __future__ import print_function
 
 import time
 import pickle
-from pyspark import SparkContext
+from pyspark import SparkContext, SparkConf
 from pyspark.streaming import StreamingContext
 from multiprocessing.connection import Client, Listener
 
@@ -48,7 +48,14 @@ class StreamingDriver(object):
         #self.reduction_socket = Client(conf['op_handler_socket'])
 
         # intialize streaming context
+        # spark_conf = (SparkConf()
+        #         .setMaster("local[*]")
+        #         .setAppName("Sonata-Streaming")
+        #         .set("spark.executor.memory","6g")
+        #         .set("spark.driver.memory","20g")
+        #         .set("spark.cores.max","16"))
         self.sc = SparkContext(appName="Sonata-Streaming")
+        #self.sc = conf['sc']
         self.sc.setLogLevel("OFF")
         self.ssc = StreamingContext(self.sc, self.batch_interval)
         print("spark context initialized...")

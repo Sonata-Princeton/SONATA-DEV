@@ -16,7 +16,7 @@ from integration import sonata_2_dp_query
 
 def get_dataplane_query(query, qid, partition_plan):
     # number of operators in the data plane
-    n_operators_dp = int(partition_plan[0])
+    n_operators_dp = int(partition_plan)
     dp_query = None
     if n_operators_dp > 0:
         # create a dp query object
@@ -37,8 +37,8 @@ def get_dataplane_query(query, qid, partition_plan):
 
 def get_streaming_query(query, qid, partition_plan):
     # number of operators in the data plane
-    n_operators_dp = int(partition_plan[0])
-    n_operators_sp = int(partition_plan[1])
+    n_operators_dp = int(partition_plan)
+    n_operators_sp = int(len(query.operators))-n_operators_dp
     if n_operators_sp > 0:
         # create a dp query object
         sp_query = SP_QO(qid)
