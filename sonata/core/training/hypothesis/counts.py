@@ -20,19 +20,20 @@ class Counts(object):
 
     query_tree = {}
 
-    def __init__(self, query, sc, training_data, timestamps, refinement_object):
+    def __init__(self, query, sc, training_data, timestamps, refinement_object, target):
 
         self.query = query
         self.sc = sc
         self.training_data = training_data
         self.timestamps = timestamps
+        self.target = target
 
         # load refinement object
         self.refinement_object = refinement_object
         self.refinement_key = refinement_object.refinement_key
         self.ref_levels = refinement_object.ref_levels
         self.filter_mappings = self.refinement_object.filter_mappings
-        self.qid_2_queries_refined = self.refinement_object.qid_2_queries_refined
+        self.qid_2_refined_queries = self.refinement_object.qid_2_refined_queries
         self.qid_2_query = self.refinement_object.qid_2_query
         self.refined_sonata_queries = self.refinement_object.refined_sonata_queries
 
@@ -84,7 +85,7 @@ class Counts(object):
                 transit_query_string = 'self.sc.parallelize(out)'
                 transit_query_string = generate_query_to_collect_transit_cost(transit_query_string, spark_query)
                 query_cost_transit[qid][transit][iter_qid] = eval(transit_query_string)
-                print transit, iter_qid, query_cost_transit[qid][transit][iter_qid][:2]
+                #print transit, iter_qid, query_cost_transit[qid][transit][iter_qid][:2]
                 #break
 
         # Then get the cost for transit (ref_level_prev, ref_level_current)
@@ -101,7 +102,7 @@ class Counts(object):
                                                                                            refinement_key)
                     print prev_level_out_mapped_string
                     prev_level_out_mapped = eval(prev_level_out_mapped_string)
-                    print prev_level_out_mapped.collect()[:2]
+                    #print prev_level_out_mapped.collect()[:2]
                     # For each intermediate query for `ref_level_curr` in transit (ref_level_prev, ref_level_current),
                     # we filter out entries that do not satisfy the query at level `ref_level_prev`
                     for iter_qid_curr in self.refined_spark_queries[qid][ref_level_curr].keys():
@@ -111,7 +112,7 @@ class Counts(object):
                         transit_query_string = generate_transit_query(curr_query, curr_level_out,
                                                                       prev_level_out_mapped, ref_level_prev)
                         query_cost_transit[qid][transit][iter_qid_curr] = eval(transit_query_string)
-                        print transit, iter_qid_curr, query_cost_transit[qid][transit][iter_qid_curr][:2]
+                        #print transit, iter_qid_curr, query_cost_transit[qid][transit][iter_qid_curr][:2]
 
         self.query_out_transit = query_cost_transit
 
@@ -143,7 +144,7 @@ class Counts(object):
                 for ref_qid in composed_spark_queries:
                     # print ref_qid, composed_queries[ref_qid].qid
                     if len(composed_spark_queries[ref_qid].operators) > 0:
-                        tmp1, _ = generate_intermediate_spark_queries(composed_spark_queries[ref_qid], ref_level)
+                        tmp1, _ = generate_intermediate_spark_queries(composed_spark_queries[ref_qid], ref_level, self.target)
                         qid = ref_qid / 10000
                         if qid not in refined_spark_queries:
                             refined_spark_queries[qid] = {}
@@ -152,8 +153,6 @@ class Counts(object):
                         tmp_query = (spark.PacketStream(qid))
                         tmp_query.basic_headers = BASIC_HEADERS
 
-                        #copy_spark_operators_to_spark(tmp_query, composed_spark_queries[ref_qid].operators[0])
-                        #tmp_query.operators[0].map_values = ['1']
                         refined_spark_queries[qid][ref_level][0] = tmp_query
                         for iter_qid in tmp1:
                             # print "Adding intermediate Query:", iter_qid, type(tmp1[iter_qid])

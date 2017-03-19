@@ -5,6 +5,7 @@ import math
 
 #from sonata.system_config import *
 from sonata.query_engine.sonata_queries import *
+import sonata.streaming_driver.query_object as spark
 from sonata.core.training.hypothesis.costs.dp_cost import get_data_plane_cost
 from sonata.core.training.hypothesis.costs.sp_cost import get_streaming_cost
 
@@ -39,65 +40,95 @@ def add_timestamp_key(qid_2_query):
     return qid_2_query
 
 
-def generate_intermediate_sonata_queries(sonata_query, refinement_level):
-    number_intermediate_queries = len(filter(lambda s: s in ['Distinct', 'Reduce', 'Filter'], [x.name for x in sonata_query.operators]))
-    sonata_intermediate_queries = {}
-    prev_qid = 0
-    filter_mappings = {}
-    filters_marked = {}
-    for max_operators in range(1,1+number_intermediate_queries):
-        qid = (1000*sonata_query.qid)+max_operators
-        tmp_query = (PacketStream(sonata_query.qid))
-        tmp_query.basic_headers = BASIC_HEADERS
-        ctr = 0
-        filter_ctr = 0
-        prev_operator = None
-        for operator in sonata_query.operators:
-            if operator.name != 'Join':
-                if ctr < max_operators:
-                    copy_operators(tmp_query, operator)
-                    prev_operator = operator
+# def generate_intermediate_sonata_queries(sonata_query, refinement_level):
+#     number_intermediate_queries = len(filter(lambda s: s in ['Distinct', 'Reduce', 'Filter'], [x.name for x in sonata_query.operators]))
+#     sonata_intermediate_queries = {}
+#     prev_qid = 0
+#     filter_mappings = {}
+#     filters_marked = {}
+#     for max_operators in range(1,1+number_intermediate_queries):
+#         qid = (1000*sonata_query.qid)+max_operators
+#         tmp_query = (PacketStream(sonata_query.qid))
+#         tmp_query.basic_headers = BASIC_HEADERS
+#         ctr = 0
+#         filter_ctr = 0
+#         prev_operator = None
+#         for operator in sonata_query.operators:
+#             if operator.name != 'Join':
+#                 if ctr < max_operators:
+#                     copy_operators(tmp_query, operator)
+#                     prev_operator = operator
+#                 else:
+#                     break
+#                 if operator.name in ['Distinct', 'Reduce', 'Filter']:
+#                     ctr += 1
+#                 if operator.name == 'Filter':
+#                     filter_ctr += 1
+#                     if (qid, refinement_level, filter_ctr) not in filters_marked:
+#                         filters_marked[(qid, refinement_level, filter_ctr)] = sonata_query.qid
+#                         filter_mappings[(prev_qid, qid, refinement_level)] = (sonata_query.qid, filter_ctr, operator.func[1])
+#             else:
+#                 prev_operator = operator
+#                 copy_operators(tmp_query, operator)
+#
+#         sonata_intermediate_queries[qid] = tmp_query
+#         prev_qid = qid
+#
+#     return sonata_intermediate_queries, filter_mappings
+
+def get_partition_plans_learning(spark_query, target):
+    # receives dp_query object.
+    total_operators = len(spark_query.operators)
+    partition_plans_learning = []
+    ctr = 1
+    for operator in spark_query.operators:
+        can_increment = True
+        if operator.name in target.supported_operators.keys():
+            if hasattr(operator, 'func') and len(operator.func) > 0:
+                if operator.func[0] in target.supported_operators[operator.name]:
+                    if operator.name in target.learning_operators:
+                        partition_plans_learning.append(ctr)
                 else:
                     break
-                if operator.name in ['Distinct', 'Reduce', 'Filter']:
-                    ctr += 1
-                if operator.name == 'Filter':
-                    filter_ctr += 1
-                    if (qid, refinement_level, filter_ctr) not in filters_marked:
-                        filters_marked[(qid, refinement_level, filter_ctr)] = sonata_query.qid
-                        filter_mappings[(prev_qid, qid, refinement_level)] = (sonata_query.qid, filter_ctr, operator.func[1])
             else:
-                prev_operator = operator
-                copy_operators(tmp_query, operator)
+                if operator.name in target.learning_operators:
+                    partition_plans_learning.append(ctr)
+        else:
+            break
 
-        sonata_intermediate_queries[qid] = tmp_query
-        prev_qid = qid
+        if operator.name == 'Map':
+            if hasattr(operator, 'func') and len(operator.func) > 0:
+                if operator.func[0] == 'mask':
+                    can_increment = False
 
-    return sonata_intermediate_queries, filter_mappings
+        if can_increment:
+            ctr += 1
+            #print operator.name, partition_plans_learning
 
+    return partition_plans_learning
 
-def generate_intermediate_spark_queries(spark_query, refinement_level):
-    number_intermediate_queries = len(filter(lambda s: s in ['Distinct', 'Reduce', 'Filter'], [x.name for x in spark_query.operators]))
+def generate_intermediate_spark_queries(spark_query, refinement_level, target):
+    partition_plans_learning = get_partition_plans_learning(spark_query, target)
+    partition_plans_learning += [len(spark_query.operators)]
     spark_intermediate_queries = {}
     prev_qid = 0
     filter_mappings = {}
     filters_marked = {}
-    for max_operators in range(1, 2+number_intermediate_queries):
-        qid = (1000 * spark_query.qid) + max_operators
+    for max_operators in partition_plans_learning:
+        qid = 1000*spark_query.qid+max_operators
         tmp_query = (spark.PacketStream(spark_query.qid))
         tmp_query.basic_headers = BASIC_HEADERS
         ctr = 0
         filter_ctr = 0
         prev_operator = None
         for operator in spark_query.operators:
+            can_increment = True
             if operator.name != 'Join':
                 if ctr < max_operators:
                     copy_spark_operators_to_spark(tmp_query, operator)
                     prev_operator = operator
                 else:
                     break
-                if operator.name in ['Distinct', 'Reduce', 'Filter']:
-                    ctr += 1
                 if operator.name == 'Filter':
                     filter_ctr += 1
                     if (qid, refinement_level, filter_ctr) not in filters_marked:
@@ -106,6 +137,12 @@ def generate_intermediate_spark_queries(spark_query, refinement_level):
             else:
                 copy_sonata_operators_to_spark(tmp_query, operator)
                 prev_operator = operator
+            if operator.name == 'Map':
+                if hasattr(operator, 'func') and len(operator.func) > 0:
+                    if operator.func[0] == 'mask':
+                        can_increment = False
+            if can_increment:
+                ctr += 1
 
         spark_intermediate_queries[qid] = tmp_query
         prev_qid = qid
@@ -181,37 +218,40 @@ def dump_data(data, fname):
         pickle.dump(data, f)
 
 
-def update_counts(sc, queries, query_out, iter_qid, delta, bits_count, packet_count, ctr, target_plan):
+def update_counts(sc, queries, query_out, iter_qid, delta, bits_count, packet_count, ctr):
     curr_operator = queries[iter_qid].operators[-1]
     curr_query_out = query_out[iter_qid]
-    next_operator = queries[iter_qid+1].operators[-1]
-    next_query_out = query_out[iter_qid+1]
 
     if curr_operator.name in ['Distinct','Reduce']:
         # Update the number of bits required to perform this operation
-        if next_operator.name == 'Filter':
-            thresh = int(next_operator.func[1])
-            packet_count = get_streaming_cost(sc, curr_operator.name, next_query_out)
-        else:
-            thresh = 1
-            packet_count = get_streaming_cost(sc, curr_operator.name, curr_query_out)
+
         if curr_operator.name == 'Reduce':
+            next_operator = queries[iter_qid+1].operators[-1]
+            next_query_out = query_out[iter_qid+1]
+            thresh = 1
+            if next_operator.name == 'Filter':
+                thresh = int(next_operator.func[1])
+                packet_count = get_streaming_cost(sc, curr_operator.name, next_query_out)
+
             delta_bits = get_data_plane_cost(sc, curr_operator.name, curr_operator.func[0],
                                           curr_query_out, thresh, delta )
+
         else:
+            # for 'Distinct' operator
+            thresh = 1
             delta_bits = get_data_plane_cost(sc, curr_operator.name, '',
                                              curr_query_out, thresh, delta )
+            packet_count = get_streaming_cost(sc, curr_operator.name, curr_query_out)
 
         bits_count = bits_count.join(delta_bits).map(lambda s: (s[0], (s[1][0]+s[1][1])))
 
         print "After executing ", curr_operator.name, " in Data Plane"
-        print "Bits Count Cost", bits_count.collect()[:2]
-        print "Packet Count Cost", packet_count.collect()[:2]
+        #print "Bits Count Cost", bits_count.collect()[:2]
+        #print "Packet Count Cost", packet_count.collect()[:2]
 
-        target_plan = target_plan[:ctr]+'0'+target_plan[1+ctr:]
 
         ctr += 1
-    return bits_count, packet_count, ctr, target_plan
+    return bits_count, packet_count, ctr
 
 
 def get_spark_context_batch():

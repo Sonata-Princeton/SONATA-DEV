@@ -91,8 +91,6 @@ class Runtime(object):
                 sp_query = get_streaming_query(refined_sonata_query, refined_query_id, p)
                 self.sp_queries[refined_query_id] = sp_query
 
-
-
         print self.dp_queries
         with open('dp_queries.pickle', 'w') as f:
             pickle.dump(self.dp_queries, f)

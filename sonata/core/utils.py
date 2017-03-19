@@ -91,7 +91,7 @@ def get_refinement_keys(query):
                 red_keys = red_keys.intersection(set(operator.keys))
 
     # print "Reduction Key Search", query.qid, red_keys
-    return red_keys
+    return list(red_keys)[0]
 
 
 def generate_composed_spark_queries(reduction_key, basic_headers, query_tree, qid_2_query, composed_queries={}):

@@ -20,4 +20,4 @@ def sonata_2_dp_query(query):
 class Target(object):
     learning_operators = ['Distinct', 'Reduce', 'Filter']
     costly_operators = ['Distinct', 'Reduce']
-    supported_operators = {'Distinct': [], 'Reduce': ['sum'], 'Filter': ['eq'], 'Map': ['mask', 'eq']}
+    supported_operators = {'Distinct': [], 'Reduce': ['sum'], 'Filter': ['eq', 'geq'], 'Map': ['mask', 'eq']}

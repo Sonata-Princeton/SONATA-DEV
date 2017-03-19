@@ -3,7 +3,7 @@
 #  Arpit Gupta (arpitg@cs.princeton.edu)
 #  Ankita Pawar (ankscircle@gmail.com)
 
-#from integration import *
+# from integration import *
 
 from sonata.dataplane_driver.query_object import QueryObject as DP_QO
 from sonata.streaming_driver.query_object import PacketStream as SP_QO
@@ -67,43 +67,51 @@ class Partition(object):
     intermediate_learning_queries = {}
     filter_mappings = {}
 
-    def __init__(self, query, target, ref_level = 32):
+    def __init__(self, query, target, ref_level=32):
         self.query = query
         self.target = target
         self.ref_level = ref_level
 
     def generate_partitioned_queries_learning(self):
         sonata_query = self.query
-        number_intermediate_learning_queries = len(
-            filter(lambda s: s in self.target.learning_operators, [x.name for x in self.query.operators]))
+        partition_plans_learning = self.get_partition_plans_learning(sonata_query)
+        print partition_plans_learning
         intermediate_learning_queries = {}
         prev_qid = 0
         filter_mappings = {}
         filters_marked = {}
-        for max_operators in range(1, 1 + number_intermediate_learning_queries):
-            qid = (1000 * sonata_query.qid) + max_operators
+        for max_operators in partition_plans_learning:
+            qid = 1000*sonata_query.qid+max_operators
             tmp_query = (PacketStream(sonata_query.qid))
             tmp_query.basic_headers = BASIC_HEADERS
             ctr = 0
             filter_ctr = 0
             prev_operator = None
             for operator in sonata_query.operators:
+                can_increment = True
                 if operator.name != 'Join':
                     if ctr < max_operators:
                         copy_operators(tmp_query, operator)
                         prev_operator = operator
                     else:
                         break
-                    if operator.name in self.target.learning_operators:
-                        ctr += 1
                     if operator.name == 'Filter':
                         filter_ctr += 1
                         if (qid, self.ref_level, filter_ctr) not in filters_marked:
-                            filters_marked[(qid, self.ref_level, filter_ctr, )] = sonata_query.qid
-                            filter_mappings[(prev_qid, qid, self.ref_level)] = (sonata_query.qid, filter_ctr, operator.func[1])
+                            filters_marked[(qid, self.ref_level, filter_ctr,)] = sonata_query.qid
+                            filter_mappings[(prev_qid, qid, self.ref_level)] = (
+                            sonata_query.qid, filter_ctr, operator.func[1])
                 else:
                     prev_operator = operator
                     copy_operators(tmp_query, operator)
+
+                if operator.name == 'Map':
+                    if hasattr(operator, 'func') and len(operator.func) > 0:
+                        if operator.func[0] == 'mask':
+                            can_increment = False
+                if can_increment:
+                    ctr += 1
+
 
             intermediate_learning_queries[qid] = tmp_query
             prev_qid = qid
@@ -115,10 +123,9 @@ class Partition(object):
         query_2_plans = {}
         for q in get_flattened_sub_queries(self.query):
             n_operators = len(q.operators)
-            dp_query = sonata_2_dp_query(q)
-            partitioning_plans = self.get_partition_plans(dp_query)
+            partitioning_plans = self.get_partition_plans(q)
             # TODO: get rid of this hardcoding
-            #partitioning_plans = ['00', '01', '11']
+            # partitioning_plans = ['00', '01', '11']
             query_2_plans[q.qid] = partitioning_plans
         print "Partitioning Plans", query_2_plans
 
@@ -127,17 +134,59 @@ class Partition(object):
     def get_partition_plans(self, dp_query):
         # receives dp_query object.
         total_operators = len(dp_query.operators)
-        partition_plans = [(0, total_operators)]
+        partition_plans = [0]
         ctr = 1
         for operator in dp_query.operators:
+            can_increment = True
+            #print operator, partition_plans
             if operator.name in self.target.supported_operators.keys():
                 if hasattr(operator, 'func') and len(operator.func) > 0:
                     if operator.func[0] in self.target.supported_operators[operator.name]:
                         if operator.name in self.target.costly_operators:
-                            partition_plans.append((ctr, total_operators - ctr))
+                            partition_plans.append(ctr)
                     else:
                         break
+                else:
+                    if operator.name in self.target.costly_operators:
+                        partition_plans.append(ctr)
+            else:
+                break
+            if operator.name == 'Map':
+                if hasattr(operator, 'func') and len(operator.func) > 0:
+                    if operator.func[0] == 'mask':
+                        can_increment = False
+            if can_increment:
+                ctr += 1
+
+        return partition_plans
+
+    def get_partition_plans_learning(self, query):
+        # receives dp_query object.
+        total_operators = len(query.operators)
+        partition_plans_learning = []
+        ctr = 1
+        for operator in query.operators:
+            can_increment = True
+            if operator.name in self.target.supported_operators.keys():
+                if hasattr(operator, 'func') and len(operator.func) > 0:
+                    if operator.func[0] in self.target.supported_operators[operator.name]:
+                        if operator.name in self.target.learning_operators:
+                            partition_plans_learning.append(ctr)
+                    else:
+                        break
+                else:
+                    if operator.name in self.target.learning_operators:
+                        partition_plans_learning.append(ctr)
             else:
                 break
 
-        return partition_plans
+            if operator.name == 'Map':
+                if hasattr(operator, 'func') and len(operator.func) > 0:
+                    if operator.func[0] == 'mask':
+                        can_increment = False
+
+            if can_increment:
+                ctr += 1
+            #print operator.name, partition_plans_learning
+
+        return partition_plans_learning

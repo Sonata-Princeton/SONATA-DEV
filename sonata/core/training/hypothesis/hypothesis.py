@@ -47,6 +47,7 @@ class Hypothesis(object):
         # P = {}
         for qid in query_2_plans:
             P = query_2_plans[qid]
+        print "Partitioning Plans (P)", P
         self.P = P
 
     def get_iteration_levels(self):
@@ -66,14 +67,14 @@ class Hypothesis(object):
         self.V = vertices
 
     def add_edges(self):
-        usePickle = True
+        usePickle = False
         if usePickle:
             with open('costs.pickle', 'r') as f:
                 print "Loading costs from pickle..."
                 costs = pickle.load(f)
         else:
             # Run the query over training data to get various counts
-            counts = Counts(self.query, self.sc, self.training_data, self.timestamps, self.refinement_object)
+            counts = Counts(self.query, self.sc, self.training_data, self.timestamps, self.refinement_object, self.target)
             # Apply the costs model over counts to estimate costs for different edges
             costs = Costs(counts, self.P).costs
             print costs
