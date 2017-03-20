@@ -82,15 +82,12 @@ class DataplaneDriver(object):
     def is_supportable(self, application, target_id):
         target = self.get_target(target_id)
 
-        if not isinstance(application, list):
-            application = [application]
-
         supported_operators = target.get_supported_operators()
         self.logger.debug('target %s supports the following operators: %s' %
                           (str(target_id), ', '.join(supported_operators))
                           )
 
-        for query_object in application:
+        for query_object in application.values():
             for operator in query_object.operators:
                 self.logger.debug('trying to check if %s is supported.' % (operator.name, ))
                 if operator.name not in supported_operators:
@@ -100,10 +97,6 @@ class DataplaneDriver(object):
     def get_cost(self, application, target_id):
         target = self.get_target(target_id)
 
-        if isinstance(application, list):
-            pass
-        else:
-            pass
         return 999
 
     def configure(self, application, target_id):

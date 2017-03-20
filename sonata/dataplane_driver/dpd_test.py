@@ -71,19 +71,19 @@ class DPDTest(object):
 
     def cost_test(self):
         msg_type = 'get_cost'
-        content = (self.message.values(), self.target_id)
+        content = (self.message, self.target_id)
         cost = self.send_message(msg_type, content, True)
         self.logger.info('received %i as cost' % (cost, ))
 
     def supported_test(self):
         msg_type = 'is_supported'
-        content = (self.message.values(), self.target_id)
+        content = (self.message, self.target_id)
         is_supported = self.send_message(msg_type, content, True)
         self.logger.info('target can support the query: %s' % (str(is_supported), ))
 
     def run_test(self):
         msg_type = 'init'
-        content = (self.message.values(), self.target_id)
+        content = (self.message, self.target_id)
         self.send_message(msg_type, content, False)
 
     def display_message(self):
