@@ -26,6 +26,7 @@ sudo apt-get install -y libstring-crc32-perl
 
 echo 'PATH=$PATH:~/iSDX/bin' >> ~/.profile
 echo 'export PYTHONPATH=$PYTHONPATH:/home/vagrant/dev' >> ~/.profile
+echo 'export PYTHONPATH=$PYTHONPATH:/home/vagrant/bmv2/mininet' >> ~/.profile
 echo 'export SPARK_HOME=/home/vagrant/spark/' >> ~/.profile
 
 mkdir ~/.vim
