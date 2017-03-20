@@ -62,6 +62,7 @@ class P4Target(object):
         # query object
         self.queries = dict()
 
+
     def get_supported_operators(self):
         return self.supported_operations
 
@@ -71,7 +72,6 @@ class P4Target(object):
         for qid in app:
             print app[qid]
             self.logger.debug('create query pipeline for qid: %i' % (qid, ))
-            self.queries[qid] = app[qid]
             query_pipeline = QueryPipeline(qid)
 
             # Set Parse Payload
@@ -116,6 +116,7 @@ class P4Target(object):
                     query_pipeline.distinct(keys=keys)
 
             p4_queries.append(query_pipeline)
+            self.queries[qid] = query_pipeline
 
         # Compile all the query pipelines to P4 source code
         p4_commands = list()

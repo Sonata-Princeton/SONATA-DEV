@@ -9,6 +9,7 @@ from partition import Partition
 
 
 def get_refined_query_id(query, ref_level):
+    print "get_refined_query_id", ref_level, query
     return 10000*query.qid + ref_level
 
 
@@ -76,8 +77,9 @@ class Refinement(object):
         self.query = query
         self.target = target
         self.ref_levels = range(0, GRAN_MAX, GRAN)
-        self.refinement_key = get_refinement_keys(self.query)
+        self.refinement_key = list(get_refinement_keys(self.query))[0]
         self.qid_2_query = get_qid_2_query(self.query)
+        print self.qid_2_query
 
         # Add timestamp for each key
         self.add_timestamp_key()
@@ -85,11 +87,24 @@ class Refinement(object):
         # Generate refined intermediate SONATA queries
         self.generate_refined_intermediate_sonata_queries()
 
-    def get_refined_updated_query(self, ref_level):
+    def get_refined_updated_query(self, qid, ref_level, prev_qid = 0, prev_ref_level = 0):
         # return query with updated threshold values and map operation---masking based on refinement level
-        iter_qids = self.refined_sonata_queries[self.query.qid][ref_level].keys()
+        iter_qids = self.refined_sonata_queries[qid][ref_level].keys()
         iter_qids.sort()
-        return self.refined_sonata_queries[self.query.qid][ref_level][iter_qids[-1]]
+        tmp_query = self.refined_sonata_queries[qid][ref_level][iter_qids[-1]]
+        if prev_ref_level > 0:
+            out_query = PacketStream(tmp_query.qid)
+            out_query.basic_headers = BASIC_HEADERS
+            refined_qid_src = 10000*prev_qid + prev_ref_level
+            out_query.filter(append_type=1, src=refined_qid_src, filter_keys=(self.refinement_key,),
+                                 func=('mask',prev_ref_level,))
+
+            for operator in tmp_query.operators:
+                copy_operators(out_query, operator)
+        else:
+            out_query = tmp_query
+
+        return out_query
 
     def add_timestamp_key(self):
         def add_timestamp_to_query(q):
