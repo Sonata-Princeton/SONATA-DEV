@@ -454,14 +454,14 @@ backend      : qt4agg
 #animation.bitrate: -1             # Controls size/quality tradeoff for movie.
 # -1 implies let utility auto-determine
 #animation.frame_format: 'png'     # Controls frame format used by temp files
-#animation.ffmpeg_path: 'ffmpeg'   # Path to ffmpeg binary. Without full path
+#animation.ffmpeg_path: 'ffmpeg'   # QueryPlan to ffmpeg binary. Without full path
 # $PATH is searched
 #animation.ffmpeg_args: ''         # Additional arguments to pass to ffmpeg
-#animation.avconv_path: 'avconv'   # Path to avconv binary. Without full path
+#animation.avconv_path: 'avconv'   # QueryPlan to avconv binary. Without full path
 # $PATH is searched
 #animation.avconv_args: ''         # Additional arguments to pass to avconv
 #animation.mencoder_path: 'mencoder'
-# Path to mencoder binary. Without full path
+# QueryPlan to mencoder binary. Without full path
 # $PATH is searched
 #animation.mencoder_args: ''       # Additional arguments to pass to mencoder
 

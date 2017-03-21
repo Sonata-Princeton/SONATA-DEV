@@ -9,7 +9,7 @@ git clone https://github.com/p4lang/p4c-bm.git p4c-bmv2
 cd p4c-bmv2
 sudo pip install -r requirements.txt
 
-apt-get -yf install
+sudo apt-get -yf install
 
 cd ~/bmv2/
 sudo  ./install_deps.sh
