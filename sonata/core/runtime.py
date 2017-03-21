@@ -127,16 +127,16 @@ class Runtime(object):
         print self.dp_queries
         print self.sp_queries
 
-        time.sleep(10)
-        self.initialize_handlers()
-        time.sleep(2)
-        self.send_to_dp_driver('init', self.dp_queries)
-        if self.sp_queries:
-            self.send_to_sm()
-
-        self.streaming_driver_thread.join()
-        self.dp_driver_thread.join()
-        self.dpd_thread.join()
+        # time.sleep(10)
+        # self.initialize_handlers()
+        # time.sleep(2)
+        # self.send_to_dp_driver('init', self.dp_queries)
+        # if self.sp_queries:
+        #     self.send_to_sm()
+        #
+        # self.streaming_driver_thread.join()
+        # self.dp_driver_thread.join()
+        # self.dpd_thread.join()
 
     def update_query_mappings(self, query, final_plan):
         if len(final_plan) > 1:
