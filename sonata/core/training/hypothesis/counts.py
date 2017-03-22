@@ -48,10 +48,15 @@ class Counts(object):
         for qid in self.refined_spark_queries:
             print "Processing Refined Queries for cost...", qid
             self.query_cost_transit_fname = 'query_cost_transit_'+str(qid)+'.pickle'
-            self.get_transit_query_output(qid)
-            dump_data(self.query_out_transit, self.query_cost_transit_fname)
-            with open(self.query_cost_transit_fname, 'r') as f:
-                self.query_out_transit = pickle.load(f)
+
+            usePickle = True
+            if usePickle:
+                with open(self.query_cost_transit_fname, 'r') as f:
+                    self.query_out_transit = pickle.load(f)
+            else:
+                self.get_transit_query_output(qid)
+                dump_data(self.query_out_transit, self.query_cost_transit_fname)
+
 
 
     def get_transit_query_output(self, qid):
@@ -85,7 +90,8 @@ class Counts(object):
                 transit_query_string = 'self.sc.parallelize(out)'
                 transit_query_string = generate_query_to_collect_transit_cost(transit_query_string, spark_query)
                 query_cost_transit[qid][transit][iter_qid] = eval(transit_query_string)
-                #print transit, iter_qid, query_cost_transit[qid][transit][iter_qid][:2]
+                print transit_query_string
+                print transit, iter_qid, query_cost_transit[qid][transit][iter_qid][:2]
                 #break
 
         # Then get the cost for transit (ref_level_prev, ref_level_current)
@@ -112,7 +118,8 @@ class Counts(object):
                         transit_query_string = generate_transit_query(curr_query, curr_level_out,
                                                                       prev_level_out_mapped, ref_level_prev)
                         query_cost_transit[qid][transit][iter_qid_curr] = eval(transit_query_string)
-                        #print transit, iter_qid_curr, query_cost_transit[qid][transit][iter_qid_curr][:2]
+                        print transit_query_string
+                        print transit, iter_qid_curr, query_cost_transit[qid][transit][iter_qid_curr][:2]
 
         self.query_out_transit = query_cost_transit
 
@@ -179,6 +186,7 @@ class Counts(object):
                         print "No query to process for", qid, "refinement level", ref_level, "iteration id", iter_qid
                         out = []
                     query_out_refinement_level[qid][ref_level][iter_qid] = out
+                    print ref_level, iter_qid, query_string, out[:2]
                     #print len(query_out_refinement_level[qid][ref_level][iter_qid])
 
             query_out_refinement_level[qid][ref_level][0] = out0

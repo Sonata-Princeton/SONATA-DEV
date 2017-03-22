@@ -218,7 +218,7 @@ def dump_data(data, fname):
         pickle.dump(data, f)
 
 
-def update_counts(sc, queries, query_out, iter_qid, delta, bits_count, packet_count, ctr):
+def update_counts(sc, queries, query_out, iter_qid, delta, bits_count, ctr):
     curr_operator = queries[iter_qid].operators[-1]
     curr_query_out = query_out[iter_qid]
 
@@ -243,15 +243,13 @@ def update_counts(sc, queries, query_out, iter_qid, delta, bits_count, packet_co
                                              curr_query_out, thresh, delta )
             packet_count = get_streaming_cost(sc, curr_operator.name, curr_query_out)
 
-        bits_count = bits_count.join(delta_bits).map(lambda s: (s[0], (s[1][0]+s[1][1])))
+        out = bits_count.join(delta_bits).map(lambda s: (s[0], (s[1][0]+s[1][1])))
 
         print "After executing ", curr_operator.name, " in Data Plane"
         #print "Bits Count Cost", bits_count.collect()[:2]
         #print "Packet Count Cost", packet_count.collect()[:2]
 
-
-        ctr += 1
-    return bits_count, packet_count, ctr
+    return out, packet_count, ctr+1
 
 def create_spark_context():
     from pyspark import SparkContext, SparkConf

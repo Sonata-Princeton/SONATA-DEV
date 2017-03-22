@@ -36,7 +36,7 @@ class Runtime(object):
         self.queries = queries
         self.initialize_logging()
         self.target_id = 1
-        #self.sc = create_spark_context()
+        self.sc = create_spark_context()
 
         use_pickled_queries = False
         if use_pickled_queries:
@@ -45,7 +45,7 @@ class Runtime(object):
                 self.dp_queries = pickled_queries[0]
                 self.sp_queries = pickled_queries[1]
         else:
-            #(self.timestamps, self.training_data) = get_spark_context_batch(self.sc)
+            (self.timestamps, self.training_data) = get_spark_context_batch(self.sc)
             # Learn the query plan
             for query in self.queries:
                 target = Target()
@@ -54,45 +54,45 @@ class Runtime(object):
                 print refinement_object.qid_2_refined_queries
                 self.refinement_keys[query.qid] = refinement_object.refinement_key
 
-                # fname = "plan_" + str(query.qid) + ".pickle"
-                # usePickledPlan = True
-                # if usePickledPlan:
-                #     with open(fname, 'r') as f:
-                #         self.query_plans[query.qid] = pickle.load(f)
-                # else:
-                #     # update the threshold for the refined queries
-                #     refinement_object.update_filter(self.training_data)
-                #     # Generate hypothesis graph for each query
-                #     # query, sc, training_data, timestamps, refinement_object
-                #     hypothesis = Hypothesis(query, self.sc, self.training_data, self.timestamps,
-                #                             refinement_object, target)
-                #
-                #     # Learn the query plan using the hypothesis graphs
-                #     learn = Learn(hypothesis)
-                #     self.query_plans[query.qid] = [x.state for x in learn.final_plan.path]
-                #     with open(fname, 'w') as f:
-                #         pickle.dump(self.query_plans[query.qid], f)
-                #
+                fname = "plan_" + str(query.qid) + ".pickle"
+                usePickledPlan = False
+                if usePickledPlan:
+                    with open(fname, 'r') as f:
+                        self.query_plans[query.qid] = pickle.load(f)
+                else:
+                    # update the threshold for the refined queries
+                    refinement_object.update_filter(self.training_data)
+                    # Generate hypothesis graph for each query
+                    # query, sc, training_data, timestamps, refinement_object
+                    hypothesis = Hypothesis(query, self.sc, self.training_data, self.timestamps,
+                                            refinement_object, target)
+
+                    # Learn the query plan using the hypothesis graphs
+                    learn = Learn(hypothesis)
+                    self.query_plans[query.qid] = [x.state for x in learn.final_plan.path]
+                    with open(fname, 'w') as f:
+                        pickle.dump(self.query_plans[query.qid], f)
+
                 # # Generate queries for the data plane and stream processor after learning the final plan
                 # final_plan = self.query_plans[query.qid][1:-1]
                 # print final_plan
-                final_plan = [(1, 16, 5, 1), (3, 16, 1, 2), (1, 32, 5, 3), (3, 32, 1, 4)]
-                prev_r = 0
-                prev_qid = 0
-
-                for (q, r, p, l) in final_plan:
-                    qry = refinement_object.qid_2_query[q]
-                    refined_query_id = get_refined_query_id(qry, r)
-
-                    refined_sonata_query = refinement_object.get_refined_updated_query(qry.qid, r, prev_qid, prev_r)
-                    if prev_r > 0:
-                         p += 1
-                    dp_query = get_dataplane_query(refined_sonata_query, refined_query_id, p)
-                    self.dp_queries[refined_query_id] = dp_query
-                    sp_query = get_streaming_query(refined_sonata_query, refined_query_id, p)
-                    self.sp_queries[refined_query_id] = sp_query
-                    prev_r = r
-                    prev_qid = q
+                # final_plan = [(1, 16, 5, 1), (3, 16, 1, 2), (1, 32, 5, 3), (3, 32, 1, 4)]
+                # prev_r = 0
+                # prev_qid = 0
+                #
+                # for (q, r, p, l) in final_plan:
+                #     qry = refinement_object.qid_2_query[q]
+                #     refined_query_id = get_refined_query_id(qry, r)
+                #
+                #     refined_sonata_query = refinement_object.get_refined_updated_query(qry.qid, r, prev_qid, prev_r)
+                #     if prev_r > 0:
+                #          p += 1
+                #     dp_query = get_dataplane_query(refined_sonata_query, refined_query_id, p)
+                #     self.dp_queries[refined_query_id] = dp_query
+                #     sp_query = get_streaming_query(refined_sonata_query, refined_query_id, p)
+                #     self.sp_queries[refined_query_id] = sp_query
+                #     prev_r = r
+                #     prev_qid = q
 
 
 
@@ -121,11 +121,11 @@ class Runtime(object):
                 #
                 #     prev_r = r
             #sc.stop()
-            with open('pickled_queries.pickle', 'w') as f:
-                pickle.dump({0: self.dp_queries, 1: self.sp_queries}, f)
-
-        print self.dp_queries
-        print self.sp_queries
+        #     with open('pickled_queries.pickle', 'w') as f:
+        #         pickle.dump({0: self.dp_queries, 1: self.sp_queries}, f)
+        #
+        # print self.dp_queries
+        # print self.sp_queries
 
         # time.sleep(10)
         # self.initialize_handlers()

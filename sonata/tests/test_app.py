@@ -64,6 +64,6 @@ if __name__ == '__main__':
           .distinct(keys=('dIP',))
           )
 
-    queries = [q3]
+    queries = [q1]
 
     runtime = Runtime(conf, queries)
