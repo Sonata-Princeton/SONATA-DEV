@@ -36,9 +36,14 @@ class Learn(object):
     final_plan = None
     query_plan = {}
 
-    def __init__(self, hypothesis):
-        self.hypothesis = hypothesis
-        self.K = int(len(self.hypothesis.timestamps)/FOLD_SIZE)
+    def __init__(self, G):
+        self.G = G
+        self.timestamps = G.keys()
+
+        # sort the timestamps for sanity reasons
+        self.timestamps.sort()
+
+        self.K = int(len(self.timestamps)/FOLD_SIZE)
         # print "Total Folds", self.K
         self.learn_query_plan()
 
@@ -47,14 +52,14 @@ class Learn(object):
         h_T = {}
         e_V = {}
         candidates = {}
-        for ts in self.hypothesis.G:
+        for ts in self.G:
             # print "Searching best path for", ts
-            g = self.hypothesis.G[ts]
+            g = self.G[ts]
             h_s[ts] = Search(g).final_plan
             print "Best path for ts", ts, "is", h_s[ts].path, "with cost", h_s[ts].cost
 
         for fold in range(1, 1+self.K):
-            (G_t, G_v) = partition_data(self.hypothesis.G, fold, self.K)
+            (G_t, G_v) = partition_data(self.G, fold, self.K)
             h_T[fold] = get_min_error_path(G_t, h_s)
 
             print "For fold", fold, "best plan", h_T[fold].path

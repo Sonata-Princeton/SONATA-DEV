@@ -45,14 +45,10 @@ class Runtime(object):
                 self.dp_queries = pickled_queries[0]
                 self.sp_queries = pickled_queries[1]
         else:
-            (self.timestamps, self.training_data) = get_spark_context_batch(self.sc)
+
             # Learn the query plan
             for query in self.queries:
-                target = Target()
-                assert hasattr(target, 'costly_operators')
-                refinement_object = Refinement(query, target)
-                print refinement_object.qid_2_refined_queries
-                self.refinement_keys[query.qid] = refinement_object.refinement_key
+
 
                 fname = "plan_" + str(query.qid) + ".pickle"
                 usePickledPlan = False
@@ -61,14 +57,31 @@ class Runtime(object):
                         self.query_plans[query.qid] = pickle.load(f)
                 else:
                     # update the threshold for the refined queries
-                    refinement_object.update_filter(self.training_data)
+                    # refinement_object.update_filter(self.training_data)
                     # Generate hypothesis graph for each query
                     # query, sc, training_data, timestamps, refinement_object
-                    hypothesis = Hypothesis(query, self.sc, self.training_data, self.timestamps,
-                                            refinement_object, target)
+
+                    usePickle = True
+                    if usePickle:
+                        with open('hypothesis_graph.pickle', 'r') as f:
+                            G = pickle.load(f)
+                    else:
+                        (self.timestamps, self.training_data) = get_spark_context_batch(self.sc)
+                        target = Target()
+                        assert hasattr(target, 'costly_operators')
+                        refinement_object = Refinement(query, target)
+                        #print refinement_object.qid_2_refined_queries
+                        self.refinement_keys[query.qid] = refinement_object.refinement_key
+                        hypothesis = Hypothesis(query, self.sc, self.training_data, self.timestamps,
+                                                refinement_object, target)
+                        G = hypothesis.G
+
+                        # dump the hypothesis graph: {ts:G[ts], ...}
+                        with open('hypothesis_graph.pickle', 'w') as f:
+                            pickle.dump(G, f)
 
                     # Learn the query plan using the hypothesis graphs
-                    learn = Learn(hypothesis)
+                    learn = Learn(G)
                     self.query_plans[query.qid] = [x.state for x in learn.final_plan.path]
                     with open(fname, 'w') as f:
                         pickle.dump(self.query_plans[query.qid], f)

@@ -49,7 +49,7 @@ class Counts(object):
             print "Processing Refined Queries for cost...", qid
             self.query_cost_transit_fname = 'query_cost_transit_'+str(qid)+'.pickle'
 
-            usePickle = True
+            usePickle = False
             if usePickle:
                 with open(self.query_cost_transit_fname, 'r') as f:
                     self.query_out_transit = pickle.load(f)

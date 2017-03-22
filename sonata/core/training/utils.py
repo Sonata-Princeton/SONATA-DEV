@@ -1,13 +1,12 @@
+import math
 import pickle
 
 from netaddr import *
-import math
+from sonata.core.training.costs.dp_cost import get_data_plane_cost
 
-#from sonata.system_config import *
-from sonata.query_engine.sonata_queries import *
 import sonata.streaming_driver.query_object as spark
-from sonata.core.training.hypothesis.costs.dp_cost import get_data_plane_cost
-from sonata.core.training.hypothesis.costs.sp_cost import get_streaming_cost
+from sonata.core.training.costs.sp_cost import get_streaming_cost
+from sonata.query_engine.sonata_queries import *
 
 
 def parse_log_line(logline):
@@ -253,7 +252,6 @@ def update_counts(sc, queries, query_out, iter_qid, delta, bits_count, ctr):
 
 def create_spark_context():
     from pyspark import SparkContext, SparkConf
-    from sonata.system_config import TD_PATH, T
     conf = (SparkConf()
             .setMaster("local[*]")
             .setAppName("SONATA-Training")
