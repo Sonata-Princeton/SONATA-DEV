@@ -67,6 +67,7 @@ class Hypothesis(object):
 
     def add_edges(self):
         usePickle = True
+        usePickle = False
         if usePickle:
             with open('costs.pickle', 'r') as f:
                 print "Loading costs from pickle..."
