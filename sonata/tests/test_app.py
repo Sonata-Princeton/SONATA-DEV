@@ -47,7 +47,7 @@ if __name__ == '__main__':
           .distinct(keys=('dIP', 'sIP'))
           .map(keys=('dIP',), map_values=('count',), func=('eq', 1,))
           .reduce(keys=('dIP',), func=('sum',))
-          .filter(filter_vals=('count',), func=('geq', '2'))
+          .filter(filter_vals=('count',), func=('geq', '95'))
           .map(keys=('dIP',))
           )
 
@@ -62,6 +62,15 @@ if __name__ == '__main__':
           .filter(filter_vals=('count',), func=('geq', 1))
           .map(keys=('dIP',))
           .distinct(keys=('dIP',))
+          )
+    q4 = (PacketStream(1)
+          # .filter(filter_keys=('proto',), func=('eq', 6))
+          #.map(keys=('dIP', 'sIP'))
+          #.distinct(keys=('dIP', 'sIP'))
+          .map(keys=('dIP',), map_values=('count',), func=('eq', 1,))
+          .reduce(keys=('dIP',), func=('sum',))
+          .filter(filter_vals=('count',), func=('geq', '95'))
+          .map(keys=('dIP',))
           )
 
     queries = [q1]

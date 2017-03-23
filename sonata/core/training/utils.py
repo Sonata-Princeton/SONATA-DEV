@@ -223,21 +223,24 @@ def update_counts(sc, queries, query_out, iter_qid, delta, bits_count, ctr):
 
     if curr_operator.name in ['Distinct','Reduce']:
         # Update the number of bits required to perform this operation
-
+        thresh = 1
         if curr_operator.name == 'Reduce':
             next_operator = queries[iter_qid+1].operators[-1]
             next_query_out = query_out[iter_qid+1]
-            thresh = 1
+            #print "Current query out:", curr_query_out
+            #print "Next (filter) query out:", next_query_out
+
             if next_operator.name == 'Filter':
                 thresh = int(next_operator.func[1])
                 packet_count = get_streaming_cost(sc, curr_operator.name, next_query_out)
+            else:
+                packet_count = get_streaming_cost(sc, curr_operator.name, curr_query_out)
 
             delta_bits = get_data_plane_cost(sc, curr_operator.name, curr_operator.func[0],
                                           curr_query_out, thresh, delta )
 
         else:
             # for 'Distinct' operator
-            thresh = 1
             delta_bits = get_data_plane_cost(sc, curr_operator.name, '',
                                              curr_query_out, thresh, delta )
             packet_count = get_streaming_cost(sc, curr_operator.name, curr_query_out)

@@ -19,14 +19,14 @@ if [[ $EUID -ne 0 ]]; then
     exit 1
 fi
 
-#killall lt-simple_switch &> /dev/null
-#mn -c &> /dev/null
-#intf="cpu-veth-0"
-#for intf in "m-veth-1" "m-veth-2" "out-veth-1" "out-veth-2"; do
-#	if ip link show $intf &> /dev/null; then
-#	  ip link delete $intf type veth
-#	fi
-#done
+killall lt-simple_switch &> /dev/null
+mn -c &> /dev/null
+intf="cpu-veth-0"
+for intf in "m-veth-1" "m-veth-2" "out-veth-1" "out-veth-2"; do
+	if ip link show $intf &> /dev/null; then
+	  ip link delete $intf type veth
+	fi
+done
 
 sudo ps -ef | grep receive | grep -v grep | awk '{print $2}' | sudo xargs kill -9
 

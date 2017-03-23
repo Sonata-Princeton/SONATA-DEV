@@ -22,6 +22,6 @@ class Target(object):
     costly_operators = ['Distinct', 'Reduce']
     supported_operators = {'Distinct': [], 'Reduce': ['sum'], 'Filter': ['eq', 'geq'], 'Map': ['mask', 'eq']}
     # 1 million pps
-    N_max = 10000
+    N_max = 1
     # 10 Mb
-    B_max = 100000
+    B_max = 1

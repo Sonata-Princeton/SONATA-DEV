@@ -68,7 +68,7 @@ class Hypothesis(object):
     def add_edges(self):
         usePickle = True
         if usePickle:
-            with open('costs_4_25_udp.pickle', 'r') as f:
+            with open('costs.pickle', 'r') as f:
                 print "Loading costs from pickle..."
                 costs = pickle.load(f)
         else:
@@ -77,7 +77,7 @@ class Hypothesis(object):
             # Apply the costs model over counts to estimate costs for different edges
             costs = Costs(counts, self.P, self.target.N_max, self.target.B_max).costs
             print costs
-            with open('costs_4_25_udp.pickle', 'w') as f:
+            with open('costs.pickle', 'w') as f:
                 print "Dumping costs into pickle..."
                 pickle.dump(costs, f)
 
@@ -103,15 +103,21 @@ class Hypothesis(object):
                     #print qid, transit, partition_plan
                     if partition_plan in costs[qid][transit]:
                         for (ts, (b, n)) in costs[qid][transit][partition_plan]:
-                            E[ts][edge] = (self.alpha * n + (1 - self.alpha) * b)
+                            b_norm = float(b)/1
+                            n_norm = float(n)/1
+                            E[ts][edge] = (self.alpha * n_norm + (1 - self.alpha) * b_norm)
+                            if ts == 1440289056:
+                                print ts, edge, b, n, E[ts][edge]
 
         # Add edges for the final refinement level and the final target (T) node
         for (r, p, l) in self.V:
-            if r == self.refinement_levels[-1] and p != -1:
+            if r == self.refinement_levels[-1] and p != -1 and l > 0:
                 edge = ((r, p, l), (r, 0, 0))
                 for ts in self.timestamps:
                     if ts not in E:
                         E[ts] = {}
+                    if ts == 1440289056:
+                        print ts, edge
                     E[ts][edge] = 0
 
         self.E = E

@@ -55,8 +55,9 @@ class Learn(object):
         for ts in self.G:
             # print "Searching best path for", ts
             g = self.G[ts]
-            h_s[ts] = Search(g).final_plan
-            print "Best path for ts", ts, "is", h_s[ts].path, "with cost", h_s[ts].cost
+            if ts == 1440289056:
+                h_s[ts] = Search(g).final_plan
+                print "Best path for ts", ts, "is", h_s[ts].path, "with cost", h_s[ts].cost
 
         for fold in range(1, 1+self.K):
             (G_t, G_v) = partition_data(self.G, fold, self.K)
@@ -72,5 +73,6 @@ class Learn(object):
 
             e_V[fold] = math.sqrt(error_fold)
             candidates[fold] = (h_T[fold], e_V[fold])
-
-        self.final_plan = min_error(candidates.values())
+        final_plan = min_error(candidates.values())
+        print "Final Plan:", final_plan.path
+        self.final_plan = final_plan

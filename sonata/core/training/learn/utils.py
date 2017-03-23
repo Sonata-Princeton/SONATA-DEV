@@ -14,7 +14,6 @@ import random
 import re
 import sys
 
-assert (2, 5) <= sys.version_info < (3,)
 
 infinity = 1.0e400
 
