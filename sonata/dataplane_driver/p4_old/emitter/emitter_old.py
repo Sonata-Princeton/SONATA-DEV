@@ -4,32 +4,24 @@ from multiprocessing.connection import Listener
 import time
 import logging
 
-HEADER_FORMAT = {'sIP': 'BBBB', 'dIP': 'BBBB', 'sPort': '>H', 'dPort': '>H',
-                 'nBytes': '>H', 'proto': '>H', 'sMac': 'BBBBBB', 'dMac': 'BBBBBB',
-                 'qid': '>H', 'count': '>H'}
+header_format = {"sIP":'BBBB', "dIP":'BBBB', "sPort": '>H', "dPort": '>H',
+              "nBytes": '>H', "proto": '>H', "sMac": 'BBBBBB', "dMac":'BBBBBB',
+              "qid":'>H', "count": '>H'}
 
-HEADER_SIZE = {'sIP': 32, 'dIP': 32, 'sPort': 16, 'dPort': 16,
-               'nBytes': 16, 'proto': 16, 'sMac': 48, 'dMac': 48,
-               'qid': 16, 'count': 16}
+header_size = {"sIP":32, "dIP":32, "sPort": 16, "dPort": 16,
+               "nBytes": 16, "proto": 16, "sMac": 48, "dMac":48,
+               "qid":16, "count": 16}
 
 
 class Emitter(object):
     def __init__(self, conf, queries):
 
-        # Interfaces
         self.spark_stream_address = conf['spark_stream_address']
         self.spark_stream_port = conf['spark_stream_port']
         self.sniff_interface = conf['sniff_interface']
-
-        self.listener = Listener((self.spark_stream_address, self.spark_stream_port))
-        self.spark_conn = None
-
-        # queries has the following format
-        # queries = dict with qid as key
-        # -> per qid we have again a dict with the following key, values:
-        #       - key: parse_payload, value: boolean
-        #       - key: headers, values: list of tuples with (field name, field size)
         self.queries = queries
+        self.listener = Listener((self.spark_stream_address, self.spark_stream_port))
+        self.qid_2_query = {}
         self.qid_struct = struct.Struct('>H')
 
         # create a logger for the object
@@ -39,6 +31,8 @@ class Emitter(object):
         self.fh = logging.FileHandler(conf['log_file'])
         self.fh.setLevel(logging.INFO)
         self.logger.addHandler(self.fh)
+        for query in self.queries:
+            self.qid_2_query[query.qid] = query
 
     def start(self):
         while True:
@@ -51,30 +45,29 @@ class Emitter(object):
         self.spark_conn.send_bytes(data)
 
     def sniff_packets(self):
-        sniff(iface=self.sniff_interface, prn=lambda x: self.process_packet(x))
+        sniff(iface = self.sniff_interface, prn = lambda x: self.process_packet(x))
 
     def process_packet(self, raw_packet):
         '''
         callback function executed for each capture packet
         '''
-
         start = time.time()
         p_str = str(raw_packet)
         #raw_packet.show()
         #hexdump(raw_packet)
-
         qid = int(str(self.qid_struct.unpack(p_str[0:2])[0]))
-        ind = 2
-        while qid in self.queries and qid != 0:
-            query = self.queries[qid]
-            out_headers = query['headers']
+        #print "Received packet for query ", qid, type(qid), self.qid_2_query
+        if qid in self.qid_2_query:
+            query = self.qid_2_query[qid]
+            print "Query", qid, " parse_payload", query.parse_payload
+            out_headers = query.operators[-1].out_headers
             output_tuple = []
-
-            for fld, size in out_headers[1:]:
-                hdr_format = HEADER_FORMAT[fld]
+            ind = 2
+            for fld in out_headers[1:]:
+                hdr_format = header_format[fld]
                 strct = struct.Struct(hdr_format)
-                ctr = HEADER_SIZE[fld]/8
-
+                ctr = header_size[fld]/8
+                #print "indexes parsed ", ind, ind+ctr
                 if 'IP' in fld:
                     output_tuple.append(".".join([str(x) for x in list(strct.unpack(p_str[ind:ind+ctr]))]))
                 elif 'Mac' in fld:
@@ -83,8 +76,10 @@ class Emitter(object):
                     output_tuple.append(strct.unpack(p_str[ind:ind+ctr])[0])
                 ind += ctr
 
-            qid = int(str(self.qid_struct.unpack(p_str[ind:ind+2])[0]))
-            ind += 2
+            # TODO find a better solution to filter unrelated packets
+            is_related = False
+            if raw_packet.haslayer(Raw):
+                is_related = True
 
             if query.parse_payload:
                 print "Adding payload for query", query.qid
@@ -95,9 +90,11 @@ class Emitter(object):
 
             output_tuple = ['k']+[str(qid)]+output_tuple
             send_tuple = ",".join([str(x) for x in output_tuple])
-
-            # TODO removed this packet is unrelated stuff - maybe it is necessary
-            self.send_data(send_tuple + "\n")
+            if is_related:
+                print "Tuple:", send_tuple
+                self.send_data(send_tuple + "\n")
+            else:
+                print "Sniffed unrelated packet."
 
         self.logger.info("emitter,"+ str(qid) + ","+str(start)+","+str(time.time()))
 

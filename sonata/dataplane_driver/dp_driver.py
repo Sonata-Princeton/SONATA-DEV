@@ -6,7 +6,7 @@ import pickle
 from multiprocessing.connection import Listener
 
 from openflow.openflow import OFTarget
-from p4.p4_target_old import P4Target
+from p4.p4_target import P4Target
 
 
 #TODO ADD LOGGING

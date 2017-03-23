@@ -5,7 +5,7 @@ import logging
 from threading import Thread
 
 from p4_queries import QueryPipeline
-from emitter.emitter import Emitter
+from emitter.emitter_old import Emitter
 from p4_dataplane import P4DataPlane
 from utils import write_to_file
 
@@ -61,7 +61,6 @@ class P4Target(object):
 
         # query object
         self.queries = dict()
-
 
     def get_supported_operators(self):
         return self.supported_operations
