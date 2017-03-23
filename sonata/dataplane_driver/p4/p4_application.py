@@ -127,7 +127,7 @@ class P4Application(object):
         out += '\t\t0 : parse_out_header;\n'
         out += '\t\tdefault: parse_ethernet;\n'
         out += '\t}\n'
-        out += '}\n'
+        out += '}\n\n'
         return out
 
     def get_out_header_parser(self):
@@ -136,11 +136,11 @@ class P4Application(object):
         for query in self.queries.values():
             out += '\textract(%s);\n' % query.get_out_header()
         out += '\treturn parse_final_header;\n'
-        out += '\n'
+        out += '}\n\n'
         out += 'parser parse_final_header {\n'
         out += '\textract(%s);\n' % self.final_header
         out += '\treturn parse_ethernet;\n'
-        out += '\n'
+        out += '}\n\n'
         return out
 
     def get_app_code(self):
@@ -156,7 +156,7 @@ class P4Application(object):
     def get_code(self):
         out = ''
         for query in self.queries.values():
-            out += query.get_out_header()
+            out += query.get_code()
         return out
 
     def get_ingress_pipeline(self):
@@ -183,7 +183,7 @@ class P4Application(object):
         out += 'control egress {\n'
         # normal forwarding of the original packet
         out += '\tif (standard_metadata.instance_type == 0) {\n'
-        out += '\t\t// original packet, apply forwarding'
+        out += '\t\t// original packet, apply forwarding\n'
         out += '\t}\n\n'
 
         # adding header to the report packet which is sent to the emitter

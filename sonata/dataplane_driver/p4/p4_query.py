@@ -141,7 +141,8 @@ class P4Query(object):
     def get_ingress_control_flow(self, indent_level):
         curr_indent_level = indent_level
 
-        out = '// query %i\n' % self.id
+        indent = '\t' * curr_indent_level
+        out = '%s// query %i\n' % (indent, self.id)
         # apply one operator after another
         for operator in self.operators:
             indent = '\t' * curr_indent_level
@@ -175,7 +176,7 @@ class P4Query(object):
         out = '// query %i\n' % self.id
 
         # out header
-        self.out_header.get_code()
+        out += self.out_header.get_code()
 
         # query actions (drop, mark satisfied, add out header, etc)
         for action in self.actions.values():

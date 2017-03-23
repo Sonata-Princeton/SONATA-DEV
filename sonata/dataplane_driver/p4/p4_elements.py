@@ -29,7 +29,7 @@ class Action(P4Element):
         out += 'action %s(){\n' % (self.name, )
         for primitive in self.primitives:
             out += '\t%s;\n' % (primitive.get_code())
-        out += '}'
+        out += '}\n\n'
         return out
 
 
@@ -54,7 +54,7 @@ class Table(P4Element):
         for action in self.other_actions:
             out += '\t\t%s;\n' % action
         out += '\t}\n'
-        out += '\tsize : %i;\n'
+        out += '\tsize : %i;\n' % self.size
         out += '}\n\n'
         return out
 
@@ -76,7 +76,7 @@ class Register(P4Element):
         out += 'register %s {\n' % self.name
         out += '\twidth: %i;\n' % self.width
         out += '\tinstance_count: %i;\n' % self.instance_count
-        out += '}\n'
+        out += '}\n\n'
         return out
 
 
@@ -109,7 +109,7 @@ class HashFields(P4Element):
         out += '\t}\n'
         out += '\talgorithm: %s;\n' % self.algorithm
         out += '\toutput_width: %i;\n' % self.output_width
-        out += '}\n'
+        out += '}\n\n'
         return out
 
 
@@ -127,7 +127,7 @@ class MetaData(P4Element):
             out += '\t\t%s: %i;\n' % (field_name, length)
         out += '\t}\n'
         out += '}\n\n'
-        out += 'metadata %s_t %s;\n' % (self.name, self.name)
+        out += 'metadata %s_t %s;\n\n' % (self.name, self.name)
 
         return out
 
@@ -146,7 +146,7 @@ class Header(P4Element):
             out += '\t\t%s: %i;\n' % (field_name, length)
         out += '\t}\n'
         out += '}\n\n'
-        out += 'header %s_t %s;\n'
+        out += 'header %s_t %s;\n\n' % (self.name, self.name)
 
         return out
 
