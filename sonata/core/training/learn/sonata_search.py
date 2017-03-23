@@ -80,6 +80,7 @@ class Search(object):
     def __init__(self, G):
         self.G = G
         self.graph = map_input_graph(self.G)
+
         # TODO: hardcoding fix required
         self.problem = GraphProblem((0, 0, 0), (32, 0, 0), self.graph)
         # No heuristics in f ==> uniform cost search algorithm
@@ -87,14 +88,16 @@ class Search(object):
         if self.target_node is None:
             print "Failed to find the best path :("
         else:
-            print "Best path is", self.target_node.path()
+            # print "Best path is", self.target_node.path()
             self.generate_final_plan()
 
     def generate_final_plan(self):
         self.final_plan = QueryPlan(self.graph, self.target_node.path())
 
     def best_first_graph_search(self, f):
-        debug = True
+        #debug = True
+        debug = False
+        if debug: print self.graph.dict
         problem = self.problem
         f = memoize(f, 'f')
         node = Node(problem.initial)

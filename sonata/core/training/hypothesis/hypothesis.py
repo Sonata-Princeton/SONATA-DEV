@@ -94,7 +94,7 @@ class Hypothesis(object):
                     for ts in self.timestamps:
                         if ts not in E:
                             E[ts] = {}
-                        E[ts][edge] = 0
+                        E[ts][edge] = (0,0)
 
                     # for timestamps for which we have cost data, we will update the edge values
                     # this ensures that we graphs for every timestamp.
@@ -104,9 +104,7 @@ class Hypothesis(object):
                     #print qid, transit, partition_plan
                     if partition_plan in costs[qid][transit]:
                         for (ts, (b, n)) in costs[qid][transit][partition_plan]:
-                            b_norm = float(b)/1
-                            n_norm = float(n)/1
-                            E[ts][edge] = (self.alpha * n_norm + (1 - self.alpha) * b_norm)
+                            E[ts][edge] = (b,n)
                             if ts == 1440289056:
                                 print ts, edge, b, n, E[ts][edge]
 
@@ -119,7 +117,7 @@ class Hypothesis(object):
                         E[ts] = {}
                     if ts == 1440289056:
                         print ts, edge
-                    E[ts][edge] = 0
+                    E[ts][edge] = (0,0)
 
         self.E = E
 
