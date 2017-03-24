@@ -64,6 +64,16 @@ class Table(P4Element):
 
         return out
 
+    def get_add_rule_command(self, action_name, match_values, action_values):
+        match_string = ''
+        if match_values:
+            match_string = ' '.join([str(x) for x in match_values])
+        action_string = ''
+        if action_values:
+            action_string = ' '.join([str(x) for x in action_values])
+        out = 'table_add %s %s %s => %s' % (self.name, action_name, match_string, action_string)
+        return out
+
 
 class Register(P4Element):
     def __init__(self, name, width, count):
@@ -105,7 +115,7 @@ class HashFields(P4Element):
         out = self.field_list.get_code()
         out += 'field_list_calculation %s {\n' % self.name
         out += '\tinput {\n'
-        out += '\t\t%s_fields;\n' % self.field_list.get_name()
+        out += '\t\t%s;\n' % self.field_list.get_name()
         out += '\t}\n'
         out += '\talgorithm: %s;\n' % self.algorithm
         out += '\toutput_width: %i;\n' % self.output_width

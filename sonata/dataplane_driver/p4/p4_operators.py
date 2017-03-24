@@ -107,6 +107,7 @@ class P4Distinct(P4Operator):
         out += '// %s %i of query %i\n' % (self.name, self.operator_id, self.query_id)
         out += self.metadata.get_code()
         out += self.hash.get_code()
+        out += self.register.get_code()
         out += self.action.get_code()
         out += self.init_table.get_code()
         out += self.pass_table.get_code()
@@ -202,6 +203,7 @@ class P4Reduce(P4Operator):
         out += '// %s %i of query %i\n' % (self.name, self.operator_id, self.query_id)
         out += self.metadata.get_code()
         out += self.hash.get_code()
+        out += self.register.get_code()
         out += self.init_action.get_code()
         out += self.set_count_action.get_code()
         out += self.reset_count_action.get_code()
@@ -227,7 +229,7 @@ class P4Reduce(P4Operator):
         out += '%sif (%s == %i) {\n' % (indent, self.value_field_name, self.threshold)
         out += '%s\tapply(%s);\n' % (indent, self.first_pass_table.get_name())
         out += '%s}\n' % (indent, )
-        out += '%selif (%s > %i) {\n' % (indent, self.value_field_name, self.threshold)
+        out += '%selse if (%s > %i) {\n' % (indent, self.value_field_name, self.threshold)
         out += '%s\tapply(%s);\n' % (indent, self.pass_table.get_name())
         out += '%s}\n' % (indent, )
         out += '%selse {\n' % (indent, )
@@ -248,7 +250,7 @@ class P4MapInit(P4Operator):
         for key in self.keys:
             fields.append((key, HEADER_SIZE[key]))
 
-        self.metadata = MetaData(self.name, fields)
+        self.metadata = MetaData(self.operator_name, fields)
 
         # create ACTION to initialize the metadata
         primitives = list()
@@ -257,7 +259,7 @@ class P4MapInit(P4Operator):
                 meta_field_name = '%s.%s' % (self.metadata.get_name(), key)
                 field_name = HEADER_MAP[key]
                 primitives.append(ModifyField(meta_field_name, field_name))
-        self.action = Action('do_%s' % self.name, primitives)
+        self.action = Action('do_%s' % self.operator_name, primitives)
 
         # create dummy TABLE to execute the action
         self.table = Table(self.operator_name, self.action.get_name(), [], None, 1)
@@ -371,7 +373,14 @@ class P4Filter(P4Operator):
             elif func[0] == 'eq':
                 self.filter_values = func[1:]
 
-        self.table = Table(self.operator_name, miss_action, (match_action, ), None, TABLE_SIZE)
+        reads_fields = list()
+        for filter_key in self.filter_keys:
+            if self.func[0] == 'mask':
+                reads_fields.append((HEADER_MAP[filter_key], 'lpm'))
+            else:
+                reads_fields.append((HEADER_MAP[filter_key], 'exact'))
+
+        self.table = Table(self.operator_name, miss_action, (match_action, ), reads_fields, TABLE_SIZE)
 
     def __repr__(self):
         return '.Filter(filter_keys='+str(self.filter_keys)+', func='+str(self.func)+', src = '+str(self.source)+')'
@@ -386,6 +395,9 @@ class P4Filter(P4Operator):
     def get_commands(self):
         commands = list()
         commands.append(self.table.get_default_command())
+        if self.filter_values:
+            for filter_value in self.filter_values:
+                commands.append(self.table.get_add_rule_command(self.match_action, filter_value, None))
         return commands
 
     def get_control_flow(self, indent_level):
