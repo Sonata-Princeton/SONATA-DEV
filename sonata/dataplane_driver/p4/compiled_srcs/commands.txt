@@ -1,4 +1,4 @@
-table_set_default mapinit_10016_1 do_MapInit
+table_set_default mapinit_10016_1 do_mapinit_10016_1
 table_set_default map_10016_2 do_map_10016_2
 table_set_default init_distinct_10016_4 do_init_distinct_10016_4
 table_set_default pass_distinct_10016_4 _nop
@@ -11,7 +11,7 @@ table_set_default drop_reduce_10016_6 drop_10016
 table_set_default filter_10016_7 drop_10016
 table_set_default add_out_header_10016 do_add_out_header_10016
 table_set_default mark_satisfied_10016 do_mark_satisfied_10016
-table_set_default mapinit_10032_1 do_MapInit
+table_set_default mapinit_10032_1 do_mapinit_10032_1
 table_set_default map_10032_2 do_map_10032_2
 table_set_default init_distinct_10032_4 do_init_distinct_10032_4
 table_set_default pass_distinct_10032_4 _nop

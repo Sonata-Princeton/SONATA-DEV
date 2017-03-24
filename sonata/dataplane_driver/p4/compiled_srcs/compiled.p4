@@ -15,17 +15,24 @@ parser parse_out_header {
 }
 
 parser parse_final_header {
-	extract(<p4.p4_elements.Header object at 0x7fe00cc1b490>);
+	extract(final_header);
 	return parse_ethernet;
 }
 
-header_type final_header_t {
-	fields {
-		delimiter: 32;
-	}
+action do_init_app_metadata(){
+	modify_field(meta_app_data.drop_10016, 0);
+	modify_field(meta_app_data.satisfied_10016, 0);
+	modify_field(meta_app_data.drop_10032, 0);
+	modify_field(meta_app_data.satisfied_10032, 0);
+	modify_field(meta_app_data.clone, 0);
 }
 
-header final_header_t final_header;
+table init_app_metadata {
+	actions {
+		do_init_app_metadata;
+	}
+	size : 1;
+}
 
 header_type meta_app_data_t {
 	fields {
@@ -45,8 +52,8 @@ action _nop(){
 
 field_list report_packet_fields {
 	meta_app_data;
-	meta_MapInit;
-	meta_MapInit;
+	meta_mapinit_10016_1;
+	meta_mapinit_10032_1;
 }
 
 action do_report_packet(){
@@ -56,6 +63,26 @@ action do_report_packet(){
 table report_packet {
 	actions {
 		do_report_packet;
+	}
+	size : 1;
+}
+
+header_type final_header_t {
+	fields {
+		delimiter: 32;
+	}
+}
+
+header final_header_t final_header;
+
+action do_add_final_header(){
+	add_header(final_header);
+	modify_field(final_header.delimiter, 0);
+}
+
+table add_final_header {
+	actions {
+		do_add_final_header;
 	}
 	size : 1;
 }
@@ -81,8 +108,8 @@ action do_mark_satisfied_10016(){
 
 action do_add_out_header_10016(){
 	add_header(out_header_10016);
-	modify_field(out_header_10016.qid, meta_MapInit.qid);
-	modify_field(out_header_10016.dIP, meta_MapInit.dIP);
+	modify_field(out_header_10016.qid, meta_mapinit_10016_1.qid);
+	modify_field(out_header_10016.dIP, meta_mapinit_10016_1.dIP);
 }
 
 table add_out_header_10016 {
@@ -100,11 +127,13 @@ table mark_satisfied_10016 {
 }
 
 // MapInit of query 10016
-header_type meta_MapInit_t {
+header_type meta_mapinit_10016_1_t {
 	fields {
+		count: 16;
 		dMac: 48;
 		sIP: 32;
 		proto: 16;
+		qid: 16;
 		sMac: 48;
 		nBytes: 16;
 		dPort: 16;
@@ -113,22 +142,22 @@ header_type meta_MapInit_t {
 	}
 }
 
-metadata meta_MapInit_t meta_MapInit;
+metadata meta_mapinit_10016_1_t meta_mapinit_10016_1;
 
-action do_MapInit(){
-	modify_field(meta_MapInit.dMac, ethernet.dstAddr);
-	modify_field(meta_MapInit.sIP, ipv4.srcAddr);
-	modify_field(meta_MapInit.proto, ipv4.protocol);
-	modify_field(meta_MapInit.sMac, ethernet.srcAddr);
-	modify_field(meta_MapInit.nBytes, ipv4.totalLen);
-	modify_field(meta_MapInit.dPort, tcp.dstPort);
-	modify_field(meta_MapInit.sPort, tcp.srcPort);
-	modify_field(meta_MapInit.dIP, ipv4.dstAddr);
+action do_mapinit_10016_1(){
+	modify_field(meta_mapinit_10016_1.dMac, ethernet.dstAddr);
+	modify_field(meta_mapinit_10016_1.sIP, ipv4.srcAddr);
+	modify_field(meta_mapinit_10016_1.proto, ipv4.protocol);
+	modify_field(meta_mapinit_10016_1.sMac, ethernet.srcAddr);
+	modify_field(meta_mapinit_10016_1.nBytes, ipv4.totalLen);
+	modify_field(meta_mapinit_10016_1.dPort, tcp.dstPort);
+	modify_field(meta_mapinit_10016_1.sPort, tcp.srcPort);
+	modify_field(meta_mapinit_10016_1.dIP, ipv4.dstAddr);
 }
 
 table mapinit_10016_1 {
 	actions {
-		do_MapInit;
+		do_mapinit_10016_1;
 	}
 	size : 1;
 }
@@ -136,7 +165,7 @@ table mapinit_10016_1 {
 
 // Map 2 of query 10016
 action do_map_10016_2(){
-	bit_and(meta_MapInit.dIP, meta_MapInit.dIP, 0xffffffffffffffff0000000000000000);
+	bit_and(meta_mapinit_10016_1.dIP, meta_mapinit_10016_1.dIP, 0xffffffffffffffff0000000000000000);
 }
 
 table map_10016_2 {
@@ -158,16 +187,21 @@ header_type meta_distinct_10016_4_t {
 metadata meta_distinct_10016_4_t meta_distinct_10016_4;
 
 field_list hash_distinct_10016_4_fields {
-	meta_MapInit.dIP;
-	meta_MapInit.sIP;
+	meta_mapinit_10016_1.dIP;
+	meta_mapinit_10016_1.sIP;
 }
 
 field_list_calculation hash_distinct_10016_4 {
 	input {
-		hash_distinct_10016_4_fields_fields;
+		hash_distinct_10016_4_fields;
 	}
 	algorithm: crc32;
 	output_width: 12;
+}
+
+register distinct_10016_4 {
+	width: 32;
+	instance_count: 4096;
 }
 
 action do_init_distinct_10016_4(){
@@ -222,15 +256,20 @@ header_type meta_reduce_10016_6_t {
 metadata meta_reduce_10016_6_t meta_reduce_10016_6;
 
 field_list hash_reduce_10016_6_fields {
-	meta_MapInit.dIP;
+	meta_mapinit_10016_1.dIP;
 }
 
 field_list_calculation hash_reduce_10016_6 {
 	input {
-		hash_reduce_10016_6_fields_fields;
+		hash_reduce_10016_6_fields;
 	}
 	algorithm: crc32;
 	output_width: 12;
+}
+
+register reduce_10016_6 {
+	width: 32;
+	instance_count: 4096;
 }
 
 action do_init_reduce_10016_6(){
@@ -241,11 +280,11 @@ action do_init_reduce_10016_6(){
 }
 
 action set_count_reduce_10016_6(){
-	modify_field(meta_MapInit.count, meta_reduce_10016_6.value);
+	modify_field(meta_mapinit_10016_1.count, meta_reduce_10016_6.value);
 }
 
 action reset_count_reduce_10016_6(){
-	modify_field(meta_MapInit.count, 1);
+	modify_field(meta_mapinit_10016_1.count, 1);
 }
 
 table init_reduce_10016_6 {
@@ -309,9 +348,9 @@ action do_mark_satisfied_10032(){
 
 action do_add_out_header_10032(){
 	add_header(out_header_10032);
-	modify_field(out_header_10032.qid, meta_MapInit.qid);
-	modify_field(out_header_10032.dIP, meta_MapInit.dIP);
-	modify_field(out_header_10032.sIP, meta_MapInit.sIP);
+	modify_field(out_header_10032.qid, meta_mapinit_10032_1.qid);
+	modify_field(out_header_10032.dIP, meta_mapinit_10032_1.dIP);
+	modify_field(out_header_10032.sIP, meta_mapinit_10032_1.sIP);
 }
 
 table add_out_header_10032 {
@@ -329,11 +368,12 @@ table mark_satisfied_10032 {
 }
 
 // MapInit of query 10032
-header_type meta_MapInit_t {
+header_type meta_mapinit_10032_1_t {
 	fields {
 		dMac: 48;
 		sIP: 32;
 		proto: 16;
+		qid: 16;
 		sMac: 48;
 		nBytes: 16;
 		dPort: 16;
@@ -342,22 +382,22 @@ header_type meta_MapInit_t {
 	}
 }
 
-metadata meta_MapInit_t meta_MapInit;
+metadata meta_mapinit_10032_1_t meta_mapinit_10032_1;
 
-action do_MapInit(){
-	modify_field(meta_MapInit.dMac, ethernet.dstAddr);
-	modify_field(meta_MapInit.sIP, ipv4.srcAddr);
-	modify_field(meta_MapInit.proto, ipv4.protocol);
-	modify_field(meta_MapInit.sMac, ethernet.srcAddr);
-	modify_field(meta_MapInit.nBytes, ipv4.totalLen);
-	modify_field(meta_MapInit.dPort, tcp.dstPort);
-	modify_field(meta_MapInit.sPort, tcp.srcPort);
-	modify_field(meta_MapInit.dIP, ipv4.dstAddr);
+action do_mapinit_10032_1(){
+	modify_field(meta_mapinit_10032_1.dMac, ethernet.dstAddr);
+	modify_field(meta_mapinit_10032_1.sIP, ipv4.srcAddr);
+	modify_field(meta_mapinit_10032_1.proto, ipv4.protocol);
+	modify_field(meta_mapinit_10032_1.sMac, ethernet.srcAddr);
+	modify_field(meta_mapinit_10032_1.nBytes, ipv4.totalLen);
+	modify_field(meta_mapinit_10032_1.dPort, tcp.dstPort);
+	modify_field(meta_mapinit_10032_1.sPort, tcp.srcPort);
+	modify_field(meta_mapinit_10032_1.dIP, ipv4.dstAddr);
 }
 
 table mapinit_10032_1 {
 	actions {
-		do_MapInit;
+		do_mapinit_10032_1;
 	}
 	size : 1;
 }
@@ -365,7 +405,7 @@ table mapinit_10032_1 {
 
 // Map 2 of query 10032
 action do_map_10032_2(){
-	bit_and(meta_MapInit.dIP, meta_MapInit.dIP, 0xffffffffffffffffffffffffffffffff);
+	bit_and(meta_mapinit_10032_1.dIP, meta_mapinit_10032_1.dIP, 0xffffffffffffffffffffffffffffffff);
 }
 
 table map_10032_2 {
@@ -387,16 +427,21 @@ header_type meta_distinct_10032_4_t {
 metadata meta_distinct_10032_4_t meta_distinct_10032_4;
 
 field_list hash_distinct_10032_4_fields {
-	meta_MapInit.dIP;
-	meta_MapInit.sIP;
+	meta_mapinit_10032_1.dIP;
+	meta_mapinit_10032_1.sIP;
 }
 
 field_list_calculation hash_distinct_10032_4 {
 	input {
-		hash_distinct_10032_4_fields_fields;
+		hash_distinct_10032_4_fields;
 	}
 	algorithm: crc32;
 	output_width: 12;
+}
+
+register distinct_10032_4 {
+	width: 32;
+	instance_count: 4096;
 }
 
 action do_init_distinct_10032_4(){
@@ -429,7 +474,7 @@ table drop_distinct_10032_4 {
 
 
 control ingress {
-	apply(init_meta_fm);
+	apply(init_app_metadata);
 		// query 10016
 		if (meta_app_data.drop_10016 != 1) {
 			apply(mapinit_10016_1);
@@ -450,7 +495,7 @@ control ingress {
 							if (meta_reduce_10016_6.value == 2) {
 								apply(first_pass_reduce_10016_6);
 							}
-							elif (meta_reduce_10016_6.value > 2) {
+							else if (meta_reduce_10016_6.value > 2) {
 								apply(pass_reduce_10016_6);
 							}
 							else {
@@ -488,13 +533,14 @@ control ingress {
 		}
 
 	if (meta_app_data.clone == 1) {
-		apply(report_packet)
+		apply(report_packet);
 	}
 }
 
 control egress {
 	if (standard_metadata.instance_type == 0) {
-		// original packet, apply forwarding	}
+		// original packet, apply forwarding
+	}
 
 	else if (standard_metadata.instance_type == 1) {
 		if (meta_app_data.satisfied_10016 == 1) {

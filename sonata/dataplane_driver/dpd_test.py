@@ -17,8 +17,8 @@ sys.path.append("/home/vagrant/sonata/query_engine/sonata_operators")
 
 
 class DPDTest(object):
-    def __init__(self, pickled_file, dpd_socket):
-        self.dpd_socket = dpd_socket
+    def __init__(self, pickled_file, socket_data):
+        self.dpd_socket = socket_data
         self.target_id = 1
 
         # LOGGING
@@ -34,15 +34,15 @@ class DPDTest(object):
         self.logger.info('init')
 
         self.message = None
-        i = 0
+        j = 0
         with (open(pickled_file, "rb")) as openfile:
             while True:
-                i += 1
+                j += 1
                 try:
                     self.message = (pickle.load(openfile))
                 except EOFError:
                     break
-        if i > 1:
+        if j > 1:
             self.logger.info('there was more than one message in the pickled file')
 
     def start_dpd(self):

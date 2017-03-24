@@ -79,11 +79,12 @@ class P4Query(object):
 
         # Add map init
         keys = set()
+        keys.add('qid')
         for operator in generic_operators:
             if operator.name in {'Filter', 'Map', 'Reduce', 'Distinct'}:
                 keys = keys.union(set(operator.get_init_keys()))
         # TODO remove this
-        keys = filter(lambda x: x != 'payload' and x != 'ts' and x != 'count', keys)
+        keys = filter(lambda x: x != 'payload' and x != 'ts', keys)
 
         self.logger.debug('add map_init with keys: %s' % (', '.join(keys),))
         map_init_operator = P4MapInit(self.id, operator_id, keys)

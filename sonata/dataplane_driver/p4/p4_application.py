@@ -31,6 +31,9 @@ class P4Application(object):
         self.final_header_action = None
         self.final_header_table = None
 
+        self.init_action = None
+        self.init_action_table = None
+
         self.report_action = None
         self.report_action_table = None
         self.nop_action = None
@@ -63,6 +66,14 @@ class P4Application(object):
         fields.append((self.clone_meta_field, 1))
         self.metadata = MetaData('app_data', fields)
         meta_name = self.metadata.get_name()
+
+        # action and table to init app metadata
+        primitives = list()
+        for field_name, _ in fields:
+            primitives.append(ModifyField('%s.%s' % (self.metadata.get_name(), field_name), 0))
+        self.init_action = Action('do_init_app_metadata', primitives)
+
+        self.init_action_table = Table('init_app_metadata', self.init_action.get_name(), [], None, 1)
 
         # transforms queries
         for query_id in app:
@@ -138,19 +149,23 @@ class P4Application(object):
         out += '\treturn parse_final_header;\n'
         out += '}\n\n'
         out += 'parser parse_final_header {\n'
-        out += '\textract(%s);\n' % self.final_header
+        out += '\textract(%s);\n' % self.final_header.get_name()
         out += '\treturn parse_ethernet;\n'
         out += '}\n\n'
         return out
 
     def get_app_code(self):
         out = ''
-        out += self.final_header.get_code()
+        out += self.init_action.get_code()
+        out += self.init_action_table.get_code()
         out += self.metadata.get_code()
         out += self.nop_action.get_code()
         out += self.field_list.get_code()
         out += self.report_action.get_code()
         out += self.report_action_table.get_code()
+        out += self.final_header.get_code()
+        out += self.final_header_action.get_code()
+        out += self.final_header_table.get_code()
         return out
 
     def get_code(self):
@@ -162,7 +177,7 @@ class P4Application(object):
     def get_ingress_pipeline(self):
         out = ''
         out += 'control ingress {\n'
-        out += '\tapply(init_meta_fm);\n'
+        out += '\tapply(%s);\n' % self.init_action_table.get_name()
 
         # add the control flow of one query after the other
         for query in self.queries.values():
@@ -173,7 +188,7 @@ class P4Application(object):
         # after processing all queries, determine whether the packet should be sent to the emitter as it satisfied at
         # least one query
         out += '\tif (%s.%s == 1) {\n' % (self.metadata.get_name(), self.clone_meta_field)
-        out += '\t\tapply(%s)\n' % self.report_action_table.get_name()
+        out += '\t\tapply(%s);\n' % self.report_action_table.get_name()
         out += '\t}\n'
         out += '}\n\n'
         return out
@@ -190,8 +205,8 @@ class P4Application(object):
         out += '\telse if (standard_metadata.instance_type == 1) {\n'
         for query in self.queries.values():
             out += query.get_egress_control_flow(2)
+        out += '\t\tapply(%s);\n' % self.final_header_table.get_name()
         out += '\t}\n'
-        out += '\tapply(%s);\n' % self.final_header_table.get_name()
         out += '}\n\n'
         return out
 
