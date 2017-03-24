@@ -205,8 +205,8 @@ class P4Application(object):
         out += '\telse if (standard_metadata.instance_type == 1) {\n'
         for query in self.queries.values():
             out += query.get_egress_control_flow(2)
+        out += '\t\tapply(%s);\n' % self.final_header_table.get_name()
         out += '\t}\n'
-        out += '\tapply(%s);\n' % self.final_header_table.get_name()
         out += '}\n\n'
         return out
 
