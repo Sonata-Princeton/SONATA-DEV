@@ -12,10 +12,11 @@ from p4.p4_target import P4Target
 
 
 class DataplaneDriver(object):
-    def __init__(self, dpd_socket):
+    def __init__(self, dpd_socket, metrics_file):
         self.dpd_socket = dpd_socket
 
         self.targets = dict()
+        self.metrics_log_file = metrics_file
 
         # LOGGING
         log_level = logging.DEBUG
@@ -27,10 +28,26 @@ class DataplaneDriver(object):
         handler.setFormatter(formatter)
         self.logger.addHandler(handler)
 
-        self.logger.info('init')
+        # initialize metrics logger
+        # which is separate from debug logger
+
+        self.initialize_metrics_logger()
+
+
+
+    def initialize_metrics_logger(self):
+        # create a logger for the object
+        self.metrics = logging.getLogger(__name__)
+        self.metrics.setLevel(logging.INFO)
+        # create file handler which logs messages
+        self.fh = logging.FileHandler(self.metrics_log_file)
+        self.fh.setLevel(logging.INFO)
+        self.metrics.addHandler(self.fh)
+
+        self.metrics.info('init')
 
     def start(self):
-        self.logger.info('starting the event listener')
+        self.logger.debug('starting the event listener')
         dpd_listener = Listener(self.dpd_socket)
         while True:
             conn = dpd_listener.accept()

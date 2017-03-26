@@ -51,7 +51,7 @@ class Runtime(object):
                 target = Target()
                 assert hasattr(target, 'costly_operators')
                 refinement_object = Refinement(query, target)
-                print refinement_object.qid_2_refined_queries
+                #print refinement_object.qid_2_refined_queries
                 self.refinement_keys[query.qid] = refinement_object.refinement_key
 
                 # fname = "plan_" + str(query.qid) + ".pickle"
@@ -124,10 +124,10 @@ class Runtime(object):
             with open('pickled_queries.pickle', 'w') as f:
                 pickle.dump({0: self.dp_queries, 1: self.sp_queries}, f)
 
-        print self.dp_queries
-        print self.sp_queries
+        #print self.dp_queries
+        #print self.sp_queries
 
-        time.sleep(10)
+        #time.sleep(10)
         self.initialize_handlers()
         time.sleep(2)
         self.send_to_dp_driver('init', self.dp_queries)
@@ -154,7 +154,7 @@ class Runtime(object):
             print "No mapping update required"
 
         # Update the queries whose o/p needs to be displayed to the network operators
-        print final_plan
+        #print final_plan
         r = final_plan[-1][0]
         qid = get_refined_query_id(query, r)
         self.query_out_final[qid] = 0
@@ -219,7 +219,7 @@ class Runtime(object):
 
     def start_dataplane_driver(self):
         # Start the fabric managers local to each data plane element
-        dpd = DataplaneDriver(self.conf['fm_conf']['fm_socket'])
+        dpd = DataplaneDriver(self.conf['fm_conf']['fm_socket'], self.conf['fm_conf']['log_file'])
         self.dpd_thread = Thread(name='dp_driver', target=dpd.start)
         self.dpd_thread.setDaemon(True)
 
@@ -294,6 +294,7 @@ class Runtime(object):
         time.sleep(1)
 
     def initialize_logging(self):
+        #print "######Setup Logger##########",self.conf['log_file']
         # create a logger for the object
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)

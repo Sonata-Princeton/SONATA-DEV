@@ -254,12 +254,12 @@ class P4Target(object):
         self.dataplane.compile_p4(self.P4_COMPILED, self.JSON_P4_COMPILED)
 
         # initialize dataplane and run the configuration
-        self.logger.info('initialize the dataplane with the json configuration')
+        self.logger.info('initialize the dataplane with the json configuration'+str(self.em_conf))
         self.dataplane.initialize(self.JSON_P4_COMPILED, self.P4_COMMANDS)
 
         # start the emitter
         if self.em_conf:
-            self.logger.info('start the emitter')
+            self.logger.info('******* starting the emitter *******')
             em = Emitter(self.em_conf, p4_queries)
             em_thread = Thread(name='emitter', target=em.start)
             em_thread.setDaemon(True)

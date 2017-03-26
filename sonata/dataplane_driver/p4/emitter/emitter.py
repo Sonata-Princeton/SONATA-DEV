@@ -15,8 +15,8 @@ HEADER_SIZE = {'sIP': 32, 'dIP': 32, 'sPort': 16, 'dPort': 16,
 
 class Emitter(object):
     def __init__(self, conf, queries):
-
         # Interfaces
+        print "********* EMITTER INITIALIZED *********"
         self.spark_stream_address = conf['spark_stream_address']
         self.spark_stream_port = conf['spark_stream_port']
         self.sniff_interface = conf['sniff_interface']
@@ -39,6 +39,12 @@ class Emitter(object):
         self.fh = logging.FileHandler(conf['log_file'])
         self.fh.setLevel(logging.INFO)
         self.logger.addHandler(self.fh)
+
+        # TODO: There was a conflict here which excluded this code
+        for query in self.queries:
+            self.qid_2_query[query.qid] = query
+        self.logger.info("emitter logging works")
+        # Doubleful merge
 
     def start(self):
         while True:
