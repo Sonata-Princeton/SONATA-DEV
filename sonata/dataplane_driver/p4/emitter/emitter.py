@@ -15,7 +15,7 @@ header_size = {"sIP":32, "dIP":32, "sPort": 16, "dPort": 16,
 
 class Emitter(object):
     def __init__(self, conf, queries):
-
+        print "********* EMITTER INITIALIZED *********"
         self.spark_stream_address = conf['spark_stream_address']
         self.spark_stream_port = conf['spark_stream_port']
         self.sniff_interface = conf['sniff_interface']
@@ -33,6 +33,7 @@ class Emitter(object):
         self.logger.addHandler(self.fh)
         for query in self.queries:
             self.qid_2_query[query.qid] = query
+        self.logger.info("emitter logging works")
 
     def start(self):
         while True:
