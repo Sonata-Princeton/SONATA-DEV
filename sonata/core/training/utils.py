@@ -32,7 +32,8 @@ def add_timestamp_key(qid_2_query):
     def add_timestamp_to_query(q):
         # This function will be useful if we need to add ts in recursion
         for operator in q.operators:
-            operator.keys = tuple(['ts'] + list(operator.keys))
+            operator.keys = tuple(list(operator.keys))
+            # operator.keys = tuple(['ts'] + list(operator.keys))
 
     for qid in qid_2_query:
         query = qid_2_query[qid]

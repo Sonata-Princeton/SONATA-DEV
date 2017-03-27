@@ -76,7 +76,8 @@ class Runtime(object):
                 # # Generate queries for the data plane and stream processor after learning the final plan
                 # final_plan = self.query_plans[query.qid][1:-1]
                 # print final_plan
-                final_plan = [(1, 16, 5, 1), (3, 16, 1, 2), (1, 32, 5, 3), (3, 32, 1, 4)]
+
+                final_plan = [(1, 16, 5, 1), (1, 32, 5, 3)]
                 prev_r = 0
                 prev_qid = 0
 
@@ -95,10 +96,10 @@ class Runtime(object):
                     prev_qid = q
 
 
-
+                self.update_query_mappings(query, final_plan)
 
                 # final_plan = [(16, 5, 1), (32, 1, 1)]
-                # self.update_query_mappings(query, final_plan)
+
                 # print "# of iteration levels", len(final_plan)
                 # prev_r = 0
                 # for (r, p, l) in final_plan:
@@ -124,7 +125,7 @@ class Runtime(object):
             with open('pickled_queries.pickle', 'w') as f:
                 pickle.dump({0: self.dp_queries, 1: self.sp_queries}, f)
 
-        #print self.dp_queries
+        print self.dp_queries
         #print self.sp_queries
 
         #time.sleep(10)
@@ -140,7 +141,7 @@ class Runtime(object):
 
     def update_query_mappings(self, query, final_plan):
         if len(final_plan) > 1:
-            for ((r1, p1, l1), (r2, p2, l2)) in zip(final_plan, final_plan[1:]):
+            for ((q1, r1, p1, l1), (q2, r2, p2, l2)) in zip(final_plan, final_plan[1:]):
                 qid1 = get_refined_query_id(query, r1)
                 qid2 = get_refined_query_id(query, r2)
                 if qid2 not in self.query_in_mappings:
@@ -191,9 +192,10 @@ class Runtime(object):
             print "DP Queries: ", str(len(self.dp_queries.keys())), " Received keys:", str(len(queries_received.keys()))
             if len(queries_received.keys()) == len(self.dp_queries.keys()):
                 updateDeltaConfig = True
-            print self.query_out_mappings
+
+            print "Query Out Mappings: ",self.query_out_mappings
             delta_config = {}
-            print "## Received output for query", src_qid, "at time", time.time() - start
+            print "## Received output for query", src_qid, "at time", time.time() - start, str(queries_received)
             if updateDeltaConfig:
                 start = time.time()
                 for src_qid in queries_received:
@@ -206,7 +208,7 @@ class Runtime(object):
                                 print out_qid, src_qid
                                 delta_config[(out_qid, src_qid)] = table_match_entries
                     # reset these state variables
-                print "delta: ", delta_config
+                print "delta config: ", delta_config
                 updateDeltaConfig = False
                 self.logger.info("runtime,create_delta_config," + str(start) + "," + str(time.time()))
                 queries_received = {}

@@ -34,6 +34,7 @@ table init_app_metadata {
 	size : 1;
 }
 
+<<<<<<< 12dd88d60f24d73ffdf14fa36720ce89b3858a75
 header_type meta_app_data_t {
 	fields {
 		drop_10016: 1;
@@ -89,6 +90,16 @@ table add_final_header {
 
 // query 10016
 header_type out_header_10016_t {
+=======
+action do_encap_10016() {
+	add_header(out_header_10016);
+	modify_field(out_header_10016.qid, meta_reduce_3_10016.qid);
+	modify_field(out_header_10016.dIP, meta_map_init_10016.dIP);
+	modify_field(out_header_10016.count, meta_reduce_3_10016.val);
+}
+
+header_type out_header_10032_t {
+>>>>>>> working end-to-end: tested
 	fields {
 		qid: 16;
 		dIP: 32;
@@ -294,6 +305,7 @@ table init_reduce_10016_6 {
 	size : 1;
 }
 
+<<<<<<< 12dd88d60f24d73ffdf14fa36720ce89b3858a75
 table first_pass_reduce_10016_6 {
 	actions {
 		set_count_reduce_10016_6;
@@ -356,6 +368,20 @@ action do_add_out_header_10032(){
 table add_out_header_10032 {
 	actions {
 		do_add_out_header_10032;
+=======
+action set_reduce_3_10016_count() {
+	modify_field(meta_reduce_3_10016.val, 1);
+}
+
+table set_reduce_3_10016_count {
+	actions {set_reduce_3_10016_count;}
+        size: 1;
+}
+
+table map_init_10032{
+	actions{
+		do_map_init_10032;
+>>>>>>> working end-to-end: tested
 	}
 	size : 1;
 }
@@ -451,13 +477,37 @@ action do_init_distinct_10032_4(){
 	register_write(distinct_10032_4, meta_distinct_10032_4.index, meta_distinct_10032_4.value);
 }
 
+<<<<<<< 12dd88d60f24d73ffdf14fa36720ce89b3858a75
 table init_distinct_10032_4 {
 	actions {
 		do_init_distinct_10032_4;
+=======
+table start_reduce_4_10032 {
+	actions {do_reduce_4_10032_hashes;}
+	size : 1;
+}
+
+action set_reduce_4_10032_count() {
+	modify_field(meta_reduce_4_10032.val, 1);
+}
+
+table set_reduce_4_10032_count {
+	actions {set_reduce_4_10032_count;}
+        size: 1;
+}
+
+header_type meta_fm_t {
+	fields {
+		qid_10016 : 1;
+		qid_10032 : 1;
+		f1 : 8;
+		is_drop : 1;
+>>>>>>> working end-to-end: tested
 	}
 	size : 1;
 }
 
+<<<<<<< 12dd88d60f24d73ffdf14fa36720ce89b3858a75
 table pass_distinct_10032_4 {
 	actions {
 		_nop;
@@ -472,6 +522,48 @@ table drop_distinct_10032_4 {
 	size : 1;
 }
 
+=======
+metadata meta_fm_t meta_fm;
+
+action init_meta_fm() {
+	modify_field(meta_fm.qid_10016, 1);
+	modify_field(meta_fm.qid_10032, 1);
+	modify_field(meta_fm.is_drop, 0);
+}
+
+table init_meta_fm {
+	actions {init_meta_fm;}
+	size: 1;
+}
+
+action set_meta_fm_10016(){
+	modify_field(meta_fm.qid_10016, 1);
+}
+
+action set_meta_fm_10032(){
+	modify_field(meta_fm.qid_10032, 1);
+}
+
+action reset_meta_fm_10016(){
+	modify_field(meta_fm.qid_10016, 0);
+	modify_field(meta_fm.is_drop, 1);
+}
+
+action reset_meta_fm_10032(){
+	modify_field(meta_fm.qid_10032, 0);
+	modify_field(meta_fm.is_drop, 1);
+}
+
+table filter_10032_1{
+	reads {
+		ipv4.dstAddr: lpm;
+	}
+	actions{
+		set_meta_fm_10032;
+		reset_meta_fm_10032;
+	}
+}
+>>>>>>> working end-to-end: tested
 
 control ingress {
 	apply(init_app_metadata);
@@ -511,6 +603,16 @@ control ingress {
 					}
 				}
 			}
+<<<<<<< 12dd88d60f24d73ffdf14fa36720ce89b3858a75
+=======
+
+			apply(copy_to_cpu_10016);
+		}
+	}
+	if (meta_fm.f1 == 1){
+		if (meta_fm.qid_10032== 1){
+			apply(filter_10032_1);
+>>>>>>> working end-to-end: tested
 		}
 		// query 10032
 		if (meta_app_data.drop_10032 != 1) {
@@ -538,16 +640,36 @@ control ingress {
 }
 
 control egress {
+<<<<<<< 12dd88d60f24d73ffdf14fa36720ce89b3858a75
 	if (standard_metadata.instance_type == 0) {
 		// original packet, apply forwarding
+=======
+	if (standard_metadata.instance_type != 1) {
+		if(meta_fm.f1 < 2) {
+			apply(recirculate_to_ingress);
+		}
+		else {
+			apply(drop_table);
+		}
+>>>>>>> working end-to-end: tested
 	}
 
 	else if (standard_metadata.instance_type == 1) {
 		if (meta_app_data.satisfied_10016 == 1) {
 			apply(add_out_header_10016);
 		}
+<<<<<<< 12dd88d60f24d73ffdf14fa36720ce89b3858a75
 		if (meta_app_data.satisfied_10032 == 1) {
 			apply(add_out_header_10032);
+=======
+		else {
+			if (meta_fm.f1 == 0){
+				apply(encap_10016);
+			}
+			if (meta_fm.f1 == 1){
+				apply(encap_10032);
+			}
+>>>>>>> working end-to-end: tested
 		}
 	}
 	apply(add_final_header);

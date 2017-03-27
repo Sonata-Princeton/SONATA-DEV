@@ -282,5 +282,6 @@ class P4Target(object):
                 command = 'table_add '+filter_table_fname+' set_meta_fm_'+str(qid)+' '+str(dip)+'/'+str(filter_mask)+' => \n'
                 commands += command
 
+            self.logger.info(commands)
             write_to_file(self.P4_DELTA_COMMANDS, commands)
             self.dataplane.send_commands(self.JSON_P4_COMPILED, self.P4_DELTA_COMMANDS)
