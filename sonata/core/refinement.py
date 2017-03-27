@@ -6,7 +6,7 @@
 from sonata.core.utils import *
 import sonata.streaming_driver.query_object as spark
 from partition import Partition
-
+from sonata.query_engine.utils import copy_operators
 
 def get_refined_query_id(query, ref_level):
     return 10000*query.qid + ref_level
@@ -62,6 +62,7 @@ def apply_refinement_plan(sonata_query, refinement_key, refined_query_id, ref_le
 
     # Copy operators to the new refined sonata query
     for operator in sonata_query.operators:
+        print "apply_refinement_plan: ", operator.name
         copy_operators(refined_sonata_query, operator)
 
     return refined_sonata_query
@@ -109,7 +110,8 @@ class Refinement(object):
         def add_timestamp_to_query(q):
             # This function will be useful if we need to add ts in recursion
             for operator in q.operators:
-                operator.keys = tuple(['ts'] + list(operator.keys))
+                # operator.keys = tuple(['ts'] + list(operator.keys))
+                operator.keys = tuple(list(operator.keys))
 
         for qid in self.qid_2_query:
             query = self.qid_2_query[qid]

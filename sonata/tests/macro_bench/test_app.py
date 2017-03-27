@@ -10,8 +10,8 @@ from sonata.query_engine.sonata_queries import *
 from sonata.core.runtime import Runtime
 
 batch_interval = 1
-window_length = 1
-sliding_interval = 1
+window_length = 2
+sliding_interval = 2
 
 RESULTS_FOLDER = '/home/vagrant/dev/sonata/tests/macro_bench/results/'
 
@@ -66,6 +66,6 @@ if __name__ == '__main__':
           .distinct(keys=('dIP',))
           )
 
-    queries = [q3]
+    queries = [q1]
 
     runtime = Runtime(conf, queries)

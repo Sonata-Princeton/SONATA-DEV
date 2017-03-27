@@ -40,24 +40,33 @@ def get_streaming_query(query, qid, partition_plan):
     n_operators_dp = int(partition_plan)
     n_operators_sp = int(len(query.operators))-n_operators_dp
     if n_operators_sp > 0:
-        # create a dp query object
+        # create a sp query object
         sp_query = SP_QO(qid)
         if n_operators_dp > 0:
             # update the basic headers
             # Add 'k' field to filter out garbled message received by the stream processor
-            sp_query.basic_headers = ['k', 'qid'] + list(query.operators[n_operators_dp - 1].keys)
-            border_operator = query.operators[n_operators_dp - 1]
+            sp_query.basic_headers = list(query.operators[n_operators_dp-1].keys) + list(query.operators[n_operators_dp-1].values)
+            border_operator = query.operators[n_operators_dp-1]
             if border_operator.name == "Reduce":
                 # We need to duplicate reduce operator in the data plane
-                n_operators_dp -= 1
+                n_operators_dp -= 2
+
 
         # Filter step is added to map incoming packet streams from multiple dataflow pipelines
         # to their respective pipelines in the stream processor
-        sp_query = sp_query.filter_init(qid=qid, keys=sp_query.basic_headers)
+        # sp_query = sp_query.filter_init(qid=qid, keys=sp_query.basic_headers)
+        # dp_operator = query.operators[n_operators_dp-1]
+        # sp_query.map(keys=sp_query.basic_headers,
+        #              values=tuple(),
+        #              map_keys=dp_operator.map_keys,
+        #              map_values=dp_operator.map_values,
+        #              func=dp_operator.func)
+
 
         # Update the remainder operators
         for operator in query.operators[n_operators_dp:]:
             copy_sonata_operators_to_sp_query(sp_query, operator)
+
         sp_query.parse_payload = requires_payload_processing(query)
 
         return sp_query
@@ -188,5 +197,5 @@ class Partition(object):
             if can_increment:
                 ctr += 1
             #print operator.name, partition_plans_learning
-
+        partition_plans_learning.append(len(query.operators))
         return partition_plans_learning
