@@ -61,7 +61,7 @@ class DataplaneDriver(object):
                     print "application", application
                     self.configure(application, target_id)
                 elif key == 'delta':
-                    self.logger.debug('received "delta" message')
+                    # self.logger.debug('received "delta" message')
                     filter_update = message[key][0]
                     target_id = message[key][1]
                     self.update_configuration(filter_update, target_id)

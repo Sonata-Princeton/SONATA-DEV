@@ -8,7 +8,7 @@ matplotlib.use('Agg')
 #from matplotlib import rc_file
 #rc_file('/Users/glex/Documents/WAP/dev/analysis/matplotlibrc.py')
 import matplotlib.pyplot as plt
-from netaddr import *
+#from netaddr import *
 from scipy.stats import cumfreq
 import pylab as pl
 import numpy as np

@@ -9,9 +9,9 @@ import os
 from sonata.query_engine.sonata_queries import *
 from sonata.core.runtime import Runtime
 
-batch_interval = 1
-window_length = 2
-sliding_interval = 2
+batch_interval = 0.5
+window_length = 1
+sliding_interval = 1
 
 RESULTS_FOLDER = '/home/vagrant/dev/sonata/tests/macro_bench/results/'
 
@@ -49,7 +49,7 @@ if __name__ == '__main__':
           .distinct(keys=('dIP', 'sIP'))
           .map(keys=('dIP',), map_values=('count',), func=('eq', 1,))
           .reduce(keys=('dIP',), func=('sum',))
-          .filter(filter_vals=('count',), func=('geq', '2'))
+          .filter(filter_vals=('count',), func=('geq', '50'))
           .map(keys=('dIP',))
           )
 

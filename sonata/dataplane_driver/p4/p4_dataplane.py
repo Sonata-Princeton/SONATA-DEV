@@ -24,7 +24,7 @@ class P4DataPlane(object):
         self.bm_script = bm_script
 
         # LOGGING
-        log_level = logging.INFO
+        log_level = logging.WARNING
         # add handler
         self.logger = logging.getLogger('P4DataPlane')
         self.logger.setLevel(log_level)
@@ -71,14 +71,14 @@ class P4DataPlane(object):
     def reset_switch_state(self):
         self.logger.info('reset switch state')
         cmd = "echo \'reset_state\' | " + self.cli_path + " --thrift-port "+str(self.thrift_port)
-        print "Running ##########:" + cmd
+        # print "Running ##########:" + cmd
         get_out(cmd)
 
     def send_commands(self, p4_json_path, command_path):
         self.logger.info('send commands')
         cmd = [self.cli_path, p4_json_path, str(self.thrift_port)]
         with open(command_path, "r") as f:
-            print " ".join(cmd)
+            # print " ".join(cmd)
             try:
                 output = subprocess.check_output(cmd, stdin=f)
             except subprocess.CalledProcessError as e:

@@ -77,7 +77,7 @@ class Runtime(object):
                 # final_plan = self.query_plans[query.qid][1:-1]
                 # print final_plan
 
-                final_plan = [(1, 16, 5, 1), (1, 32, 5, 3)]
+                final_plan = [(1, 16, 5, 1),(1, 32, 5, 3)]#(1, 16, 5, 1),
                 prev_r = 0
                 prev_qid = 0
 
@@ -180,22 +180,26 @@ class Runtime(object):
         queries_received = {}
         updateDeltaConfig = False
         while True:
-            print "Ready to receive data from SM ***************************"
+            #print "Ready to receive data from SM ***************************"
             conn = self.op_handler_listener.accept()
             # Expected (qid,[])
             op_data = conn.recv_bytes()
-            print "$$$$ OP Handler received:" + str(op_data)
+            op_data = op_data.strip('\n')
+            #print "$$$$ OP Handler received:" + str(op_data)
             received_data = op_data.split(",")
             src_qid = int(received_data[1])
-            table_match_entries = received_data[2:]
-            queries_received[src_qid] = table_match_entries
-            print "DP Queries: ", str(len(self.dp_queries.keys())), " Received keys:", str(len(queries_received.keys()))
+            if received_data[2:] != ['']:
+                table_match_entries = received_data[2:]
+                queries_received[src_qid] = table_match_entries
+            else:
+                queries_received[src_qid] = []
+            #print "DP Queries: ", str(len(self.dp_queries.keys())), " Received keys:", str(len(queries_received.keys()))
             if len(queries_received.keys()) == len(self.dp_queries.keys()):
                 updateDeltaConfig = True
 
-            print "Query Out Mappings: ",self.query_out_mappings
+            #print "Query Out Mappings: ",self.query_out_mappings
             delta_config = {}
-            print "## Received output for query", src_qid, "at time", time.time() - start, str(queries_received)
+            #print "## Received output for query", src_qid, "at time", time.time() - start
             if updateDeltaConfig:
                 start = time.time()
                 for src_qid in queries_received:
@@ -205,10 +209,10 @@ class Runtime(object):
                             out_queries = self.query_out_mappings[src_qid]
                             for out_qid in out_queries:
                                 # find the queries that take the output of this query as input
-                                print out_qid, src_qid
+                                #print out_qid, src_qid
                                 delta_config[(out_qid, src_qid)] = table_match_entries
                     # reset these state variables
-                print "delta config: ", delta_config
+                # print "delta config: ", delta_config
                 updateDeltaConfig = False
                 self.logger.info("runtime,create_delta_config," + str(start) + "," + str(time.time()))
                 queries_received = {}

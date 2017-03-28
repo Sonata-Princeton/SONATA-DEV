@@ -70,6 +70,7 @@ class Emitter(object):
         #hexdump(raw_packet)
 
         qid = int(str(self.qid_struct.unpack(p_str[0:2])[0]))
+
         ind = 2
         while qid in self.queries and qid != 0:
             query = self.queries[qid]
@@ -102,10 +103,11 @@ class Emitter(object):
             output_tuple = ['k']+[str(qid)]+output_tuple
             send_tuple = ",".join([str(x) for x in output_tuple])
 
+
             # TODO removed this packet is unrelated stuff - maybe it is necessary
             self.send_data(send_tuple + "\n")
 
-        self.logger.info("emitter,"+ str(qid) + ","+str(start)+","+str(time.time()))
+            self.logger.info("emitter,"+ str(qid) + ","+str(start)+","+str(time.time()))
 
 
 if __name__ == '__main__':

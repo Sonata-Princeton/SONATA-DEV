@@ -45,7 +45,7 @@ class P4Target(object):
         self.supported_operations = ['Map', 'Filter', 'Reduce', 'Distinct']
 
         # LOGGING
-        log_level = logging.DEBUG
+        log_level = logging.WARNING
         # add handler
         self.logger = logging.getLogger('P4Target')
         self.logger.setLevel(log_level)
