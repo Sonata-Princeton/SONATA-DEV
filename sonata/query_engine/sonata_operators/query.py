@@ -2,6 +2,7 @@
 #  Author:
 #  Arpit Gupta (arpitg@cs.princeton.edu)
 
+
 class Query(object):
     """
     Abstract Query Class
@@ -16,6 +17,9 @@ class Query(object):
         self.values = []
         self.expr = ''
         self.name = ''
+
+    def get_init_keys(self):
+        return self.keys
 
     def eval(self):
         """

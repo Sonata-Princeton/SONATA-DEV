@@ -1,10 +1,9 @@
 import logging
+import sys
 
+from mininet.link import Intf
 from mininet.net import Mininet
 from mininet.topo import Topo
-from mininet.link import TCLink, Intf
-
-import sys
 sys.path.append("/home/vagrant/bmv2/mininet")
 
 from p4_mininet import P4Switch, P4Host
@@ -13,7 +12,7 @@ from time import sleep
 import subprocess
 
 from interfaces import Interfaces
-from utils import get_out, get_in
+from sonata.dataplane_driver.utils import get_out, get_in
 
 
 class P4DataPlane(object):

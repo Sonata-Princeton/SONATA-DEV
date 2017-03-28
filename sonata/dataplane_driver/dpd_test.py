@@ -12,10 +12,6 @@ from multiprocessing.connection import Client
 from dp_driver import DataplaneDriver
 
 
-import sys
-sys.path.append("/home/vagrant/sonata/query_engine/sonata_operators")
-
-
 class DPDTest(object):
     def __init__(self, pickled_file, socket_data):
         self.dpd_socket = socket_data

@@ -5,6 +5,7 @@
 
 from query import Query
 
+
 class Distinct(Query):
     def __init__(self, *args, **kwargs):
         super(Distinct, self).__init__(*args, **kwargs)

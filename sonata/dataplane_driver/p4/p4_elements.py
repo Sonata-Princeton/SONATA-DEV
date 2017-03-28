@@ -2,7 +2,7 @@
 # Author: Ruediger Birkner (Networked Systems Group at ETH Zurich)
 
 
-from utils import get_logger
+from sonata.dataplane_driver.utils import get_logger
 
 
 class P4Element(object):

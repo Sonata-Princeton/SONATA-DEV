@@ -4,6 +4,7 @@
 
 from query import Query
 
+
 class Map(Query):
     def __init__(self, *args, **kwargs):
         super(Map, self).__init__(*args, **kwargs)
@@ -42,7 +43,6 @@ class Map(Query):
 
         if "func" in map_dict:
             self.func = map_dict['func']
-
 
     def __repr__(self):
         return '.Map(keys=' + str(self.keys) + ', map_keys=' + str(self.map_keys) + \

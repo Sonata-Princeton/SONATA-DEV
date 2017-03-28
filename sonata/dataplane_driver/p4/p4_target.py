@@ -2,16 +2,14 @@
 # Author: Ruediger Birkner (Networked Systems Group at ETH Zurich)
 
 
-from utils import get_logger
-
+from collections import namedtuple
 from threading import Thread
 
 from emitter.emitter import Emitter
-from p4_dataplane import P4DataPlane
-from utils import write_to_file
 from p4_application import P4Application
-
-from collections import namedtuple
+from p4_dataplane import P4DataPlane
+from sonata.dataplane_driver.utils import get_logger
+from sonata.dataplane_driver.utils import write_to_file
 
 
 Operator = namedtuple('Operator', 'name keys')

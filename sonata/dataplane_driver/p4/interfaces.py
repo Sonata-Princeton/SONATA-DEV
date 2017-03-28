@@ -1,4 +1,4 @@
-from utils import get_out
+from sonata.dataplane_driver.utils import get_out
 
 
 class Interfaces(object):

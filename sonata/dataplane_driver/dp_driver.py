@@ -5,11 +5,11 @@ import pickle
 
 from multiprocessing.connection import Listener
 
+from query_cleaner import get_clean_application
+
 from openflow.openflow import OFTarget
 from p4.p4_target import P4Target
 
-
-#TODO ADD LOGGING
 
 class DataplaneDriver(object):
     def __init__(self, dpd_socket):
@@ -64,17 +64,17 @@ class DataplaneDriver(object):
                     self.logger.error('Unsupported Key')
             conn.close()
 
-    def add_target(self, type, tid, config):
+    def add_target(self, target_type, tid, config):
         self.logger.info('adding new target of type %s with id %s' % (type, str(tid)))
         target = None
-        if type == 'p4':
+        if target_type == 'p4':
             if 'em_conf' not in config or 'switch_conf' not in config:
                 self.logger.error('missing configs')
                 return
             em_config = config['em_conf']
             switch_config = config['switch_conf']
             target = P4Target(em_config, switch_config)
-        elif type == 'openflow':
+        elif target_type == 'openflow':
             target = OFTarget()
 
         self.targets[tid] = target
@@ -100,6 +100,9 @@ class DataplaneDriver(object):
         return 999
 
     def configure(self, application, target_id):
+        # TODO integrate query cleaner
+        clean_application = get_clean_application(application)
+
         target = self.get_target(target_id)
         target.run(application)
 

@@ -2,10 +2,9 @@
 # Author: Ruediger Birkner (Networked Systems Group at ETH Zurich)
 
 
-from utils import get_logger
 from p4_elements import Register, HashFields, Table, MetaData, Action
 from p4_primitives import BitAnd, ModifyField, ModifyFieldWithHashBasedOffset, RegisterRead, RegisterWrite
-
+from sonata.dataplane_driver.utils import get_logger
 
 HEADER_MAP = {'sIP': 'ipv4.srcAddr', 'dIP': 'ipv4.dstAddr',
               'sPort': 'tcp.srcPort', 'dPort': 'tcp.dstPort',
@@ -20,6 +19,7 @@ REGISTER_WIDTH = 32
 REGISTER_NUM_INDEX_BITS = 12
 REGISTER_INSTANCE_COUNT = 2**REGISTER_NUM_INDEX_BITS
 TABLE_SIZE = 64
+THRESHOLD = 5
 
 
 class P4Operator(object):
@@ -143,7 +143,10 @@ class P4Reduce(P4Operator):
         super(P4Reduce, self).__init__('Reduce', qid, operator_id, keys)
         self.out_headers += ['count']
 
-        self.threshold = threshold
+        if threshold == '-1':
+            self.threshold = THRESHOLD
+        else:
+            self.threshold = threshold
 
         # create METADATA to store index and value
         fields = [('value', REGISTER_WIDTH), ('index', REGISTER_NUM_INDEX_BITS)]

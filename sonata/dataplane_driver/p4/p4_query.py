@@ -2,11 +2,10 @@
 # Author: Ruediger Birkner (Networked Systems Group at ETH Zurich)
 
 
-from utils import get_logger
-
-from p4_operators import P4Distinct, P4Filter, P4Map, P4MapInit, P4Reduce
 from p4_elements import Action, Header, Table
+from p4_operators import P4Distinct, P4Filter, P4Map, P4MapInit, P4Reduce
 from p4_primitives import ModifyField, AddHeader
+from sonata.dataplane_driver.utils import get_logger
 
 
 HEADER_MAP = {'sIP': 'ipv4.srcAddr', 'dIP': 'ipv4.dstAddr',
@@ -17,8 +16,6 @@ HEADER_MAP = {'sIP': 'ipv4.srcAddr', 'dIP': 'ipv4.dstAddr',
 HEADER_SIZE = {'sIP': 32, 'dIP': 32, 'sPort': 16, 'dPort': 16,
                'nBytes': 16, 'proto': 16, 'sMac': 48, 'dMac': 48,
                'qid': 16, 'count': 16}
-
-THRESHOLD = 2
 
 
 # Class that holds one refined query - which consists of an ordered list of operators
@@ -111,13 +108,12 @@ class P4Query(object):
                 p4_operators.append(filter_operator)
 
             elif operator.name == 'Map':
-                if len(operator.func) > 0:
-                    p4_operators.append(P4Map(self.id,
-                                              operator_id,
-                                              self.meta_init_name,
-                                              operator.keys,
-                                              operator.map_keys,
-                                              operator.func))
+                p4_operators.append(P4Map(self.id,
+                                          operator_id,
+                                          self.meta_init_name,
+                                          operator.keys,
+                                          operator.map_keys,
+                                          operator.func))
 
             elif operator.name == 'Reduce':
                 p4_operators.append(P4Reduce(self.id,
@@ -125,7 +121,7 @@ class P4Query(object):
                                              self.meta_init_name,
                                              self.query_drop_action,
                                              operator.keys,
-                                             THRESHOLD))
+                                             operator.threshold))
 
             elif operator.name == 'Distinct':
                 p4_operators.append(P4Distinct(self.id,

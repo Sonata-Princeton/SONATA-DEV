@@ -4,6 +4,7 @@
 
 from query import Query
 
+
 class Filter(Query):
     def __init__(self, *args, **kwargs):
         super(Filter, self).__init__(*args, **kwargs)
@@ -44,7 +45,6 @@ class Filter(Query):
 
         if 'filter_vals' in map_dict:
             self.filter_vals = map_dict['filter_vals']
-
 
     def __repr__(self):
         return '.Filter(filter_keys=' + str(self.filter_keys) +', filter_vals=' + str(self.filter_vals) + \

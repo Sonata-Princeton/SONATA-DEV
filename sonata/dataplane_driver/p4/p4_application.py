@@ -2,11 +2,10 @@
 # Author: Ruediger Birkner (Networked Systems Group at ETH Zurich)
 
 
-from utils import get_logger
-
-from p4_query import P4Query
 from p4_elements import Action, MetaData, MirrorSession, FieldList, Table, Header
 from p4_primitives import NoOp, CloneIngressPktToEgress, AddHeader, ModifyField
+from p4_query import P4Query
+from sonata.dataplane_driver.utils import get_logger
 
 
 SESSION_ID = 8001
