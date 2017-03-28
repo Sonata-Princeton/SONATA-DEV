@@ -24,6 +24,7 @@ sudo pip install -r ~/dev/setup/pip-basic-requires
 sudo apt-get install -y ssh git emacs sshfs graphviz feh
 sudo apt-get install -y libstring-crc32-perl
 
+echo 'Defaults    env_keep += "PYTHONPATH"' | sudo tee --append /etc/sudoers
 echo 'PATH=$PATH:~/iSDX/bin' >> ~/.profile
 echo 'export PYTHONPATH=$PYTHONPATH:/home/vagrant/dev' >> ~/.profile
 echo 'export PYTHONPATH=$PYTHONPATH:/home/vagrant/bmv2/mininet' >> ~/.profile
