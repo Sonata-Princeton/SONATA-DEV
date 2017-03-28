@@ -9,7 +9,7 @@ class QueryPlan(object):
         self.get_cost()
 
     def __repr__(self):
-        return ",".join([str(e) for e in self.path])
+        return ",".join([str(e) for e in self.path[:]])
 
     def get_cost(self):
         cost = 0

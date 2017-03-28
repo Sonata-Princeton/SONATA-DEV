@@ -85,24 +85,10 @@ class Learn(object):
             if True:
                 h_s[ts] = Search(g).final_plan
                 if debug: print "Best path for ts", ts, "is", h_s[ts].path, "with cost", h_s[ts].cost
-                n = 0
-                b = 0
-                V,E = self.G_orig[ts]
-                for n1,n2 in zip(h_s[ts].path, h_s[ts].path[1:]):
-                    edge = tuple([n1.state, n2.state])
-                    b += E[edge][0]
-                    n += E[edge][1]
-                if debug: print "N:", n, "B:", b
-                if n > self.n_max:
-                    self.n_viol = True
-                if b > self.b_max:
-                    self.b_viol = False
+                self.update_violation_flags(h_s[ts], ts)
+
                 if self.b_viol or self.n_viol:
-                    self.final_plan = [(self.b_viol, self.n_viol)]
                     return 0
-
-
-
 
         for fold in range(1, 1+self.K):
             (G_t, G_v) = partition_data(self.G, fold, self.K)
@@ -121,3 +107,17 @@ class Learn(object):
         final_plan = min_error(candidates.values())
         if debug: print "Final Plan:", final_plan.path
         self.final_plan = final_plan
+
+    def update_violation_flags(self, h, ts):
+        n = 0
+        b = 0
+        V,E = self.G_orig[ts]
+        for n1,n2 in zip(h.path, h.path[1:]):
+            edge = tuple([n1.state, n2.state])
+            b += E[edge][0]
+            n += E[edge][1]
+        if debug: print "N:", n, "B:", b
+        if n > self.n_max:
+            self.n_viol = True
+        if b > self.b_max:
+            self.b_viol = False
