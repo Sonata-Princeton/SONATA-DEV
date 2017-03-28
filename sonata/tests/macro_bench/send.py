@@ -28,19 +28,13 @@ def send_packet(pkt_tuple):
 
 def create_normal_traffic():
     number_of_packets = 10
-    # dIP = '99.7.186.25'
-    sIPs = []
-    dIPs = []
     normal_packets = []
 
     for i in range(number_of_packets):
-        sIPs.append(socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff))))
-        dIPs.append(socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff))))
-
-    for sIP in sIPs:
-        for dIP in dIPs:
-            p = Ether() / IP(dst=dIP, src=sIP) / TCP() / "SONATA NORMAL"
-            normal_packets.append(p)
+        sIP = socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff)))
+        dIP = socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff)))
+        p = Ether() / IP(dst=dIP, src=sIP) / TCP() / "SONATA NORMAL"
+        normal_packets.append(p)
 
     return normal_packets
 
@@ -115,7 +109,7 @@ def send_created_traffic():
         start = time.time()
         sendp(traffic_dict[i], iface="out-veth-1", verbose=0)
         total = time.time()-start
-        sleep_time = 2-total
+        sleep_time = 1-total
         if sleep_time > 0:
             time.sleep(sleep_time)
 

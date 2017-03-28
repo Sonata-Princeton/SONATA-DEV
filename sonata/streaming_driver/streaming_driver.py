@@ -26,7 +26,7 @@ def send_reduction_keys(rdd, op_handler_socket, start_time, qid='0'):
     reduction_str = "," .join([r for r in list_rdd])
     reduction_socket = Client(op_handler_socket)
     reduction_socket.send_bytes("k," + qid + "," + reduction_str + "\n")
-    print("Sending P2: ", qid, list_rdd, reduction_str, " at time", time.time()-start_time)
+    #print("Sending P2: ", qid, list_rdd, reduction_str, " at time", time.time()-start_time)
 
 
 def processLogLine(flow):

@@ -34,7 +34,7 @@ Vagrant.configure(2) do |config|
      sudo add-apt-repository ppa:webupd8team/java
      sudo apt-get update
      sudo apt-get install -y python-dateutil
-     sudo pip install test_helper
+     sudo pip install test_helper netaddr
      sudo pip install coloredlogs
      pip install --user scipy
      sudo apt-get install -y python-matplotlib
