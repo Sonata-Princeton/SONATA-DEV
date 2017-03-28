@@ -303,7 +303,7 @@ class P4Map(P4Operator):
 
         self.meta_init_name = meta_init_name
         self.map_keys = map_keys
-
+        self.func = func
         # create ACTION using the function
         primitives = list()
         if len(func) > 0:

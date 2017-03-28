@@ -9,11 +9,11 @@ import query_object
 import sys
 sys.path.append("/home/vagrant/sonata/query_engine/sonata_operators")
 
-from map import Map
-from distinct import Distinct
-from filter import Filter
-from join import Join
-from reduce import Reduce
+from sonata.query_engine.sonata_operators.map import *
+from sonata.query_engine.sonata_operators.distinct import *
+from sonata.query_engine.sonata_operators.filter import *
+from sonata.query_engine.sonata_operators.join import *
+from sonata.query_engine.sonata_operators.reduce import *
 
 
 class CleanIt(object):
@@ -81,7 +81,7 @@ class CleanIt(object):
                     new_o = Join()
                     new_o.query = operator.query
                 elif operator.name == 'Reduce':
-                    new_o = Reduce()
+                    new_o = Reduce(func=('sum',))
                     new_o.keys = keys
                     new_o.values = operator.values
                     new_o.prev_keys = operator.prev_keys
