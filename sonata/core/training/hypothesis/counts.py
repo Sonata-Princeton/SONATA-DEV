@@ -137,7 +137,8 @@ class Counts(object):
                 update_query_tree(query_tree.keys()[0], query_tree, ref_level, updated_query_tree)
                 print updated_query_tree
 
-                refinement_key = ['ts', self.refinement_key]
+                refinement_key = [self.refinement_key]
+                # refinement_key = ['ts', self.refinement_key]
 
                 generate_composed_spark_queries(refinement_key, BASIC_HEADERS, updated_query_tree,
                                                 refined_sonata_queries, composed_spark_queries)

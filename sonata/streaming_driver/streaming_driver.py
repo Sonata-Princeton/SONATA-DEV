@@ -26,7 +26,7 @@ def send_reduction_keys(rdd, op_handler_socket, start_time, qid='0'):
     reduction_str = "," .join([r for r in list_rdd])
     reduction_socket = Client(op_handler_socket)
     reduction_socket.send_bytes("k," + qid + "," + reduction_str + "\n")
-    print("Sending P2: ", qid, list_rdd, reduction_str, " at time", time.time()-start_time)
+    #print("Sending P2: ", qid, list_rdd, reduction_str, " at time", time.time()-start_time)
 
 
 def processLogLine(flow):
@@ -83,10 +83,13 @@ class StreamingDriver(object):
 
         for queryId in queries:
             query = queries[queryId]
-            query_str = "pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd." + query.compile() + ")).foreachRDD(lambda rdd: send_reduction_keys(rdd, " + str(self.op_handler_socket)+ "," + str(self.start_time)+",\'"+ str(queryId)+"\'))"
+            query_str = "pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd.filter(lambda p : (p[1]==str('"+str(queryId)+"'))).map(lambda p : (p[2:]))." + query.compile() + ")).foreachRDD(lambda rdd: send_reduction_keys(rdd, " + str(self.op_handler_socket)+ "," + str(self.start_time)+",\'"+ str(queryId)+"\'))"
             print(query_str)
             spark_queries[queryId] = eval(query_str)
 
+
+        # pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd.filter(lambda p : (p[1]==str('10016'))).map(lambda p : (p[2:])).map(lambda ((dIP,count)): ((dIP),(1))).reduceByKey(lambda x,y: x+y).filter(lambda ((dIP),(count)): ((float(count)>=2 ))).map(lambda (dIP, count)))).foreachRDD(lambda rdd: send_reduction_keys(rdd, ('localhost', 4949),1490571670.79,'10016'))
+        # pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd.filter(lambda p : (p[1]==str('10032'))).map(lambda p : (p[2:])).map(lambda ((dIP,count)): ((dIP),(1))).reduceByKey(lambda x,y: x+y).filter(lambda ((dIP),(count)): ((float(count)>=2 ))))).foreachRDD(lambda rdd: send_reduction_keys(rdd, ('localhost', 4949),1490571670.79,'10032'))
 
 
 if __name__ == "__main__":

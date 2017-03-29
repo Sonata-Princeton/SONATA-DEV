@@ -15,7 +15,7 @@ header_size = {"sIP":32, "dIP":32, "sPort": 16, "dPort": 16,
 
 class Emitter(object):
     def __init__(self, conf, queries):
-
+        print "********* EMITTER INITIALIZED *********"
         self.spark_stream_address = conf['spark_stream_address']
         self.spark_stream_port = conf['spark_stream_port']
         self.sniff_interface = conf['sniff_interface']
@@ -59,7 +59,7 @@ class Emitter(object):
         #print "Received packet for query ", qid, type(qid), self.qid_2_query
         if qid in self.qid_2_query:
             query = self.qid_2_query[qid]
-            print "Query", qid, " parse_payload", query.parse_payload
+            #print "Query", qid, " parse_payload", query.parse_payload
             out_headers = query.operators[-1].out_headers
             output_tuple = []
             ind = 2
@@ -91,7 +91,7 @@ class Emitter(object):
             output_tuple = ['k']+[str(qid)]+output_tuple
             send_tuple = ",".join([str(x) for x in output_tuple])
             if is_related:
-                print "Tuple:", send_tuple
+                #print "Tuple:", send_tuple
                 self.send_data(send_tuple + "\n")
             else:
                 print "Sniffed unrelated packet."

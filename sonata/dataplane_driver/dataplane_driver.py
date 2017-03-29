@@ -27,7 +27,7 @@ class DPDriverConfig(object):
 
         # create a logger for the object
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.INFO)
+        self.logger.setLevel(logging.WARNING)
         # create file handler which logs messages
         self.fh = logging.FileHandler(fm_conf['log_file'])
         self.fh.setLevel(logging.INFO)
@@ -80,7 +80,6 @@ class DPDriverConfig(object):
         for queryID in message:
             self.add_query(message[queryID])
         self.compile_init_config()
-        print "FM: Received ", len(self.queries), " queries from Runtime"
 
         write_to_file(P4_COMPILED, self.p4_src)
 

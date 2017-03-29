@@ -45,7 +45,7 @@ class P4Target(object):
         self.supported_operations = ['Map', 'Filter', 'Reduce', 'Distinct']
 
         # LOGGING
-        log_level = logging.DEBUG
+        log_level = logging.WARNING
         # add handler
         self.logger = logging.getLogger('P4Target')
         self.logger.setLevel(log_level)
@@ -255,12 +255,12 @@ class P4Target(object):
         self.dataplane.compile_p4(self.P4_COMPILED, self.JSON_P4_COMPILED)
 
         # initialize dataplane and run the configuration
-        self.logger.info('initialize the dataplane with the json configuration')
+        self.logger.info('initialize the dataplane with the json configuration'+str(self.em_conf))
         self.dataplane.initialize(self.JSON_P4_COMPILED, self.P4_COMMANDS)
 
         # start the emitter
         if self.em_conf:
-            self.logger.info('start the emitter')
+            self.logger.info('******* starting the emitter *******')
             em = Emitter(self.em_conf, p4_queries)
             em_thread = Thread(name='emitter', target=em.start)
             em_thread.setDaemon(True)
@@ -283,5 +283,6 @@ class P4Target(object):
                 command = 'table_add '+filter_table_fname+' set_meta_fm_'+str(qid)+' '+str(dip)+'/'+str(filter_mask)+' => \n'
                 commands += command
 
+            self.logger.info(commands)
             write_to_file(self.P4_DELTA_COMMANDS, commands)
             self.dataplane.send_commands(self.JSON_P4_COMPILED, self.P4_DELTA_COMMANDS)
