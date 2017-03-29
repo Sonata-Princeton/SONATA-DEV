@@ -117,7 +117,7 @@ class Hypothesis(object):
                         E[ts] = {}
                     if ts == 1440289056:
                         print ts, edge
-                    E[ts][edge] = (0,(0,0))
+                    E[ts][edge] = ((0,0), 0)
 
         self.E = E
 

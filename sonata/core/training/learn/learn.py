@@ -2,7 +2,7 @@
 #  Author:
 #  Arpit Gupta (arpitg@cs.princeton.edu)
 
-from sonata.system_config import FOLD_SIZE
+from sonata.system_config import FOLD_SIZE, GRAN, GRAN_MAX
 from utils import min_error, partition_data
 from sonata_search import Search, QueryPlan, map_input_graph
 from query_plan import QueryPlan
@@ -40,7 +40,7 @@ class Learn(object):
     b_viol = False
     n_viol = False
 
-    def __init__(self, G, alpha, beta, n_max, b_max):
+    def __init__(self, G, alpha, beta, n_max, b_max, mode):
         self.G = G
         self.G_orig = G
         self.timestamps = G.keys()
@@ -48,6 +48,7 @@ class Learn(object):
         self.beta = beta
         self.n_max = n_max
         self.b_max = b_max
+        self.mode = mode
 
         # sort the timestamps for sanity reasons
         self.timestamps.sort()
@@ -65,14 +66,78 @@ class Learn(object):
             (v,edges) = self.G[ts]
             updated_edges = {}
             for edge in edges:
-                (b,n) = edges[edge]
-                updated_edges[edge] = (self.alpha*float(n)/self.n_max)+((1-self.alpha)*float(b)/self.b_max)
+                (r1, p1, l1), (r2, p2, l2) = edge
+                #print edge, edges[edge]
+                # These are tmp fixes
+                if l2 > 0 and edges[edge] != (0,0):
+                    (b_hash, b_sketch), n  = edges[edge]
+                    if self.mode >= 4:
+                        # Use sketches
+                        b = b_sketch
+                    else:
+                        # Use hash tables only
+                        b = b_hash
+                    updated_edges[edge] = (self.alpha*float(n)/self.n_max)+((1-self.alpha)*float(b)/self.b_max)
+                else:
+                    updated_edges[edge] = 0
+
                 # if ts == 1440289056: print ts, edge, edges[edge], updated_edges[edge]
             G_new[ts] = (v, updated_edges)
 
         self.G = G_new
 
     def learn_query_plan(self):
+        gran = GRAN
+        G_new = {}
+
+        # Update the graph for different operational modes
+        if self.mode == 6:
+            # Config 6, best SONATA config, no change required
+            G_new = self.G
+
+        elif self.mode == 5:
+            # mode where we only chose static refinement plan, only keep edges that move one refinement level unit for every iteration
+            for ts in self.G:
+                v_orig, e_orig = self.G[ts]
+                v_new = v_orig
+                e_new = {}
+                for ((r1, p1, l1), (r2, p2, l2)) in e_orig:
+                    edge = (r1, p1, l1), (r2, p2, l2)
+                    if r2-r1 == gran:
+                        e_new[edge] = e_orig[edge]
+                    if p2 == 0 and l2 == 0:
+                        e_new[edge] = e_orig[edge]
+
+                G_new[ts] = (v_new, e_new)
+
+        elif self.mode == 4 or self.mode == 3:
+            # mode where there is no refinement at all
+            for ts in self.G:
+                v_orig, e_orig = self.G[ts]
+                v_new = v_orig
+                e_new = {}
+                for ((r1, p1, l1), (r2, p2, l2)) in e_orig:
+                    edge = (r1, p1, l1), (r2, p2, l2)
+                    #print edge, (l2 in [0, 1]) and (l1 in [0,1]) and r2 == GRAN_MAX-1
+                    if (l2 in [0, 1]) and (l1 in [0,1]) and r2 == GRAN_MAX-1:
+                        #print edge, (l2 in [0, 1]) and (l1 in [0,1])  and r2 == GRAN_MAX-1
+                        e_new[edge] = e_orig[edge]
+                #break
+                G_new[ts] = (v_new, e_new)
+
+        elif self.mode == 2:
+            # mode where there is no stateful dataflow operation in the dataplane, i.e. p2 ==0
+            for ts in self.G:
+                v_orig, e_orig = self.G[ts]
+                v_new = v_orig
+                e_new = {}
+                for ((r1, p1, l1), (r2, p2, l2)) in e_orig:
+                    edge = (r1, p1, l1), (r2, p2, l2)
+                    if (l2 in [0, 1]) and p2 == 0 and (l1 in [0,1]) and p1 == 0 and r2 == GRAN_MAX-1:
+                        e_new[edge] = e_orig[edge]
+                G_new[ts] = (v_new, e_new)
+
+        self.G = G_new
         h_s = {}
         h_T = {}
         e_V = {}
@@ -108,14 +173,18 @@ class Learn(object):
         if debug: print "Final Plan:", final_plan.path
         self.final_plan = final_plan
 
+
     def update_violation_flags(self, h, ts):
         n = 0
         b = 0
         V,E = self.G_orig[ts]
         for n1,n2 in zip(h.path, h.path[1:]):
             edge = tuple([n1.state, n2.state])
-            b += E[edge][0]
-            n += E[edge][1]
+            (r1, p1, l1), (r2, p2, l2) = edge
+            if l2 > 0 and E[edge] != (0,0):
+                #print edge, E[edge]
+                b += E[edge][0][0]
+                n += E[edge][1]
         if debug: print "N:", n, "B:", b
         if n > self.n_max:
             self.n_viol = True
