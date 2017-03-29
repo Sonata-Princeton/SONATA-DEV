@@ -7,7 +7,7 @@ import pickle
 
 def alpha_tuning(Ns, Bs):
     from sonata.core.training.learn.learn import Learn
-    with open('hypothesis_graph.pickle', 'r') as f:
+    with open('hypothesis_graph_2017-03-29 00:21:42.251074.pickle', 'r') as f:
         G = pickle.load(f)
         # print G
         operational_alphas = {}
@@ -139,5 +139,5 @@ def generate_data():
 
 
 if __name__ == '__main__':
-    # generate_data()
-    plot_data()
+    generate_data()
+    # plot_data()

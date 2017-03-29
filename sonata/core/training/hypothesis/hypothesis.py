@@ -66,10 +66,10 @@ class Hypothesis(object):
         self.V = vertices
 
     def add_edges(self):
-        usePickle = True
+        #usePickle = True
         usePickle = False
         if usePickle:
-            with open('costs.pickle', 'r') as f:
+            with open('data/costs.pickle', 'r') as f:
                 print "Loading costs from pickle..."
                 costs = pickle.load(f)
         else:
@@ -78,7 +78,7 @@ class Hypothesis(object):
             # Apply the costs model over counts to estimate costs for different edges
             costs = Costs(counts, self.P, self.target.N_max, self.target.B_max).costs
             print costs
-            with open('costs.pickle', 'w') as f:
+            with open('data/costs.pickle', 'w') as f:
                 print "Dumping costs into pickle..."
                 pickle.dump(costs, f)
 
@@ -117,7 +117,7 @@ class Hypothesis(object):
                         E[ts] = {}
                     if ts == 1440289056:
                         print ts, edge
-                    E[ts][edge] = (0,0)
+                    E[ts][edge] = (0,(0,0))
 
         self.E = E
 
