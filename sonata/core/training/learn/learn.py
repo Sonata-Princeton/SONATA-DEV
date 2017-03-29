@@ -77,11 +77,18 @@ class Learn(object):
                     else:
                         # Use hash tables only
                         b = b_hash
-                    updated_edges[edge] = (self.alpha*float(n)/self.n_max)+((1-self.alpha)*float(b)/self.b_max)
+                    b = min([b_hash, b_sketch])
+                    weight = (self.alpha*float(n)/self.n_max)+((1-self.alpha)*float(b)/self.b_max)
+                    if weight <= 1.0:
+                        updated_edges[edge] = weight
+                        if ts == 1440289041 and (l2 == 1): print ts, edge, edges[edge], updated_edges[edge], self.alpha
+                    # else:
+                    #     if ts == 1440289041 and l2 == 1: print "Ignored", ts, edge, edges[edge], weight
+
                 else:
                     updated_edges[edge] = 0
 
-                # if ts == 1440289056: print ts, edge, edges[edge], updated_edges[edge]
+
             G_new[ts] = (v, updated_edges)
 
         self.G = G_new
@@ -96,7 +103,8 @@ class Learn(object):
             G_new = self.G
 
         elif self.mode == 5:
-            # mode where we only chose static refinement plan, only keep edges that move one refinement level unit for every iteration
+            # mode where we only chose static refinement plan,
+            # only keep edges that move one refinement level unit for every iteration
             for ts in self.G:
                 v_orig, e_orig = self.G[ts]
                 v_new = v_orig
@@ -142,15 +150,16 @@ class Learn(object):
         h_T = {}
         e_V = {}
         candidates = {}
-        #debug = True
+        debug = True
         for ts in self.G:
             # print "Searching best path for", ts
             g = self.G[ts]
             #if ts == 1440289041:
             if True:
                 h_s[ts] = Search(g).final_plan
-                if debug: print "Best path for ts", ts, "is", h_s[ts].path, "with cost", h_s[ts].cost
+                if debug: print "Best path for ts", ts, "is", h_s[ts].path, "with cost", h_s[ts].cost, self.alpha
                 self.update_violation_flags(h_s[ts], ts)
+                if debug: print self.b_viol, self.n_viol
 
                 if self.b_viol or self.n_viol:
                     return 0
@@ -173,11 +182,11 @@ class Learn(object):
         if debug: print "Final Plan:", final_plan.path
         self.final_plan = final_plan
 
-
     def update_violation_flags(self, h, ts):
         n = 0
         b = 0
         V,E = self.G_orig[ts]
+        debug = True
         for n1,n2 in zip(h.path, h.path[1:]):
             edge = tuple([n1.state, n2.state])
             (r1, p1, l1), (r2, p2, l2) = edge
@@ -189,4 +198,4 @@ class Learn(object):
         if n > self.n_max:
             self.n_viol = True
         if b > self.b_max:
-            self.b_viol = False
+            self.b_viol = True

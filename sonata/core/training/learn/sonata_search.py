@@ -95,7 +95,7 @@ class Search(object):
         self.final_plan = QueryPlan(self.graph, self.target_node.path())
 
     def best_first_graph_search(self, f):
-        #debug = True
+        debug = True
         debug = False
         if debug: print self.graph.dict
         problem = self.problem

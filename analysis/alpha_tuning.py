@@ -20,13 +20,16 @@ def do_alpha_tuning(Ns, Bs, fname, mode):
     from sonata.core.training.learn.learn import Learn
     with open(fname, 'r') as f:
         G = pickle.load(f)
-        G_Train = get_training_graph(G, 30)
+        G_Train = get_training_graph(G, 10)
         # print G
         operational_alphas = {}
         unique_plans = {}
         for n_max in Ns:
             for b_max in Bs:
-                alpha = 0.1
+                n_threads = 0
+                alpha = 0.5
+                upper_limit = 1.0
+                lower_limit = 0
                 beta = 0
                 ctr = 0
                 while True:
@@ -35,9 +38,11 @@ def do_alpha_tuning(Ns, Bs, fname, mode):
                     learn = Learn(G_Train, alpha, beta, n_max, b_max, mode)
                     # print alpha, n_max, learn.n_viol, b_max,  learn.b_viol
                     if not learn.n_viol and learn.b_viol:
-                        alpha = (alpha) / 2
+                        upper_limit = alpha
+                        alpha = (upper_limit+lower_limit) / 2
                     elif learn.n_viol and not learn.b_viol:
-                        alpha = (1 + alpha) / 2
+                        lower_limit = alpha
+                        alpha = (upper_limit+lower_limit) / 2
 
                     elif learn.n_viol and learn.b_viol:
                         operational_alphas[(n_max, b_max)] = -1
@@ -57,18 +62,18 @@ def do_alpha_tuning(Ns, Bs, fname, mode):
                 if ctr < 10:
                     print ctr, n_max, b_max, operational_alphas[(n_max, b_max)], learn.final_plan.path
                     # return 0
-        # print operational_alphas
+        print operational_alphas
         print [(k, len(v)) for k, v in unique_plans.iteritems()]
 
         return operational_alphas, unique_plans
 
 
 if __name__ == '__main__':
-    Ns = [1000]
-    Bs = [10000]
+    Ns = [3000]
+    Bs = [20000]
     # Ns = range(100, 5100, 1000)
     # Bs = range(1000, 51000, 10000)
-    mode = 3
+    mode = 5
     fname = 'data/hypothesis_graph_2017-03-29 03:29:50.290812.pickle'
     #fname = 'data/hypothesis_graph_2017-03-29 00:21:42.251074.pickle'
     operational_alphas, unique_plans = do_alpha_tuning(Ns, Bs, fname, mode)
