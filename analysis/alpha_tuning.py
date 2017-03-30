@@ -8,6 +8,7 @@ import datetime
 from multiprocessing import Process, Queue
 from sonata.core.training.learn.learn import Learn
 
+
 def get_training_graph(G, n):
     G_out = {}
     timestamps = G.keys()
@@ -18,7 +19,7 @@ def get_training_graph(G, n):
     return G_out
 
 
-def alpha_tuning_iter(G_Train, n_max, b_max, mode, q= None):
+def alpha_tuning_iter(G_Train, n_max, b_max, mode, q=None):
     operational_alphas = {}
     unique_plans = {}
     prev_alpha = 0
@@ -42,20 +43,20 @@ def alpha_tuning_iter(G_Train, n_max, b_max, mode, q= None):
         learn = Learn(G_Train, alpha, beta, n_max, b_max, mode)
         path_string = learn.final_plan.__repr__()
 
-        if debug: print alpha, n_max, learn.n_viol, b_max,  learn.b_viol
+        if debug: print alpha, n_max, learn.n_viol, b_max, learn.b_viol
 
         if not learn.n_viol and learn.b_viol:
             upper_limit = alpha
-            alpha = (upper_limit+lower_limit) / 2
-            if ctr == max_iter-1:
+            alpha = (upper_limit + lower_limit) / 2
+            if ctr == max_iter - 1:
                 if path_string not in unique_plans:
                     unique_plans[path_string] = {}
                 unique_plans[path_string][(n_max, b_max)] = alpha
                 operational_alphas[(n_max, b_max)] = -1
         elif learn.n_viol and not learn.b_viol:
             lower_limit = alpha
-            alpha = (upper_limit+lower_limit) / 2
-            if ctr == max_iter-1:
+            alpha = (upper_limit + lower_limit) / 2
+            if ctr == max_iter - 1:
                 if path_string not in unique_plans:
                     unique_plans[path_string] = {}
                 unique_plans[path_string][(n_max, b_max)] = alpha
@@ -73,14 +74,14 @@ def alpha_tuning_iter(G_Train, n_max, b_max, mode, q= None):
                 unique_plans[path_string] = {}
             curr_cost = learn.final_plan.cost
 
-            alpha_right = (alpha+upper_limit)/2
+            alpha_right = (alpha + upper_limit) / 2
             learn_right = Learn(G_Train, alpha_right, beta, n_max, b_max, mode)
             if not learn_right.n_viol and not learn_right.b_viol:
                 cost_right = learn_right.final_plan.cost
             else:
                 cost_right = 100
 
-            alpha_left = (alpha+lower_limit)/2
+            alpha_left = (alpha + lower_limit) / 2
             learn_left = Learn(G_Train, alpha_left, beta, n_max, b_max, mode)
             if not learn_left.n_viol and not learn_left.b_viol:
                 cost_left = learn_left.final_plan.cost
@@ -97,7 +98,7 @@ def alpha_tuning_iter(G_Train, n_max, b_max, mode, q= None):
                 operational_alphas[(n_max, b_max)] = alpha
                 unique_plans[path_string][(n_max, b_max)] = alpha
                 break
-            if ctr == max_iter-1:
+            if ctr == max_iter - 1:
                 if path_string not in unique_plans:
                     unique_plans[path_string] = {}
                 unique_plans[path_string][(n_max, b_max)] = alpha
@@ -114,7 +115,7 @@ def alpha_tuning_iter(G_Train, n_max, b_max, mode, q= None):
 
 
 def chunkify(lst, n):
-    return [lst[i::n] for i in xrange(n) ]
+    return [lst[i::n] for i in xrange(n)]
 
 
 def process_chunk(G_Train, chunk, mode, q=None):
@@ -146,7 +147,7 @@ def do_alpha_tuning(Ns, Bs, fname, mode):
         for n_max in Ns:
             for b_max in Bs:
                 configs.append((n_max, b_max))
-        n_cores = 2
+        n_cores = 8
         cfg_chunks = chunkify(configs, n_cores)
         queues = []
         processes = []
@@ -171,7 +172,6 @@ def do_alpha_tuning(Ns, Bs, fname, mode):
                     unique_plans[path_string].update(tmp2[path_string])
             p.join()
 
-
         print operational_alphas
         print unique_plans
         # print [(k, len(v)) for k, v in unique_plans.iteritems()]
@@ -180,22 +180,22 @@ def do_alpha_tuning(Ns, Bs, fname, mode):
 
 
 if __name__ == '__main__':
-    Ns = [200]
-    Bs = [500]
-    # Ns = range(100, 5100, 1000)
-    # Bs = range(1000, 51000, 10000)
+    # Ns = [200]
+    # Bs = [500]
+    Ns = range(100, 11000, 1000)
+    Bs = range(1000, 110000, 10000)
 
     fname = 'data/hypothesis_graph_2017-03-29 03:29:50.290812.pickle'
-    #fname = 'data/hypothesis_graph_2017-03-29 00:21:42.251074.pickle'
-    modes = [2,3,4,5,6]
-    modes = [2]
+    # fname = 'data/hypothesis_graph_2017-03-29 00:21:42.251074.pickle'
+    modes = [2, 3, 4, 5, 6]
+    modes = [6]
     data_dump = {}
     for mode in modes:
         print mode
         operational_alphas, unique_plans = do_alpha_tuning(Ns, Bs, fname, mode)
         data_dump[mode] = (Ns, Bs, operational_alphas, unique_plans)
 
-    fname = 'data/alpha_tuning_dump_'+str(datetime.datetime.fromtimestamp(time.time()))+'.pickle'
+    fname = 'data/alpha_tuning_dump_' + str(datetime.datetime.fromtimestamp(time.time())) + '.pickle'
     print "Dumping data to", fname
-    # with open(fname, 'w') as f:
-    #     pickle.dump(data_dump, f)
+    with open(fname, 'w') as f:
+        pickle.dump(data_dump, f)
