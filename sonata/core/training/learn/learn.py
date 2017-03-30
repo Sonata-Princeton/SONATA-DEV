@@ -4,8 +4,8 @@
 
 from sonata.system_config import FOLD_SIZE, GRAN, GRAN_MAX
 from utils import min_error, partition_data
-from sonata_search import Search, QueryPlan, map_input_graph
-from query_plan import QueryPlan
+from sonata_search import Search, map_input_graph, DirectedGraph, map_input_graph
+from query_plan import QueryPlan, QueryPlanMulti
 import math
 
 debug = False
@@ -79,11 +79,12 @@ class Learn(object):
                         b = b_hash
 
                     weight = (self.alpha*float(n)/self.n_max)+((1-self.alpha)*float(b)/self.b_max)
-                    if weight <= 1.0:
-                        updated_edges[edge] = weight
-                        # if ts == 1440289041 and (l2 == 1): print ts, edge, edges[edge], updated_edges[edge], self.alpha
-                    # else:
-                    #     if ts == 1440289041 and l2 == 1: print "Ignored", ts, edge, edges[edge], weight
+                    updated_edges[edge] = weight
+                    # if weight <= 1.0:
+                    #     updated_edges[edge] = weight
+                    #     # if ts == 1440289041 and (l2 == 1): print ts, edge, edges[edge], updated_edges[edge], self.alpha
+                    # # else:
+                    # #     if ts == 1440289041 and l2 == 1: print "Ignored", ts, edge, edges[edge], weight
 
                 else:
                     updated_edges[edge] = 0
@@ -166,8 +167,8 @@ class Learn(object):
                     self.b_viol = True
                     self.n_viol = True
 
-                if self.b_viol or self.n_viol:
-                    return 0
+                # if self.b_viol or self.n_viol:
+                #     return 0
 
         for fold in range(1, 1+self.K):
             (G_t, G_v) = partition_data(self.G, fold, self.K)
@@ -183,9 +184,11 @@ class Learn(object):
 
             e_V[fold] = math.sqrt(error_fold)
             candidates[fold] = (h_T[fold], e_V[fold])
-        final_plan = min_error(candidates.values())
-        if debug: print "Final Plan:", final_plan.path
-        self.final_plan = final_plan
+        final_plan, rmse = min_error(candidates.values())
+        final_plan_multi = QueryPlanMulti(self.G, final_plan.path, rmse)
+
+        if debug: print "Final Plan:", final_plan_multi.path
+        self.final_plan = final_plan_multi
 
     def update_violation_flags(self, h, ts):
         n = 0

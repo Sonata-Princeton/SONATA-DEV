@@ -18,6 +18,11 @@ import sys
 infinity = 1.0e400
 
 
+
+
+
+
+
 def min_error(candidates):
     min_err = infinity
     out_plan = None
@@ -27,7 +32,7 @@ def min_error(candidates):
             out_plan = h
     from query_plan import QueryPlan
     assert isinstance(out_plan, QueryPlan)
-    return out_plan
+    return out_plan, min_err
 
 
 def partition_data(G, fold, k):

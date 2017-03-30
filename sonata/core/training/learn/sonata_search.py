@@ -7,22 +7,7 @@ from query_plan import QueryPlan
 
 debug = False
 
-def DirectedGraph(dict=None):
-    "Build a Hypothesis where every edge (including future ones) goes both ways."
-    return Graph(dict=dict, directed=True)
 
-
-def map_input_graph(G):
-    (V, E) = G
-    graph = {}
-    for v in V:
-        for (v1, v2) in E:
-            if v1 == v:
-                if v not in graph:
-                    graph[v] = {}
-                graph[v1][v2] = E[(v1, v2)]
-    #print graph
-    return DirectedGraph(graph)
 
 
 class GraphProblem(Problem):
