@@ -5,6 +5,7 @@ from sonata.core.training.learn.utils import *
 
 from query_plan import QueryPlan
 
+debug = False
 
 def DirectedGraph(dict=None):
     "Build a Hypothesis where every edge (including future ones) goes both ways."
@@ -74,7 +75,7 @@ class GraphProblem(Problem):
 
 class Search(object):
     graph = {}
-    final_plan = {}
+    final_plan = None
     target_node = None
 
     def __init__(self, G):
@@ -86,7 +87,7 @@ class Search(object):
         # No heuristics in f ==> uniform cost search algorithm
         self.best_first_graph_search(lambda node: node.path_cost)
         if self.target_node is None:
-            print "Failed to find the best path :("
+            if debug: print "Failed to find the best path :("
         else:
             # print "Best path is", self.target_node.path()
             self.generate_final_plan()

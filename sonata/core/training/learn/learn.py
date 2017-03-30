@@ -73,15 +73,15 @@ class Learn(object):
                     (b_hash, b_sketch), n  = edges[edge]
                     if self.mode >= 4:
                         # Use sketches
-                        b = b_sketch
+                        b = min([b_hash, b_sketch])
                     else:
                         # Use hash tables only
                         b = b_hash
-                    b = min([b_hash, b_sketch])
+
                     weight = (self.alpha*float(n)/self.n_max)+((1-self.alpha)*float(b)/self.b_max)
                     if weight <= 1.0:
                         updated_edges[edge] = weight
-                        if ts == 1440289041 and (l2 == 1): print ts, edge, edges[edge], updated_edges[edge], self.alpha
+                        # if ts == 1440289041 and (l2 == 1): print ts, edge, edges[edge], updated_edges[edge], self.alpha
                     # else:
                     #     if ts == 1440289041 and l2 == 1: print "Ignored", ts, edge, edges[edge], weight
 
@@ -150,16 +150,21 @@ class Learn(object):
         h_T = {}
         e_V = {}
         candidates = {}
-        debug = True
+        # debug = True
         for ts in self.G:
             # print "Searching best path for", ts
             g = self.G[ts]
             #if ts == 1440289041:
             if True:
                 h_s[ts] = Search(g).final_plan
-                if debug: print "Best path for ts", ts, "is", h_s[ts].path, "with cost", h_s[ts].cost, self.alpha
-                self.update_violation_flags(h_s[ts], ts)
-                if debug: print self.b_viol, self.n_viol
+                if h_s[ts] is not None:
+                    if debug: print "Best path for ts", ts, "is", h_s[ts].path, "with cost", h_s[ts].cost, self.alpha
+                    self.update_violation_flags(h_s[ts], ts)
+                    if debug: print self.b_viol, self.n_viol
+                else:
+                    # No candidate query plan for this system config
+                    self.b_viol = True
+                    self.n_viol = True
 
                 if self.b_viol or self.n_viol:
                     return 0
@@ -186,7 +191,8 @@ class Learn(object):
         n = 0
         b = 0
         V,E = self.G_orig[ts]
-        debug = True
+        debug = False
+        # debug = True
         for n1,n2 in zip(h.path, h.path[1:]):
             edge = tuple([n1.state, n2.state])
             (r1, p1, l1), (r2, p2, l2) = edge

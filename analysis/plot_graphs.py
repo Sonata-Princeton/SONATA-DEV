@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 #  Author:
 #  Arpit Gupta (arpitg@cs.princeton.edu)
+import pickle
 
 import matplotlib
 matplotlib.rc('text')
@@ -70,12 +71,13 @@ def get_plans_intensity(Ns, Bs, unique_plans):
 
 
 def plot_data():
-    with open('alpha_tuning_dump.pickle', 'r') as f:
+    fname = 'data/alpha_tuning_dump_2017-03-29 20:07:13.376800.pickle'
+    with open(fname, 'r') as f:
         (Ns, Bs, operational_alphas, unique_plans) = pickle.load(f)
         print unique_plans.keys()
         intensity_alpha = get_alpha_intensity(Ns, Bs, operational_alphas)
         intensity_plans = get_plans_intensity(Ns, Bs, unique_plans)
-        # heatmap_plot(Ns, Bs, intensity_alpha, 'N_max', 'B_max', 'heatmap_alpha.pdf')
+        heatmap_plot(Ns, Bs, intensity_alpha, 'Nmax (Kpps)', 'Bmax (Kb)', 'data/heatmap_alpha.pdf')
         heatmap_plot(Ns, Bs, intensity_plans, 'Nmax (Kpps)', 'Bmax (Kb)', 'data/heatmap_plans.pdf')
 
 if __name__ == '__main__':
