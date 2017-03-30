@@ -7,7 +7,7 @@ import argparse
 import query_object
 
 import sys
-sys.path.append("/home/vagrant/sonata/query_engine/sonata_operators")
+sys.path.append("/home/vagrant/dev/sonata/query_engine/sonata_operators")
 
 from sonata.query_engine.sonata_operators.map import *
 from sonata.query_engine.sonata_operators.distinct import *

@@ -3,7 +3,7 @@
 
 
 from p4_elements import Register, HashFields, Table, MetaData, Action
-from p4_primitives import BitAnd, ModifyField, ModifyFieldWithHashBasedOffset, RegisterRead, RegisterWrite
+from p4_primitives import BitAnd, ModifyField, ModifyFieldWithHashBasedOffset, RegisterRead, RegisterWrite, BitOr
 from sonata.dataplane_driver.utils import get_logger
 
 HEADER_MAP = {'sIP': 'ipv4.srcAddr', 'dIP': 'ipv4.dstAddr',
@@ -14,6 +14,10 @@ HEADER_MAP = {'sIP': 'ipv4.srcAddr', 'dIP': 'ipv4.dstAddr',
 HEADER_SIZE = {'sIP': 32, 'dIP': 32, 'sPort': 16, 'dPort': 16,
                'nBytes': 16, 'proto': 16, 'sMac': 48, 'dMac': 48,
                'qid': 16, 'count': 16}
+
+HEADER_MASK_SIZE = {'sIP': 8, 'dIP': 8, 'sPort': 4, 'dPort': 4,
+               'nBytes': 4, 'proto': 4, 'sMac': 12, 'dMac': 12,
+               'qid': 4, 'count': 4}
 
 REGISTER_WIDTH = 32
 REGISTER_NUM_INDEX_BITS = 12
@@ -85,7 +89,7 @@ class P4Distinct(P4Operator):
         primitives.append(ModifyFieldWithHashBasedOffset(self.index_field_name, 0, self.hash.get_name(),
                                                          REGISTER_INSTANCE_COUNT))
         primitives.append(RegisterRead(self.value_field_name, self.register.get_name(), self.index_field_name))
-        primitives.append(ModifyField(self.value_field_name, '%s %s %i' % (self.value_field_name, self.update_func, 1)))
+        primitives.append(BitOr(self.value_field_name, self.value_field_name, 1))
         primitives.append(RegisterWrite(self.register.get_name(), self.index_field_name, self.value_field_name))
         self.action = Action('do_init_%s' % self.operator_name, primitives)
 
@@ -262,6 +266,10 @@ class P4MapInit(P4Operator):
                 meta_field_name = '%s.%s' % (self.metadata.get_name(), key)
                 field_name = HEADER_MAP[key]
                 primitives.append(ModifyField(meta_field_name, field_name))
+            elif key == 'qid':
+                meta_field_name = '%s.%s' % (self.metadata.get_name(), key)
+                primitives.append(ModifyField(meta_field_name, qid))
+
         self.action = Action('do_%s' % self.operator_name, primitives)
 
         # create dummy TABLE to execute the action
@@ -310,7 +318,9 @@ class P4Map(P4Operator):
             self.func = func
             if func[0] == 'mask' or not func[0]:
                 for field in self.map_keys:
-                    mask = '0x' + ('f' * func[1]) + ('0' * (HEADER_SIZE[field] - func[1]))
+                    print self.__repr__(), self.map_keys
+                    mask_size = (func[1]/4)
+                    mask = '0x' + ('f' * mask_size) + ('0' * (HEADER_MASK_SIZE[field] - mask_size))
                     field_name = '%s.%s' % (self.meta_init_name, field)
                     primitives.append(BitAnd(field_name, field_name, mask))
             else:
@@ -326,7 +336,7 @@ class P4Map(P4Operator):
         self.table = Table(self.operator_name, self.action.get_name(), [], None, 1)
 
     def __repr__(self):
-        return '.Map(keys='+str(self.keys)+', map_keys='+str(self.keys)+', func='+str(self.func)+')'
+        return '.Map(keys='+str(self.keys)+', map_keys='+str(self.map_keys)+', func='+str(self.func)+')'
 
     def get_code(self):
         out = ''
@@ -378,7 +388,7 @@ class P4Filter(P4Operator):
 
         reads_fields = list()
         for filter_key in self.filter_keys:
-            if self.func[0] == 'mask':
+            if self.func == 'mask':
                 reads_fields.append((HEADER_MAP[filter_key], 'lpm'))
             else:
                 reads_fields.append((HEADER_MAP[filter_key], 'exact'))

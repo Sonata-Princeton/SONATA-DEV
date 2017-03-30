@@ -78,7 +78,6 @@ class P4DataPlane(object):
         self.logger.info('send commands')
         cmd = [self.cli_path, p4_json_path, str(self.thrift_port)]
         with open(command_path, "r") as f:
-            # print " ".join(cmd)
             try:
                 output = subprocess.check_output(cmd, stdin=f)
             except subprocess.CalledProcessError as e:

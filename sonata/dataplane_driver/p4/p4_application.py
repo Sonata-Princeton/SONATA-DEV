@@ -227,5 +227,5 @@ class P4Application(object):
     def get_update_commands(self, filter_update):
         commands = list()
         for qid, filter_id in filter_update:
-            commands.extend(self.queries[qid].get_update_commands(filter_id, filter, filter_update[(qid, filter_id)]))
+            commands.extend(self.queries[qid].get_update_commands(filter_id, filter_update[(qid, filter_id)]))
         return commands

@@ -49,7 +49,7 @@ class DPDTest(object):
         config = {
             'em_conf': None,
             'switch_conf': {
-                'compiled_srcs': '/home/vagrant/sonata/dataplane_driver/p4/compiled_srcs/',
+                'compiled_srcs': '/home/vagrant/dev/sonata/dataplane_driver/p4/compiled_srcs/',
                 'json_p4_compiled': 'compiled.json',
                 'p4_compiled': 'compiled.p4',
                 'p4c_bm_script': '/home/vagrant/p4c-bmv2/p4c_bm/__main__.py',

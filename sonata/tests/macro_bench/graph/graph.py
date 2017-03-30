@@ -64,7 +64,7 @@ print ordered_ts
 for ts in ordered_ts:
     data.append(ts_packet_count[ts])
 
-data = [0,0] + data
+data = [0,0,0,0] + data
 
 data_original = []
 ctr = 1

@@ -75,7 +75,7 @@ class P4Target(object):
         commands_string = "\n".join(p4_commands)
         write_to_file(self.P4_COMMANDS, commands_string)
 
-        return
+        # return
 
         # compile p4 to json
         self.logger.info('compile p4 code to json')

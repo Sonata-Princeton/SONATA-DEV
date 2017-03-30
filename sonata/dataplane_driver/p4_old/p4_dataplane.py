@@ -94,6 +94,7 @@ class P4DataPlane(object):
     def compile_p4(self, p4_compiled, json_p4_compiled):
         self.logger.info('compile p4 to json')
         CMD = self.bm_script + " " + p4_compiled + " --json " + json_p4_compiled
+        print CMD
         get_out(CMD)
 
 

@@ -28,12 +28,14 @@ def get_clean_application(application):
                 skip_next_filter = False
             new_o = None
             keys = filter(lambda x: x != 'ts', operator.keys)
+
             if operator.name == 'Map':
                 new_o = Map()
                 # drop Map operators without a supported function
                 if len(operator.func) > 0:
                     if isinstance(operator.map_keys, tuple):
-                        new_o.map_keys = tuple(operator.map_keys[0])
+                        # print "Tuple instance", operator.map_keys[0], tuple(operator.map_keys)
+                        new_o.map_keys = tuple(operator.map_keys)
                     else:
                         new_o.map_keys = operator.map_keys
                     new_o.keys = keys
@@ -56,7 +58,7 @@ def get_clean_application(application):
                 new_o.prev_values = operator.prev_values
                 new_o.filter_keys = operator.filter_keys
                 new_o.filter_vals = operator.filter_vals
-                new_o.func = operator.func
+                new_o.func = tuple(operator.func)
                 new_o.src = operator.src
             elif operator.name == 'Join':
                 new_o = Join()
@@ -71,9 +73,9 @@ def get_clean_application(application):
                 next_operator = query.operators[index + 1]
 
                 # merge Reduce and following Filter if the filter is on count and uses geq as function
-                if next_operator.name == Filter and 'count' in next_operator.filter_keys and next_operator.func == 'geq':
+                if next_operator.name == 'Filter' and 'count' in next_operator.filter_vals and next_operator.func[0] == 'geq':
                     skip_next_filter = True
-                    filter_value = next_operator.filter_vals[0]
+                    filter_value = next_operator.func[1]
                     new_o.threshold = filter_value
                 else:
                     logger.error('reduce operator without a following, valid filter')
@@ -81,3 +83,5 @@ def get_clean_application(application):
                 print "Found a unsupported operator: %s" % (operator.name, )
             new_qo.operators.append(new_o)
         new_app[new_qo.id] = new_qo
+
+    return new_app

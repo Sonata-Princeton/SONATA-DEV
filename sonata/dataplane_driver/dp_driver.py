@@ -121,7 +121,7 @@ class DataplaneDriver(object):
         clean_application = get_clean_application(application)
 
         target = self.get_target(target_id)
-        target.run(application)
+        target.run(clean_application)
 
     def update_configuration(self, filter_update, target_id):
         target = self.get_target(target_id)

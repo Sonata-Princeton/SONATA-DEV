@@ -39,11 +39,10 @@ class Emitter(object):
         self.fh = logging.FileHandler(conf['log_file'])
         self.fh.setLevel(logging.INFO)
         self.logger.addHandler(self.fh)
-
-        # TODO: There was a conflict here which excluded this code
-        for query in self.queries:
-            self.qid_2_query[query.qid] = query
-        self.logger.info("emitter logging works")
+        # # TODO: There was a conflict here which excluded this code
+        # for query in self.queries:
+        #     self.qid_2_query[query.qid] = query
+        # self.logger.info("emitter logging works")
         # Doubleful merge
 
     def start(self):
@@ -66,11 +65,10 @@ class Emitter(object):
 
         start = time.time()
         p_str = str(raw_packet)
-        #raw_packet.show()
-        #hexdump(raw_packet)
+        # raw_packet.show()
+        # hexdump(raw_packet)
 
         qid = int(str(self.qid_struct.unpack(p_str[0:2])[0]))
-
         ind = 2
         while qid in self.queries and qid != 0:
             query = self.queries[qid]
@@ -90,11 +88,7 @@ class Emitter(object):
                     output_tuple.append(strct.unpack(p_str[ind:ind+ctr])[0])
                 ind += ctr
 
-            qid = int(str(self.qid_struct.unpack(p_str[ind:ind+2])[0]))
-            ind += 2
-
-            if query.parse_payload:
-                print "Adding payload for query", query.qid
+            if query['parse_payload']:
                 payload = ''
                 if raw_packet.haslayer(Raw):
                     payload = str(raw_packet.getlayer(Raw).load)
@@ -103,11 +97,14 @@ class Emitter(object):
             output_tuple = ['k']+[str(qid)]+output_tuple
             send_tuple = ",".join([str(x) for x in output_tuple])
 
-
             # TODO removed this packet is unrelated stuff - maybe it is necessary
-            self.send_data(send_tuple + "\n")
+            # if str(qid) == '10032': print send_tuple
 
+            self.send_data(send_tuple + "\n")
             self.logger.info("emitter,"+ str(qid) + ","+str(start)+","+str(time.time()))
+
+            qid = int(str(self.qid_struct.unpack(p_str[ind:ind+2])[0]))
+            ind += 2
 
 
 if __name__ == '__main__':

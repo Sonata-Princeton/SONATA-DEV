@@ -216,7 +216,7 @@ class P4Query(object):
         if filter_id in self.src_to_filter_operator:
             filter_operator = self.src_to_filter_operator[filter_id]
             filter_mask = filter_operator.get_filter_mask()
-            filter_table_name = filter_operator.get_table_name()
+            filter_table_name = filter_operator.table.get_name()
             filter_action = filter_operator.get_match_action()
 
             for dip in update:
