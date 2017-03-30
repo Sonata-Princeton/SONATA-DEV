@@ -188,7 +188,7 @@ if __name__ == '__main__':
     fname = 'data/hypothesis_graph_2017-03-29 03:29:50.290812.pickle'
     # fname = 'data/hypothesis_graph_2017-03-29 00:21:42.251074.pickle'
     modes = [2, 3, 4, 5, 6]
-    modes = [6]
+    # modes = [6]
     data_dump = {}
     for mode in modes:
         print mode

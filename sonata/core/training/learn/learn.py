@@ -80,15 +80,8 @@ class Learn(object):
 
                     weight = (self.alpha*float(n)/self.n_max)+((1-self.alpha)*float(b)/self.b_max)
                     updated_edges[edge] = weight
-                    # if weight <= 1.0:
-                    #     updated_edges[edge] = weight
-                    #     # if ts == 1440289041 and (l2 == 1): print ts, edge, edges[edge], updated_edges[edge], self.alpha
-                    # # else:
-                    # #     if ts == 1440289041 and l2 == 1: print "Ignored", ts, edge, edges[edge], weight
-
                 else:
                     updated_edges[edge] = 0
-
 
             G_new[ts] = (v, updated_edges)
 

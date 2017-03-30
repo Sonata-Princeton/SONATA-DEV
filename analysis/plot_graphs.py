@@ -52,7 +52,7 @@ def get_alpha_intensity(Ns, Bs, operational_alphas):
     return intensity
 
 
-def get_plans_intensity(Ns, Bs, unique_plans):
+def get_plans_intensity(Ns, Bs, unique_plans, operational_alphas):
     intensity = []
     ctr = 0
     for n in Ns:
@@ -61,7 +61,10 @@ def get_plans_intensity(Ns, Bs, unique_plans):
             x = -1
             for plan in unique_plans:
                 if (n, b) in unique_plans[plan]:
-                    x = 1 * (1 + unique_plans.keys().index(plan))
+                    if operational_alphas[(n,b)] > 0:
+                        x = 1 * (1 + unique_plans.keys().index(plan))
+                    else:
+                        x = 0
                     print n, b, plan, x
                     break
             intensity[ctr].append(x)
@@ -73,13 +76,14 @@ def get_plans_intensity(Ns, Bs, unique_plans):
 def plot_data():
     # fname = 'data/alpha_tuning_dump_2017-03-29 20:07:13.376800.pickle'
     fname = 'data/alpha_tuning_dump_2017-03-30 11:33:50.334231.pickle'
+    fname = 'data/alpha_tuning_dump_2017-03-30 12:51:49.257484.pickle'
     with open(fname, 'r') as f:
         data_dump = pickle.load(f)
         for mode in data_dump:
             (Ns, Bs, operational_alphas, unique_plans) = data_dump[mode]
             print unique_plans.keys()
             intensity_alpha = get_alpha_intensity(Ns, Bs, operational_alphas)
-            intensity_plans = get_plans_intensity(Ns, Bs, unique_plans)
+            intensity_plans = get_plans_intensity(Ns, Bs, unique_plans, operational_alphas)
             heatmap_plot(Ns, Bs, intensity_alpha, 'Nmax (Kpps)', 'Bmax (Kb)', 'data/heatmap_alpha_'+str(mode)+'.pdf')
             heatmap_plot(Ns, Bs, intensity_plans, 'Nmax (Kpps)', 'Bmax (Kb)', 'data/heatmap_plans_'+str(mode)+'.pdf')
 
