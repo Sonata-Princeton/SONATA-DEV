@@ -4,10 +4,9 @@
 #  Ankita Pawar (ankscircle@gmail.com)
 
 # from __future__ import print_function
-from sonata.core.utils import *
 from counts import *
-from sonata.core.training.hypothesis.costs.costs import Costs
 from sonata.core.partition import Partition
+from sonata.core.training.costs.costs import Costs
 
 
 class Hypothesis(object):
@@ -67,20 +66,22 @@ class Hypothesis(object):
         self.V = vertices
 
     def add_edges(self):
+        #usePickle = True
         usePickle = False
         if usePickle:
-            with open('costs.pickle', 'r') as f:
+            with open('data/costs.pickle', 'r') as f:
                 print "Loading costs from pickle..."
                 costs = pickle.load(f)
         else:
             # Run the query over training data to get various counts
             counts = Counts(self.query, self.sc, self.training_data, self.timestamps, self.refinement_object, self.target)
             # Apply the costs model over counts to estimate costs for different edges
-            costs = Costs(counts, self.P).costs
+            costs = Costs(counts, self.P, self.target.N_max, self.target.B_max).costs
             print costs
-            with open('costs.pickle', 'w') as f:
+            with open('data/costs.pickle', 'w') as f:
                 print "Dumping costs into pickle..."
                 pickle.dump(costs, f)
+
 
         E = {}
         print "Vertices", self.V
@@ -93,26 +94,30 @@ class Hypothesis(object):
                     for ts in self.timestamps:
                         if ts not in E:
                             E[ts] = {}
-                        E[ts][edge] = 0
+                        E[ts][edge] = (0,0)
 
                     # for timestamps for which we have cost data, we will update the edge values
                     # this ensures that we graphs for every timestamp.
                     transit = (r1, r2)
                     partition_plan = p2
                     qid = self.query.qid
-                    print qid, transit, partition_plan
+                    #print qid, transit, partition_plan
                     if partition_plan in costs[qid][transit]:
                         for (ts, (b, n)) in costs[qid][transit][partition_plan]:
-                            E[ts][edge] = (self.alpha * n + (1 - self.alpha) * b)
+                            E[ts][edge] = (b,n)
+                            if ts == 1440289056:
+                                print ts, edge, b, n, E[ts][edge]
 
         # Add edges for the final refinement level and the final target (T) node
         for (r, p, l) in self.V:
-            if r == self.refinement_levels[-1] and p != -1:
+            if r == self.refinement_levels[-1] and p != -1 and l > 0:
                 edge = ((r, p, l), (r, 0, 0))
                 for ts in self.timestamps:
                     if ts not in E:
                         E[ts] = {}
-                    E[ts][edge] = 0
+                    if ts == 1440289056:
+                        print ts, edge
+                    E[ts][edge] = ((0,0), 0)
 
         self.E = E
 

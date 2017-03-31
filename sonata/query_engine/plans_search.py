@@ -202,12 +202,12 @@ def get_refinement_plan(start_level, final_level, query_id, ref_levels, query_2_
                 final_plan = candidate_plan
                 min_cost = cost
 
-    # print "Final plan", final_plan, " cost", min_cost
+    # print "Final plan", local_best_plan, " cost", min_cost
     if query_id not in query_2_final_plan:
         query_2_final_plan[query_id] = {}
     query_2_final_plan[query_id][final_level] = (final_plan, min_cost)
 
-    # print query_id, final_level, final_plan, min_cost
+    # print query_id, final_level, local_best_plan, min_cost
     return (final_plan, min_cost)
 
 

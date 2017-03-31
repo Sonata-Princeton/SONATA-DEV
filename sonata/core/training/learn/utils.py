@@ -14,9 +14,13 @@ import random
 import re
 import sys
 
-assert (2, 5) <= sys.version_info < (3,)
 
 infinity = 1.0e400
+
+
+
+
+
 
 
 def min_error(candidates):
@@ -28,7 +32,7 @@ def min_error(candidates):
             out_plan = h
     from query_plan import QueryPlan
     assert isinstance(out_plan, QueryPlan)
-    return out_plan
+    return out_plan, min_err
 
 
 def partition_data(G, fold, k):

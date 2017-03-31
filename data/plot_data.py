@@ -211,7 +211,7 @@ def plot_static_case0():
         for ts in output_static_dp[qid][alpha]:
             ((N,N_max), (B,B_max), delay) = output_static_dp[qid][alpha][ts]
             plot_data[1]['Static'].append(float(B)/B_max)
-            #plot_data[0]['Static'].append(float(N)/N_max)
+            #plot_heatmaps[0]['Static'].append(float(N)/N_max)
             plot_data[2]['Static'].append(delay)
 
         for ts in output_static_sp[qid][alpha]:
@@ -305,7 +305,7 @@ def plot_micro_bench():
 
         #rects1 = plt.plot(range(len(N_OF_RK)), , color='b',linestyle=linestyles[0], linewidth=2.0)
         """
-        ax.plot(range(len(N_OF_RK)),plot_data['fm_send'], linestyle='-', marker='o',
+        ax.plot(range(len(N_OF_RK)),plot_heatmaps['fm_send'], linestyle='-', marker='o',
                 linewidth=2.0,
                 label='Fabric Send')
         """
@@ -326,9 +326,9 @@ def plot_micro_bench():
                          color='r',
                          label='Runtime Overhead')
         """
-        rects3 = plt.bar(index + bar_width, plot_data['switch_reset'], bar_width,
+        rects3 = plt.bar(index + bar_width, plot_heatmaps['switch_reset'], bar_width,
                          alpha=opacity,
-                         bottom=([i+j for i,j in zip(plot_data['fm_send'],plot_data['switch_update'])]),
+                         bottom=([i+j for i,j in zip(plot_heatmaps['fm_send'],plot_heatmaps['switch_update'])]),
                          color='r',
                          label='Switch Reset')
         """

@@ -1,13 +1,12 @@
+import math
 import pickle
 
 from netaddr import *
-import math
+from sonata.core.training.costs.dp_cost import get_data_plane_cost
 
-#from sonata.system_config import *
-from sonata.query_engine.sonata_queries import *
 import sonata.streaming_driver.query_object as spark
-from sonata.core.training.hypothesis.costs.dp_cost import get_data_plane_cost
-from sonata.core.training.hypothesis.costs.sp_cost import get_streaming_cost
+from sonata.core.training.costs.sp_cost import get_streaming_cost
+from sonata.query_engine.sonata_queries import *
 
 
 def parse_log_line(logline):
@@ -218,44 +217,44 @@ def dump_data(data, fname):
         pickle.dump(data, f)
 
 
-def update_counts(sc, queries, query_out, iter_qid, delta, bits_count, packet_count, ctr):
+def update_counts(sc, queries, query_out, iter_qid, delta, bits_count, ctr):
     curr_operator = queries[iter_qid].operators[-1]
     curr_query_out = query_out[iter_qid]
 
     if curr_operator.name in ['Distinct','Reduce']:
         # Update the number of bits required to perform this operation
-
+        thresh = 1
         if curr_operator.name == 'Reduce':
             next_operator = queries[iter_qid+1].operators[-1]
             next_query_out = query_out[iter_qid+1]
-            thresh = 1
+            #print "Current query out:", curr_query_out
+            #print "Next (filter) query out:", next_query_out
+
             if next_operator.name == 'Filter':
                 thresh = int(next_operator.func[1])
                 packet_count = get_streaming_cost(sc, curr_operator.name, next_query_out)
+            else:
+                packet_count = get_streaming_cost(sc, curr_operator.name, curr_query_out)
 
             delta_bits = get_data_plane_cost(sc, curr_operator.name, curr_operator.func[0],
                                           curr_query_out, thresh, delta )
 
         else:
             # for 'Distinct' operator
-            thresh = 1
             delta_bits = get_data_plane_cost(sc, curr_operator.name, '',
                                              curr_query_out, thresh, delta )
             packet_count = get_streaming_cost(sc, curr_operator.name, curr_query_out)
 
-        bits_count = bits_count.join(delta_bits).map(lambda s: (s[0], (s[1][0]+s[1][1])))
+        out = bits_count.join(delta_bits).map(lambda s: (s[0], (s[1][0][0]+s[1][1][0], s[1][0][1]+s[1][1][1])))
 
         print "After executing ", curr_operator.name, " in Data Plane"
         #print "Bits Count Cost", bits_count.collect()[:2]
         #print "Packet Count Cost", packet_count.collect()[:2]
 
-
-        ctr += 1
-    return bits_count, packet_count, ctr
+    return out, packet_count, ctr+1
 
 def create_spark_context():
     from pyspark import SparkContext, SparkConf
-    from sonata.system_config import TD_PATH, T
     conf = (SparkConf()
             .setMaster("local[*]")
             .setAppName("SONATA-Training")
