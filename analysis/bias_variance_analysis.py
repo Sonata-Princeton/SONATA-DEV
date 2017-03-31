@@ -109,7 +109,7 @@ def alpha_tuning_iter(G_Train, n_max, b_max, mode):
     return alpha, learn
 
 
-def update_edges(G, n_max, b_max, alpha):
+def update_edges(G, n_max, b_max, alpha, mode):
     G_new = {}
     (v, edges) = G
     updated_edges = {}
@@ -165,7 +165,7 @@ def do_bias_variance_analysis(Ns, Bs):
                         timestamps.sort()
                         ctr = 1
                         for ts in timestamps[:]:
-                            g = update_edges(G[ts], n_max, b_max, alpha)
+                            g = update_edges(G[ts], n_max, b_max, alpha, mode)
                             training_plan = QueryPlan(map_input_graph(g), trained_learn.final_plan.path)
                             local_best_plan = QueryPlan(map_input_graph(g), Search(g).final_plan.path)
                             local_error = (training_plan.cost - local_best_plan.cost)
@@ -182,6 +182,7 @@ def do_bias_variance_analysis(Ns, Bs):
                         out_rmse = math.sqrt(sum([x*x for x in out_sample_error.values()]))/len(out_sample_error.keys())
                         print in_rmse, out_rmse
                         data_dump[mode][(n_max, b_max)][td] = (in_rmse, out_rmse)
+                        break
 
         fname_dump = 'data/bias_var_analysis_' + str(datetime.datetime.fromtimestamp(time.time())) + '.pickle'
         print "Dumping data to", fname_dump

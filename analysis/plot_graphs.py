@@ -3,6 +3,8 @@
 #  Arpit Gupta (arpitg@cs.princeton.edu)
 import pickle
 
+from analysis.plotlib import plotLine
+
 import matplotlib
 matplotlib.rc('text')
 matplotlib.use('Agg')
@@ -73,7 +75,7 @@ def get_plans_intensity(Ns, Bs, unique_plans, operational_alphas):
     return intensity
 
 
-def plot_data():
+def plot_heatmaps():
     # fname = 'data/alpha_tuning_dump_2017-03-29 20:07:13.376800.pickle'
     fname = 'data/alpha_tuning_dump_2017-03-30 11:33:50.334231.pickle'
     fname = 'data/alpha_tuning_dump_2017-03-30 17:17:07.283793.pickle'
@@ -88,5 +90,27 @@ def plot_data():
             heatmap_plot(Ns, Bs, intensity_plans, 'Nmax (Kpps)', 'Bmax (Kb)', 'data/heatmap_plans_'+str(mode)+'.png')
 
 
+def plot_learning_curve():
+    fname = 'data/bias_var_analysis_2017-03-31 02:18:06.331508.pickle'
+    with open(fname,'r') as f:
+        data_dump = pickle.load(f)
+        for mode in data_dump:
+            for (n_max, b_max) in data_dump[mode]:
+                iter_data = data_dump[mode][(n_max, b_max)]
+                x = iter_data.keys()
+                x.sort()
+                x = x[:-1]
+                y1 = [iter_data[elem][0] for elem in x]
+                y2 = [iter_data[elem][1] for elem in x]
+                data = {}
+                data['In'] = (x, y1)
+                data['Out'] = (x, y2)
+                order = ['In', 'Out']
+                plot_fname = 'data/lcurve_'+"_".join([str(x) for x in [mode,n_max,b_max]])+'.pdf'
+                print plot_fname, data
+                plotLine(data, order, 'Training Data Size', 'RMSE', 'N/A', 'N/A', plot_fname)
+
+
 if __name__ == '__main__':
-    plot_data()
+    # plot_heatmaps()
+    plot_learning_curve()
