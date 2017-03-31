@@ -4,7 +4,7 @@
 
 from sonata.system_config import FOLD_SIZE, GRAN, GRAN_MAX
 from utils import min_error, partition_data
-from sonata_search import Search, map_input_graph, DirectedGraph, map_input_graph
+from sonata_search import Search, map_input_graph, DirectedGraph
 from query_plan import QueryPlan, QueryPlanMulti
 import math
 
@@ -53,7 +53,9 @@ class Learn(object):
         # sort the timestamps for sanity reasons
         self.timestamps.sort()
 
-        self.K = int(len(self.timestamps)/FOLD_SIZE)
+        self.K = int(len(self.timestamps) / FOLD_SIZE)
+        if self.K == 0:
+            self.K = 1
         # print "Total Folds", self.K
 
         # Update the edges for the graph
@@ -63,14 +65,14 @@ class Learn(object):
     def update_edges(self):
         G_new = {}
         for ts in self.G:
-            (v,edges) = self.G[ts]
+            (v, edges) = self.G[ts]
             updated_edges = {}
             for edge in edges:
                 (r1, p1, l1), (r2, p2, l2) = edge
-                #print edge, edges[edge]
+                # print edge, edges[edge]
                 # These are tmp fixes
-                if l2 > 0 and edges[edge] != (0,0):
-                    (b_hash, b_sketch), n  = edges[edge]
+                if l2 > 0 and edges[edge] != (0, 0):
+                    (b_hash, b_sketch), n = edges[edge]
                     if self.mode >= 4:
                         # Use sketches
                         b = min([b_hash, b_sketch])
@@ -78,7 +80,7 @@ class Learn(object):
                         # Use hash tables only
                         b = b_hash
 
-                    weight = (self.alpha*float(n)/self.n_max)+((1-self.alpha)*float(b)/self.b_max)
+                    weight = (self.alpha * float(n) / self.n_max) + ((1 - self.alpha) * float(b) / self.b_max)
                     updated_edges[edge] = weight
                 else:
                     updated_edges[edge] = 0
@@ -105,7 +107,7 @@ class Learn(object):
                 e_new = {}
                 for ((r1, p1, l1), (r2, p2, l2)) in e_orig:
                     edge = (r1, p1, l1), (r2, p2, l2)
-                    if r2-r1 == gran:
+                    if r2 - r1 == gran:
                         e_new[edge] = e_orig[edge]
                     if p2 == 0 and l2 == 0:
                         e_new[edge] = e_orig[edge]
@@ -120,11 +122,11 @@ class Learn(object):
                 e_new = {}
                 for ((r1, p1, l1), (r2, p2, l2)) in e_orig:
                     edge = (r1, p1, l1), (r2, p2, l2)
-                    #print edge, (l2 in [0, 1]) and (l1 in [0,1]) and r2 == GRAN_MAX-1
-                    if (l2 in [0, 1]) and (l1 in [0,1]) and r2 == GRAN_MAX-1:
-                        #print edge, (l2 in [0, 1]) and (l1 in [0,1])  and r2 == GRAN_MAX-1
+                    # print edge, (l2 in [0, 1]) and (l1 in [0,1]) and r2 == GRAN_MAX-1
+                    if (l2 in [0, 1]) and (l1 in [0, 1]) and r2 == GRAN_MAX - 1:
+                        # print edge, (l2 in [0, 1]) and (l1 in [0,1])  and r2 == GRAN_MAX-1
                         e_new[edge] = e_orig[edge]
-                #break
+                # break
                 G_new[ts] = (v_new, e_new)
 
         elif self.mode == 2:
@@ -135,7 +137,7 @@ class Learn(object):
                 e_new = {}
                 for ((r1, p1, l1), (r2, p2, l2)) in e_orig:
                     edge = (r1, p1, l1), (r2, p2, l2)
-                    if (l2 in [0, 1]) and p2 == 0 and (l1 in [0,1]) and p1 == 0 and r2 == GRAN_MAX-1:
+                    if (l2 in [0, 1]) and p2 == 0 and (l1 in [0, 1]) and p1 == 0 and r2 == GRAN_MAX - 1:
                         e_new[edge] = e_orig[edge]
                 G_new[ts] = (v_new, e_new)
 
@@ -148,7 +150,7 @@ class Learn(object):
         for ts in self.G:
             # print "Searching best path for", ts
             g = self.G[ts]
-            #if ts == 1440289041:
+            # if ts == 1440289041:
             if True:
                 h_s[ts] = Search(g).final_plan
                 if h_s[ts] is not None:
@@ -160,10 +162,10 @@ class Learn(object):
                     self.b_viol = True
                     self.n_viol = True
 
-                # if self.b_viol or self.n_viol:
-                #     return 0
+                    # if self.b_viol or self.n_viol:
+                    #     return 0
 
-        for fold in range(1, 1+self.K):
+        for fold in range(1, 1 + self.K):
             (G_t, G_v) = partition_data(self.G, fold, self.K)
             h_T[fold] = get_min_error_path(G_t, h_s)
 
@@ -173,7 +175,7 @@ class Learn(object):
             for ts in G_v:
                 path1 = h_s[ts]
                 path2 = QueryPlan(map_input_graph(G_v[ts]), h_T[fold].path)
-                error_fold += (path2.cost-path1.cost)*(path2.cost-path1.cost)
+                error_fold += (path2.cost - path1.cost) * (path2.cost - path1.cost)
 
             e_V[fold] = math.sqrt(error_fold)
             candidates[fold] = (h_T[fold], e_V[fold])
@@ -186,14 +188,14 @@ class Learn(object):
     def update_violation_flags(self, h, ts):
         n = 0
         b = 0
-        V,E = self.G_orig[ts]
+        V, E = self.G_orig[ts]
         debug = False
         # debug = True
-        for n1,n2 in zip(h.path, h.path[1:]):
+        for n1, n2 in zip(h.path, h.path[1:]):
             edge = tuple([n1.state, n2.state])
             (r1, p1, l1), (r2, p2, l2) = edge
-            if l2 > 0 and E[edge] != (0,0):
-                #print edge, E[edge]
+            if l2 > 0 and E[edge] != (0, 0):
+                # print edge, E[edge]
                 b += E[edge][0][0]
                 n += E[edge][1]
         if debug: print "N:", n, "B:", b

@@ -87,13 +87,13 @@ class Runtime(object):
                         pickle.dump(self.query_plans[query.qid], f)
 
                 # # Generate queries for the data plane and stream processor after learning the final plan
-                # final_plan = self.query_plans[query.qid][1:-1]
-                # print final_plan
-                # final_plan = [(1, 16, 5, 1), (3, 16, 1, 2), (1, 32, 5, 3), (3, 32, 1, 4)]
+                # local_best_plan = self.query_plans[query.qid][1:-1]
+                # print local_best_plan
+                # local_best_plan = [(1, 16, 5, 1), (3, 16, 1, 2), (1, 32, 5, 3), (3, 32, 1, 4)]
                 # prev_r = 0
                 # prev_qid = 0
                 #
-                # for (q, r, p, l) in final_plan:
+                # for (q, r, p, l) in local_best_plan:
                 #     qry = refinement_object.qid_2_query[q]
                 #     refined_query_id = get_refined_query_id(qry, r)
                 #
@@ -110,11 +110,11 @@ class Runtime(object):
 
 
 
-                # final_plan = [(16, 5, 1), (32, 1, 1)]
-                # self.update_query_mappings(query, final_plan)
-                # print "# of iteration levels", len(final_plan)
+                # local_best_plan = [(16, 5, 1), (32, 1, 1)]
+                # self.update_query_mappings(query, local_best_plan)
+                # print "# of iteration levels", len(local_best_plan)
                 # prev_r = 0
-                # for (r, p, l) in final_plan:
+                # for (r, p, l) in local_best_plan:
                 #     # Get the query id
                 #     refined_query_id = get_refined_query_id(query, r)
                 #

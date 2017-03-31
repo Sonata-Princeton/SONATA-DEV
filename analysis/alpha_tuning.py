@@ -7,16 +7,8 @@ import time
 import datetime
 from multiprocessing import Process, Queue
 from sonata.core.training.learn.learn import Learn
+from analysis.utils import chunkify, get_training_graph
 
-
-def get_training_graph(G, n):
-    G_out = {}
-    timestamps = G.keys()
-    timestamps.sort()
-    for ts in timestamps[:n]:
-        G_out[ts] = G[ts]
-
-    return G_out
 
 
 def alpha_tuning_iter(G_Train, n_max, b_max, mode, q=None):
@@ -68,7 +60,7 @@ def alpha_tuning_iter(G_Train, n_max, b_max, mode, q=None):
             operational_alphas[(n_max, b_max)] = -1
             break
         else:
-            # print learn.final_plan.path
+            # print trained_learn.local_best_plan.path
             path_string = learn.final_plan.__repr__()
             if path_string not in unique_plans:
                 unique_plans[path_string] = {}
@@ -112,10 +104,6 @@ def alpha_tuning_iter(G_Train, n_max, b_max, mode, q=None):
         return operational_alphas, unique_plans
     else:
         q.put((operational_alphas, unique_plans))
-
-
-def chunkify(lst, n):
-    return [lst[i::n] for i in xrange(n)]
 
 
 def process_chunk(G_Train, chunk, mode, q=None):
