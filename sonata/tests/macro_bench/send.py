@@ -39,7 +39,7 @@ def create_normal_traffic():
     return normal_packets
 
 def create_attack_traffic():
-    number_of_packets = 1000
+    number_of_packets = 100
     dIP = '99.7.186.25'
     sIPs = []
     attack_packets = []

@@ -49,18 +49,15 @@ def get_streaming_query(query, qid, partition_plan):
             border_operator = query.operators[n_operators_dp-1]
             if border_operator.name == "Reduce":
                 # We need to duplicate reduce operator in the data plane
-                n_operators_dp -= 2
+                n_operators_dp -= 1
 
 
         # Filter step is added to map incoming packet streams from multiple dataflow pipelines
         # to their respective pipelines in the stream processor
         # sp_query = sp_query.filter_init(qid=qid, keys=sp_query.basic_headers)
-        # dp_operator = query.operators[n_operators_dp-1]
-        # sp_query.map(keys=sp_query.basic_headers,
-        #              values=tuple(),
-        #              map_keys=dp_operator.map_keys,
-        #              map_values=dp_operator.map_values,
-        #              func=dp_operator.func)
+        dp_operator = query.operators[n_operators_dp-1]
+        sp_query.map(keys=dp_operator.keys,
+                     values=dp_operator.map_values)
 
 
         # Update the remainder operators

@@ -71,7 +71,7 @@ ctr = 1
 for ts in range(0, 20):
     count = 10
     if ctr > 5 and ctr < 11:
-        count += 1000
+        count += 100
     data_original.append(count)
     ctr += 1
 
@@ -82,4 +82,4 @@ print data, len(ordered_ts)
 plot_line(len(data), data, len(data_original[1:]), data_original[1:],
           'Time (seconds)',
           'Number of Packets',
-          'macro_n_packets')
+          'graph/macro_n_packets')
