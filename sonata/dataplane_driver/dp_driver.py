@@ -5,17 +5,18 @@ import pickle
 
 from multiprocessing.connection import Listener
 
+from query_cleaner import get_clean_application
+
 from openflow.openflow import OFTarget
-from p4.p4_target_old import P4Target
+from p4.p4_target import P4Target
 
-
-#TODO ADD LOGGING
 
 class DataplaneDriver(object):
-    def __init__(self, dpd_socket):
+    def __init__(self, dpd_socket, metrics_file):
         self.dpd_socket = dpd_socket
 
         self.targets = dict()
+        self.metrics_log_file = metrics_file
 
         # LOGGING
         log_level = logging.DEBUG
@@ -27,10 +28,26 @@ class DataplaneDriver(object):
         handler.setFormatter(formatter)
         self.logger.addHandler(handler)
 
-        self.logger.info('init')
+        # initialize metrics logger
+        # which is separate from debug logger
+
+        self.initialize_metrics_logger()
+
+
+
+    def initialize_metrics_logger(self):
+        # create a logger for the object
+        self.metrics = logging.getLogger(__name__)
+        self.metrics.setLevel(logging.INFO)
+        # create file handler which logs messages
+        self.fh = logging.FileHandler(self.metrics_log_file)
+        self.fh.setLevel(logging.INFO)
+        self.metrics.addHandler(self.fh)
+
+        self.metrics.info('init')
 
     def start(self):
-        self.logger.info('starting the event listener')
+        self.logger.debug('starting the event listener')
         dpd_listener = Listener(self.dpd_socket)
         while True:
             conn = dpd_listener.accept()
@@ -44,7 +61,7 @@ class DataplaneDriver(object):
                     print "application", application
                     self.configure(application, target_id)
                 elif key == 'delta':
-                    self.logger.debug('received "delta" message')
+                    # self.logger.debug('received "delta" message')
                     filter_update = message[key][0]
                     target_id = message[key][1]
                     self.update_configuration(filter_update, target_id)
@@ -64,17 +81,17 @@ class DataplaneDriver(object):
                     self.logger.error('Unsupported Key')
             conn.close()
 
-    def add_target(self, type, tid, config):
+    def add_target(self, target_type, tid, config):
         self.logger.info('adding new target of type %s with id %s' % (type, str(tid)))
         target = None
-        if type == 'p4':
+        if target_type == 'p4':
             if 'em_conf' not in config or 'switch_conf' not in config:
                 self.logger.error('missing configs')
                 return
             em_config = config['em_conf']
             switch_config = config['switch_conf']
             target = P4Target(em_config, switch_config)
-        elif type == 'openflow':
+        elif target_type == 'openflow':
             target = OFTarget()
 
         self.targets[tid] = target
@@ -100,8 +117,11 @@ class DataplaneDriver(object):
         return 999
 
     def configure(self, application, target_id):
+        # TODO integrate query cleaner
+        clean_application = get_clean_application(application)
+
         target = self.get_target(target_id)
-        target.run(application)
+        target.run(clean_application)
 
     def update_configuration(self, filter_update, target_id):
         target = self.get_target(target_id)

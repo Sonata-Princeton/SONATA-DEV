@@ -51,7 +51,7 @@ class Runtime(object):
                 target = Target()
                 assert hasattr(target, 'costly_operators')
                 refinement_object = Refinement(query, target)
-                print refinement_object.qid_2_refined_queries
+                #print refinement_object.qid_2_refined_queries
                 self.refinement_keys[query.qid] = refinement_object.refinement_key
 
                 # fname = "plan_" + str(query.qid) + ".pickle"
@@ -76,7 +76,8 @@ class Runtime(object):
                 # # Generate queries for the data plane and stream processor after learning the final plan
                 # final_plan = self.query_plans[query.qid][1:-1]
                 # print final_plan
-                final_plan = [(1, 16, 5, 1), (3, 16, 1, 2), (1, 32, 5, 3), (3, 32, 1, 4)]
+
+                final_plan = [(1, 16, 5, 1),(1, 32, 5, 3)]#(1, 16, 5, 1),
                 prev_r = 0
                 prev_qid = 0
 
@@ -95,10 +96,10 @@ class Runtime(object):
                     prev_qid = q
 
 
-
+                self.update_query_mappings(query, final_plan)
 
                 # final_plan = [(16, 5, 1), (32, 1, 1)]
-                # self.update_query_mappings(query, final_plan)
+
                 # print "# of iteration levels", len(final_plan)
                 # prev_r = 0
                 # for (r, p, l) in final_plan:
@@ -125,9 +126,9 @@ class Runtime(object):
                 pickle.dump({0: self.dp_queries, 1: self.sp_queries}, f)
 
         print self.dp_queries
-        print self.sp_queries
+        #print self.sp_queries
 
-        time.sleep(10)
+        #time.sleep(10)
         self.initialize_handlers()
         time.sleep(2)
         self.send_to_dp_driver('init', self.dp_queries)
@@ -140,7 +141,7 @@ class Runtime(object):
 
     def update_query_mappings(self, query, final_plan):
         if len(final_plan) > 1:
-            for ((r1, p1, l1), (r2, p2, l2)) in zip(final_plan, final_plan[1:]):
+            for ((q1, r1, p1, l1), (q2, r2, p2, l2)) in zip(final_plan, final_plan[1:]):
                 qid1 = get_refined_query_id(query, r1)
                 qid2 = get_refined_query_id(query, r2)
                 if qid2 not in self.query_in_mappings:
@@ -154,7 +155,7 @@ class Runtime(object):
             print "No mapping update required"
 
         # Update the queries whose o/p needs to be displayed to the network operators
-        print final_plan
+        #print final_plan
         r = final_plan[-1][0]
         qid = get_refined_query_id(query, r)
         self.query_out_final[qid] = 0
@@ -179,21 +180,26 @@ class Runtime(object):
         queries_received = {}
         updateDeltaConfig = False
         while True:
-            print "Ready to receive data from SM ***************************"
+            #print "Ready to receive data from SM ***************************"
             conn = self.op_handler_listener.accept()
             # Expected (qid,[])
             op_data = conn.recv_bytes()
-            print "$$$$ OP Handler received:" + str(op_data)
+            op_data = op_data.strip('\n')
+            #print "$$$$ OP Handler received:" + str(op_data)
             received_data = op_data.split(",")
             src_qid = int(received_data[1])
-            table_match_entries = received_data[2:]
-            queries_received[src_qid] = table_match_entries
-            print "DP Queries: ", str(len(self.dp_queries.keys())), " Received keys:", str(len(queries_received.keys()))
+            if received_data[2:] != ['']:
+                table_match_entries = received_data[2:]
+                queries_received[src_qid] = table_match_entries
+            else:
+                queries_received[src_qid] = []
+            #print "DP Queries: ", str(len(self.dp_queries.keys())), " Received keys:", str(len(queries_received.keys()))
             if len(queries_received.keys()) == len(self.dp_queries.keys()):
                 updateDeltaConfig = True
-            print self.query_out_mappings
+
+            #print "Query Out Mappings: ",self.query_out_mappings
             delta_config = {}
-            print "## Received output for query", src_qid, "at time", time.time() - start
+            #print "## Received output for query", src_qid, "at time", time.time() - start
             if updateDeltaConfig:
                 start = time.time()
                 for src_qid in queries_received:
@@ -203,10 +209,10 @@ class Runtime(object):
                             out_queries = self.query_out_mappings[src_qid]
                             for out_qid in out_queries:
                                 # find the queries that take the output of this query as input
-                                print out_qid, src_qid
+                                #print out_qid, src_qid
                                 delta_config[(out_qid, src_qid)] = table_match_entries
                     # reset these state variables
-                print "delta: ", delta_config
+                # print "delta config: ", delta_config
                 updateDeltaConfig = False
                 self.logger.info("runtime,create_delta_config," + str(start) + "," + str(time.time()))
                 queries_received = {}
@@ -219,7 +225,7 @@ class Runtime(object):
 
     def start_dataplane_driver(self):
         # Start the fabric managers local to each data plane element
-        dpd = DataplaneDriver(self.conf['fm_conf']['fm_socket'])
+        dpd = DataplaneDriver(self.conf['fm_conf']['fm_socket'], self.conf['fm_conf']['log_file'])
         self.dpd_thread = Thread(name='dp_driver', target=dpd.start)
         self.dpd_thread.setDaemon(True)
 
@@ -294,6 +300,7 @@ class Runtime(object):
         time.sleep(1)
 
     def initialize_logging(self):
+        #print "######Setup Logger##########",self.conf['log_file']
         # create a logger for the object
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)

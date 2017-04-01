@@ -9,21 +9,23 @@ import os
 from sonata.query_engine.sonata_queries import *
 from sonata.core.runtime import Runtime
 
-batch_interval = 1
+batch_interval = 0.5
 window_length = 1
 sliding_interval = 1
 
-result_folder = '/home/vagrant/dev/results/result1/'
-emitter_log_file = result_folder + "emitter.log"
-fm_log_file = result_folder + "dataplane_driver.log"
-rt_log_file = result_folder + "runtime.log"
+RESULTS_FOLDER = '/home/vagrant/dev/sonata/tests/macro_bench/results/'
 
 featuresPath = ''
 redKeysPath = ''
 
 if __name__ == '__main__':
-    if not os.path.exists(result_folder):
-        os.makedirs(result_folder)
+
+    if not os.path.exists(RESULTS_FOLDER):
+        os.makedirs(RESULTS_FOLDER)
+
+    emitter_log_file = RESULTS_FOLDER + "emitter.log"
+    fm_log_file = RESULTS_FOLDER + "dataplane_driver.log"
+    rt_log_file = RESULTS_FOLDER + "runtime.log"
 
     spark_conf = {'batch_interval': batch_interval, 'window_length': window_length,
                   'sliding_interval': sliding_interval, 'featuresPath': featuresPath, 'redKeysPath': redKeysPath,
@@ -47,7 +49,7 @@ if __name__ == '__main__':
           .distinct(keys=('dIP', 'sIP'))
           .map(keys=('dIP',), map_values=('count',), func=('eq', 1,))
           .reduce(keys=('dIP',), func=('sum',))
-          .filter(filter_vals=('count',), func=('geq', '50'))
+          .filter(filter_vals=('count',), func=('geq', 90))
           .map(keys=('dIP',))
           )
 
@@ -64,6 +66,6 @@ if __name__ == '__main__':
           .distinct(keys=('dIP',))
           )
 
-    queries = [q3]
+    queries = [q1]
 
     runtime = Runtime(conf, queries)

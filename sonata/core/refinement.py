@@ -6,10 +6,9 @@
 from sonata.core.utils import *
 import sonata.streaming_driver.query_object as spark
 from partition import Partition
-
+from sonata.query_engine.utils import copy_operators
 
 def get_refined_query_id(query, ref_level):
-    print "get_refined_query_id", ref_level, query
     return 10000*query.qid + ref_level
 
 
@@ -30,18 +29,18 @@ def get_thresh(training_data, spark_query, spread, refinement_level, satisfied_s
     else:
         refined_satisfied_out = 'training_data.' + satisfied_sonata_spark_query.compile() + \
                                 '.map(lambda s: (s, 1)).reduceByKey(lambda x,y: x+y)'
-        print refined_satisfied_out
+        # print refined_satisfied_out
         query_string = 'training_data.' + spark_query.compile() + \
                        '.join(' + refined_satisfied_out + ').map(lambda s: s[1][0]).collect()'
-        print query_string
+        # print query_string
         data = [float(x) for x in (eval(query_string))]
         data.sort()
-        print "Values at refinement level", refinement_level
-        print data
+        # print "Values at refinement level", refinement_level
+        # print data
         thresh = min(data)
         if thresh == 1:
             thresh += 1
-        print data, thresh
+        # print data, thresh
 
         original_query_string = 'training_data.' + spark_query.compile() + '.map(lambda s: s[1]).collect()'
         data = [float(x) for x in (eval(original_query_string))]
@@ -63,6 +62,7 @@ def apply_refinement_plan(sonata_query, refinement_key, refined_query_id, ref_le
 
     # Copy operators to the new refined sonata query
     for operator in sonata_query.operators:
+        print "apply_refinement_plan: ", operator.name
         copy_operators(refined_sonata_query, operator)
 
     return refined_sonata_query
@@ -79,7 +79,7 @@ class Refinement(object):
         self.ref_levels = range(0, GRAN_MAX, GRAN)
         self.refinement_key = list(get_refinement_keys(self.query))[0]
         self.qid_2_query = get_qid_2_query(self.query)
-        print self.qid_2_query
+        # print self.qid_2_query
 
         # Add timestamp for each key
         self.add_timestamp_key()
@@ -110,7 +110,8 @@ class Refinement(object):
         def add_timestamp_to_query(q):
             # This function will be useful if we need to add ts in recursion
             for operator in q.operators:
-                operator.keys = tuple(['ts'] + list(operator.keys))
+                # operator.keys = tuple(['ts'] + list(operator.keys))
+                operator.keys = tuple(list(operator.keys))
 
         for qid in self.qid_2_query:
             query = self.qid_2_query[qid]

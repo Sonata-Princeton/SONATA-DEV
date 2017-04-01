@@ -4,6 +4,7 @@
 
 from query import Query
 
+
 class Reduce(Query):
     def __init__(self, *args, **kwargs):
         super(Reduce, self).__init__(*args, **kwargs)
@@ -15,6 +16,7 @@ class Reduce(Query):
         self.keys = ()
         self.values = ()
         self.func = ()
+        self.threshold = -1
 
         if 'prev_keys' in map_dict:
             self.prev_keys = map_dict['prev_keys']
@@ -25,7 +27,11 @@ class Reduce(Query):
         else:
             self.keys = self.prev_keys
         self.values = self.prev_values
-        self.func = map_dict['func']
+        if 'func' in map_dict:
+            self.func = map_dict['func']
+
+    def get_init_keys(self):
+        return self.keys + ('count', )
 
     def __repr__(self):
         return '.Reduce( keys=(' + ','.join([x for x in self.keys])+ '), values=(' + ','.join([x for x in self.values])+ \

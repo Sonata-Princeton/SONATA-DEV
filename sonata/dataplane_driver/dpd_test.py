@@ -12,13 +12,9 @@ from multiprocessing.connection import Client
 from dp_driver import DataplaneDriver
 
 
-import sys
-sys.path.append("/home/vagrant/sonata/query_engine/sonata_operators")
-
-
 class DPDTest(object):
-    def __init__(self, pickled_file, dpd_socket):
-        self.dpd_socket = dpd_socket
+    def __init__(self, pickled_file, socket_data):
+        self.dpd_socket = socket_data
         self.target_id = 1
 
         # LOGGING
@@ -34,15 +30,15 @@ class DPDTest(object):
         self.logger.info('init')
 
         self.message = None
-        i = 0
+        j = 0
         with (open(pickled_file, "rb")) as openfile:
             while True:
-                i += 1
+                j += 1
                 try:
                     self.message = (pickle.load(openfile))
                 except EOFError:
                     break
-        if i > 1:
+        if j > 1:
             self.logger.info('there was more than one message in the pickled file')
 
     def start_dpd(self):
@@ -53,7 +49,7 @@ class DPDTest(object):
         config = {
             'em_conf': None,
             'switch_conf': {
-                'compiled_srcs': '/home/vagrant/sonata/dataplane_driver/p4/compiled_srcs/',
+                'compiled_srcs': '/home/vagrant/dev/sonata/dataplane_driver/p4/compiled_srcs/',
                 'json_p4_compiled': 'compiled.json',
                 'p4_compiled': 'compiled.p4',
                 'p4c_bm_script': '/home/vagrant/p4c-bmv2/p4c_bm/__main__.py',

@@ -4,6 +4,7 @@
 
 from query import Query
 
+
 class Join(Query):
     def __init__(self, *args, **kwargs):
         super(Join, self).__init__(*args, **kwargs)
