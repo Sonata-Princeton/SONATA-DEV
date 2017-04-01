@@ -38,6 +38,9 @@ def plot_line(xlab, data, xlab2, data2, XLabel, YLabel, fname):
     plot_name = fname+'.eps'
     pl.savefig(plot_name)
 
+    plot_name = fname+'.png'
+    pl.savefig(plot_name)
+
 f = open('results/emitter.log')
 csv_f = csv.reader(f)
 
