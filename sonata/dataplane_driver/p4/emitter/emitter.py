@@ -39,11 +39,6 @@ class Emitter(object):
         self.fh = logging.FileHandler(conf['log_file'])
         self.fh.setLevel(logging.INFO)
         self.logger.addHandler(self.fh)
-        # # TODO: There was a conflict here which excluded this code
-        # for query in self.queries:
-        #     self.qid_2_query[query.qid] = query
-        # self.logger.info("emitter logging works")
-        # Doubleful merge
 
     def start(self):
         while True:
@@ -74,7 +69,7 @@ class Emitter(object):
             query = self.queries[qid]
             out_headers = query['headers']
             output_tuple = []
-
+            count = 0
             for fld, size in out_headers[1:]:
                 hdr_format = HEADER_FORMAT[fld]
                 strct = struct.Struct(hdr_format)
@@ -85,6 +80,7 @@ class Emitter(object):
                 elif 'Mac' in fld:
                     output_tuple.append(":".join([str(x) for x in list(strct.unpack(p_str[ind:ind+ctr]))]))
                 else:
+                    count = strct.unpack(p_str[ind:ind+ctr])[0]
                     output_tuple.append(strct.unpack(p_str[ind:ind+ctr])[0])
                 ind += ctr
 
@@ -99,7 +95,7 @@ class Emitter(object):
 
             # TODO removed this packet is unrelated stuff - maybe it is necessary
             # if str(qid) == '10032': print send_tuple
-
+            if count > 1: print send_tuple
             self.send_data(send_tuple + "\n")
             self.logger.info("emitter,"+ str(qid) + ","+str(start)+","+str(time.time()))
 

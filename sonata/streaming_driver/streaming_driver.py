@@ -85,11 +85,6 @@ class StreamingDriver(object):
             print(query_str)
             spark_queries[queryId] = eval(query_str)
 
-
-        # pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd.filter(lambda p : (p[1]==str('10016'))).map(lambda p : (p[2:])).map(lambda ((dIP,count)): ((dIP),(1))).reduceByKey(lambda x,y: x+y).filter(lambda ((dIP),(count)): ((float(count)>=2 ))).map(lambda (dIP, count)))).foreachRDD(lambda rdd: send_reduction_keys(rdd, ('localhost', 4949),1490571670.79,'10016'))
-        # pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd.filter(lambda p : (p[1]==str('10032'))).map(lambda p : (p[2:])).map(lambda ((dIP,count)): ((dIP),(1))).reduceByKey(lambda x,y: x+y).filter(lambda ((dIP),(count)): ((float(count)>=2 ))))).foreachRDD(lambda rdd: send_reduction_keys(rdd, ('localhost', 4949),1490571670.79,'10032'))
-
-
 if __name__ == "__main__":
     conf = {'batch_interval': batch_interval, 'window_length': window_length,
             'sliding_interval': sliding_interval, 'featuresPath': featuresPath,

@@ -71,7 +71,6 @@ class P4DataPlane(object):
     def reset_switch_state(self):
         self.logger.info('reset switch state')
         cmd = "echo \'reset_state\' | " + self.cli_path + " --thrift-port "+str(self.thrift_port)
-        # print "Running ##########:" + cmd
         get_out(cmd)
 
     def send_commands(self, p4_json_path, command_path):

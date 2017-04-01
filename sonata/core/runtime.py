@@ -77,7 +77,7 @@ class Runtime(object):
                 # final_plan = self.query_plans[query.qid][1:-1]
                 # print final_plan
 
-                final_plan = [(1, 32, 5, 3)]#(1, 16, 5, 1),
+                final_plan = [(1, 16, 5, 1),(1, 32, 5, 3)]#(1, 16, 5, 1),
                 prev_r = 0
                 prev_qid = 0
 

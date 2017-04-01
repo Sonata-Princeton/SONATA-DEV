@@ -75,8 +75,6 @@ class P4Target(object):
         commands_string = "\n".join(p4_commands)
         write_to_file(self.P4_COMMANDS, commands_string)
 
-        # return
-
         # compile p4 to json
         self.logger.info('compile p4 code to json')
         self.dataplane.compile_p4(self.P4_COMPILED, self.JSON_P4_COMPILED)

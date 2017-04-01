@@ -34,7 +34,6 @@ def get_clean_application(application):
                 # drop Map operators without a supported function
                 if len(operator.func) > 0:
                     if isinstance(operator.map_keys, tuple):
-                        # print "Tuple instance", operator.map_keys[0], tuple(operator.map_keys)
                         new_o.map_keys = tuple(operator.map_keys)
                     else:
                         new_o.map_keys = operator.map_keys
