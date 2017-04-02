@@ -39,13 +39,14 @@ class P4Target(object):
         # interfaces
         self.interfaces = {
                 'receiver': ['m-veth-1', 'out-veth-1'],
-                'sender': ['m-veth-2', 'out-veth-2']
+                'sender': ['m-veth-2', 'out-veth-2'],
+                'original': ['m-veth-3', 'out-veth-3']
         }
 
         self.supported_operations = ['Map', 'Filter', 'Reduce', 'Distinct']
 
         # LOGGING
-        log_level = logging.WARNING
+        log_level = logging.INFO
         # add handler
         self.logger = logging.getLogger('P4Target')
         self.logger.setLevel(log_level)
@@ -109,10 +110,12 @@ class P4Target(object):
                                            map_keys=operator.map_keys,
                                            func=operator.func)
                 elif operator.name == 'Reduce':
-                    query_pipeline.reduce(keys=keys)
+                    query_pipeline.reduce(keys=keys,threshold=operator.threshold)
 
                 elif operator.name == 'Distinct':
                     query_pipeline.distinct(keys=keys)
+
+            print query_pipeline
 
             p4_queries.append(query_pipeline)
             self.queries[qid] = query_pipeline
@@ -244,10 +247,10 @@ class P4Target(object):
         # compile app to p4
         self.logger.info('generate p4 code and commands')
         p4_queries, p4_src, p4_commands = self.compile_app(app)
-        write_to_file(self.P4_COMPILED, p4_src)
+        # write_to_file(self.P4_COMPILED, p4_src)
 
         commands_string = "\n".join(p4_commands)
-        write_to_file(self.P4_COMMANDS, commands_string)
+        # write_to_file(self.P4_COMMANDS, commands_string)
 
         # compile p4 to json
         self.logger.info('compile p4 code to json')
@@ -282,6 +285,6 @@ class P4Target(object):
                 command = 'table_add '+filter_table_fname+' set_meta_fm_'+str(qid)+' '+str(dip)+'/'+str(filter_mask)+' => \n'
                 commands += command
 
-            self.logger.info(commands)
+            # self.logger.info(commands)
             write_to_file(self.P4_DELTA_COMMANDS, commands)
             self.dataplane.send_commands(self.JSON_P4_COMPILED, self.P4_DELTA_COMMANDS)

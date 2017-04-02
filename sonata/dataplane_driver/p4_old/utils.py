@@ -6,6 +6,7 @@ def get_out(args):
     with TemporaryFile() as t:
         try:
             out = check_output(args, stderr=t, shell=True)
+            # print out
             return True, out
         except CalledProcessError as e:
             t.seek(0)

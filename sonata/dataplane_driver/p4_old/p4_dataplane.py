@@ -25,7 +25,7 @@ class P4DataPlane(object):
         self.bm_script = bm_script
 
         # LOGGING
-        log_level = logging.INFO
+        log_level = logging.WARNING
         # add handler
         self.logger = logging.getLogger('P4DataPlane')
         self.logger.setLevel(log_level)
@@ -56,6 +56,7 @@ class P4DataPlane(object):
 
         Intf("m-veth-1", net.get('s1'), 11)
         Intf("m-veth-2", net.get('s1'), 12)
+        Intf("m-veth-3", net.get('s1'), 13)
         net.start()
         sleep(1)
 
@@ -69,32 +70,35 @@ class P4DataPlane(object):
             inter = Interfaces(self.interfaces[key][0], self.interfaces[key][1])
             inter.setup()
 
+    # def reset_switch_state(self):
+    #     self.logger.info('reset switch state')
+    #     cmd = "echo \'reset_state\' | " + self.cli_path + " --thrift-port "+str(self.thrift_port)
+    #     get_out(cmd)
+
+
     def reset_switch_state(self):
         self.logger.info('reset switch state')
         cmd = "echo \'reset_state\' | " + self.cli_path + " --thrift-port "+str(self.thrift_port)
-        print "Running ##########:" + cmd
         get_out(cmd)
 
     def send_commands(self, p4_json_path, command_path):
         self.logger.info('send commands')
         cmd = [self.cli_path, p4_json_path, str(self.thrift_port)]
         with open(command_path, "r") as f:
-            print " ".join(cmd)
             try:
                 output = subprocess.check_output(cmd, stdin=f)
             except subprocess.CalledProcessError as e:
                 print e
                 print e.output
 
-    def send_delta_commands(self, p4_json_path, commands):
-        self.logger.info('send delta commands')
-        cmd = [self.cli_path, p4_json_path, str(self.thrift_port)]
-        get_in(cmd, commands)
+    # def send_delta_commands(self, p4_json_path, commands):
+    #     self.logger.info('send delta commands')
+    #     cmd = [self.cli_path, p4_json_path, str(self.thrift_port)]
+    #     get_in(cmd, commands)
 
     def compile_p4(self, p4_compiled, json_p4_compiled):
         self.logger.info('compile p4 to json')
         CMD = self.bm_script + " " + p4_compiled + " --json " + json_p4_compiled
-        print CMD
         get_out(CMD)
 
 

@@ -229,10 +229,12 @@ class Runtime(object):
         self.dpd_thread = Thread(name='dp_driver', target=dpd.start)
         self.dpd_thread.setDaemon(True)
 
+        p4_type = 'p4_old'
+
         config = {
             'em_conf': self.conf['emitter_conf'],
             'switch_conf': {
-                'compiled_srcs': '/home/vagrant/dev/sonata/dataplane_driver/p4/compiled_srcs/',
+                'compiled_srcs': '/home/vagrant/dev/sonata/dataplane_driver/'+p4_type+'/compiled_srcs/',
                 'json_p4_compiled': 'compiled.json',
                 'p4_compiled': 'compiled.p4',
                 'p4c_bm_script': '/home/vagrant/p4c-bmv2/p4c_bm/__main__.py',
@@ -245,7 +247,7 @@ class Runtime(object):
                 'p4_delta_commands': 'delta_commands.txt'
             }
         }
-        dpd.add_target('p4', self.target_id, config)
+        dpd.add_target(p4_type, self.target_id, config)
         self.dpd_thread.start()
 
         # fm = DPDriverConfig(self.conf['fm_conf'], self.conf['emitter_conf'])

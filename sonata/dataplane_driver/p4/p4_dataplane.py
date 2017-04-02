@@ -55,6 +55,8 @@ class P4DataPlane(object):
 
         Intf("m-veth-1", net.get('s1'), 11)
         Intf("m-veth-2", net.get('s1'), 12)
+        Intf("m-veth-3", net.get('s1'), 13)
+
         net.start()
         sleep(1)
 

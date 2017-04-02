@@ -8,7 +8,8 @@ from multiprocessing.connection import Listener
 from query_cleaner import get_clean_application
 
 from openflow.openflow import OFTarget
-from p4.p4_target import P4Target
+# from p4.p4_target import P4Target
+
 
 
 class DataplaneDriver(object):
@@ -85,6 +86,15 @@ class DataplaneDriver(object):
         self.logger.info('adding new target of type %s with id %s' % (type, str(tid)))
         target = None
         if target_type == 'p4':
+            from p4.p4_target import P4Target
+            if 'em_conf' not in config or 'switch_conf' not in config:
+                self.logger.error('missing configs')
+                return
+            em_config = config['em_conf']
+            switch_config = config['switch_conf']
+            target = P4Target(em_config, switch_config)
+        elif target_type == 'p4_old':
+            from p4_old.p4_target_old import P4Target
             if 'em_conf' not in config or 'switch_conf' not in config:
                 self.logger.error('missing configs')
                 return
@@ -117,9 +127,10 @@ class DataplaneDriver(object):
         return 999
 
     def configure(self, application, target_id):
+        print application
         # TODO integrate query cleaner
         clean_application = get_clean_application(application)
-
+        print "Cleaned: ", clean_application
         target = self.get_target(target_id)
         target.run(clean_application)
 

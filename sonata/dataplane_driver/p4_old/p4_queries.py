@@ -781,7 +781,8 @@ class QueryPipeline(object):
 
     def reduce(self, *args, **kwargs):
         id = len(self.operators)
-        new_args = (id, self.qid, self.mirror_id, TABLE_WIDTH, TABLE_SIZE, THRESHOLD)+args
+
+
         map_dict = dict(*args, **kwargs)
         keys = map_dict['keys']
         values = ()
@@ -790,6 +791,13 @@ class QueryPipeline(object):
             values = map_dict['values']
         if 'func' in map_dict:
             func = map_dict['func']
+
+        if 'threshold' in map_dict:
+            threshold = map_dict['threshold']
+        else:
+            threshold = THRESHOLD
+
+        new_args = (id, self.qid, self.mirror_id, TABLE_WIDTH, TABLE_SIZE, threshold)+args
 
         operator = Reduce(*new_args, **kwargs)
         self.expr += '\n\t.Reduce(keys=' + ','.join([x for x in keys]) + ', values='+str(values)+', func='+str(func)+', threshold='+str(operator.thresh)+')'
