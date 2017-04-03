@@ -33,7 +33,7 @@ def create_normal_traffic():
     for i in range(number_of_packets):
         sIP = socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff)))
         dIP = socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff)))
-        p = Ether() / IP(dst=dIP, src=sIP) / TCP() / "SONATA NORMAL"
+        p = Ether() / IP(ttl=255, dst=dIP, src=sIP) / TCP() / "SONATA NORMAL"
         normal_packets.append(p)
 
     return normal_packets
@@ -57,7 +57,7 @@ def compose_packet(pkt_tuple):
     random_number = random.randint(1, 10000)
     payload_string = "SONATA"+str(random_number)
     (sIP, sPort, dIP, dPort, nBytes, proto, sMac, dMac) = pkt_tuple
-    p = Ether() / IP(dst=dIP, src=sIP) / TCP(dport=int(dPort), sport=int(sPort)) / payload_string
+    p = Ether() / IP(ttl=255, dst=dIP, src=sIP) / TCP(dport=int(dPort), sport=int(sPort)) / payload_string
     return p
 
 

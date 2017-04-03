@@ -23,7 +23,7 @@ class P4DataPlane(object):
         self.cli_path = cli_path
         self.thrift_port = thrift_port
         self.bm_script = bm_script
-
+        self.net = None
         # LOGGING
         log_level = logging.WARNING
         # add handler
@@ -49,15 +49,15 @@ class P4DataPlane(object):
                       p4_json_path,
                       self.thrift_port)
 
-        net = Mininet(topo=topo,
+        self.net = Mininet(topo=topo,
                       host=P4Host,
                       switch=P4Switch,
                       controller=None)
 
-        Intf("m-veth-1", net.get('s1'), 11)
-        Intf("m-veth-2", net.get('s1'), 12)
-        Intf("m-veth-3", net.get('s1'), 13)
-        net.start()
+        Intf("m-veth-1", self.net.get('s1'), 11)
+        Intf("m-veth-2", self.net.get('s1'), 12)
+        Intf("m-veth-3", self.net.get('s1'), 13)
+        self.net.start()
         sleep(1)
 
         self.send_commands(p4_json_path, p4_commands_path)
