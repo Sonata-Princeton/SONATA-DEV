@@ -146,6 +146,23 @@ header out_header_%s_t out_header_%s;
 
     return source, extract_header, ingress_loop, app_metadata
 
+
+def get_filter_table(id, MAX_ENTRIES):
+    filter="""table filter_%s {
+	reads {
+		ipv4.dstAddr: lpm;
+	}
+	actions {
+		_nop;
+	}
+	size : %s;
+}"""%(id, MAX_ENTRIES)
+
+    filter_table_entry = "filter_%s"%(id)
+    filter_command="table_set_default filter_%s _nop"%(id)
+
+    return filter, filter_command, filter_table_entry
+
 def get_sequential_code(NUMBER_OF_QUERIES):
 
     source = ""
@@ -187,7 +204,6 @@ metadata meta_app_data_t meta_app_data;"""%(app_metadata)
     FINAL_CODE = BASIC + "\n" + source + "\n" + parse_headers + "\n" + app_metadata + "\n" + ingress + "\n" + egress
     COMMANDS = ["table_set_default send_original_out do_send_original_out"]
     return FINAL_CODE, COMMANDS
-
 
 
 

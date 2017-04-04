@@ -1,12 +1,12 @@
 #!/usr/bin/python
 from sonata.dataplane_driver.p4_old.p4_dataplane import P4DataPlane
 from sonata.dataplane_driver.utils import write_to_file
-from sonata.tests.micro_bench.utils import get_sequential_code, get_recirculation_code, send_created_traffic
+from sonata.tests.micro_seq_recirculate.utils import get_sequential_code, get_recirculation_code, send_created_traffic
 import threading, time
 import logging
 import sys
 
-BASE_PATH = '/home/vagrant/dev/sonata/tests/micro_bench/results/'
+BASE_PATH = '/home/vagrant/dev/sonata/tests/micro_seq_recirculate/results/'
 
 class Sender(threading.Thread):
     def __init__(self, duration, packets_per_second, veth):
@@ -65,7 +65,7 @@ if __name__ == '__main__':
     # for p4_type in P4_TYPES:
 
     target_conf = {
-        'compiled_srcs': '/home/vagrant/dev/sonata/tests/micro_bench/'+p4_type+'/compiled_srcs/',
+        'compiled_srcs': '/home/vagrant/dev/sonata/tests/micro_seq_recirculate/'+p4_type+'/compiled_srcs/',
         'json_p4_compiled': 'compiled_test.json',
         'p4_compiled': 'compiled_test.p4',
         'p4c_bm_script': '/home/vagrant/p4c-bmv2/p4c_bm/__main__.py',
@@ -98,7 +98,7 @@ if __name__ == '__main__':
     # interfaces
     interfaces = {
         'receiver': ['m-veth-1', 'out-veth-1'],
-        'sender': ['m-veth-2', 'out-veth-2'],
+        'sender':   ['m-veth-2', 'out-veth-2'],
         'original': ['m-veth-3', 'out-veth-3']
     }
     # NUMBER_OF_QUERIES = 100

@@ -59,7 +59,6 @@ class P4DataPlane(object):
         Intf("m-veth-3", self.net.get('s1'), 13)
         self.net.start()
         sleep(1)
-
         self.send_commands(p4_json_path, p4_commands_path)
 
         sleep(1)
@@ -69,12 +68,6 @@ class P4DataPlane(object):
         for key in self.interfaces.keys():
             inter = Interfaces(self.interfaces[key][0], self.interfaces[key][1])
             inter.setup()
-
-    # def reset_switch_state(self):
-    #     self.logger.info('reset switch state')
-    #     cmd = "echo \'reset_state\' | " + self.cli_path + " --thrift-port "+str(self.thrift_port)
-    #     get_out(cmd)
-
 
     def reset_switch_state(self):
         self.logger.info('reset switch state')
@@ -90,11 +83,6 @@ class P4DataPlane(object):
             except subprocess.CalledProcessError as e:
                 print e
                 print e.output
-
-    # def send_delta_commands(self, p4_json_path, commands):
-    #     self.logger.info('send delta commands')
-    #     cmd = [self.cli_path, p4_json_path, str(self.thrift_port)]
-    #     get_in(cmd, commands)
 
     def compile_p4(self, p4_compiled, json_p4_compiled):
         self.logger.info('compile p4 to json')
