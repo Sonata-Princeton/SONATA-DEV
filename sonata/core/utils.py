@@ -64,6 +64,7 @@ def copy_sonata_operators_to_dp_query(query, optr):
 
 def get_refinement_keys(query):
     red_keys = set([])
+    refinement_headers = {'dIP', 'sIP'}
     if query.left_child is not None:
         red_keys_left = get_refinement_keys(query.left_child)
         red_keys_right = get_refinement_keys(query.right_child)
@@ -80,7 +81,7 @@ def get_refinement_keys(query):
                 red_keys = red_keys.intersection(set(operator.keys))
                 # print query.qid, operator.name, red_keys
 
-        red_keys = red_keys.intersection(query.refinement_headers)
+        red_keys = red_keys.intersection(refinement_headers)
 
     else:
         # print "Reached leaf node", query.qid
@@ -88,7 +89,7 @@ def get_refinement_keys(query):
         for operator in query.operators:
             # Extract reduction keys from first reduce/distinct operator
             if operator.name in ['Distinct', 'Reduce']:
-                red_keys = red_keys.intersection(set(operator.keys))
+                red_keys = red_keys.intersection(set(operator.keys)).intersection(refinement_headers)
 
     # print "Reduction Key Search", query.qid, red_keys
     return red_keys

@@ -203,7 +203,7 @@ class Reduce(StreamingQuery):
         expr = ''
         #print "Reduce Keys: ",str(self.prev_keys), str(self.prev_values),str(self.keys), str(self.values)
         if self.func[0] == 'sum':
-            expr += '.reduceByKey(lambda x,y: x+y)'
+            expr += '.map(lambda s: (s[0], float(s[1]))).reduceByKey(lambda x,y: x+y)'
         return expr
 
 

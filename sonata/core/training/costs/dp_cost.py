@@ -17,6 +17,7 @@ def get_cms_width(s, thresh, delta):
     max_s = max(s)
     if max_s < thresh:
         max_s = thresh
+    max_s = int(max_s)
     bins = range(2 + max_s)
     pdfs, bins = np.histogram(s, bins, density=True)
     bin_2_prob = dict((x, y) for x, y in zip(list(bins), list(pdfs)))

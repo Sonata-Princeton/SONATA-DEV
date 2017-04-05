@@ -15,16 +15,22 @@ def get_refined_query_id(query, ref_level):
 
 def get_thresh(training_data, spark_query, spread, refinement_level, satisfied_sonata_spark_query, ref_levels):
     if refinement_level == ref_levels[-1]:
+        test_str = 'training_data.' + spark_query.compile() + '.collect()'
+        print test_str
+        test_data = eval(test_str)
+        print test_data[:5]
         query_string = 'training_data.' + spark_query.compile() + '.map(lambda s: s[1]).collect()'
+        # print query_string
         data = [float(x) for x in (eval(query_string))]
         thresh = 0.0
         if len(data) > 0:
-            thresh = int(np.percentile(data, int(spread)))
+            thresh = int(np.percentile(data, float(spread)))
             print "Mean", np.mean(data), "Median", np.median(data), "75 %", np.percentile(data, 75), \
-                "95 %", np.percentile(data, 95), "99 %", np.percentile(data, 99)
+                "95 %", np.percentile(data, 95), "99 %", np.percentile(data, 99), "99.9 %", np.percentile(data, 99.9), \
+                "99.99 %", np.percentile(data, 99.99), "99.999 %", np.percentile(data, 99.999)
         if thresh == 1:
             thresh += 1
-        thresh = 25
+        #thresh = 5
         print "Thresh:", thresh, refinement_level
 
     else:
@@ -33,21 +39,22 @@ def get_thresh(training_data, spark_query, spread, refinement_level, satisfied_s
         print refined_satisfied_out
         query_string = 'training_data.' + spark_query.compile() + \
                        '.join(' + refined_satisfied_out + ').map(lambda s: s[1][0]).collect()'
-        print query_string
+        # print query_string
         data = [float(x) for x in (eval(query_string))]
         data.sort()
         print "Values at refinement level", refinement_level
-        print data
+        print data[:5]
         thresh = min(data)
         if thresh == 1:
             thresh += 1
-        print data, thresh
+        print thresh
 
         original_query_string = 'training_data.' + spark_query.compile() + '.map(lambda s: s[1]).collect()'
         data = [float(x) for x in (eval(original_query_string))]
         if len(data) > 0:
             print "Mean", np.mean(data), "Median", np.median(data), "75 %", np.percentile(data, 75), \
-                "95 %", np.percentile(data, 95), "99 %", np.percentile(data, 99)
+                "95 %", np.percentile(data, 95), "99 %", np.percentile(data, 99), "99.9 %", np.percentile(data, 99.9), \
+                "99.99 %", np.percentile(data, 99.99), "99.999 %", np.percentile(data, 99.999)
         print "Thresh:", thresh, refinement_level
 
     return thresh

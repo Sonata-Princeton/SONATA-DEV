@@ -12,6 +12,7 @@ from sonata.query_engine.sonata_queries import *
 def parse_log_line(logline):
     return tuple(logline.split(","))
 
+
 def shard_training_data(sc, flows_File, T):
 
     training_data = (sc.textFile(flows_File)
@@ -26,6 +27,7 @@ def shard_training_data(sc, flows_File, T):
     timestamps = training_data.map(lambda s: s[0]).distinct().collect()
     print "#Timestamps: ", len(timestamps)
     return timestamps, training_data
+
 
 def add_timestamp_key(qid_2_query):
     def add_timestamp_to_query(q):
@@ -106,6 +108,7 @@ def get_partition_plans_learning(spark_query, target):
 
     return partition_plans_learning
 
+
 def generate_intermediate_spark_queries(spark_query, refinement_level, target):
     partition_plans_learning = get_partition_plans_learning(spark_query, target)
     partition_plans_learning += [len(spark_query.operators)]
@@ -147,6 +150,7 @@ def generate_intermediate_spark_queries(spark_query, refinement_level, target):
         prev_qid = qid
 
     return spark_intermediate_queries, filter_mappings
+
 
 def generate_query_to_collect_transit_cost(transit_query_string, spark_query):
     #print spark_query, spark_query.operators
@@ -211,6 +215,7 @@ def generate_query_string_prev_level_out_mapped(qid, ref_level_prev, query_out_r
 
     return prev_level_out_mapped_string, prev_level_out
 
+
 def dump_data(data, fname):
     with open(fname,'w') as f:
         print "Dumping query cost ..." + fname
@@ -253,6 +258,7 @@ def update_counts(sc, queries, query_out, iter_qid, delta, bits_count, ctr):
 
     return out, packet_count, ctr+1
 
+
 def create_spark_context():
     from pyspark import SparkContext, SparkConf
     conf = (SparkConf()
@@ -269,9 +275,8 @@ def create_spark_context():
 
     return sc
 
+
 def get_spark_context_batch(sc):
-
-
     # Load training data
     timestamps, training_data = shard_training_data(sc, TD_PATH, T)
     return timestamps, training_data
