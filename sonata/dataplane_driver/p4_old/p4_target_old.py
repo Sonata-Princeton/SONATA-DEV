@@ -202,13 +202,21 @@ class P4Target(object):
             p4_src += '}\n\n'
 
         p4_src += """
-action do_send_original_out() {
-        modify_field(standard_metadata.egress_spec, 13);
+action repeat(dport) {
+    modify_field(standard_metadata.egress_spec, dport);
+    //modify_field(addition.trash, TRASH);
+    //add_header(addition);
 }
 
-table send_original_out {
-    actions { do_send_original_out; }
-    size : 1;
+table forward {
+    reads {
+        standard_metadata.ingress_port: exact;
+    }
+    actions {
+        repeat;
+        _drop;
+    }
+    size: 2;
 }\n\n"""
 
         for q in p4_queries:
@@ -231,9 +239,11 @@ table send_original_out {
 
         # TODO: Remove Forwarding of original packet
         p4_src += '\tif (meta_fm.f1 == '+str(ctr)+'){\n'
-        p4_src += '\t\t\tapply(send_original_out);\n'
+        p4_src += '\t\t\tapply(forward);\n'
         p4_src += '\t}\n'
-        p4_commands.append("table_set_default send_original_out do_send_original_out")
+        p4_commands.append("table_set_default forward _drop")
+        p4_commands.append("table_add forward repeat 10 => 11")
+        p4_commands.append("table_add forward repeat 11 => 10")
         # TODO: Remove Forwarding of original packet
 
         p4_src += '}\n\n'

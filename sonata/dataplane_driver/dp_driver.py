@@ -13,6 +13,7 @@ from openflow.openflow import OFTarget
 
 BASEPATH = '/home/vagrant/'
 SONATA = 'dev'
+DP_DRIVER_CONF = ('localhost', 6666)
 
 class DataplaneDriver(object):
     def __init__(self, dpd_socket, metrics_file):
@@ -150,7 +151,7 @@ class DataplaneDriver(object):
 
 def main():
 
-    dpd = DataplaneDriver(('localhost', 6666), BASEPATH + SONATA +"/sonata/tests/micro_seq_recirculate/results/dp_driver.log")
+    dpd = DataplaneDriver(DP_DRIVER_CONF, BASEPATH + SONATA +"/sonata/tests/micro_seq_recirculate/results/dp_driver.log")
     p4_type = 'p4_old'
     compiled_srcs = ''
 

@@ -10,6 +10,8 @@ from sonata.core.partition import get_dataplane_query
 
 
 BASE_PATH = '/home/vagrant/dev/sonata/tests/micro_seq_recirculate/results/'
+VETH_SEND = "out-veth-1"
+VETH_RECIEVE = "out-veth-3"
 
 class Sender(threading.Thread):
     def __init__(self, duration, packets_per_second, veth):
@@ -88,10 +90,6 @@ if __name__ == '__main__':
     p4_type = sys.argv[2]
     NUMBER_OF_PACKETS_PER_SECOND = 100
     TOTAL_DURATION = 30
-
-    VETH_SEND = "out-veth-1"
-    VETH_RECIEVE = "out-veth-3"
-
 
     # New Queries
     q1 = (PacketStream(1)

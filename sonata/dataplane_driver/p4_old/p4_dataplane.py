@@ -15,6 +15,7 @@ import subprocess
 from interfaces import Interfaces
 from utils import get_out, get_in
 import threading,os
+internal_intefaces = {"m-veth-1": 11, "m-veth-2":12, "m-veth-3": 13}
 
 class Switch(threading.Thread):
     def __init__(self,p4_json_path, switch_path, internal_intefaces):
@@ -22,11 +23,10 @@ class Switch(threading.Thread):
         self.daemon = True
         self.switch_path = switch_path
         self.p4_json_path = p4_json_path
-        self.internal_intefaces = internal_intefaces
 
     def run(self):
         compose_interfaces = ""
-        for inter,port in self.internal_intefaces.iteritems():
+        for inter,port in internal_intefaces.iteritems():
             new_interface = " -i %s@%s "%(port,inter)
             compose_interfaces +=new_interface
 
@@ -42,7 +42,6 @@ class P4DataPlane(object):
         self.thrift_port = thrift_port
         self.bm_script = bm_script
         self.net = None
-        self.internal_intefaces = {"m-veth-1": 11, "m-veth-2":12, "m-veth-3": 13}
         # LOGGING
         log_level = logging.WARNING
         # add handler
