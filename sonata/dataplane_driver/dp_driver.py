@@ -11,7 +11,7 @@ from openflow.openflow import OFTarget
 # from p4.p4_target import P4Target
 
 
-
+BASEPATH = '/home/vagrant/'
 class DataplaneDriver(object):
     def __init__(self, dpd_socket, metrics_file):
         self.dpd_socket = dpd_socket
@@ -147,7 +147,32 @@ class DataplaneDriver(object):
 
 
 def main():
-    pass
+
+    dpd = DataplaneDriver(('localhost', 6666), BASEPATH+"dev/sonata/tests/micro_seq_recirculate/results/dp_driver.log")
+    p4_type = 'p4_old'
+    compiled_srcs = ''
+
+    if p4_type == 'p4_old': compiled_srcs = 'recirculate'
+    else: compiled_srcs = 'sequential'
+
+    config = {
+        'em_conf': {},
+        'switch_conf': {
+            'compiled_srcs': BASEPATH + 'dev/sonata/tests/micro_seq_recirculate/'+compiled_srcs+'/compiled_srcs/',
+            'json_p4_compiled': 'compiled.json',
+            'p4_compiled': 'compiled.p4',
+            'p4c_bm_script': BASEPATH + 'p4c-bmv2/p4c_bm/__main__.py',
+            'bmv2_path': BASEPATH + 'bmv2',
+            'bmv2_switch_base': '/targets/simple_switch',
+            'switch_path': '/simple_switch',
+            'cli_path': '/sswitch_CLI',
+            'thriftport': 22222,
+            'p4_commands': 'commands.txt',
+            'p4_delta_commands': 'delta_commands.txt'
+        }
+    }
+    dpd.add_target(p4_type, 1, config)
+    dpd.start()
 
 
 if __name__ == '__main__':

@@ -201,6 +201,16 @@ class P4Target(object):
             p4_src += '\tmodify_field(meta_fm.is_drop, 1);\n'
             p4_src += '}\n\n'
 
+        p4_src += """
+action do_send_original_out() {
+        modify_field(standard_metadata.egress_spec, 13);
+}
+
+table send_original_out {
+    actions { do_send_original_out; }
+    size : 1;
+}\n\n"""
+
         for q in p4_queries:
             p4_src += q.filter_rules
 
@@ -214,16 +224,28 @@ class P4Target(object):
             p4_src += '\t\tif (meta_fm.qid_'+str(q.qid)+' == 1){\n'
             p4_src += '\t\t'+q.p4_ingress_start
             p4_src += q.p4_control
-            p4_src += '\t\t\tapply(copy_to_cpu_'+str(q.qid)+');\n'
+            # TODO: Remove this when micro benchmarking is done
+            # p4_src += '\t\t\tapply(copy_to_cpu_'+str(q.qid)+');\n'
             p4_src += '\t\t}\n\t}\n'
             p4_commands.append('table_set_default copy_to_cpu_'+str(q.qid)+' do_copy_to_cpu_'+str(q.qid))
+
+        # TODO: Remove Forwarding of original packet
+        p4_src += '\tif (meta_fm.f1 == '+str(ctr)+'){\n'
+        p4_src += '\t\t\tapply(send_original_out);\n'
+        p4_src += '\t}\n'
+        p4_commands.append("table_set_default send_original_out do_send_original_out")
+        # TODO: Remove Forwarding of original packet
+
         p4_src += '}\n\n'
 
         p4_src += 'control egress {\n'
         p4_src += '\tif (standard_metadata.instance_type != 1) {\n'
         p4_src += '\t\tif(meta_fm.f1 < '+str(len(p4_queries))+') {\n'
         p4_src += '\t\t\tapply(recirculate_to_ingress);\n\t\t}\n'
-        p4_src += '\t\telse {\n\t\t\tapply(drop_table);\n\t\t}\n\t}\n\n'
+        # TODO: Enable Dropping of original packet
+        # p4_src += '\t\telse {\n\t\t\tapply(drop_table);\n\t\t}\n\t'
+        # TODO: Enable Dropping of original packet
+        p4_src += '}\n\n'
         p4_src += '\telse if (standard_metadata.instance_type == 1) {\n'
         p4_src += '\t\tif (meta_fm.is_drop == 1){\n'
         p4_src += '\t\t\tapply(drop_packets);\n\t\t}\n\t\telse {\n'
@@ -247,10 +269,10 @@ class P4Target(object):
         # compile app to p4
         self.logger.info('generate p4 code and commands')
         p4_queries, p4_src, p4_commands = self.compile_app(app)
-        # write_to_file(self.P4_COMPILED, p4_src)
+        write_to_file(self.P4_COMPILED, p4_src)
 
         commands_string = "\n".join(p4_commands)
-        # write_to_file(self.P4_COMMANDS, commands_string)
+        write_to_file(self.P4_COMMANDS, commands_string)
 
         # compile p4 to json
         self.logger.info('compile p4 code to json')

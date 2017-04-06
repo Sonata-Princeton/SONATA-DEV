@@ -1,10 +1,13 @@
 #!/usr/bin/python
-from sonata.dataplane_driver.p4_old.p4_dataplane import P4DataPlane
-from sonata.dataplane_driver.utils import write_to_file
 from sonata.tests.micro_seq_recirculate.utils import get_sequential_code, get_recirculation_code, send_created_traffic
 import threading, time
 import logging
-import sys
+import sys, threading, os
+from sonata.query_engine.sonata_queries import *
+from multiprocessing.connection import Client
+import pickle
+from sonata.core.partition import get_dataplane_query
+
 
 BASE_PATH = '/home/vagrant/dev/sonata/tests/micro_seq_recirculate/results/'
 
@@ -55,72 +58,62 @@ class Receiver(threading.Thread):
             compose_line = ",".join(logging_info)
             self.logger.info(compose_line)
 
+class Switch(threading.Thread):
+    def __init__(self,p4_json_path, switch_path):
+        threading.Thread.__init__(self)
+        self.daemon = True
+        self.switch_path = switch_path
+        self.p4_json_path = p4_json_path
+
+    def run(self):
+        COMMAND = "sudo %s %s -i 11@m-veth-1 -i 12@m-veth-2 -i 13@m-veth-3 --thrift-port 22222 &"%(self.switch_path, self.p4_json_path)
+        print COMMAND
+        os.system(COMMAND)
+
+def send_to_dp_driver(message_type, content, conf):
+    # Send compiled query expression to fabric manager
+    # start = time.time()
+    message = {message_type: {0: content, 1: 1}}
+    serialized_queries = pickle.dumps(message)
+    conn = Client(conf)
+    conn.send(serialized_queries)
+    # self.logger.info("runtime,fm_" + message_type + "," + str(start) + "," + str(time.time()))
+    time.sleep(1)
+    conn.close()
+    return ''
+
 if __name__ == '__main__':
 
     NUMBER_OF_QUERIES = int(sys.argv[1])
     p4_type = sys.argv[2]
-    # P4_TYPES = ['recirculate', 'sequential']
-    # NUMBER_OF_QUERIES_ARRAY = [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
-    #
-    # for p4_type in P4_TYPES:
-
-    target_conf = {
-        'compiled_srcs': '/home/vagrant/dev/sonata/tests/micro_seq_recirculate/'+p4_type+'/compiled_srcs/',
-        'json_p4_compiled': 'compiled_test.json',
-        'p4_compiled': 'compiled_test.p4',
-        'p4c_bm_script': '/home/vagrant/p4c-bmv2/p4c_bm/__main__.py',
-        'bmv2_path': '/home/vagrant/bmv2',
-        'bmv2_switch_base': '/targets/simple_switch',
-        'switch_path': '/simple_switch',
-        'cli_path': '/sswitch_CLI',
-        'thriftport': 22222,
-        'p4_commands': 'commands.txt',
-        'p4_delta_commands': 'delta_commands.txt'
-    }
-
-    # Code Compilation
-    COMPILED_SRCS = target_conf['compiled_srcs']
-    JSON_P4_COMPILED = COMPILED_SRCS + target_conf['json_p4_compiled']
-    P4_COMPILED = COMPILED_SRCS + target_conf['p4_compiled']
-    P4C_BM_SCRIPT = target_conf['p4c_bm_script']
-
-    # Initialization of Switch
-    BMV2_PATH = target_conf['bmv2_path']
-    BMV2_SWITCH_BASE = BMV2_PATH + target_conf['bmv2_switch_base']
-
-    SWITCH_PATH = BMV2_SWITCH_BASE + target_conf['switch_path']
-    CLI_PATH = BMV2_SWITCH_BASE + target_conf['cli_path']
-    THRIFTPORT = target_conf['thriftport']
-
-    P4_COMMANDS = COMPILED_SRCS + target_conf['p4_commands']
-    P4_DELTA_COMMANDS = COMPILED_SRCS + target_conf['p4_delta_commands']
-
-    # interfaces
-    interfaces = {
-        'receiver': ['m-veth-1', 'out-veth-1'],
-        'sender':   ['m-veth-2', 'out-veth-2'],
-        'original': ['m-veth-3', 'out-veth-3']
-    }
-    # NUMBER_OF_QUERIES = 100
     NUMBER_OF_PACKETS_PER_SECOND = 100
     TOTAL_DURATION = 30
 
     VETH_SEND = "out-veth-1"
     VETH_RECIEVE = "out-veth-3"
 
-    if p4_type == 'recirculate': p4_src,p4_commands = get_recirculation_code(NUMBER_OF_QUERIES)
-    else: p4_src,p4_commands = get_sequential_code(NUMBER_OF_QUERIES)
-    write_to_file(P4_COMPILED, p4_src)
 
-    commands_string = "\n".join(p4_commands)
-    write_to_file(P4_COMMANDS, commands_string)
+    # New Queries
+    q1 = (PacketStream(1)
+          .map(keys=('dIP', 'sIP'))
+          .distinct(keys=('dIP', 'sIP'))
+          .map(keys=('dIP',), map_values=('count',), func=('eq', 1,))
+          .reduce(keys=('dIP',), func=('sum',))
+          .filter(filter_vals=('count',), func=('geq', 1))
+          .map(keys=('dIP',))
+          )
 
-    dataplane = P4DataPlane(interfaces, SWITCH_PATH, CLI_PATH, THRIFTPORT, P4C_BM_SCRIPT)
-    dataplane.compile_p4(P4_COMPILED, JSON_P4_COMPILED)
+    dp_query = get_dataplane_query(q1, 1, 6)
 
-    # initialize dataplane and run the configuration
-    dataplane.initialize(JSON_P4_COMPILED, P4_COMMANDS)
+    queries = {}
 
+    for qid in range(0, NUMBER_OF_QUERIES):
+        queries[qid] = dp_query
+
+    dp_driver_conf = ('localhost', 6666)
+
+    send_to_dp_driver('init',queries,dp_driver_conf)
+    time.sleep(3)
     receiver = Receiver(TOTAL_DURATION, VETH_RECIEVE, p4_type, NUMBER_OF_QUERIES, NUMBER_OF_PACKETS_PER_SECOND)
     receiver.start()
 
@@ -130,10 +123,5 @@ if __name__ == '__main__':
 
     receiver.join()
     sender.join()
-
-
-
-    dataplane.net.stop()
-
 
 

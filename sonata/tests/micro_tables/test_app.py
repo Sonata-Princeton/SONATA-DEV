@@ -137,6 +137,8 @@ if __name__ == '__main__':
     # initialize_the_switch(JSON_P4_COMPILED, SWITCH_PATH)
     Switch(JSON_P4_COMPILED, SWITCH_PATH).start()
 
+    time.sleep(1)
+
     dataplane.send_commands(JSON_P4_COMPILED, P4_COMMANDS)
 
     # initialize dataplane and run the configuration

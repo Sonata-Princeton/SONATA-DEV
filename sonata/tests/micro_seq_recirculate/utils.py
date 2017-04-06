@@ -45,7 +45,7 @@ table recirculate_to_ingress {
 
 
 action do_send_original_out() {
-	    modify_field(standard_metadata.egress_spec, 13);
+	    modify_field(standard_metadata.egress_spec, 10);
 }
 
 table send_original_out {

@@ -1,2 +1,0 @@
-table_set_default recirculate_to_ingress do_recirculate_to_ingress
-table_set_default send_original_out do_send_original_out
