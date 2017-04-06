@@ -2,7 +2,8 @@
 from sonata.dataplane_driver.p4_old.p4_dataplane import P4DataPlane
 from sonata.dataplane_driver.utils import write_to_file
 from sonata.tests.micro_registers.utils import get_sequential_code
-import random, logging, time,sys
+import random, logging, time,sys, threading, os
+from sonata.dataplane_driver.utils import get_out
 
 BASE_PATH = '/home/vagrant/dev/sonata/tests/micro_registers/results/'
 
@@ -48,6 +49,18 @@ def add_entries_to_table(number_of_entries, table_name, p4_dataplane_obj, JSON_P
     end = time.time()
 
     logger.info("update|"+str(number_of_entries)+"|"+str(start)+"|"+str(end))
+
+class Switch(threading.Thread):
+    def __init__(self,p4_json_path, switch_path):
+        threading.Thread.__init__(self)
+        self.daemon = True
+        self.switch_path = switch_path
+        self.p4_json_path = p4_json_path
+
+    def run(self):
+        COMMAND = "sudo %s %s -i 11@m-veth-1 -i 12@m-veth-2 -i 13@m-veth-3 --thrift-port 22222 &"%(self.switch_path, self.p4_json_path)
+        print COMMAND
+        os.system(COMMAND)
 
 if __name__ == '__main__':
 
@@ -101,9 +114,16 @@ if __name__ == '__main__':
 
     dataplane = P4DataPlane(interfaces, SWITCH_PATH, CLI_PATH, THRIFTPORT, P4C_BM_SCRIPT)
     dataplane.compile_p4(P4_COMPILED, JSON_P4_COMPILED)
+    dataplane.create_interfaces()
 
-    # initialize dataplane and run the configuration
-    dataplane.initialize(JSON_P4_COMPILED, P4_COMMANDS)
+    cmd = dataplane.switch_path + " >/dev/null 2>&1"
+    get_out(cmd)
+
+    # initialize_the_switch(JSON_P4_COMPILED, SWITCH_PATH)
+    Switch(JSON_P4_COMPILED, SWITCH_PATH).start()
+
+    dataplane.send_commands(JSON_P4_COMPILED, P4_COMMANDS)
+
 
     reset_commands = ["register_reset %s"%(i) for i in registers]
     reset_commands_string = "\n".join(reset_commands)

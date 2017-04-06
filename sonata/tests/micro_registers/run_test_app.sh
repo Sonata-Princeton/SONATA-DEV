@@ -8,7 +8,6 @@ do
     echo "##############################"$registers"##############################"
     CMD="sudo PYTHONPATH=$PYTHONPATH:/home/vagrant/bmv2/mininet:$PWD python sonata/tests/micro_registers/test_app.py $registers && sudo sh cleanup.sh"
     echo $CMD
-    `$CMD`
-    sleep 5
+#    `$CMD`
     echo "##############################"$registers"##############################"
 done

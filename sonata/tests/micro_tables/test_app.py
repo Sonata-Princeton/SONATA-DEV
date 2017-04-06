@@ -3,8 +3,11 @@ from sonata.dataplane_driver.p4_old.p4_dataplane import P4DataPlane
 from sonata.dataplane_driver.utils import write_to_file
 from sonata.tests.micro_tables.utils import get_sequential_code, get_filter_table
 import random, logging, time
-
+from sonata.dataplane_driver.utils import get_out
 BASE_PATH = '/home/vagrant/dev/sonata/tests/micro_tables/results/'
+import os
+import threading
+
 
 def create_return_logger(PATH):
     # create a logger for the object
@@ -48,6 +51,30 @@ def add_entries_to_table(number_of_entries, table_name, p4_dataplane_obj, JSON_P
     end = time.time()
 
     logger.info("update|"+str(number_of_entries)+"|"+str(start)+"|"+str(end))
+
+
+class Switch(threading.Thread):
+    def __init__(self,p4_json_path, switch_path):
+        threading.Thread.__init__(self)
+        self.daemon = True
+        self.switch_path = switch_path
+        self.p4_json_path = p4_json_path
+
+    def run(self):
+        COMMAND = "sudo %s %s -i 11@m-veth-1 -i 12@m-veth-2 -i 13@m-veth-3 --thrift-port 22222 &"%(self.switch_path, self.p4_json_path)
+        print COMMAND
+        os.system(COMMAND)
+
+def initialize_the_switch(p4_json_path, switch_path):
+    CMDS = [switch_path, p4_json_path, '-i','11@m-veth-1','-i','12@m-veth-2','-i','13@m-veth-3','--thrift-port','22222']
+    COMMAND = "nohup sudo %s %s -i 11@m-veth-1 -i 12@m-veth-2 -i 13@m-veth-3 --thrift-port 22222 >/dev/null 2>&1"%(switch_path, p4_json_path)
+    print COMMAND
+    # os.spawnl(os.P_NOWAIT, COMMAND)
+    os.system(COMMAND)
+    # subprocess.Popen(CMDS)
+    time.sleep(1)
+    # print COMMAND
+    # get_out(COMMAND)
 
 if __name__ == '__main__':
 
@@ -101,9 +128,18 @@ if __name__ == '__main__':
 
     dataplane = P4DataPlane(interfaces, SWITCH_PATH, CLI_PATH, THRIFTPORT, P4C_BM_SCRIPT)
     dataplane.compile_p4(P4_COMPILED, JSON_P4_COMPILED)
+    dataplane.create_interfaces()
+
+    cmd = dataplane.switch_path + " >/dev/null 2>&1"
+    get_out(cmd)
+
+    # initialize_the_switch(JSON_P4_COMPILED, SWITCH_PATH)
+    Switch(JSON_P4_COMPILED, SWITCH_PATH).start()
+
+    dataplane.send_commands(JSON_P4_COMPILED, P4_COMMANDS)
 
     # initialize dataplane and run the configuration
-    dataplane.initialize(JSON_P4_COMPILED, P4_COMMANDS)
+    # dataplane.initialize(JSON_P4_COMPILED, P4_COMMANDS)
 
     entries = [1, 10, 10, 100, 1000, 10000, 100000]
     logger = create_return_logger(BASE_PATH+"tables.log")
