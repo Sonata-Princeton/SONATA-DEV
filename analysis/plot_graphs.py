@@ -91,7 +91,8 @@ def plot_heatmaps():
 
 
 def plot_learning_curve():
-    fname = 'data/bias_var_analysis_2017-03-31 02:18:06.331508.pickle'
+    # fname = 'data/bias_var_analysis_2017-03-31 02:18:06.331508.pickle'
+    fname = 'data/bias_var_analysis_2017-04-05 16:18:30.958175.pickle'
     with open(fname,'r') as f:
         data_dump = pickle.load(f)
         for mode in data_dump:
@@ -100,15 +101,17 @@ def plot_learning_curve():
                 x = iter_data.keys()
                 x.sort()
                 x = x[:-1]
+
                 y1 = [iter_data[elem][0] for elem in x]
                 y2 = [iter_data[elem][1] for elem in x]
                 data = {}
-                data['In'] = (x, y1)
-                data['Out'] = (x, y2)
-                order = ['In', 'Out']
+                data['Training Error'] = (x, y1)
+                data['Test Error'] = (x, y2)
+                print data
+                order = ['Training Error', 'Test Error']
                 plot_fname = 'data/lcurve_'+"_".join([str(x) for x in [mode,n_max,b_max]])+'.pdf'
                 print plot_fname, data
-                plotLine(data, order, 'Training Data Size', 'RMSE', 'N/A', 'N/A', plot_fname)
+                plotLine(data, order, 'Training Data Size (seconds)', 'RMSE (Cost)', 'N/A', 'N/A', plot_fname)
 
 
 if __name__ == '__main__':

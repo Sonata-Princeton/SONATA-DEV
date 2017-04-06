@@ -9,7 +9,7 @@ matplotlib.use('Agg')
 # from matplotlib import rc_file
 # rc_file('/Users/glex/Documents/WAP/dev/analysis/matplotlibrc')
 import matplotlib.pyplot as plt
-from netaddr import *
+# from netaddr import *
 from scipy.stats import cumfreq
 import pylab as pl
 import numpy as np
@@ -79,7 +79,7 @@ def plotLine(data, order, xlabel, ylabel, Xmax, Xmin, fname, labels=None):
     raw = {}
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
-    color_n = ['r', 'k', 'g', 'c', 'm', 'b', 'm', 'g', 'm', 'c', 'r', 'b', 'k', 'g', 'm', 'c', 'r', 'b', 'k', 'g', 'm',
+    color_n = ['r', 'b', 'm', 'c', 'm', 'b', 'm', 'g', 'm', 'c', 'r', 'b', 'k', 'g', 'm', 'c', 'r', 'b', 'k', 'g', 'm',
                'c', 'r', 'b', 'k', 'w']
     markers = ['o', '*', '^', 's', 'd', '3', 'd', 'o', '*', '^', '1', '4', 'o', '*', '^', 's', 'd', '3', 'd', 'o', '*',
                '^', '1', '4', 'o', '*', '^', 's', 'd', '3', 'd', 'o', '*', '^', '1', '4']
@@ -91,16 +91,21 @@ def plotLine(data, order, xlabel, ylabel, Xmax, Xmin, fname, labels=None):
     # To determine to plotting order
     if labels is None:
         labels = order
-
+    ctr = 0
     for key in labels:
         (x, y) = data[key]
-        pl.plot(x, y, label=key)
+        pl.plot(x, y, label=key, marker=markers[ctr], markerfacecolor=color_n[ctr], linestyle=linestyles[1], color='k')
+        ctr += 1
+
+    if len(labels) > 1:
+        ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.15),
+                  ncol=5, fancybox=True, shadow=False)
 
     # pl.legend((p), legnd, 'lower right')
     pl.xlabel(xlabel)
     pl.ylabel(ylabel)
     # pl.yscale('log')
-    ax.set_ylim(ymin=.0001)
+    # ax.set_ylim(ymin=.0001)
     ax.grid(True)
     plt.tight_layout()
     plot_name = fname

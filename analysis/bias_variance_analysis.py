@@ -14,6 +14,7 @@ from alpha_tuning import alpha_tuning_iter
 from sonata.core.training.learn.query_plan import QueryPlan
 from sonata.core.training.learn.sonata_search import Search, map_input_graph
 
+debug = False
 
 # TODO: this function is redundant, get rid of it in future
 def alpha_tuning_iter(G_Train, n_max, b_max, mode):
@@ -32,9 +33,10 @@ def alpha_tuning_iter(G_Train, n_max, b_max, mode):
 
     max_iter = 10
 
-    print n_max, b_max
     debug = False
-    debug = True
+    # debug = True
+
+    if debug: print n_max, b_max
     while True:
         # print alpha
         operational_alphas[(n_max, b_max)] = alpha
@@ -85,7 +87,7 @@ def alpha_tuning_iter(G_Train, n_max, b_max, mode):
                 cost_left = learn_left.final_plan.cost
             else:
                 cost_left = 100
-            print cost_left, curr_cost, cost_right
+            if debug: print cost_left, curr_cost, cost_right
             if cost_left < curr_cost:
                 upper_limit = alpha_left
                 alpha = alpha_left
@@ -143,7 +145,11 @@ def do_bias_variance_analysis(Ns, Bs):
         print "Loaded graph file", fname
         modes = [2, 3, 4, 5, 6]
         modes = [6]
-        TDs = range(5, 101, 5)
+        TDs = range(0, 101, 10)[1:]
+        # TDs = [5, 10, 20, 30]
+
+        debug = False
+        # debug = True
 
         data_dump = {}
         for mode in modes:
@@ -157,8 +163,9 @@ def do_bias_variance_analysis(Ns, Bs):
                         G_Test = get_test_graph(G, td)
                         print len(G_Train.keys()), len(G_Test.keys())
                         alpha, trained_learn = alpha_tuning_iter(G_Train, n_max, b_max, mode)
-                        print "After tuning for config", n_max, b_max, "we get alpha", alpha, "path", \
+                        if debug: print "After tuning for config", n_max, b_max, "we get alpha", alpha, "path", \
                             trained_learn.final_plan, trained_learn.final_plan.rmse
+
                         in_sample_error = {}
                         out_sample_error = {}
                         timestamps = G.keys()
@@ -169,20 +176,23 @@ def do_bias_variance_analysis(Ns, Bs):
                             training_plan = QueryPlan(map_input_graph(g), trained_learn.final_plan.path)
                             local_best_plan = QueryPlan(map_input_graph(g), Search(g).final_plan.path)
                             local_error = (training_plan.cost - local_best_plan.cost)
-                            print "time", ts, "learned plan", training_plan, "local best plan", local_best_plan
-                            print "Cost1", training_plan.cost, "Cost2", local_best_plan.cost, local_error
+                            if debug: print "time", ts, "learned plan", training_plan, "local best plan", local_best_plan
+                            if debug: print "Cost1", training_plan.cost, "Cost2", local_best_plan.cost, local_error
 
                             if ctr > td:
-                                out_sample_error[ts] = local_error*local_error
+                                if local_best_plan.cost > 0:
+                                    out_sample_error[ts] = local_error
+                                else:
+                                    out_sample_error[ts] = 0
                             else:
-                                in_sample_error[ts] = local_error*local_error
+                                in_sample_error[ts] = local_error
                             ctr += 1
-
+                        # print in_sample_error.values(), out_sample_error.values()
                         in_rmse = (math.sqrt(sum([x*x for x in in_sample_error.values()])))/len(in_sample_error.keys())
                         out_rmse = math.sqrt(sum([x*x for x in out_sample_error.values()]))/len(out_sample_error.keys())
                         print in_rmse, out_rmse
                         data_dump[mode][(n_max, b_max)][td] = (in_rmse, out_rmse)
-                        break
+                        # break
 
         fname_dump = 'data/bias_var_analysis_' + str(datetime.datetime.fromtimestamp(time.time())) + '.pickle'
         print "Dumping data to", fname_dump
@@ -194,5 +204,6 @@ if __name__ == '__main__':
     Ns = [3100]
     Bs = [21000]
     do_bias_variance_analysis(Ns, Bs)
+
 
 
