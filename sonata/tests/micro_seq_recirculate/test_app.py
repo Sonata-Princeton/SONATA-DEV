@@ -10,8 +10,8 @@ from sonata.core.partition import get_dataplane_query
 
 
 BASE_PATH = '/home/vagrant/dev/sonata/tests/micro_seq_recirculate/results/'
-VETH_SEND = "out-veth-1"
-VETH_RECIEVE = "out-veth-3"
+# VETH_SEND = "out-veth-1"
+# VETH_RECIEVE = "out-veth-3"
 
 class Sender(threading.Thread):
     def __init__(self, duration, packets_per_second, veth):
@@ -112,14 +112,14 @@ if __name__ == '__main__':
 
     send_to_dp_driver('init',queries,dp_driver_conf)
     time.sleep(3)
-    receiver = Receiver(TOTAL_DURATION, VETH_RECIEVE, p4_type, NUMBER_OF_QUERIES, NUMBER_OF_PACKETS_PER_SECOND)
-    receiver.start()
-
-    time.sleep(1)
-    sender = Sender(TOTAL_DURATION, NUMBER_OF_PACKETS_PER_SECOND, VETH_SEND)
-    sender.start()
-
-    receiver.join()
-    sender.join()
+    # receiver = Receiver(TOTAL_DURATION, VETH_RECIEVE, p4_type, NUMBER_OF_QUERIES, NUMBER_OF_PACKETS_PER_SECOND)
+    # receiver.start()
+    #
+    # time.sleep(1)
+    # sender = Sender(TOTAL_DURATION, NUMBER_OF_PACKETS_PER_SECOND, VETH_SEND)
+    # sender.start()
+    #
+    # receiver.join()
+    # sender.join()
 
 
