@@ -5,7 +5,7 @@ from sonata.tests.micro_registers.utils import get_sequential_code
 import random, logging, time,sys, threading, os
 from sonata.dataplane_driver.utils import get_out
 
-BASE_PATH = '/home/vagrant/dev/sonata/tests/micro_registers/results/'
+BASE_PATH = '/home/vagrant/dev/sonata/tests/micro_registers/'
 
 def create_return_logger(PATH):
     # create a logger for the object
@@ -68,7 +68,7 @@ if __name__ == '__main__':
     NUMBER_OF_REGISTERS = int(sys.argv[1])
 
     target_conf = {
-        'compiled_srcs': '/home/vagrant/dev/sonata/tests/micro_registers/compiled_srcs/',
+        'compiled_srcs': BASE_PATH+'compiled_srcs/',
         'json_p4_compiled': 'compiled_test.json',
         'p4_compiled': 'compiled_test.p4',
         'p4c_bm_script': '/home/vagrant/p4c-bmv2/p4c_bm/__main__.py',
@@ -129,7 +129,7 @@ if __name__ == '__main__':
     reset_commands_string = "\n".join(reset_commands)
     write_to_file(P4_DELTA_COMMANDS, reset_commands_string)
 
-    logger = create_return_logger(BASE_PATH+"registers.log")
+    logger = create_return_logger(BASE_PATH+"results/registers.log")
 
     start = time.time()
     dataplane.send_commands(JSON_P4_COMPILED,P4_DELTA_COMMANDS)

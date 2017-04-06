@@ -4,7 +4,7 @@ from sonata.dataplane_driver.utils import write_to_file
 from sonata.tests.micro_tables.utils import get_sequential_code, get_filter_table
 import random, logging, time
 from sonata.dataplane_driver.utils import get_out
-BASE_PATH = '/home/vagrant/dev/sonata/tests/micro_tables/results/'
+BASE_PATH = '/home/vagrant/dev/sonata/tests/micro_tables/'
 import os
 import threading
 
@@ -82,7 +82,7 @@ if __name__ == '__main__':
     MAX_TABLE_ENTRIES = 100000
 
     target_conf = {
-        'compiled_srcs': '/home/vagrant/dev/sonata/tests/micro_tables/compiled_srcs/',
+        'compiled_srcs': BASE_PATH +'compiled_srcs/',
         'json_p4_compiled': 'compiled_test.json',
         'p4_compiled': 'compiled_test.p4',
         'p4c_bm_script': '/home/vagrant/p4c-bmv2/p4c_bm/__main__.py',
@@ -142,7 +142,7 @@ if __name__ == '__main__':
     # dataplane.initialize(JSON_P4_COMPILED, P4_COMMANDS)
 
     entries = [1, 10, 10, 100, 1000, 10000, 100000]
-    logger = create_return_logger(BASE_PATH+"tables.log")
+    logger = create_return_logger(BASE_PATH+"results/tables.log")
 
     for entry in entries:
         add_entries_to_table(entry,filter_table_name,dataplane,JSON_P4_COMPILED,P4_DELTA_COMMANDS,logger)
