@@ -5,6 +5,7 @@ from sonata.tests.micro_tables.utils import get_sequential_code, get_filter_tabl
 import random, logging, time
 from sonata.dataplane_driver.utils import get_out
 BASE_PATH = '/home/vagrant/dev/sonata/tests/micro_tables/'
+HOME_BASE = '/home/vagrant/'
 import os
 import threading
 
@@ -85,8 +86,8 @@ if __name__ == '__main__':
         'compiled_srcs': BASE_PATH +'compiled_srcs/',
         'json_p4_compiled': 'compiled_test.json',
         'p4_compiled': 'compiled_test.p4',
-        'p4c_bm_script': '/home/vagrant/p4c-bmv2/p4c_bm/__main__.py',
-        'bmv2_path': '/home/vagrant/bmv2',
+        'p4c_bm_script': HOME_BASE + 'p4c-bmv2/p4c_bm/__main__.py',
+        'bmv2_path': HOME_BASE + 'bmv2',
         'bmv2_switch_base': '/targets/simple_switch',
         'switch_path': '/simple_switch',
         'cli_path': '/sswitch_CLI',
