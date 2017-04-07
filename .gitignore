@@ -1,4 +1,6 @@
 *.vagrant
+*.pickle
+*.png
 *.json
 *.bz2
 *.pyc

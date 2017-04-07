@@ -44,4 +44,5 @@ class QueryPlanMulti(object):
             #print self.graph.dict
             for (A, B) in zip(self.path, self.path[1:]):
                 costs[ts] += self.graphs[ts].get(A.state, B.state)
+
         self.cost = np.mean(costs.values())

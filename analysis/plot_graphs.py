@@ -3,7 +3,7 @@
 #  Arpit Gupta (arpitg@cs.princeton.edu)
 import pickle
 
-from analysis.plotlib import plotLine
+from analysis.plotlib import plotLine, plotCDF
 
 import matplotlib
 matplotlib.rc('text')
@@ -101,7 +101,6 @@ def plot_learning_curve():
                 x = iter_data.keys()
                 x.sort()
                 x = x[:-1]
-
                 y1 = [iter_data[elem][0] for elem in x]
                 y2 = [iter_data[elem][1] for elem in x]
                 data = {}
@@ -114,6 +113,26 @@ def plot_learning_curve():
                 plotLine(data, order, 'Training Data Size (seconds)', 'RMSE (Cost)', 'N/A', 'N/A', plot_fname)
 
 
+def plot_performance_graphs():
+    fname = 'data/performance_gains_2017-04-05 23:14:51.499819.pickle'
+    with open(fname,'r') as f:
+        data_dump = pickle.load(f)
+        plot_ncost = {}
+        plot_bcost = {}
+        for mode in data_dump:
+            plot_ncost[mode] = []
+            plot_bcost[mode] = []
+            for (n_max, b_max) in data_dump[mode]:
+                plot_ncost[mode] += [float(x[0])/1000 for x in data_dump[mode][(n_max, b_max)].values()]
+                plot_bcost[mode] += [float(x[1])/1000 for x in data_dump[mode][(n_max, b_max)].values()]
+        order = plot_ncost.keys()
+        order.sort()
+        plotCDF(plot_ncost, order, 'N (K tuples/s)', 'CDF of Time', 'N/A', 'N/A', 'data/plot_perf_ncost.pdf')
+        plotCDF(plot_bcost, order, 'B (Kb)', 'CDF of Time', 'N/A', 0, 'data/plot_perf_bcost.pdf')
+
+
+
 if __name__ == '__main__':
     # plot_heatmaps()
-    plot_learning_curve()
+    #plot_learning_curve()
+    plot_performance_graphs()

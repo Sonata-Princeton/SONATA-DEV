@@ -66,9 +66,7 @@ def plotCDF(data, order, xlabel, ylabel, Xmax, Xmin, fname, labels=None, isLog=F
     ax.set_ylim(ymin=0.0)
     ax.grid(True)
     plt.tight_layout()
-    plot_name = fname + '.eps'
-    plot_name_png = fname + '.png'
-    plot_name_jpg = fname + '.jpg'
+    plot_name = fname
     pl.savefig(plot_name)
     # pl.savefig(plot_name_png)
     # pl.savefig(plot_name_jpg)
