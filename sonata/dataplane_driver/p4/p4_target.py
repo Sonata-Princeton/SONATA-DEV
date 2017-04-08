@@ -38,8 +38,9 @@ class P4Target(object):
 
         # interfaces
         self.interfaces = {
-                'receiver': ['m-veth-1', 'out-veth-1'],
-                'sender': ['m-veth-2', 'out-veth-2']
+            'receiver': ['m-veth-1', 'out-veth-1'],
+            'sender': ['m-veth-2', 'out-veth-2'],
+            'original': ['m-veth-3', 'out-veth-3']
         }
 
         self.supported_operations = ['Map', 'Filter', 'Reduce', 'Distinct']

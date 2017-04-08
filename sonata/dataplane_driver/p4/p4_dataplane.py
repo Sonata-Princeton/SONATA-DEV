@@ -15,8 +15,8 @@ from interfaces import Interfaces
 from sonata.dataplane_driver.utils import get_out, get_in
 import threading,os
 
-internal_intefaces = {"m-veth-1": 11, "m-veth-2":12, "m-veth-3": 13}
-# internal_intefaces = {"ens1f0": 11, "ens1f1":10, "ens4f0": 12}
+internal_interfaces = {"m-veth-1": 11, "m-veth-2":12, "m-veth-3": 13}
+# internal_interfaces = {"ens1f0": 11, "ens1f1":10, "ens4f0": 12}
 
 
 class Switch(threading.Thread):
@@ -28,7 +28,7 @@ class Switch(threading.Thread):
 
     def run(self):
         compose_interfaces = ""
-        for inter,port in internal_intefaces.iteritems():
+        for inter,port in internal_interfaces.iteritems():
             new_interface = " -i %s@%s "%(port,inter)
             compose_interfaces +=new_interface
 

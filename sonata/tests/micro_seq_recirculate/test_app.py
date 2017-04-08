@@ -1,5 +1,5 @@
 #!/usr/bin/python
-from sonata.tests.micro_seq_recirculate.utils import get_sequential_code, get_recirculation_code, send_created_traffic
+from sonata.tests.micro_seq_recirculate.utils import send_created_traffic
 import threading, time
 import logging
 import sys, threading, os
@@ -8,10 +8,18 @@ from multiprocessing.connection import Client
 import pickle
 from sonata.core.partition import get_dataplane_query
 
+SERVER = False
 
-BASE_PATH = '/home/vagrant/dev/sonata/tests/micro_seq_recirculate/results/'
-# VETH_SEND = "out-veth-1"
-# VETH_RECIEVE = "out-veth-3"
+if SERVER:
+    BASE_PATH = '/home/sonata/SONATA-DEV/sonata/tests/micro_seq_recirculate/results/'
+    VETH_SEND = "out-veth-1"
+    VETH_RECIEVE = "out-veth-3"
+    dp_driver_conf = ('172.17.0.101', 6666)
+else:
+    BASE_PATH = '/home/vagrant/dev/sonata/tests/micro_seq_recirculate/results/'
+    VETH_SEND = "out-veth-1"
+    VETH_RECIEVE = "out-veth-3"
+    dp_driver_conf = ('localhost', 6666)
 
 class Sender(threading.Thread):
     def __init__(self, duration, packets_per_second, veth):
@@ -108,18 +116,19 @@ if __name__ == '__main__':
     for qid in range(0, NUMBER_OF_QUERIES):
         queries[qid] = dp_query
 
-    dp_driver_conf = ('localhost', 6666)
 
     send_to_dp_driver('init',queries,dp_driver_conf)
     time.sleep(3)
-    # receiver = Receiver(TOTAL_DURATION, VETH_RECIEVE, p4_type, NUMBER_OF_QUERIES, NUMBER_OF_PACKETS_PER_SECOND)
-    # receiver.start()
-    #
-    # time.sleep(1)
-    # sender = Sender(TOTAL_DURATION, NUMBER_OF_PACKETS_PER_SECOND, VETH_SEND)
-    # sender.start()
-    #
-    # receiver.join()
-    # sender.join()
+
+    if not SERVER:
+        receiver = Receiver(TOTAL_DURATION, VETH_RECIEVE, p4_type, NUMBER_OF_QUERIES, NUMBER_OF_PACKETS_PER_SECOND)
+        receiver.start()
+
+        time.sleep(1)
+        sender = Sender(TOTAL_DURATION, NUMBER_OF_PACKETS_PER_SECOND, VETH_SEND)
+        sender.start()
+
+        receiver.join()
+        sender.join()
 
 

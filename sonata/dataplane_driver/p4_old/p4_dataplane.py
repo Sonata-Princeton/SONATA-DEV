@@ -15,10 +15,12 @@ import subprocess
 from interfaces import Interfaces
 from utils import get_out, get_in
 import threading,os
-internal_intefaces = {"m-veth-1": 11, "m-veth-2":12, "m-veth-3": 13}
+
+internal_interfaces = {"m-veth-1": 11, "m-veth-2":12, "m-veth-3": 13}
+# internal_interfaces = {"ens1f0": 11, "ens1f1":10, "ens4f0": 12}
 
 class Switch(threading.Thread):
-    def __init__(self,p4_json_path, switch_path, internal_intefaces):
+    def __init__(self,p4_json_path, switch_path):
         threading.Thread.__init__(self)
         self.daemon = True
         self.switch_path = switch_path
@@ -26,7 +28,7 @@ class Switch(threading.Thread):
 
     def run(self):
         compose_interfaces = ""
-        for inter,port in internal_intefaces.iteritems():
+        for inter,port in internal_interfaces.iteritems():
             new_interface = " -i %s@%s "%(port,inter)
             compose_interfaces +=new_interface
 
@@ -80,7 +82,7 @@ class P4DataPlane(object):
         sleep(1)
         cmd = self.switch_path + " >/dev/null 2>&1"
         get_out(cmd)
-        self.switch = Switch(p4_json_path, self.switch_path, self.internal_intefaces)
+        self.switch = Switch(p4_json_path, self.switch_path)
         self.switch.start()
 
         sleep(1)

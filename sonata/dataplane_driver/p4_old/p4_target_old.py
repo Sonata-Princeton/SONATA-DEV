@@ -13,7 +13,16 @@ from collections import namedtuple
 
 
 Operator = namedtuple('Operator', 'name keys')
+SERVER = False
 
+if SERVER:
+    SENDER_PORT = 11
+    RECIEVE_PORT = 10
+else:
+    SENDER_PORT = 11
+    RECIEVE_PORT = 13
+
+ORIGINAL_PACKET = True
 
 class P4Target(object):
     def __init__(self, em_conf, target_conf):
@@ -201,7 +210,7 @@ class P4Target(object):
             p4_src += '\tmodify_field(meta_fm.is_drop, 1);\n'
             p4_src += '}\n\n'
 
-        p4_src += """
+        if ORIGINAL_PACKET: p4_src += """
 action repeat(dport) {
     modify_field(standard_metadata.egress_spec, dport);
     //modify_field(addition.trash, TRASH);
@@ -233,17 +242,18 @@ table forward {
             p4_src += '\t\t'+q.p4_ingress_start
             p4_src += q.p4_control
             # TODO: Remove this when micro benchmarking is done
-            # p4_src += '\t\t\tapply(copy_to_cpu_'+str(q.qid)+');\n'
+            if not ORIGINAL_PACKET: p4_src += '\t\t\tapply(copy_to_cpu_'+str(q.qid)+');\n'
             p4_src += '\t\t}\n\t}\n'
             p4_commands.append('table_set_default copy_to_cpu_'+str(q.qid)+' do_copy_to_cpu_'+str(q.qid))
 
         # TODO: Remove Forwarding of original packet
-        p4_src += '\tif (meta_fm.f1 == '+str(ctr)+'){\n'
-        p4_src += '\t\t\tapply(forward);\n'
-        p4_src += '\t}\n'
-        p4_commands.append("table_set_default forward _drop")
-        p4_commands.append("table_add forward repeat 10 => 11")
-        p4_commands.append("table_add forward repeat 11 => 10")
+        if ORIGINAL_PACKET:
+            p4_src += '\tif (meta_fm.f1 == '+str(ctr)+'){\n'
+            p4_src += '\t\t\tapply(forward);\n'
+            p4_src += '\t}\n'
+            p4_commands.append("table_set_default forward _drop")
+            p4_commands.append("table_add forward repeat %s => %s"%(SENDER_PORT, RECIEVE_PORT))
+            p4_commands.append("table_add forward repeat %s => %s"%(SENDER_PORT, RECIEVE_PORT))
         # TODO: Remove Forwarding of original packet
 
         p4_src += '}\n\n'
@@ -253,7 +263,7 @@ table forward {
         p4_src += '\t\tif(meta_fm.f1 < '+str(len(p4_queries))+') {\n'
         p4_src += '\t\t\tapply(recirculate_to_ingress);\n\t\t}\n'
         # TODO: Enable Dropping of original packet
-        # p4_src += '\t\telse {\n\t\t\tapply(drop_table);\n\t\t}\n\t'
+        if not ORIGINAL_PACKET: p4_src += '\t\telse {\n\t\t\tapply(drop_table);\n\t\t}\n\t'
         # TODO: Enable Dropping of original packet
         p4_src += '}\n\n'
         p4_src += '\telse if (standard_metadata.instance_type == 1) {\n'

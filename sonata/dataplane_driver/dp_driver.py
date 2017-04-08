@@ -10,10 +10,16 @@ from query_cleaner import get_clean_application
 from openflow.openflow import OFTarget
 # from p4.p4_target import P4Target
 
+SERVER = False
 
-BASEPATH = '/home/vagrant/'
-SONATA = 'dev'
-DP_DRIVER_CONF = ('localhost', 6666)
+if SERVER:
+    BASEPATH = '/home/sonata/'
+    SONATA = 'SONATA-DEV'
+    DP_DRIVER_CONF = ('172.17.0.101', 6666)
+else:
+    BASEPATH = '/home/vagrant/'
+    SONATA = 'dev'
+    DP_DRIVER_CONF = ('localhost', 6666)
 
 class DataplaneDriver(object):
     def __init__(self, dpd_socket, metrics_file):
@@ -135,7 +141,7 @@ class DataplaneDriver(object):
         clean_application = get_clean_application(application)
         print "Cleaned: ", clean_application
         target = self.get_target(target_id)
-        target.run(clean_application)
+        target.run(application)
 
     def update_configuration(self, filter_update, target_id):
         target = self.get_target(target_id)
@@ -152,7 +158,7 @@ class DataplaneDriver(object):
 def main():
 
     dpd = DataplaneDriver(DP_DRIVER_CONF, BASEPATH + SONATA +"/sonata/tests/micro_seq_recirculate/results/dp_driver.log")
-    p4_type = 'p4_old'
+    p4_type = 'p4'
     compiled_srcs = ''
 
     if p4_type == 'p4_old': compiled_srcs = 'recirculate'
