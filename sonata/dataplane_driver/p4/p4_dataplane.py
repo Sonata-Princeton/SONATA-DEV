@@ -1,8 +1,8 @@
 import logging
 import sys
 
-from mininet.link import Intf
 from mininet.net import Mininet
+from mininet.link import Intf
 from mininet.topo import Topo
 sys.path.append("/home/vagrant/bmv2/mininet")
 
