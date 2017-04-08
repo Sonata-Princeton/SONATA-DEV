@@ -7,12 +7,20 @@ from p4_primitives import NoOp, CloneIngressPktToEgress, AddHeader, ModifyField
 from p4_query import P4Query
 from sonata.dataplane_driver.utils import get_logger
 
+SERVER = False
+ORIGINAL_PACKET = True
+
+if SERVER:
+    SENDER_PORT = 11
+    RECIEVE_PORT = 10
+else:
+    SENDER_PORT = 11
+    RECIEVE_PORT = 13
+
 
 SESSION_ID = 8001
 SPAN_PORT = 12
-ORIGINAL_PACKET = True
-SENDER_PORT = 11
-RECIEVE_PORT = 13
+
 
 class P4Application(object):
     def __init__(self, app):
