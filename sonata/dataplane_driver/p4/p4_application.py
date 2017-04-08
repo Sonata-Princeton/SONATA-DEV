@@ -7,7 +7,7 @@ from p4_primitives import NoOp, CloneIngressPktToEgress, AddHeader, ModifyField
 from p4_query import P4Query
 from sonata.dataplane_driver.utils import get_logger
 
-SERVER = False
+SERVER = True
 ORIGINAL_PACKET = True
 
 if SERVER:
@@ -260,7 +260,7 @@ table forward {
         if ORIGINAL_PACKET:
             commands.append("table_set_default forward _drop")
             commands.append("table_add forward repeat %s => %s"%(SENDER_PORT, RECIEVE_PORT))
-            commands.append("table_add forward repeat %s => %s"%(SENDER_PORT, RECIEVE_PORT))
+            commands.append("table_add forward repeat %s => %s"%(RECIEVE_PORT, SENDER_PORT))
 
         return commands
 

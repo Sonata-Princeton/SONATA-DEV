@@ -13,7 +13,7 @@ from collections import namedtuple
 
 
 Operator = namedtuple('Operator', 'name keys')
-SERVER = False
+SERVER = True
 
 if SERVER:
     SENDER_PORT = 11
@@ -253,7 +253,7 @@ table forward {
             p4_src += '\t}\n'
             p4_commands.append("table_set_default forward _drop")
             p4_commands.append("table_add forward repeat %s => %s"%(SENDER_PORT, RECIEVE_PORT))
-            p4_commands.append("table_add forward repeat %s => %s"%(SENDER_PORT, RECIEVE_PORT))
+            p4_commands.append("table_add forward repeat %s => %s"%(RECIEVE_PORT, SENDER_PORT))
         # TODO: Remove Forwarding of original packet
 
         p4_src += '}\n\n'
