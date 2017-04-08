@@ -11,6 +11,7 @@ from openflow.openflow import OFTarget
 # from p4.p4_target import P4Target
 
 SERVER = False
+P4_TYPE = 'p4'
 
 if SERVER:
     BASEPATH = '/home/sonata/'
@@ -158,7 +159,7 @@ class DataplaneDriver(object):
 def main():
 
     dpd = DataplaneDriver(DP_DRIVER_CONF, BASEPATH + SONATA +"/sonata/tests/micro_seq_recirculate/results/dp_driver.log")
-    p4_type = 'p4'
+    p4_type = P4_TYPE
     compiled_srcs = ''
 
     if p4_type == 'p4_old': compiled_srcs = 'recirculate'
