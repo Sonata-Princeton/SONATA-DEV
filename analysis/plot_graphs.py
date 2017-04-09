@@ -127,8 +127,22 @@ def plot_performance_graphs():
                 plot_bcost[mode] += [float(x[1])/1000 for x in data_dump[mode][(n_max, b_max)].values()]
         order = plot_ncost.keys()
         order.sort()
-        plotCDF(plot_ncost, order, 'N (K tuples/s)', 'CDF of Time', 'N/A', 'N/A', 'data/plot_perf_ncost.pdf')
-        plotCDF(plot_bcost, order, 'B (Kb)', 'CDF of Time', 'N/A', 0, 'data/plot_perf_bcost.pdf')
+        plotCDF(plot_ncost, order, 'N (K tuples/s)', 'Fraction of Time', 'N/A', 'N/A', 'data/plot_perf_ncost.pdf')
+        plotCDF(plot_bcost, order, 'B (Kb)', 'Fraction of Time', 'N/A', 0, 'data/plot_perf_bcost.pdf')
+
+
+def plot_update_graphs():
+    fname = 'data/updates_2017-04-06 20:33:41.885498.pickle'
+    with open(fname,'r') as f:
+        data_dump = pickle.load(f)
+        plot_updates = {}
+        for mode in data_dump:
+            plot_updates[mode] = []
+            for (n_max, b_max) in data_dump[mode]:
+                plot_updates[mode] += [x for x in data_dump[mode][(n_max, b_max)].values()]
+        order = plot_updates.keys()
+        order.sort()
+        plotCDF(plot_updates, order, 'Number of Updates', 'Fraction of Time', 'N/A', 0, 'data/plot_updates.pdf')
 
 
 
@@ -136,3 +150,4 @@ if __name__ == '__main__':
     # plot_heatmaps()
     #plot_learning_curve()
     plot_performance_graphs()
+    plot_update_graphs()

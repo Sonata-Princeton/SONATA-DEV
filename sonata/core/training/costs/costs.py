@@ -4,6 +4,7 @@ from sonata.system_config import *
 
 from sonata.core.training.utils import *
 
+debug = False
 
 class Costs(object):
     def __init__(self, counts, P, N_max, B_max):
@@ -24,7 +25,7 @@ class Costs(object):
             query = self.counts.qid_2_query[qid]
 
             partition_plans = self.partitioning_plans
-            print "Partitioning Plans:", partition_plans
+            if debug: print "Partitioning Plans:", partition_plans
 
             for transit in self.counts.query_out_transit[qid]:
                 costs[qid][transit] = {}
@@ -32,21 +33,21 @@ class Costs(object):
                 iter_qids_curr = self.counts.refined_spark_queries[qid][ref_level_curr].keys()
                 iter_qids_curr.sort()
 
-                print "======="
-                print iter_qids_curr, transit
+                if debug: print "======="
+                if debug: print iter_qids_curr, transit
                 for partition_plan in partition_plans:
 
                     bits_count = self.sc.parallelize([(x, (0,0)) for x in self.timestamps])
                     packet_count = self.sc.parallelize(self.counts.query_out_transit[qid][transit][0])
 
-                    print "W/O Partition"
-                    print "Bits Count Cost", bits_count.collect()[:2]
-                    print "Packet Count Cost", packet_count.collect()[:2]
+                    if debug: print "W/O Partition"
+                    if debug: print "Bits Count Cost", bits_count.collect()[:2]
+                    if debug: print "Packet Count Cost", packet_count.collect()[:2]
 
                     ctr = 0
                     if partition_plan > 0:
                         for iter_qid in iter_qids_curr[1:-1]:
-                            print partition_plan, transit, iter_qid
+                            if debug: print partition_plan, transit, iter_qid
 
                             bits_count, packet_count, ctr = update_counts(self.sc,
                                                                           self.counts.refined_spark_queries[qid][
@@ -58,8 +59,8 @@ class Costs(object):
                     N = self.N_max
                     B = self.B_max
                     final_weight = bits_count.join(packet_count).map(lambda s: (s[0], (s[1][0], s[1][1]))).collect()
-                    print qid, transit, partition_plan, final_weight
-                    print "======="
+                    if debug: print qid, transit, partition_plan, final_weight
+                    if debug: print "======="
                     costs[qid][transit][partition_plan] = (final_weight)
         self.costs = costs
         # print self.weights

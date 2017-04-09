@@ -16,8 +16,11 @@ from sonata.core.training.hypothesis.hypothesis import Hypothesis
 def parse_log_line(logline):
     return tuple(logline.split(","))
 
-def generate_graph(query):
-    sc = create_spark_context()
+def generate_graph(sc, query):
+    TD_PATH = '/mnt/data/anon_all_flows_5min.csv'
+    # TD_PATH = '/mnt/anon_all_flows_5min.csv/part-00500'
+    # TD_PATH = '/home/vagrant/dev/data/anon_all_flows_1min.csv/part-00496'
+
     flows_File = TD_PATH
     T = 1
     if query.qid == 1:
@@ -69,7 +72,7 @@ def generate_graph(query):
                          .filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(sPort) == '19')
                          )
 
-    print "Collecting the training data for the first time ..."
+    print "Collecting the training data for the first time ...", training_data.take(2)
     training_data = sc.parallelize(training_data.collect())
     print "Collecting timestamps for the experiment ..."
     timestamps = training_data.map(lambda s: s[0]).distinct().collect()
@@ -87,33 +90,37 @@ def generate_graph(query):
     #     pickle.dump(G, f)
 
 if __name__ == '__main__':
+    # original reflection attack query
     q1 = (PacketStream(1)
           # .filter(filter_keys=('proto',), func=('eq', 6))
           .map(keys=('dIP', 'sIP'))
           .distinct(keys=('dIP', 'sIP'))
           .map(keys=('dIP',), map_values=('count',), func=('eq', 1,))
           .reduce(keys=('dIP',), func=('sum',))
-          .filter(filter_vals=('count',), func=('geq', '99.99'))
+          .filter(filter_vals=('count',), func=('geq', '99.9'))
           .map(keys=('dIP',))
           )
+    # heavy hitter detection
     q2 = (PacketStream(2)
           # .filter(filter_keys=('proto',), func=('eq', 6))
           .map(keys=('dIP', 'dPort','sPort','sIP'), values=('nBytes',))
           .reduce(keys=('dIP', 'dPort','sPort','sIP',), func=('sum',))
-          .filter(filter_vals=('nBytes',), func=('geq', '99.99'))
-          #.map(keys=('dIP',))
+          .filter(filter_vals=('nBytes',), func=('geq', '99.9'))
+          .map(keys=('dIP',))
           )
 
+    # ssh brute forcing
     q3 = (PacketStream(3)
           # .filter(filter_keys=('proto',), func=('eq', 6))
           .map(keys=('dIP', 'sIP', 'nBytes'))
           .distinct(keys=('dIP', 'sIP', 'nBytes'))
           .map(keys=('dIP','nBytes'), map_values=('count',), func=('eq', 1,))
           .reduce(keys=('dIP','nBytes'), func=('sum',))
-          .filter(filter_vals=('count',), func=('geq', '99.99'))
+          .filter(filter_vals=('count',), func=('geq', '99.9'))
           .map(keys=('dIP',))
           )
 
+    # reflection attack query (DNS)
     q4 = (PacketStream(4)
           # .filter(filter_keys=('proto',), func=('eq', 6))
           .map(keys=('dIP', 'sIP'))
@@ -124,6 +131,7 @@ if __name__ == '__main__':
           .map(keys=('dIP',))
           )
 
+    # reflection attack per sPort
     q5 = (PacketStream(5)
           # .filter(filter_keys=('proto',), func=('eq', 6))
           .map(keys=('dIP', 'sIP', 'sPort'))
@@ -134,6 +142,7 @@ if __name__ == '__main__':
           .map(keys=('dIP',))
           )
 
+    # reflection attack query (NTP)
     q6 = (PacketStream(6)
           # .filter(filter_keys=('proto',), func=('eq', 6))
           .map(keys=('dIP', 'sIP'))
@@ -144,4 +153,7 @@ if __name__ == '__main__':
           .map(keys=('dIP',))
           )
 
-    generate_graph(q2)
+    queries = [q1, q2, q3, q4, q6]
+    sc = create_spark_context()
+    for q in queries:
+        generate_graph(sc, q)

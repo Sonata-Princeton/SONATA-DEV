@@ -252,7 +252,7 @@ def update_counts(sc, queries, query_out, iter_qid, delta, bits_count, ctr):
 
         out = bits_count.join(delta_bits).map(lambda s: (s[0], (s[1][0][0]+s[1][1][0], s[1][0][1]+s[1][1][1])))
 
-        print "After executing ", curr_operator.name, " in Data Plane"
+        # print "After executing ", curr_operator.name, " in Data Plane"
         #print "Bits Count Cost", bits_count.collect()[:2]
         #print "Packet Count Cost", packet_count.collect()[:2]
 

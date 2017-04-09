@@ -8,6 +8,8 @@ import numpy as np
 from sonata.core.training.utils import *
 from sonata.core.utils import *
 
+debug = False
+
 
 class Counts(object):
     """
@@ -40,13 +42,13 @@ class Counts(object):
         self.query_tree[query.qid] = get_query_tree(query)
         self.query_out = None
 
-        print self.qid_2_query, self.query_tree
+        if debug: print self.qid_2_query, self.query_tree
 
         # Generate Spark queries for the composed & refined SONATA queries
         self.generate_refined_spark_queries()
 
         for qid in self.refined_spark_queries:
-            print "Processing Refined Queries for cost...", qid
+            if debug: print "Processing Refined Queries for cost...", qid
             self.query_cost_transit_fname = 'query_cost_transit_'+str(qid)+'.pickle'
 
             usePickle = False
@@ -55,7 +57,7 @@ class Counts(object):
                     self.query_out_transit = pickle.load(f)
             else:
                 self.get_transit_query_output(qid)
-                dump_data(self.query_out_transit, self.query_cost_transit_fname)
+                # dump_data(self.query_out_transit, self.query_cost_transit_fname)
 
 
 
@@ -66,7 +68,7 @@ class Counts(object):
         """
         out0 = self.training_data.collect()
         query_cost_transit = {}
-        print "Out0", out0[:2]
+        if debug: print "Out0", out0[:2]
         # Iterate over each refined query and collect its output
         # for qid in self.refined_queries:
 
@@ -90,8 +92,8 @@ class Counts(object):
                 transit_query_string = 'self.sc.parallelize(out)'
                 transit_query_string = generate_query_to_collect_transit_cost(transit_query_string, spark_query)
                 query_cost_transit[qid][transit][iter_qid] = eval(transit_query_string)
-                print transit_query_string
-                print transit, iter_qid, query_cost_transit[qid][transit][iter_qid][:2]
+                if debug: print transit_query_string
+                if debug: print transit, iter_qid, query_cost_transit[qid][transit][iter_qid][:2]
                 #break
 
         # Then get the cost for transit (ref_level_prev, ref_level_current)
@@ -106,7 +108,7 @@ class Counts(object):
                                                                                            self.refined_spark_queries,
                                                                                            out0,
                                                                                            refinement_key)
-                    print prev_level_out_mapped_string
+                    if debug: print prev_level_out_mapped_string
                     prev_level_out_mapped = eval(prev_level_out_mapped_string)
                     #print prev_level_out_mapped.collect()[:2]
                     # For each intermediate query for `ref_level_curr` in transit (ref_level_prev, ref_level_current),
@@ -118,8 +120,8 @@ class Counts(object):
                         transit_query_string = generate_transit_query(curr_query, curr_level_out,
                                                                       prev_level_out_mapped, ref_level_prev)
                         query_cost_transit[qid][transit][iter_qid_curr] = eval(transit_query_string)
-                        print transit_query_string
-                        print transit, iter_qid_curr, query_cost_transit[qid][transit][iter_qid_curr][:2]
+                        if debug: print transit_query_string
+                        if debug: print transit, iter_qid_curr, query_cost_transit[qid][transit][iter_qid_curr][:2]
 
         self.query_out_transit = query_cost_transit
 
@@ -142,7 +144,7 @@ class Counts(object):
                 query_tree = self.query_tree[n_query]
                 updated_query_tree = {}
                 update_query_tree(query_tree.keys()[0], query_tree, ref_level, updated_query_tree)
-                print updated_query_tree
+                if debug: print updated_query_tree
 
                 refinement_key = ['ts', self.refinement_key]
 
@@ -186,7 +188,7 @@ class Counts(object):
                         print "No query to process for", qid, "refinement level", ref_level, "iteration id", iter_qid
                         out = []
                     query_out_refinement_level[qid][ref_level][iter_qid] = out
-                    print ref_level, iter_qid, query_string, out[:2]
+                    if debug: print ref_level, iter_qid, query_string, out[:2]
                     #print len(query_out_refinement_level[qid][ref_level][iter_qid])
 
             query_out_refinement_level[qid][ref_level][0] = out0

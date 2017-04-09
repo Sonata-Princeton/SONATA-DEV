@@ -9,16 +9,16 @@ from partition import Partition
 
 
 def get_refined_query_id(query, ref_level):
-    print "get_refined_query_id", ref_level, query
+    # print "get_refined_query_id", ref_level, query
     return 10000*query.qid + ref_level
 
 
 def get_thresh(training_data, spark_query, spread, refinement_level, satisfied_sonata_spark_query, ref_levels):
     if refinement_level == ref_levels[-1]:
-        test_str = 'training_data.' + spark_query.compile() + '.collect()'
-        print test_str
-        test_data = eval(test_str)
-        print test_data[:5]
+        # test_str = 'training_data.' + spark_query.compile() + '.collect()'
+        # print test_str
+        # test_data = eval(test_str)
+        # print test_data[:5]
         query_string = 'training_data.' + spark_query.compile() + '.map(lambda s: s[1]).collect()'
         # print query_string
         data = [float(x) for x in (eval(query_string))]

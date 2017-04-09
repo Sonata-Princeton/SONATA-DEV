@@ -21,6 +21,7 @@ def get_cms_width(s, thresh, delta):
     bins = range(2 + max_s)
     pdfs, bins = np.histogram(s, bins, density=True)
     bin_2_prob = dict((x, y) for x, y in zip(list(bins), list(pdfs)))
+    # print bin_2_prob
     max_error = 0
     if bin_2_prob != {}:
         error_probability = 0
@@ -38,6 +39,7 @@ def get_cms_width(s, thresh, delta):
         max_error = thresh
     N = sum(s)
     w = float(2*N)/max_error
+    # print w, max_error, len(s), sum(s)
 
     return int(math.ceil(w))
 
@@ -85,7 +87,7 @@ def get_data_plane_cost(sc, operator_name, transformation_function, query_out, t
             n_bits_sketch = w.join(bits_per_element).map(lambda s: (s[0], int(s[1][0] * s[1][1] * d)))
             #print "With Sketches", n_bits_sketch.collect()
             n_bits_sketch_mean = np.mean(n_bits_sketch.map(lambda s: s[1]).collect())
-            print "With Sketches", n_bits_sketch_mean, "W/o Sketches", n_bits_wo_cmsketch_mean
+            # print "With Sketches", n_bits_sketch_mean, "W/o Sketches", n_bits_wo_cmsketch_mean
 
             n_bits_min = min([n_bits_wo_cmsketch_mean, n_bits_sketch_mean])
             n_bits = n_bits_wo_cmsketch.join(n_bits_sketch).map(lambda s: (s[0], (s[1][0], s[1][1])))
