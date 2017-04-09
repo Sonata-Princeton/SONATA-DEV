@@ -28,8 +28,7 @@ def send_packet(pkt_tuple):
     p = Ether() / IP(dst=dIP, src=sIP) / TCP(dport=int(dPort), sport=int(sPort)) / "SONATA"
     sendp(p, iface = "out-veth-1", verbose=0)
 
-def create_normal_traffic():
-    number_of_packets = 10
+def create_normal_traffic(number_of_packets):
     normal_packets = []
 
     for i in range(number_of_packets):
@@ -40,8 +39,7 @@ def create_normal_traffic():
 
     return normal_packets
 
-def create_attack_traffic():
-    number_of_packets = 100
+def create_attack_traffic(number_of_packets):
     dIP = '99.7.186.25'
     sIPs = []
     attack_packets = []
@@ -102,9 +100,11 @@ def send_created_traffic():
     traffic_dict = {}
     for i in range(0, 20):
         traffic_dict[i] = []
-        traffic_dict[i].extend(create_normal_traffic())
         if i > 5 and i < 11:
-            traffic_dict[i].extend(create_attack_traffic())
+            traffic_dict[i].extend(create_attack_traffic(200))
+            traffic_dict[i].extend(create_normal_traffic(650))
+        else:
+            traffic_dict[i].extend(create_normal_traffic(850))
 
     for i in range(0, 20):
         print "Sending traffic for ts: " + str(i)

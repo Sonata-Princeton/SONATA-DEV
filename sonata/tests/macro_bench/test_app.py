@@ -66,7 +66,7 @@ if __name__ == '__main__':
           .distinct(keys=('dIP', 'sIP'))
           .map(keys=('dIP',), map_values=('count',), func=('eq', 1,))
           .reduce(keys=('dIP',), func=('sum',))
-          .filter(filter_vals=('count',), func=('geq', 90))
+          .filter(filter_vals=('count',), func=('geq', 190))
           .map(keys=('dIP',))
           )
 
