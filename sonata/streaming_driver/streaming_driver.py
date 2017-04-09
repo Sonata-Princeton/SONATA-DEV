@@ -10,7 +10,7 @@ from pyspark import SparkContext, SparkConf
 from pyspark.streaming import StreamingContext
 from multiprocessing.connection import Client, Listener
 
-spark_stream_address = 'localhost'
+spark_stream_address = '0.0.0.0'
 spark_stream_port = 8989
 
 batch_interval = 1
