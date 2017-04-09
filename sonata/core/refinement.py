@@ -52,10 +52,17 @@ def get_thresh(training_data, spark_query, spread, refinement_level, satisfied_s
     return thresh
 
 
+def get_concise_headers(query):
+    concise_keys = set()
+    for operator in query.operators:
+        concise_keys = concise_keys.union(set(operator.keys))
+
+    return list(concise_keys)
+
 def apply_refinement_plan(sonata_query, refinement_key, refined_query_id, ref_level):
     # base refined query + headers
     refined_sonata_query = PacketStream(refined_query_id)
-    refined_sonata_query.basic_headers = BASIC_HEADERS
+    refined_sonata_query.basic_headers = get_concise_headers(sonata_query)
 
     # Add refinement level, eg: 32, 24
     refined_sonata_query.map(map_keys=(refinement_key,), func=("mask", ref_level))
@@ -94,7 +101,7 @@ class Refinement(object):
         tmp_query = self.refined_sonata_queries[qid][ref_level][iter_qids[-1]]
         if prev_ref_level > 0:
             out_query = PacketStream(tmp_query.qid)
-            out_query.basic_headers = BASIC_HEADERS
+            out_query.basic_headers = get_concise_headers(tmp_query)
             refined_qid_src = 10000*prev_qid + prev_ref_level
             out_query.filter(append_type=1, src=refined_qid_src, filter_keys=(self.refinement_key,),
                                  func=('mask',prev_ref_level,))

@@ -86,6 +86,7 @@ class StreamingDriver(object):
             print(query_str)
             spark_queries[queryId] = eval(query_str)
 
+
 if __name__ == "__main__":
     conf = {'batch_interval': batch_interval, 'window_length': window_length,
             'sliding_interval': sliding_interval, 'featuresPath': featuresPath,

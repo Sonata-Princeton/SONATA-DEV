@@ -65,9 +65,11 @@ class Emitter(object):
 
         qid = int(str(self.qid_struct.unpack(p_str[0:2])[0]))
         ind = 2
+        # print str(self.queries)
         while qid in self.queries and qid != 0:
             query = self.queries[qid]
             out_headers = query['headers']
+
             output_tuple = []
             count = 0
             # if str(qid) == '30032': print "Headers ", out_headers
@@ -88,16 +90,17 @@ class Emitter(object):
             if query['parse_payload']:
                 payload = ''
                 if raw_packet.haslayer(Raw):
-                    payload = str(raw_packet.getlayer(Raw).load)
+                    temp = str(raw_packet.getlayer(Raw).load)
+                    payload = temp.replace('\n', '').replace('\r', '')
+                    payload = "ATTACK"
                 output_tuple.append(payload)
 
             output_tuple = ['k']+[str(qid)]+output_tuple
             send_tuple = ",".join([str(x) for x in output_tuple])
 
             # TODO removed this packet is unrelated stuff - maybe it is necessary
-            # if str(qid) == '30032': print send_tuple
-            # if count > 1: print send_tuple
-            self.send_data(send_tuple + "\n")
+            self.send_data(send_tuple)
+
             self.logger.info("emitter,"+ str(qid) + ","+str(start)+","+str(time.time()))
 
             qid = int(str(self.qid_struct.unpack(p_str[ind:ind+2])[0]))

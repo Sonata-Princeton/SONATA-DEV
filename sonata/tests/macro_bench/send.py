@@ -6,8 +6,8 @@ import math, time
 import pickle
 from multiprocessing.connection import Listener
 
-INTERFACE = 'eth0'
-# INTERFACE = 'out-veth-1'
+# INTERFACE = 'eth0'
+INTERFACE = 'out-veth-1'
 
 def load_data():
     print "load_data called"
@@ -102,8 +102,8 @@ def send_created_traffic():
     for i in range(0, 20):
         traffic_dict[i] = []
         if i > 5 and i < 11:
-            traffic_dict[i].extend(create_attack_traffic(500))
-            traffic_dict[i].extend(create_normal_traffic(350))
+            traffic_dict[i].extend(create_attack_traffic(350))
+            traffic_dict[i].extend(create_normal_traffic(500))
         else:
             traffic_dict[i].extend(create_normal_traffic(500))
 
