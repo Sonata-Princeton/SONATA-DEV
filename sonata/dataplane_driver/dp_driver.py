@@ -10,7 +10,7 @@ from query_cleaner import get_clean_application
 from openflow.openflow import OFTarget
 # from p4.p4_target import P4Target
 
-SERVER = False
+SERVER = True
 P4_TYPE = 'p4'
 
 if SERVER:
