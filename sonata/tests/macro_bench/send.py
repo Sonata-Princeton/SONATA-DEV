@@ -101,10 +101,10 @@ def send_created_traffic():
     for i in range(0, 20):
         traffic_dict[i] = []
         if i > 5 and i < 11:
-            traffic_dict[i].extend(create_attack_traffic(200))
-            traffic_dict[i].extend(create_normal_traffic(650))
+            traffic_dict[i].extend(create_attack_traffic(500))
+            traffic_dict[i].extend(create_normal_traffic(350))
         else:
-            traffic_dict[i].extend(create_normal_traffic(850))
+            traffic_dict[i].extend(create_normal_traffic(500))
 
     for i in range(0, 20):
         print "Sending traffic for ts: " + str(i)

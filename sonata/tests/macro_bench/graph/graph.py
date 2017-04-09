@@ -67,14 +67,13 @@ print ordered_ts
 for ts in ordered_ts:
     data.append(ts_packet_count[ts])
 
-data = [0,0,0,0] + data
+data = [0,0,0,0,0,0,0] + data
 
 data_original = []
 ctr = 1
 for ts in range(0, 20):
-    count = 10
-    if ctr > 5 and ctr < 11:
-        count += 100
+    # count = 10
+    count = 850
     data_original.append(count)
     ctr += 1
 
