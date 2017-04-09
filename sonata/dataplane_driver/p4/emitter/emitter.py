@@ -99,7 +99,7 @@ class Emitter(object):
             send_tuple = ",".join([str(x) for x in output_tuple])
 
             # TODO removed this packet is unrelated stuff - maybe it is necessary
-            self.send_data(send_tuple)
+            self.send_data(send_tuple + "\n")
 
             self.logger.info("emitter,"+ str(qid) + ","+str(start)+","+str(time.time()))
 
