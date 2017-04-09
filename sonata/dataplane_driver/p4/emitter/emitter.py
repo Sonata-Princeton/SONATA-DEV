@@ -61,7 +61,7 @@ class Emitter(object):
         start = time.time()
         p_str = str(raw_packet)
         # raw_packet.show()
-        hexdump(raw_packet)
+        # hexdump(raw_packet)
 
         qid = int(str(self.qid_struct.unpack(p_str[0:2])[0]))
         ind = 2
