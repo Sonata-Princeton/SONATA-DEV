@@ -70,6 +70,7 @@ class Emitter(object):
             out_headers = query['headers']
             output_tuple = []
             count = 0
+            # if str(qid) == '30032': print "Headers ", out_headers
             for fld, size in out_headers[1:]:
                 hdr_format = HEADER_FORMAT[fld]
                 strct = struct.Struct(hdr_format)
@@ -94,8 +95,8 @@ class Emitter(object):
             send_tuple = ",".join([str(x) for x in output_tuple])
 
             # TODO removed this packet is unrelated stuff - maybe it is necessary
-            # if str(qid) == '10032': print send_tuple
-            if count > 1: print send_tuple
+            # if str(qid) == '30032': print send_tuple
+            # if count > 1: print send_tuple
             self.send_data(send_tuple + "\n")
             self.logger.info("emitter,"+ str(qid) + ","+str(start)+","+str(time.time()))
 

@@ -14,7 +14,7 @@ T = 1
 DELTA = 0.01
 # Standard set of packet tuple headers
 #BASIC_HEADERS = ["ts", "sIP", "sPort", "dIP", "dPort", "nBytes", "proto", "sMac", "dMac"]
-BASIC_HEADERS = ["sIP", "sPort", "dIP", "dPort", "nBytes", "proto", "sMac", "dMac"]
+BASIC_HEADERS = ["sIP", "sPort", "dIP", "dPort", "nBytes", "proto", "sMac", "dMac", "payload"]
 # training data path
 TD_PATH = '/home/vagrant/dev/data/anon_all_flows_1min.csv'
 TD_PATH = '/home/vagrant/dev/data/anon_all_flows_1min.csv/part-00496'

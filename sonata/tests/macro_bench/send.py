@@ -7,6 +7,7 @@ import pickle
 from multiprocessing.connection import Listener
 
 INTERFACE = 'eth0'
+# INTERFACE = 'out-veth-1'
 
 def load_data():
     print "load_data called"

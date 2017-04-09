@@ -92,6 +92,12 @@ class P4Query(object):
         for operator in generic_operators:
             self.logger.debug('add %s operator' % (operator.name,))
             operator_id += 1
+
+            #TODO: Confirm if this is the right way
+            keys = filter(lambda x: x != 'payload' and x != 'ts', operator.keys)
+            operator.keys = keys
+            #TODO: Confirm if this is the right way
+
             if operator.name == 'Filter':
                 match_action = self.nop_action
                 miss_action = self.query_drop_action

@@ -77,7 +77,7 @@ class Runtime(object):
                 # final_plan = self.query_plans[query.qid][1:-1]
                 # print final_plan
 
-                final_plan = [(1, 16, 5, 1),(1, 32, 5, 3)]#(1, 16, 5, 1),
+                final_plan = [(1, 16, 5, 1),(3, 32, 1, 3)]#(1, 16, 5, 1),
                 prev_r = 0
                 prev_qid = 0
 
@@ -96,7 +96,7 @@ class Runtime(object):
                     prev_qid = q
 
 
-                self.update_query_mappings(query, final_plan)
+                self.update_query_mappings(refinement_object, final_plan)
 
                 # final_plan = [(16, 5, 1), (32, 1, 1)]
 
@@ -135,15 +135,18 @@ class Runtime(object):
         if self.sp_queries:
             self.send_to_sm()
 
+        # self.dp_driver_thread.join()
         self.streaming_driver_thread.join()
-        self.dp_driver_thread.join()
-        self.dpd_thread.join()
+        self.op_handler_thread.join()
 
-    def update_query_mappings(self, query, final_plan):
+    def update_query_mappings(self, refinement_object, final_plan):
         if len(final_plan) > 1:
             for ((q1, r1, p1, l1), (q2, r2, p2, l2)) in zip(final_plan, final_plan[1:]):
-                qid1 = get_refined_query_id(query, r1)
-                qid2 = get_refined_query_id(query, r2)
+                query1 = refinement_object.qid_2_query[q1]
+                query2 = refinement_object.qid_2_query[q2]
+
+                qid1 = get_refined_query_id(query1, r1)
+                qid2 = get_refined_query_id(query2, r2)
                 if qid2 not in self.query_in_mappings:
                     self.query_in_mappings[qid2] = []
                 self.query_in_mappings[qid2].append(qid1)
@@ -157,7 +160,7 @@ class Runtime(object):
         # Update the queries whose o/p needs to be displayed to the network operators
         #print final_plan
         r = final_plan[-1][0]
-        qid = get_refined_query_id(query, r)
+        qid = get_refined_query_id(query1, r)
         self.query_out_final[qid] = 0
 
     def start_op_handler(self):
@@ -180,7 +183,7 @@ class Runtime(object):
         queries_received = {}
         updateDeltaConfig = False
         while True:
-            #print "Ready to receive data from SM ***************************"
+            # print "Ready to receive data from SM ***************************"
             conn = self.op_handler_listener.accept()
             # Expected (qid,[])
             op_data = conn.recv_bytes()
@@ -193,11 +196,11 @@ class Runtime(object):
                 queries_received[src_qid] = table_match_entries
             else:
                 queries_received[src_qid] = []
-            #print "DP Queries: ", str(len(self.dp_queries.keys())), " Received keys:", str(len(queries_received.keys()))
+            # print "DP Queries: ", str(len(self.dp_queries.keys())), " Received keys:", str(len(queries_received.keys()))
             if len(queries_received.keys()) == len(self.dp_queries.keys()):
                 updateDeltaConfig = True
 
-            #print "Query Out Mappings: ",self.query_out_mappings
+            # print "Query Out Mappings: ",self.query_out_mappings
             delta_config = {}
             #print "## Received output for query", src_qid, "at time", time.time() - start
             if updateDeltaConfig:
