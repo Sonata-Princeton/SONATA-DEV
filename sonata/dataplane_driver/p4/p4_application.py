@@ -8,7 +8,7 @@ from p4_query import P4Query
 from sonata.dataplane_driver.utils import get_logger
 
 SERVER = True
-ORIGINAL_PACKET = True
+ORIGINAL_PACKET = False
 
 if SERVER:
     SENDER_PORT = 11
@@ -263,6 +263,12 @@ table forward {
             commands.append("table_add forward repeat %s => %s"%(RECIEVE_PORT, SENDER_PORT))
 
         return commands
+
+    def get_header_format(self):
+        header_format = dict()
+        header_format['parse_payload'] = self.parse_payload
+        header_format['headers'] = self.out_header_fields
+        return header_format
 
     def get_header_formats(self):
         header_formats = dict()

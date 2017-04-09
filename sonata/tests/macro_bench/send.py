@@ -6,6 +6,8 @@ import math, time
 import pickle
 from multiprocessing.connection import Listener
 
+INTERFACE = 'eth0'
+
 def load_data():
     print "load_data called"
     data = {}
@@ -107,7 +109,7 @@ def send_created_traffic():
     for i in range(0, 20):
         print "Sending traffic for ts: " + str(i)
         start = time.time()
-        sendp(traffic_dict[i], iface="out-veth-1", verbose=0)
+        sendp(traffic_dict[i], iface=INTERFACE, verbose=0)
         total = time.time()-start
         sleep_time = 1-total
         if sleep_time > 0:

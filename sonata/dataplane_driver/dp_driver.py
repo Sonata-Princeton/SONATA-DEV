@@ -10,17 +10,21 @@ from query_cleaner import get_clean_application
 from openflow.openflow import OFTarget
 # from p4.p4_target import P4Target
 
-SERVER = True
+SERVER = False
 P4_TYPE = 'p4'
 
 if SERVER:
     BASEPATH = '/home/sonata/'
     SONATA = 'SONATA-DEV'
     DP_DRIVER_CONF = ('172.17.0.101', 6666)
+    SPARK_ADDRESS = '172.17.0.98'
+    SNIFF_INTERFACE = 'ens1f1'
 else:
     BASEPATH = '/home/vagrant/'
     SONATA = 'dev'
     DP_DRIVER_CONF = ('localhost', 6666)
+    SPARK_ADDRESS = 'localhost'
+    SNIFF_INTERFACE = 'm-veth-2'
 
 class DataplaneDriver(object):
     def __init__(self, dpd_socket, metrics_file):
@@ -142,7 +146,7 @@ class DataplaneDriver(object):
         clean_application = get_clean_application(application)
         print "Cleaned: ", clean_application
         target = self.get_target(target_id)
-        target.run(application)
+        target.run(clean_application)
 
     def update_configuration(self, filter_update, target_id):
         target = self.get_target(target_id)
@@ -158,7 +162,7 @@ class DataplaneDriver(object):
 
 def main():
 
-    dpd = DataplaneDriver(DP_DRIVER_CONF, BASEPATH + SONATA +"/sonata/tests/micro_seq_recirculate/results/dp_driver.log")
+    dpd = DataplaneDriver(DP_DRIVER_CONF, BASEPATH + SONATA +"/sonata/tests/macro_bench/results/dp_driver.log")
     p4_type = P4_TYPE
     compiled_srcs = ''
 
@@ -166,9 +170,14 @@ def main():
     else: compiled_srcs = 'sequential'
 
     config = {
-        'em_conf': {},
+        'em_conf': {'spark_stream_address': SPARK_ADDRESS,
+                    'spark_stream_port': 8989,
+                    'sniff_interface': SNIFF_INTERFACE,
+                    'log_file': BASEPATH + SONATA +"/sonata/tests/macro_bench/results/emitter.log"
+        },
+
         'switch_conf': {
-            'compiled_srcs': BASEPATH + SONATA +'/sonata/tests/micro_seq_recirculate/'+compiled_srcs+'/compiled_srcs/',
+            'compiled_srcs': BASEPATH + SONATA +'/sonata/tests/macro_bench/compiled_srcs/',
             'json_p4_compiled': 'compiled.json',
             'p4_compiled': 'compiled.p4',
             'p4c_bm_script': BASEPATH + 'p4c-bmv2/p4c_bm/__main__.py',
@@ -181,6 +190,7 @@ def main():
             'p4_delta_commands': 'delta_commands.txt'
         }
     }
+
     dpd.add_target(p4_type, 1, config)
     dpd.start()
 
