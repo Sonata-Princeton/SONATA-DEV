@@ -18,7 +18,7 @@ if SERVER:
     SONATA = 'SONATA-DEV'
     DP_DRIVER_CONF = ('172.17.0.101', 6666)
     SPARK_ADDRESS = '0.0.0.0'
-    SNIFF_INTERFACE = 'ens1f1'
+    SNIFF_INTERFACE = 'ens4f0'
 else:
     BASEPATH = '/home/vagrant/'
     SONATA = 'dev'
