@@ -180,7 +180,7 @@ class Learn(object):
             e_V[fold] = math.sqrt(error_fold)
             candidates[fold] = (h_T[fold], e_V[fold])
         final_plan, rmse = min_error(candidates.values())
-        final_plan_multi = QueryPlanMulti(self.G, final_plan.path, rmse)
+        final_plan_multi = QueryPlanMulti(self.G_orig, self.G, final_plan.path, rmse)
 
         if debug: print "Final Plan:", final_plan_multi.path
         self.final_plan = final_plan_multi

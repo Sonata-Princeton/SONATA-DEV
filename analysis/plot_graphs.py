@@ -79,6 +79,7 @@ def plot_heatmaps():
     # fname = 'data/alpha_tuning_dump_2017-03-29 20:07:13.376800.pickle'
     fname = 'data/alpha_tuning_dump_2017-03-30 11:33:50.334231.pickle'
     fname = 'data/alpha_tuning_dump_2017-03-30 17:17:07.283793.pickle'
+    fname = 'data/alpha_tuning_dump_6_2017-04-09 15:55:47.505726.pickle'
     with open(fname, 'r') as f:
         data_dump = pickle.load(f)
         for mode in data_dump:
@@ -147,7 +148,7 @@ def plot_update_graphs():
 
 
 if __name__ == '__main__':
-    # plot_heatmaps()
+    plot_heatmaps()
     #plot_learning_curve()
-    plot_performance_graphs()
-    plot_update_graphs()
+    # plot_performance_graphs()
+    # plot_update_graphs()

@@ -1,7 +1,7 @@
 # Training related parameters
 ALPHA = .93
 BETA = 0.5
-GRAN = 16
+GRAN = 4
 GRAN_MAX = 33
 
 # Fold size for learning
@@ -16,8 +16,8 @@ DELTA = 0.01
 BASIC_HEADERS = ["ts", "sIP", "sPort", "dIP", "dPort", "nBytes", "proto", "sMac", "dMac"]
 # training data path
 TD_PATH = '/home/vagrant/dev/data/anon_all_flows_5min.csv'
-TD_PATH = '/mnt/anon_all_flows_5min.csv/part-00500'
-TD_PATH = '/home/vagrant/dev/data/anon_all_flows_1min.csv/part-00496'
+# TD_PATH = '/mnt/anon_all_flows_5min.csv/part-00500'
+# TD_PATH = '/home/vagrant/dev/data/anon_all_flows_1min.csv/part-00496'
 # refinement levels
 #REFINEMENT_LEVELS = range(0, 33, 4)
 #REFINEMENT_LEVELS = range(0, 33, 16)

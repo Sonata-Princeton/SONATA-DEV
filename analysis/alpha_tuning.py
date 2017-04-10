@@ -10,7 +10,6 @@ from sonata.core.training.learn.learn import Learn
 from analysis.utils import chunkify, get_training_graph
 
 
-
 def alpha_tuning_iter(G_Train, n_max, b_max, mode, q=None):
     operational_alphas = {}
     unique_plans = {}
@@ -127,7 +126,7 @@ def process_chunk(G_Train, chunk, mode, q=None):
 def do_alpha_tuning(Ns, Bs, fname, mode):
     with open(fname, 'r') as f:
         G = pickle.load(f)
-        G_Train = get_training_graph(G, 10)
+        G_Train = get_training_graph(G, 20)
         # print G
         operational_alphas = {}
         unique_plans = {}
@@ -167,23 +166,67 @@ def do_alpha_tuning(Ns, Bs, fname, mode):
         return operational_alphas, unique_plans
 
 
+def get_system_configs(fname):
+    import math
+
+    nmax = 0
+    bmax = 0
+    p_max = 0
+    with open(fname, 'r') as f:
+        G = pickle.load(f)
+        G_Train = get_training_graph(G, 20)
+        for ts in G_Train:
+            v, e = G_Train[ts]
+            for r, p, l in v:
+                if p > p_max:
+                    p_max = p
+            n = int(e[(0, 0, 0), (32, 0, 1)][1])
+            if type(e[(0, 0, 0), (32, p_max, 1)][0]) == type(1):
+                b = int(e[(0, 0, 0), (32, p_max, 1)][0])
+            else:
+                b = int(max(e[(0, 0, 0), (32, p_max, 1)][0]))
+
+            if b > bmax:
+                bmax = b
+            if n > nmax:
+                nmax = n
+
+    nStep = math.ceil(float(nmax) / 10)
+    bStep = math.ceil(float(bmax) / 10)
+
+    print "Nmax:", nmax, "Bmax:", bmax
+    print nStep, bStep
+
+    Ns = range(1, int(11*nStep + 1), int(nStep))
+    Bs = range(1, int(11*bStep + 1), int(bStep))
+    print "Ns:", Ns, "Bs:", Bs
+    return Ns, Bs
+
+
 if __name__ == '__main__':
-    # Ns = [200]
-    # Bs = [500]
-    Ns = range(100, 11000, 1000)
-    Bs = range(1000, 110000, 10000)
+    Ns = [200]
+    Bs = [500]
+    # Ns = range(100, 11000, 1000)
+    # Bs = range(1000, 110000, 10000)
 
     fname = 'data/hypothesis_graph_2017-03-29 03:29:50.290812.pickle'
     # fname = 'data/hypothesis_graph_2017-03-29 00:21:42.251074.pickle'
+    fname = 'data/hypothesis_graph_6_2017-04-09 15:07:16.014979.pickle'
+    # fname = 'data/hypothesis_graph_2_2017-04-09 14:51:55.766276.pickle'
+    Ns, Bs = get_system_configs(fname)
+    Ns = [10]
+    Bs = [10]
+
     modes = [2, 3, 4, 5, 6]
-    # modes = [6]
+    modes = [6]
     data_dump = {}
     for mode in modes:
         print mode
         operational_alphas, unique_plans = do_alpha_tuning(Ns, Bs, fname, mode)
         data_dump[mode] = (Ns, Bs, operational_alphas, unique_plans)
 
-    fname = 'data/alpha_tuning_dump_' + str(datetime.datetime.fromtimestamp(time.time())) + '.pickle'
+    qid = 6
+    fname = 'data/alpha_tuning_dump_' +str(qid)+'_'+ str(datetime.datetime.fromtimestamp(time.time())) + '.pickle'
     print "Dumping data to", fname
     with open(fname, 'w') as f:
         pickle.dump(data_dump, f)

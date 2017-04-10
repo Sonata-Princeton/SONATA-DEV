@@ -36,7 +36,7 @@ def get_thresh(training_data, spark_query, spread, refinement_level, satisfied_s
     else:
         refined_satisfied_out = 'training_data.' + satisfied_sonata_spark_query.compile() + \
                                 '.map(lambda s: (s, 1)).reduceByKey(lambda x,y: x+y)'
-        print refined_satisfied_out
+        # print refined_satisfied_out
         query_string = 'training_data.' + spark_query.compile() + \
                        '.join(' + refined_satisfied_out + ').map(lambda s: s[1][0]).collect()'
         # print query_string
