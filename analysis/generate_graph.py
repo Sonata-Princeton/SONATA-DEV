@@ -84,8 +84,8 @@ def generate_graph(sc, query):
 
     # dump the hypothesis graph: {ts:G[ts], ...}
     print "Dumping graph to", fname
-    # with open(fname, 'w') as f:
-    #     pickle.dump(G, f)
+    with open(fname, 'w') as f:
+        pickle.dump(G, f)
 
 if __name__ == '__main__':
     # original reflection attack query

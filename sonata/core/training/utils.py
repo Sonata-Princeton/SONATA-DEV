@@ -250,7 +250,7 @@ def update_counts(sc, queries, query_out, iter_qid, delta, bits_count, ctr):
                                              curr_query_out, thresh, delta )
             packet_count = get_streaming_cost(sc, curr_operator.name, curr_query_out)
 
-        out = bits_count.join(delta_bits).map(lambda s: (s[0], (s[1][0][0]+s[1][1][0], s[1][0][1]+s[1][1][1])))
+        out = bits_count.fullOuterJoin(delta_bits).map(lambda s: (s[0], (s[1][0][0]+s[1][1][0], s[1][0][1]+s[1][1][1])))
 
         # print "After executing ", curr_operator.name, " in Data Plane"
         #print "Bits Count Cost", bits_count.collect()[:2]
