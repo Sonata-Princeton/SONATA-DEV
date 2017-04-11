@@ -5,6 +5,22 @@ from sonata.system_config import *
 from sonata.core.training.utils import *
 
 debug = False
+debug = True
+
+def convertNoneToZero(s):
+    key = s[0]
+
+    if s[1][0] is not None:
+        value1 = s[1][0]
+    else:
+        value1 = 0
+
+    if s[1][1] is not None:
+        value2 = s[1][1]
+    else:
+        value2 = 0
+
+    return (key, (value1, value2))
 
 class Costs(object):
     def __init__(self, counts, P, N_max, B_max):
@@ -58,7 +74,11 @@ class Costs(object):
                                 break
                     N = self.N_max
                     B = self.B_max
-                    final_weight = bits_count.join(packet_count).map(lambda s: (s[0], (s[1][0], s[1][1]))).collect()
+
+                    final_weight = bits_count.fullOuterJoin(packet_count).map(lambda s: (s[0], (s[1][0], s[1][1])))\
+                        .map(lambda s: convertNoneToZero(s)).collect()
+                    if debug: print "Bits Count: ", bits_count.collect()
+                    if debug: print "Packet Count: ", packet_count.collect()
                     if debug: print qid, transit, partition_plan, final_weight
                     if debug: print "======="
                     costs[qid][transit][partition_plan] = (final_weight)

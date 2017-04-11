@@ -21,8 +21,8 @@ def generate_graph(sc, query):
     # TD_PATH = '/mnt/anon_all_flows_1min.csv'
     # TD_PATH = '/mnt/anon_all_flows_5min.csv/part-00500'
     TD_PATH = '/mnt/anon_all_flows_1min.csv'
-    TD_PATH = '/home/vagrant/dev/data/anon_all_flows_1min.csv/part-00496'
-    TD_PATH = '/home/vagrant/dev/data/anon_all_flows_1min.csv'
+    # TD_PATH = '/home/vagrant/dev/data/anon_all_flows_1min.csv/part-00496'
+    # TD_PATH = '/home/vagrant/dev/data/anon_all_flows_1min.csv'
 
     flows_File = TD_PATH
     T = 1
@@ -84,8 +84,8 @@ def generate_graph(sc, query):
 
     # dump the hypothesis graph: {ts:G[ts], ...}
     print "Dumping graph to", fname
-    with open(fname, 'w') as f:
-        pickle.dump(G, f)
+    # with open(fname, 'w') as f:
+    #     pickle.dump(G, f)
 
 if __name__ == '__main__':
     # original reflection attack query
@@ -129,17 +129,6 @@ if __name__ == '__main__':
           .map(keys=('dIP',))
           )
 
-    # # reflection attack per sPort
-    # q5 = (PacketStream(5)
-    #       # .filter(filter_keys=('proto',), func=('eq', 6))
-    #       .map(keys=('dIP', 'sIP', 'sPort'))
-    #       .distinct(keys=('dIP', 'sIP', 'sPort'))
-    #       .map(keys=('dIP','sPort'), map_values=('count',), func=('eq', 1,))
-    #       .reduce(keys=('dIP','sPort'), func=('sum',))
-    #       .filter(filter_vals=('count',), func=('geq', '99.9'))
-    #       .map(keys=('dIP',))
-    #       )
-
     # reflection attack query (NTP)
     q5 = (PacketStream(5)
           # .filter(filter_keys=('proto',), func=('eq', 6))
@@ -162,7 +151,7 @@ if __name__ == '__main__':
           )
 
     queries = [q1, q2, q3, q4, q5, q6]
-    # queries = [q2]
+    queries = [q4]
     sc = create_spark_context()
     for q in queries:
         generate_graph(sc, q)
