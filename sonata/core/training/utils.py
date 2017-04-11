@@ -223,6 +223,20 @@ def dump_data(data, fname):
 
 
 def update_counts(sc, queries, query_out, iter_qid, delta, bits_count, ctr):
+    def update_bits(s):
+        k = s[0]
+        v1 = s[1][0]
+        v2 = s[1][1]
+        if v1 is None and v2 is not None:
+            out = (k,v2)
+        elif v1 is not None and v2 is None:
+            out = (k,v1)
+        else:
+            out = (k,((v1[0]+v2[1]), (v1[1]+v2[1])))
+
+        return out
+
+
     curr_operator = queries[iter_qid].operators[-1]
     curr_query_out = query_out[iter_qid]
 
@@ -250,7 +264,7 @@ def update_counts(sc, queries, query_out, iter_qid, delta, bits_count, ctr):
                                              curr_query_out, thresh, delta )
             packet_count = get_streaming_cost(sc, curr_operator.name, curr_query_out)
 
-        out = bits_count.fullOuterJoin(delta_bits).map(lambda s: (s[0], (s[1][0][0]+s[1][1][0], s[1][0][1]+s[1][1][1])))
+        out = bits_count.fullOuterJoin(delta_bits).map(lambda s: update_bits(s))
 
         # print "After executing ", curr_operator.name, " in Data Plane"
         #print "Bits Count Cost", bits_count.collect()[:2]
