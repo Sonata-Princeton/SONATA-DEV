@@ -170,7 +170,7 @@ def generate_query_to_collect_transit_cost(transit_query_string, spark_query):
     return transit_query_string
 
 
-def generate_transit_query(curr_query, curr_level_out, prev_level_out_mapped, ref_level_prev):
+def generate_transit_query(curr_query, curr_level_out, prev_level_out_mapped, ref_level_prev, refinement_key):
     if len(curr_query.operators) > 0:
         keys = curr_query.operators[-1].keys
         values = curr_query.operators[-1].values
@@ -181,11 +181,11 @@ def generate_transit_query(curr_query, curr_level_out, prev_level_out_mapped, re
     transit_query_string = 'self.sc.parallelize(curr_level_out)'
     if len(values) > 0:
         transit_query_string += '.map(lambda (('+",".join(keys)+ '),('+",".join(values)+')):'
-        transit_query_string += '((ts, str(IPNetwork(str(dIP)+"/"+str(' + str(ref_level_prev) + ')).network)),'
+        transit_query_string += '((ts, str(IPNetwork(str('+refinement_key+')+"/"+str(' + str(ref_level_prev) + ')).network)),'
         transit_query_string += '(('+",".join(keys)+ '),('+",".join(values)+'))))'
     else:
         transit_query_string += '.map(lambda ('+",".join(keys)+ '): '
-        transit_query_string += '((ts, str(IPNetwork(str(dIP)+"/"+str(' + str(ref_level_prev) + ')).network)),('+",".join(keys)+ ')))'
+        transit_query_string += '((ts, str(IPNetwork(str('+refinement_key+')+"/"+str(' + str(ref_level_prev) + ')).network)),('+",".join(keys)+ ')))'
     transit_query_string += '.join(prev_level_out_mapped).map(lambda x: x[1][0])'
     transit_query_string = generate_query_to_collect_transit_cost(transit_query_string, curr_query)
     #print transit_query_string

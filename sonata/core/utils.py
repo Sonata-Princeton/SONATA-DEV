@@ -77,7 +77,7 @@ def get_refinement_keys(query):
             red_keys = set(red_keys_left)
 
         for operator in query.operators:
-            if operator.name in ['Distinct', 'Reduce']:
+            if operator.name in ['Distinct', 'Reduce', 'Map']:
                 red_keys = red_keys.intersection(set(operator.keys))
                 # print query.qid, operator.name, red_keys
 
@@ -88,7 +88,7 @@ def get_refinement_keys(query):
         red_keys = set(query.basic_headers)
         for operator in query.operators:
             # Extract reduction keys from first reduce/distinct operator
-            if operator.name in ['Distinct', 'Reduce']:
+            if operator.name in ['Distinct', 'Reduce', 'Map']:
                 red_keys = red_keys.intersection(set(operator.keys)).intersection(refinement_headers)
 
     # print "Reduction Key Search", query.qid, red_keys

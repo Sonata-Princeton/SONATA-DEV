@@ -17,10 +17,12 @@ def parse_log_line(logline):
     return tuple(logline.split(","))
 
 def generate_graph(sc, query):
-    TD_PATH = '/mnt/anon_all_flows_5min.csv'
+    # TD_PATH = '/mnt/anon_all_flows_5min.csv'
     # TD_PATH = '/mnt/anon_all_flows_1min.csv'
     # TD_PATH = '/mnt/anon_all_flows_5min.csv/part-00500'
-    # TD_PATH = '/mnt/anon_all_flows_1min.csv/part-00496'
+    TD_PATH = '/mnt/anon_all_flows_1min.csv'
+    TD_PATH = '/home/vagrant/dev/data/anon_all_flows_1min.csv/part-00496'
+    TD_PATH = '/home/vagrant/dev/data/anon_all_flows_1min.csv'
 
     flows_File = TD_PATH
     T = 1
@@ -29,16 +31,12 @@ def generate_graph(sc, query):
                          .map(parse_log_line)
                          .map(lambda s:tuple([int(math.ceil(int(s[0])/T))]+(list(s[1:]))))
                          .filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(proto) == '17')
-                         #.filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(sPort) == '53')
                          )
 
     elif query.qid == 2:
         training_data = (sc.textFile(flows_File)
                          .map(parse_log_line)
                          .map(lambda s:tuple([int(math.ceil(int(s[0])/T))]+(list(s[1:]))))
-                         #.filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(proto) == '6')
-                         #.filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(sPort) == '22' or str(dPort) == '22')
-                         #.map(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): (ts,sIP,sPort,dIP,dPort,int(nBytes)/10,proto,sMac,dMac))
                          )
 
     if query.qid == 3:
@@ -62,7 +60,7 @@ def generate_graph(sc, query):
                          .map(parse_log_line)
                          .map(lambda s:tuple([int(math.ceil(int(s[0])/T))]+(list(s[1:]))))
                          .filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(proto) == '17')
-                         #.filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(sPort) == '53')
+                         .filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(sPort) == '19')
                          )
     elif query.qid == 6:
         # Response traffic for NTP protocol
@@ -70,7 +68,6 @@ def generate_graph(sc, query):
                          .map(parse_log_line)
                          .map(lambda s:tuple([int(math.ceil(int(s[0])/T))]+(list(s[1:]))))
                          .filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(proto) == '17')
-                         .filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(sPort) == '19')
                          )
 
     print "Collecting the training data for the first time ...", training_data.take(2)
@@ -165,6 +162,7 @@ if __name__ == '__main__':
           )
 
     queries = [q1, q2, q3, q4, q5, q6]
+    # queries = [q2]
     sc = create_spark_context()
     for q in queries:
         generate_graph(sc, q)

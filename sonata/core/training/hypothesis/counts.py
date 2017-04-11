@@ -9,6 +9,7 @@ from sonata.core.training.utils import *
 from sonata.core.utils import *
 
 debug = False
+debug = True
 
 
 class Counts(object):
@@ -93,7 +94,7 @@ class Counts(object):
                 transit_query_string = generate_query_to_collect_transit_cost(transit_query_string, spark_query)
                 query_cost_transit[qid][transit][iter_qid] = eval(transit_query_string)
                 if debug: print transit_query_string
-                if debug: print transit, iter_qid, query_cost_transit[qid][transit][iter_qid][:2]
+                # if debug: print transit, iter_qid, query_cost_transit[qid][transit][iter_qid][:2]
                 #break
 
         # Then get the cost for transit (ref_level_prev, ref_level_current)
@@ -118,10 +119,11 @@ class Counts(object):
                         curr_level_out = query_out_refinement_level[qid][ref_level_curr][iter_qid_curr]
                         curr_query = self.refined_spark_queries[qid][ref_level_curr][iter_qid_curr]
                         transit_query_string = generate_transit_query(curr_query, curr_level_out,
-                                                                      prev_level_out_mapped, ref_level_prev)
-                        query_cost_transit[qid][transit][iter_qid_curr] = eval(transit_query_string)
+                                                                      prev_level_out_mapped, ref_level_prev, refinement_key )
                         if debug: print transit_query_string
-                        if debug: print transit, iter_qid_curr, query_cost_transit[qid][transit][iter_qid_curr][:2]
+                        query_cost_transit[qid][transit][iter_qid_curr] = eval(transit_query_string)
+
+                        # if debug: print transit, iter_qid_curr, query_cost_transit[qid][transit][iter_qid_curr][:2]
 
         self.query_out_transit = query_cost_transit
 

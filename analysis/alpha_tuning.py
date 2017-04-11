@@ -34,7 +34,7 @@ def alpha_tuning_iter(G_Train, n_max, b_max, mode, q=None):
         learn = Learn(G_Train, alpha, beta, n_max, b_max, mode)
         path_string = learn.final_plan.__repr__()
 
-        if debug: print alpha, n_max, learn.n_viol, b_max, learn.b_viol
+        if debug: print alpha, n_max, learn.n_viol, b_max, learn.b_viol, path_string
 
         if not learn.n_viol and learn.b_viol:
             upper_limit = alpha
@@ -127,7 +127,10 @@ def do_alpha_tuning(Ns, Bs, fname, mode):
     with open(fname, 'r') as f:
         G = pickle.load(f)
         G_Train = get_training_graph(G, 20)
-        # print G
+        v,e = G_Train[G_Train.keys()[0]]
+        for ((r1,p1,l1),(r2,p2,l2)) in e:
+            if r2 == 32 and l2 == 1:
+                print e[((r1,p1,l1),(r2,p2,l2))]
         operational_alphas = {}
         unique_plans = {}
         configs = []
@@ -213,9 +216,10 @@ if __name__ == '__main__':
     # fname = 'data/hypothesis_graph_2017-03-29 00:21:42.251074.pickle'
     fname = 'data/hypothesis_graph_6_2017-04-09 15:07:16.014979.pickle'
     # fname = 'data/hypothesis_graph_2_2017-04-09 14:51:55.766276.pickle'
+    fname = 'data/data/hypothesis_graph_2_2017-04-09 14:51:55.766276.pickle'
     Ns, Bs = get_system_configs(fname)
-    Ns = [10]
-    Bs = [10]
+    Ns = [20000]
+    Bs = [320000]
 
     modes = [2, 3, 4, 5, 6]
     modes = [6]
@@ -228,5 +232,5 @@ if __name__ == '__main__':
     qid = 6
     fname = 'data/alpha_tuning_dump_' +str(qid)+'_'+ str(datetime.datetime.fromtimestamp(time.time())) + '.pickle'
     print "Dumping data to", fname
-    with open(fname, 'w') as f:
-        pickle.dump(data_dump, f)
+    # with open(fname, 'w') as f:
+    #     pickle.dump(data_dump, f)
