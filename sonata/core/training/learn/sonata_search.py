@@ -94,8 +94,9 @@ class Search(object):
         frontier.append(node)
         explored = set()
         while frontier:
-            if debug: print frontier, explored
+            # if debug: print frontier, explored
             node = frontier.pop()
+            if debug: print "Exploring", node, node.path(), node.path_cost
             if problem.goal_test(node):
                 # Check whether we need to update the target node
                 if self.target_node is None:
@@ -121,7 +122,7 @@ class Search(object):
                 elif child in frontier:
                     incumbent = frontier[child]
                     if f(child) < f(incumbent):
-                        if debug: print "Deleting incumbent", incumbent, "from frontier"
-                        del frontier[incumbent]
+                        # if debug: print "Deleting incumbent", incumbent, "from frontier"
+                        # del frontier[incumbent]
                         if debug: print "adding child", child, "to frontier."
                         frontier.append(child)

@@ -139,13 +139,15 @@ def update_edges(G, n_max, b_max, alpha, mode):
 
 def do_performance_gains_analysis(Ns, Bs):
     fname = 'data/hypothesis_graph_2017-03-29 03:29:50.290812.pickle'
-
-    fname = 'data/hypothesis_graph_4_2017-04-11 22:58:56.434682.pickle'
+    # fname = 'data/hypothesis_graph_4_2017-04-12 01:02:40.199219.pickle'
+    fname = 'data/hypothesis_graph_1_2017-04-12 11:50:20.246240.pickle'
+    fname = 'data/hypothesis_graph_1_2017-04-12 15:01:23.820024.pickle'
+    fname = 'data/hypothesis_graph_6_2017-04-12 15:30:31.466226.pickle'
     with open(fname, 'r') as f:
         G = pickle.load(f)
         print "Loaded graph file", fname
-        modes = [2, 3, 4, 5, 6]
-        # modes = [4, 6]
+        modes = [2, 3, 4, 5]
+        modes = [3,5]
 
         debug = False
         debug = True
@@ -157,7 +159,7 @@ def do_performance_gains_analysis(Ns, Bs):
             for n_max in Ns:
                 for b_max in Bs:
                     data_dump[mode][(n_max, b_max)] = {}
-                    td = 30
+                    td = 1
                     G_Train = get_training_graph(G, td)
                     G_Test = get_test_graph(G, td)
                     print len(G_Train.keys()), len(G_Test.keys())
@@ -193,7 +195,7 @@ if __name__ == '__main__':
     Ns = [3100]
     Bs = [21000]
 
-    Ns = [100]
-    Bs = [20000]
+    # Ns = [100]
+    # Bs = [20000]
 
     do_performance_gains_analysis(Ns, Bs)

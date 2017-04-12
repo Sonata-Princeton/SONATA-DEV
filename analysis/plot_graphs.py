@@ -80,15 +80,20 @@ def plot_heatmaps():
     fname = 'data/alpha_tuning_dump_2017-03-30 11:33:50.334231.pickle'
     fname = 'data/alpha_tuning_dump_2017-03-30 17:17:07.283793.pickle'
     fname = 'data/alpha_tuning_dump_6_2017-04-09 15:55:47.505726.pickle'
+    fname = 'data/alpha_tuning_dump_6_2017-04-12 15:54:52.662756.pickle'
     with open(fname, 'r') as f:
         data_dump = pickle.load(f)
         for mode in data_dump:
             (Ns, Bs, operational_alphas, unique_plans) = data_dump[mode]
             print mode, unique_plans.keys()
             intensity_alpha = get_alpha_intensity(Ns, Bs, operational_alphas)
+            print intensity_alpha
             intensity_plans = get_plans_intensity(Ns, Bs, unique_plans, operational_alphas)
-            heatmap_plot(Ns, Bs, intensity_alpha, 'Nmax (Kpps)', 'Bmax (Kb)', 'data/heatmap_alpha_'+str(mode)+'.png')
-            heatmap_plot(Ns, Bs, intensity_plans, 'Nmax (Kpps)', 'Bmax (Kb)', 'data/heatmap_plans_'+str(mode)+'.png')
+            plot_fname1 = fname.split('.pickle')[0]+'heatmap_alpha_'+str(mode)+'.pdf'
+            plot_fname2 = fname.split('.pickle')[0]+'heatmap_plans_'+str(mode)+'.pdf'
+            print plot_fname1
+            heatmap_plot(Ns, Bs, intensity_alpha, 'Nmax (Kpps)', 'Bmax (Kb)', plot_fname1)
+            # heatmap_plot(Ns, Bs, intensity_plans, 'Nmax (Kpps)', 'Bmax (Kb)', plot_fname2)
 
 
 def plot_learning_curve():
@@ -117,7 +122,7 @@ def plot_learning_curve():
 def plot_performance_graphs():
     fname = 'data/performance_gains_2017-04-05 23:14:51.499819.pickle'
 
-    fname = 'data/performance_gains_2017-04-11 20:36:36.745956.pickle'
+    fname = 'data/performance_gains_2017-04-11 21:13:09.275776.pickle'
     with open(fname,'r') as f:
         data_dump = pickle.load(f)
         plot_ncost = {}
@@ -138,6 +143,8 @@ def plot_performance_graphs():
 def plot_update_graphs():
     fname = 'data/updates_2017-04-06 20:33:41.885498.pickle'
     fname = 'data/updates_2017-04-11 20:20:55.226767.pickle'
+
+
     with open(fname,'r') as f:
         data_dump = pickle.load(f)
         plot_updates = {}
@@ -147,12 +154,13 @@ def plot_update_graphs():
                 plot_updates[mode] += [x for x in data_dump[mode][(n_max, b_max)].values()]
         order = plot_updates.keys()
         order.sort()
+        plot_fname = fname.split('.pickle')[0]+'.pdf'
         plotCDF(plot_updates, order, 'Number of Updates', 'Fraction of Time', 'N/A', 0, 'data/plot_updates.pdf')
 
 
 
 if __name__ == '__main__':
-    # plot_heatmaps()
+    plot_heatmaps()
     #plot_learning_curve()
-    plot_performance_graphs()
+    # plot_performance_graphs()
     # plot_update_graphs()

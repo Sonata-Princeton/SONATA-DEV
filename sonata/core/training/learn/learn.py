@@ -9,9 +9,11 @@ from query_plan import QueryPlan, QueryPlanMulti
 import math
 
 debug = False
+# debug = True
 
 
 def get_min_error_path(G, H):
+    # debug = True
     unique_candidates = {}
     for ts in G:
         candidate_hash = H[ts].__repr__()
@@ -94,11 +96,11 @@ class Learn(object):
         G_new = {}
 
         # Update the graph for different operational modes
-        if self.mode == 6:
+        if self.mode == 5:
             # Config 6, best SONATA config, no change required
             G_new = self.G
 
-        elif self.mode == 5:
+        elif self.mode == 4:
             # mode where we only chose static refinement plan,
             # only keep edges that move one refinement level unit for every iteration
             for ts in self.G:
@@ -114,10 +116,14 @@ class Learn(object):
 
                 G_new[ts] = (v_new, e_new)
 
-        elif self.mode == 4 or self.mode == 3:
+        elif self.mode == 3:
             # mode where there is no refinement at all
             for ts in self.G:
                 v_orig, e_orig = self.G[ts]
+                p_max = 0
+                for r,p,l in v_orig:
+                    if p > p_max:
+                        p_max = p
                 v_new = v_orig
                 e_new = {}
                 for ((r1, p1, l1), (r2, p2, l2)) in e_orig:
@@ -125,7 +131,11 @@ class Learn(object):
                     # print edge, (l2 in [0, 1]) and (l1 in [0,1]) and r2 == GRAN_MAX-1
                     if (l2 in [0, 1]) and (l1 in [0, 1]) and r2 == GRAN_MAX - 1:
                         # print edge, (l2 in [0, 1]) and (l1 in [0,1])  and r2 == GRAN_MAX-1
-                        e_new[edge] = e_orig[edge]
+                        if l2 == 0:
+                            e_new[edge] = e_orig[edge]
+                        elif l2 > 0 and p2 == p_max:
+                            e_new[edge] = e_orig[edge]
+
                 # break
                 G_new[ts] = (v_new, e_new)
 
@@ -146,11 +156,11 @@ class Learn(object):
         h_T = {}
         e_V = {}
         candidates = {}
+        debug = False
         # debug = True
         for ts in self.G:
             # print "Searching best path for", ts
             g = self.G[ts]
-            # if ts == 1440289041:
             if True:
                 h_s[ts] = Search(g).final_plan
                 if h_s[ts] is not None:
@@ -161,6 +171,7 @@ class Learn(object):
                     # No candidate query plan for this system config
                     self.b_viol = True
                     self.n_viol = True
+                    if debug: print "No path"
 
                     # if self.b_viol or self.n_viol:
                     #     return 0
@@ -179,6 +190,7 @@ class Learn(object):
 
             e_V[fold] = math.sqrt(error_fold)
             candidates[fold] = (h_T[fold], e_V[fold])
+
         final_plan, rmse = min_error(candidates.values())
         final_plan_multi = QueryPlanMulti(self.G_orig, self.G, final_plan.path, rmse)
 

@@ -17,10 +17,10 @@ def parse_log_line(logline):
     return tuple(logline.split(","))
 
 def generate_graph(sc, query):
-    # TD_PATH = '/mnt/anon_all_flows_5min.csv'
+    TD_PATH = '/mnt/anon_all_flows_5min.csv'
     # TD_PATH = '/mnt/anon_all_flows_1min.csv'
     # TD_PATH = '/mnt/anon_all_flows_5min.csv/part-00500'
-    TD_PATH = '/mnt/anon_all_flows_1min.csv'
+    # TD_PATH = '/mnt/anon_all_flows_1min.csv'
     # TD_PATH = '/home/vagrant/dev/data/anon_all_flows_1min.csv/part-00496'
     # TD_PATH = '/home/vagrant/dev/data/anon_all_flows_1min.csv'
 
@@ -103,7 +103,7 @@ if __name__ == '__main__':
           # .filter(filter_keys=('proto',), func=('eq', 6))
           .map(keys=('dIP', 'dPort','sPort','sIP'), values=('nBytes',))
           .reduce(keys=('dIP', 'dPort','sPort','sIP',), func=('sum',))
-          .filter(filter_vals=('nBytes',), func=('geq', '99.9'))
+          .filter(filter_vals=('nBytes',), func=('geq', '99'))
           .map(keys=('dIP',))
           )
 
@@ -114,7 +114,7 @@ if __name__ == '__main__':
           .distinct(keys=('dIP', 'sIP', 'nBytes'))
           .map(keys=('dIP','nBytes'), map_values=('count',), func=('eq', 1,))
           .reduce(keys=('dIP','nBytes'), func=('sum',))
-          .filter(filter_vals=('count',), func=('geq', '99.9'))
+          .filter(filter_vals=('count',), func=('geq', '99'))
           .map(keys=('dIP',))
           )
 
@@ -125,7 +125,7 @@ if __name__ == '__main__':
           .distinct(keys=('dIP', 'sIP'))
           .map(keys=('dIP',), map_values=('count',), func=('eq', 1,))
           .reduce(keys=('dIP',), func=('sum',))
-          .filter(filter_vals=('count',), func=('geq', '99.9'))
+          .filter(filter_vals=('count',), func=('geq', '99'))
           .map(keys=('dIP',))
           )
 
@@ -136,7 +136,7 @@ if __name__ == '__main__':
           .distinct(keys=('dIP', 'sIP'))
           .map(keys=('dIP',), map_values=('count',), func=('eq', 1,))
           .reduce(keys=('dIP',), func=('sum',))
-          .filter(filter_vals=('count',), func=('geq', '99.9'))
+          .filter(filter_vals=('count',), func=('geq', '99'))
           .map(keys=('dIP',))
           )
 
@@ -146,12 +146,12 @@ if __name__ == '__main__':
           .distinct(keys=('dIP', 'sIP'))
           .map(keys=('sIP',), map_values=('count',), func=('eq', 1,))
           .reduce(keys=('sIP',), func=('sum',))
-          .filter(filter_vals=('count',), func=('geq', '99.9'))
+          .filter(filter_vals=('count',), func=('geq', '99.99'))
           .map(keys=('sIP',))
           )
 
-    queries = [q1, q2, q3, q4, q5, q6]
-    queries = [q4]
+    queries = [q1, q3, q4, q5, q6]
+    queries = [q6]
     sc = create_spark_context()
     for q in queries:
         generate_graph(sc, q)
