@@ -139,6 +139,8 @@ def update_edges(G, n_max, b_max, alpha, mode):
 
 def do_performance_gains_analysis(Ns, Bs):
     fname = 'data/hypothesis_graph_2017-03-29 03:29:50.290812.pickle'
+
+    fname = 'data/hypothesis_graph_4_2017-04-11 22:58:56.434682.pickle'
     with open(fname, 'r') as f:
         G = pickle.load(f)
         print "Loaded graph file", fname
@@ -155,7 +157,7 @@ def do_performance_gains_analysis(Ns, Bs):
             for n_max in Ns:
                 for b_max in Bs:
                     data_dump[mode][(n_max, b_max)] = {}
-                    td = 5
+                    td = 30
                     G_Train = get_training_graph(G, td)
                     G_Test = get_test_graph(G, td)
                     print len(G_Train.keys()), len(G_Test.keys())
@@ -173,15 +175,14 @@ def do_performance_gains_analysis(Ns, Bs):
                         n_cost = 0
                         b_cost = 0
                         for (e1, e2) in zip(trained_path[:-1], trained_path[1:])[:-1]:
-                            # print e1, e2, e[(e1.state, e2.state)], type((e[(e1.state, e2.state)][0]))
+                            print e1, e2, e[(e1.state, e2.state)]
                             if type(e[(e1.state, e2.state)][0]) == type(1):
                                 b_cost += e[(e1.state, e2.state)][0]
                             else:
                                 b_cost += min(e[(e1.state, e2.state)][0])
                             n_cost += e[(e1.state, e2.state)][1]
-
                         data_dump[mode][(n_max, b_max)][ts] = (n_cost, b_cost)
-        # print data_dump
+        print data_dump
         fname_dump = 'data/performance_gains_' + str(datetime.datetime.fromtimestamp(time.time())) + '.pickle'
         print "Dumping data to", fname_dump
         with open(fname_dump, 'w') as f:
@@ -191,4 +192,8 @@ def do_performance_gains_analysis(Ns, Bs):
 if __name__ == '__main__':
     Ns = [3100]
     Bs = [21000]
+
+    Ns = [100]
+    Bs = [20000]
+
     do_performance_gains_analysis(Ns, Bs)

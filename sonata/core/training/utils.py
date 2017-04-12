@@ -232,7 +232,7 @@ def update_counts(sc, queries, query_out, iter_qid, delta, bits_count, ctr):
         elif v1 is not None and v2 is None:
             out = (k,v1)
         else:
-            out = (k,((v1[0]+v2[1]), (v1[1]+v2[1])))
+            out = (k,((v1[0]+v2[0]), (v1[1]+v2[1])))
 
         return out
 

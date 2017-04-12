@@ -116,6 +116,8 @@ def plot_learning_curve():
 
 def plot_performance_graphs():
     fname = 'data/performance_gains_2017-04-05 23:14:51.499819.pickle'
+
+    fname = 'data/performance_gains_2017-04-11 20:36:36.745956.pickle'
     with open(fname,'r') as f:
         data_dump = pickle.load(f)
         plot_ncost = {}
@@ -128,12 +130,14 @@ def plot_performance_graphs():
                 plot_bcost[mode] += [float(x[1])/1000 for x in data_dump[mode][(n_max, b_max)].values()]
         order = plot_ncost.keys()
         order.sort()
+        print plot_bcost
         plotCDF(plot_ncost, order, 'N (K tuples/s)', 'Fraction of Time', 'N/A', 'N/A', 'data/plot_perf_ncost.pdf')
         plotCDF(plot_bcost, order, 'B (Kb)', 'Fraction of Time', 'N/A', 0, 'data/plot_perf_bcost.pdf')
 
 
 def plot_update_graphs():
     fname = 'data/updates_2017-04-06 20:33:41.885498.pickle'
+    fname = 'data/updates_2017-04-11 20:20:55.226767.pickle'
     with open(fname,'r') as f:
         data_dump = pickle.load(f)
         plot_updates = {}
@@ -148,7 +152,7 @@ def plot_update_graphs():
 
 
 if __name__ == '__main__':
-    plot_heatmaps()
+    # plot_heatmaps()
     #plot_learning_curve()
-    # plot_performance_graphs()
+    plot_performance_graphs()
     # plot_update_graphs()

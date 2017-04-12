@@ -140,6 +140,8 @@ def update_edges(G, n_max, b_max, alpha, mode):
 def get_updates(Ns, Bs):
     fname = 'data/hypothesis_graph_2017-03-29 03:29:50.290812.pickle'
     fname = 'data/data/hypothesis_graph_2_2017-04-09 14:51:55.766276.pickle'
+
+    fname = 'data/hypothesis_graph_4_2017-04-11 22:58:56.434682.pickle'
     with open(fname, 'r') as f:
         G = pickle.load(f)
         print "Loaded graph file", fname
@@ -192,4 +194,8 @@ def get_updates(Ns, Bs):
 if __name__ == '__main__':
     Ns = [31000]
     Bs = [210000]
+
+    Ns = [100]
+    Bs = [20000]
+
     get_updates(Ns, Bs)

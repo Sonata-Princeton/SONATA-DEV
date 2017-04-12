@@ -126,7 +126,7 @@ def process_chunk(G_Train, chunk, mode, q=None):
 def do_alpha_tuning(Ns, Bs, fname, mode):
     with open(fname, 'r') as f:
         G = pickle.load(f)
-        G_Train = get_training_graph(G, 10)
+        G_Train = get_training_graph(G, 40)
         v,e = G_Train[G_Train.keys()[0]]
         for ((r1,p1,l1),(r2,p2,l2)) in e:
             if r2 == 32 and l2 == 1:
@@ -224,12 +224,15 @@ if __name__ == '__main__':
     fname = 'data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle'
     fname = 'data/hypothesis_graph_5_2017-04-11 02:47:30.593298.pickle'
     fname ='data/hypothesis_graph_4_2017-04-11 02:42:58.077458.pickle'
+
+
+    fname = 'data/hypothesis_graph_4_2017-04-11 22:58:56.434682.pickle'
     Ns, Bs = get_system_configs(fname)
-    # Ns = [20000]
-    # Bs = [320000]
+    Ns = [100]
+    Bs = [20000]
 
     modes = [2, 3, 4, 5, 6]
-    modes = [6]
+    modes = [4,6]
     data_dump = {}
     for mode in modes:
         print mode

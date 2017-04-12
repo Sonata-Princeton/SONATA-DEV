@@ -140,6 +140,8 @@ def update_edges(G, n_max, b_max, alpha, mode):
 
 def do_bias_variance_analysis(Ns, Bs):
     fname = 'data/hypothesis_graph_2017-03-29 03:29:50.290812.pickle'
+
+    fname = 'data/hypothesis_graph_4_2017-04-11 22:58:56.434682.pickle'
     with open(fname, 'r') as f:
         G = pickle.load(f)
         print "Loaded graph file", fname
@@ -201,8 +203,12 @@ def do_bias_variance_analysis(Ns, Bs):
 
 
 if __name__ == '__main__':
-    Ns = [3100]
-    Bs = [21000]
+    # Ns = [3100]
+    # Bs = [21000]
+
+    Ns = [100]
+    Bs = [20000]
+
     do_bias_variance_analysis(Ns, Bs)
 
 
