@@ -84,6 +84,7 @@ class Refinement(object):
         self.query = query
         self.target = target
         self.ref_levels = range(0, GRAN_MAX, GRAN)
+        self.ref_levels = [0,4,32]
         self.refinement_key = list(get_refinement_keys(self.query))[0]
         self.qid_2_query = get_qid_2_query(self.query)
         print self.qid_2_query

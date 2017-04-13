@@ -115,6 +115,13 @@ class Counts(object):
                     # For each intermediate query for `ref_level_curr` in transit (ref_level_prev, ref_level_current),
                     # we filter out entries that do not satisfy the query at level `ref_level_prev`
                     for iter_qid_curr in self.refined_spark_queries[qid][ref_level_curr].keys():
+                        if iter_qid_curr == 0:
+                            print "#############################QID:0######################################"
+                            print "Prev level:", ref_level_prev, qid
+                            print "Curr level:", ref_level_curr, qid
+                            print "Prev level out", prev_level_out_mapped.take(5), prev_level_out_mapped.count()
+                            print "#############################END-QID:0######################################"
+                        print iter_qid_curr
                         #if iter_qid_curr > 0:
                         curr_level_out = query_out_refinement_level[qid][ref_level_curr][iter_qid_curr]
                         curr_query = self.refined_spark_queries[qid][ref_level_curr][iter_qid_curr]
@@ -122,8 +129,8 @@ class Counts(object):
                                                                       prev_level_out_mapped, ref_level_prev,
                                                                       refinement_key)
 
-                        if debug: print transit, iter_qid_curr, transit_query_string
-                        if debug: print curr_query, curr_level_out[:2], prev_level_out_mapped.collect()[:2]
+                        # if debug: print transit, iter_qid_curr, transit_query_string
+                        # if debug: print curr_query, curr_level_out[:2], prev_level_out_mapped.collect()[:2]
                         query_cost_transit[qid][transit][iter_qid_curr] = eval(transit_query_string)
 
                         # if debug: print transit, iter_qid_curr, query_cost_transit[qid][transit][iter_qid_curr][:2]
