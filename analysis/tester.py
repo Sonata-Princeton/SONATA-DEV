@@ -63,33 +63,52 @@ def generate_graph(sc, query):
         output_level_4 = (sc.textFile(flows_File)
                          .map(parse_log_line)
                          .map(lambda s: tuple([int(math.ceil(int(s[0])/T))]+(list(s[1:]))))
+                         .filter(lambda s: int(s[0])==1440289056)
                          #TODO: Remove from here
                          .map(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): ((ts, str(IPNetwork(str(str(dIP)+"/4")).network), dPort,sPort,sIP),1))
                          .reduceByKey(lambda x,y: x+y)
-                         .filter(lambda ((ts, dIP,dPort,sPort,sIP), count): count > 2)
+                         .filter(lambda ((ts, dIP,dPort,sPort,sIP), count): count >= 2)
                          .map(lambda ((ts, dIP,dPort,sPort,sIP), count): ((ts, dIP),count))
+                         .distinct()
                          .collect()
                          )
 
-
         print output_level_4
+        # output_level_4_code = (sc.textFile(flows_File)
+        #                        .map(parse_log_line)
+        #                        .map(lambda s: tuple([int(math.ceil(int(s[0])/T))]+(list(s[1:]))))
+        #                      .map(lambda ((ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac)): ((ts,sIP,sPort,str(IPNetwork(str(str(dIP)+"/4")).network),dPort,nBytes,proto,sMac,dMac)))
+        #                      .map(lambda ((ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac)): ((ts,dIP,dPort,sPort,sIP),(1)))
+        #                      .map(lambda s: (s[0], float(s[1])))
+        #                      .reduceByKey(lambda x,y: x+y)
+        #                      .filter(lambda ((ts,dIP,dPort,sPort,sIP),(count)): ((float(count)>=2.0 ))).collect())
+        #
+        # print output_level_4[:5], output_level_4_code[:5]
+        # print len(output_level_4), len(output_level_4_code)
+        output_level_32_total = (sc.textFile(flows_File)
+                           .map(parse_log_line)
+                           .map(lambda s: tuple([int(math.ceil(int(s[0])/T))]+(list(s[1:]))))
+                           .filter(lambda s: int(s[0])==1440289056)
+                           .map(lambda s: (s[0],1))
+                           .reduceByKey(lambda x,y: x+y)
+                           .collect()
+                           )
+        print output_level_32_total
 
-        output_level_32 = (sc.textFile(flows_File)
+        output_level_32_after_join = (sc.textFile(flows_File)
                           .map(parse_log_line)
                           .map(lambda s: tuple([int(math.ceil(int(s[0])/T))]+(list(s[1:]))))
-                          .map(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): ((ts, str(IPNetwork(str(str(dIP)+"/4")).network)), (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac)))
-                          #TODO: Remove from here
+                          .map(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac):
+                           ((ts, str(IPNetwork(str(str(dIP)+"/4")).network)), (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac)))
+                          # #TODO: Remove from here
                           .join(sc.parallelize(output_level_4))
                           .map(lambda s: s[1][0])
-                          # .map(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): ((ts, dIP, dPort,sPort,sIP),1))
-                          # .reduceByKey(lambda x,y: x+y)
-                          # .filter(lambda ((ts, dIP,dPort,sPort,sIP), count): count > 2)
-                          # .map(lambda ((ts, dIP,dPort,sPort,sIP), count): ((ts,dIP 1))
-                          # .reduceByKey(lambda x,y: x+y)
+                          .map(lambda s: (s[0],1))
+                          .reduceByKey(lambda x,y: x+y)
                           .collect()
                           )
 
-        print output_level_32, len(output_level_32)
+        print output_level_32_after_join
 
         # output_level_4_to_32 = (sc.parallelize(output_level_32)
         #     .map(lambda ((ts,dIP,dPort,sPort,sIP),(count)):((ts, str(IPNetwork(str(dIP)+"/"+str(4)).network)),((ts,dIP,dPort,sPort,sIP),(count))))

@@ -212,7 +212,7 @@ def generate_query_string_prev_level_out_mapped(qid, ref_level_prev, query_out_r
         values = ()
     prev_level_out_mapped_string = 'self.sc.parallelize(prev_level_out)'
     prev_level_out_mapped_string += '.map(lambda (('+",".join(keys)+ '),('+",".join(values)+')):'
-    prev_level_out_mapped_string += '((ts,'+str(reduction_key)+'), 1))'
+    prev_level_out_mapped_string += '((ts,'+str(reduction_key)+'), 1)).distinct()'
 
     return prev_level_out_mapped_string, prev_level_out
 
