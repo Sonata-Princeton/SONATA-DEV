@@ -115,12 +115,12 @@ class Counts(object):
                     # For each intermediate query for `ref_level_curr` in transit (ref_level_prev, ref_level_current),
                     # we filter out entries that do not satisfy the query at level `ref_level_prev`
                     for iter_qid_curr in self.refined_spark_queries[qid][ref_level_curr].keys():
-                        if iter_qid_curr == 0:
-                            print "#############################QID:0######################################"
-                            print "Prev level:", ref_level_prev, qid
-                            print "Curr level:", ref_level_curr, qid
-                            print "Prev level out", prev_level_out_mapped.take(5), prev_level_out_mapped.count()
-                            print "#############################END-QID:0######################################"
+
+                        print "#############################QID:0######################################"
+                        print "Prev level:", ref_level_prev
+                        print "Curr level:", ref_level_curr
+                        print "Prev level out", prev_level_out_mapped.take(5), prev_level_out_mapped.count()
+                        print "#############################END-QID:0######################################"
                         print iter_qid_curr
                         #if iter_qid_curr > 0:
                         curr_level_out = query_out_refinement_level[qid][ref_level_curr][iter_qid_curr]
