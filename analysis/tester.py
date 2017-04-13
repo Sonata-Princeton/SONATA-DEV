@@ -65,9 +65,9 @@ def generate_graph(sc, query):
                          .map(lambda s: tuple([int(math.ceil(int(s[0])/T))]+(list(s[1:]))))
                          .filter(lambda s: int(s[0])==1440289056)
                          #TODO: Remove from here
-                         .map(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): ((ts, str(IPNetwork(str(str(dIP)+"/4")).network), dPort,sPort,sIP),1))
+                         .map(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): ((ts, str(IPNetwork(str(str(dIP)+"/4")).network), dPort,sPort,sIP),int(nBytes)))
                          .reduceByKey(lambda x,y: x+y)
-                         .filter(lambda ((ts, dIP,dPort,sPort,sIP), count): count >= 2)
+                         .filter(lambda ((ts, dIP,dPort,sPort,sIP), count): count >= 4530)
                          .map(lambda ((ts, dIP,dPort,sPort,sIP), count): ((ts, dIP),1))
                          .distinct()
                          .collect()

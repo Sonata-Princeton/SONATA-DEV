@@ -21,8 +21,8 @@ def generate_graph(sc, query):
     # TD_PATH = '/mnt/anon_all_flows_1min.csv'
     # TD_PATH = '/mnt/anon_all_flows_5min.csv/part-00500'
     # TD_PATH = '/mnt/anon_all_flows_1min.csv'
-    TD_PATH = '/home/vagrant/dev/data/anon_all_flows_1min.csv/part-00496'
-    TD_PATH = '/mnt/anon_all_flows_1min.csv/part-00496'
+    # TD_PATH = '/home/vagrant/dev/data/anon_all_flows_1min.csv/part-00496'
+    # TD_PATH = '/mnt/anon_all_flows_1min.csv/part-00496'
     # TD_PATH = '/home/vagrant/dev/data/anon_all_flows_1min.csv'
 
     flows_File = TD_PATH
@@ -100,22 +100,22 @@ if __name__ == '__main__':
           .map(keys=('dIP',))
           )
     # heavy hitter detection
-    # q2 = (PacketStream(2)
-    #       # .filter(filter_keys=('proto',), func=('eq', 6))
-    #       .map(keys=('dIP', 'dPort','sPort','sIP'), values=('nBytes',))
-    #       .reduce(keys=('dIP', 'dPort','sPort','sIP',), func=('sum',))
-    #       .filter(filter_vals=('nBytes',), func=('geq', '99'))
-    #       .map(keys=('dIP',))
-    #       )
-
     q2 = (PacketStream(2)
           # .filter(filter_keys=('proto',), func=('eq', 6))
-          # .map(keys=('dIP', 'dPort','sPort','sIP'), values=('nBytes',))
-          .map(keys=('dIP', 'dPort','sPort','sIP'), map_values=('count',), func=('eq', 1,))
+          .map(keys=('dIP', 'dPort','sPort','sIP'), values=('nBytes',))
           .reduce(keys=('dIP', 'dPort','sPort','sIP',), func=('sum',))
-          .filter(filter_vals=('count',), func=('geq', '99'))
+          .filter(filter_vals=('nBytes',), func=('geq', '99'))
           .map(keys=('dIP',))
           )
+
+    # q2 = (PacketStream(2)
+    #       # .filter(filter_keys=('proto',), func=('eq', 6))
+    #       # .map(keys=('dIP', 'dPort','sPort','sIP'), values=('nBytes',))
+    #       .map(keys=('dIP', 'dPort','sPort','sIP'), map_values=('count',), func=('eq', 1,))
+    #       .reduce(keys=('dIP', 'dPort','sPort','sIP',), func=('sum',))
+    #       .filter(filter_vals=('count',), func=('geq', '99'))
+    #       .map(keys=('dIP',))
+    #       )
 
     # ssh brute forcing
     q3 = (PacketStream(3)
