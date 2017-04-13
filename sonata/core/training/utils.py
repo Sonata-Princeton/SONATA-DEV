@@ -281,7 +281,7 @@ def create_spark_context():
             .setAppName("SONATA-Training")
             .set("spark.executor.memory","6g")
             .set("spark.driver.memory","20g")
-            .set("spark.cores.max","16"))
+            .set("spark.cores.max","96"))
 
     sc = SparkContext(conf=conf)
     logger = sc._jvm.org.apache.log4j
