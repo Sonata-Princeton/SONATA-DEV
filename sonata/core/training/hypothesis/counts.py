@@ -133,7 +133,7 @@ class Counts(object):
                         # if debug: print curr_query, curr_level_out[:2], prev_level_out_mapped.collect()[:2]
                         query_cost_transit[qid][transit][iter_qid_curr] = eval(transit_query_string)
 
-                        # if debug: print transit, iter_qid_curr, query_cost_transit[qid][transit][iter_qid_curr][:2]
+                        if debug: print transit, iter_qid_curr, len(query_cost_transit[qid][transit][iter_qid_curr])
 
         self.query_out_transit = query_cost_transit
 
