@@ -68,7 +68,7 @@ def generate_graph(sc, query):
                          .map(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): ((ts, str(IPNetwork(str(str(dIP)+"/4")).network), dPort,sPort,sIP),1))
                          .reduceByKey(lambda x,y: x+y)
                          .filter(lambda ((ts, dIP,dPort,sPort,sIP), count): count >= 2)
-                         .map(lambda ((ts, dIP,dPort,sPort,sIP), count): ((ts, dIP),count))
+                         .map(lambda ((ts, dIP,dPort,sPort,sIP), count): ((ts, dIP),1))
                          .distinct()
                          .collect()
                          )
