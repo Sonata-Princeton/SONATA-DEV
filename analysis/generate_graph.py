@@ -21,7 +21,8 @@ def generate_graph(sc, query):
     # TD_PATH = '/mnt/anon_all_flows_1min.csv'
     # TD_PATH = '/mnt/anon_all_flows_5min.csv/part-00500'
     # TD_PATH = '/mnt/anon_all_flows_1min.csv'
-    # TD_PATH = '/home/vagrant/dev/data/anon_all_flows_1min.csv/part-00496'
+    TD_PATH = '/home/vagrant/dev/data/anon_all_flows_1min.csv/part-00496'
+    TD_PATH = '/mnt/anon_all_flows_1min.csv/part-00496'
     # TD_PATH = '/home/vagrant/dev/data/anon_all_flows_1min.csv'
 
     flows_File = TD_PATH
@@ -36,7 +37,7 @@ def generate_graph(sc, query):
     elif query.qid == 2:
         training_data = (sc.textFile(flows_File)
                          .map(parse_log_line)
-                         .map(lambda s:tuple([int(math.ceil(int(s[0])/T))]+(list(s[1:]))))
+                         .map(lambda s: tuple([int(math.ceil(int(s[0])/T))]+(list(s[1:]))))
                          )
 
     if query.qid == 3:
@@ -151,7 +152,7 @@ if __name__ == '__main__':
           )
 
     queries = [q1, q3, q4, q5, q6]
-    queries = [q6]
+    queries = [q2]
     sc = create_spark_context()
     for q in queries:
         generate_graph(sc, q)

@@ -45,9 +45,12 @@ def heatmap_plot(X, Y, data, xlabel, ylabel, plot_name):
 def get_alpha_intensity(Ns, Bs, operational_alphas):
     intensity = []
     ctr = 0
-    for n in Ns:
+    for b in Bs:
+
         intensity.append([])
-        for b in Bs:
+        for n in Ns:
+            if n < 3000 and operational_alphas[(n, b)] > 0:
+                print n,b, operational_alphas[(n, b)]
             intensity[ctr].append(operational_alphas[(n, b)])
         ctr += 1
 
@@ -67,7 +70,7 @@ def get_plans_intensity(Ns, Bs, unique_plans, operational_alphas):
                         x = 1 * (1 + unique_plans.keys().index(plan))
                     else:
                         x = 0
-                    print n, b, plan, x
+                    # print n, b, plan, x
                     break
             intensity[ctr].append(x)
         ctr += 1
@@ -81,19 +84,21 @@ def plot_heatmaps():
     fname = 'data/alpha_tuning_dump_2017-03-30 17:17:07.283793.pickle'
     fname = 'data/alpha_tuning_dump_6_2017-04-09 15:55:47.505726.pickle'
     fname = 'data/alpha_tuning_dump_6_2017-04-12 15:54:52.662756.pickle'
+    fname = 'data/alpha_tuning_dump_6_2017-04-12 21:19:28.906466.pickle'
     with open(fname, 'r') as f:
         data_dump = pickle.load(f)
         for mode in data_dump:
-            (Ns, Bs, operational_alphas, unique_plans) = data_dump[mode]
-            print mode, unique_plans.keys()
-            intensity_alpha = get_alpha_intensity(Ns, Bs, operational_alphas)
-            print intensity_alpha
-            intensity_plans = get_plans_intensity(Ns, Bs, unique_plans, operational_alphas)
-            plot_fname1 = fname.split('.pickle')[0]+'heatmap_alpha_'+str(mode)+'.pdf'
-            plot_fname2 = fname.split('.pickle')[0]+'heatmap_plans_'+str(mode)+'.pdf'
-            print plot_fname1
-            heatmap_plot(Ns, Bs, intensity_alpha, 'Nmax (Kpps)', 'Bmax (Kb)', plot_fname1)
-            # heatmap_plot(Ns, Bs, intensity_plans, 'Nmax (Kpps)', 'Bmax (Kb)', plot_fname2)
+            if mode in [2,3,5]:
+                (Ns, Bs, operational_alphas, unique_plans) = data_dump[mode]
+                print mode, unique_plans.keys()
+                intensity_alpha = get_alpha_intensity(Ns, Bs[:-1], operational_alphas)
+                print intensity_alpha
+                intensity_plans = get_plans_intensity(Ns, Bs[:-1], unique_plans, operational_alphas)
+                plot_fname1 = fname.split('.pickle')[0]+'_heatmap_alpha_'+str(mode)+'.pdf'
+                plot_fname2 = fname.split('.pickle')[0]+'_heatmap_plans_'+str(mode)+'.pdf'
+                print plot_fname1
+                heatmap_plot(Ns, Bs[:-1], intensity_alpha, 'Nmax (Kpps)', 'Bmax (Kb)', plot_fname1)
+                # heatmap_plot(Ns, Bs, intensity_plans, 'Nmax (Kpps)', 'Bmax (Kb)', plot_fname2)
 
 
 def plot_learning_curve():
@@ -123,21 +128,33 @@ def plot_performance_graphs():
     fname = 'data/performance_gains_2017-04-05 23:14:51.499819.pickle'
 
     fname = 'data/performance_gains_2017-04-11 21:13:09.275776.pickle'
+    fname = 'data/hypothesis_graph_6_2017-04-12 15:30:31.466226_performance_gains.pickle'
     with open(fname,'r') as f:
         data_dump = pickle.load(f)
         plot_ncost = {}
         plot_bcost = {}
         for mode in data_dump:
-            plot_ncost[mode] = []
-            plot_bcost[mode] = []
+            if mode in [3,5]:
+                plot_bcost[mode] = []
+            if mode in [2,5]:
+                plot_ncost[mode] = []
+
             for (n_max, b_max) in data_dump[mode]:
-                plot_ncost[mode] += [float(x[0])/1000 for x in data_dump[mode][(n_max, b_max)].values()]
-                plot_bcost[mode] += [float(x[1])/1000 for x in data_dump[mode][(n_max, b_max)].values()]
-        order = plot_ncost.keys()
-        order.sort()
-        print plot_bcost
-        plotCDF(plot_ncost, order, 'N (K tuples/s)', 'Fraction of Time', 'N/A', 'N/A', 'data/plot_perf_ncost.pdf')
-        plotCDF(plot_bcost, order, 'B (Kb)', 'Fraction of Time', 'N/A', 0, 'data/plot_perf_bcost.pdf')
+                if mode in [3,5]:
+                    plot_bcost[mode] += [float(x[1])/1000 for x in data_dump[mode][(n_max, b_max)].values()]
+                if mode in [2,5]:
+                    plot_ncost[mode] += [float(x[0]) for x in data_dump[mode][(n_max, b_max)].values()]
+        order_n = plot_ncost.keys()
+        order_n.sort()
+        order_b = plot_bcost.keys()
+        order_b.sort()
+        print np.median(plot_bcost[3]), np.median(plot_bcost[5])
+        print 100*(np.median(plot_bcost[3])-np.median(plot_bcost[5]))/np.median(plot_bcost[3])
+        plot_fname_ncost = fname.split('.pickle')[0]+'_ncost.pdf'
+        plot_fname_bcost = fname.split('.pickle')[0]+'_bcost.pdf'
+        print plot_fname_ncost, plot_fname_bcost
+        plotCDF(plot_ncost, order_n, 'N (tuples/s)', 'Fraction of Intervals', 'N/A', 'N/A', plot_fname_ncost)
+        plotCDF(plot_bcost, order_b, 'B (Kb)', 'Fraction of Intervals', 'N/A', 'N/A', plot_fname_bcost)
 
 
 def plot_update_graphs():

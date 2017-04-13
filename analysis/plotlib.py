@@ -56,6 +56,8 @@ def plotCDF(data, order, xlabel, ylabel, Xmax, Xmin, fname, labels=None, isLog=F
                   ncol=5, fancybox=True, shadow=False)
     pl.xlabel(xlabel)
     pl.ylabel(ylabel)
+    pl.locator_params(nticks=6)
+    ax.locator_params(nbins=6)
     if isLog:
         pl.xscale('log')
     if Xmin != 'N/A':
