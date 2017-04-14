@@ -15,36 +15,23 @@ HEADER_SIZE = {'sIP': 32, 'dIP': 32, 'sPort': 16, 'dPort': 16,
 
 
 class Emitter(object):
-    def __init__(self, conf, queries):
+    def __init__(self, interface, log_file):
         # Interfaces
         print "********* EMITTER INITIALIZED *********"
-        self.spark_stream_address = conf['spark_stream_address']
-        self.spark_stream_port = conf['spark_stream_port']
-        self.sniff_interface = conf['sniff_interface']
+        self.sniff_interface = interface
 
-        self.listener = Listener((self.spark_stream_address, self.spark_stream_port))
-        self.spark_conn = None
-
-        # queries has the following format
-        # queries = dict with qid as key
-        # -> per qid we have again a dict with the following key, values:
-        #       - key: parse_payload, value: boolean
-        #       - key: headers, values: list of tuples with (field name, field size)
-        self.queries = queries
         self.qid_struct = struct.Struct('>H')
 
         # create a logger for the object
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)
         # create file handler which logs messages
-        self.fh = logging.FileHandler(conf['log_file'])
+        self.fh = logging.FileHandler(log_file)
         self.fh.setLevel(logging.INFO)
         self.logger.addHandler(self.fh)
 
     def start(self):
         while True:
-            print "Waiting for socket"
-            self.spark_conn = self.listener.accept()
             print "Now start sniffing the packets from switch"
             self.sniff_packets()
 
@@ -52,7 +39,19 @@ class Emitter(object):
         self.spark_conn.send_bytes(data)
 
     def sniff_packets(self):
-        sniff(iface=self.sniff_interface, prn=lambda x: self.process_packet(x))
+        # sniff(iface=self.sniff_interface, prn=lambda x: self.process_packet(x))
+        sniff(iface=self.sniff_interface, prn=lambda x: self.process_dns(x))
+
+    def process_dns(self, raw_packet):
+        print "FUNC"
+
+        # if IP in raw_packet:
+        #     print "IP"
+        #     ip_dst = raw_packet[IP].dst
+
+        if raw_packet.haslayer(DNS) and raw_packet.getlayer(DNS).qr == 0:
+            print "DNS"
+            print "DST: ", "(", raw_packet.getlayer(DNS).qd.qname, ")"
 
     def process_packet(self, raw_packet):
         '''
@@ -113,4 +112,5 @@ if __name__ == '__main__':
     emitter_conf = {'spark_stream_address': 'localhost',
                     'spark_stream_port': 8989,
                     'sniff_interface': "out-veth-2"}
-    Emitter(emitter_conf)
+    em = Emitter("out-veth-2", "blah.log")
+    em.start()
