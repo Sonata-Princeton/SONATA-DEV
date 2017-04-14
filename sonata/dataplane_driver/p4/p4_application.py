@@ -7,7 +7,7 @@ from p4_primitives import NoOp, CloneIngressPktToEgress, AddHeader, ModifyField
 from p4_query import P4Query
 from sonata.dataplane_driver.utils import get_logger
 
-SERVER = True
+SERVER = False
 ORIGINAL_PACKET = False
 
 if SERVER:

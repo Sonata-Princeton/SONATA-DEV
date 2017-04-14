@@ -99,7 +99,7 @@ class Emitter(object):
 
             output_tuple = ['k']+[str(qid)]+output_tuple
             send_tuple = ",".join([str(x) for x in output_tuple])
-
+            if count > 1: print send_tuple
             # TODO removed this packet is unrelated stuff - maybe it is necessary
             self.send_data(send_tuple + "\n")
 

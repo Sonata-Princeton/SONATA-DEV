@@ -13,7 +13,7 @@ batch_interval = 0.5
 window_length = 1
 sliding_interval = 1
 
-SERVER = True
+SERVER = False
 P4_TYPE = 'p4'
 
 if SERVER:
@@ -66,7 +66,7 @@ if __name__ == '__main__':
           .distinct(keys=('dIP', 'sIP'))
           .map(keys=('dIP',), map_values=('count',), func=('eq', 1,))
           .reduce(keys=('dIP',), func=('sum',))
-          .filter(filter_vals=('count',), func=('geq', 345))
+          .filter(filter_vals=('count',), func=('geq', 50))
           .map(keys=('dIP',))
           )
 
