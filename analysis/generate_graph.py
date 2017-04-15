@@ -28,7 +28,7 @@ def generate_graph(sc, query):
     # TD_PATH = '/home/vagrant/dev/data/anon_all_flows_1min.csv'
 
     flows_File = TD_PATH
-    T = 1
+    T = 10
     if query.qid == 1:
         training_data = (sc.textFile(flows_File)
                          .map(parse_log_line)
