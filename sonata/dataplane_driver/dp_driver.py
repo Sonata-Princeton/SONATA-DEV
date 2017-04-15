@@ -162,7 +162,7 @@ class DataplaneDriver(object):
 
 def main():
 
-    dpd = DataplaneDriver(DP_DRIVER_CONF, BASEPATH + SONATA +"/sonata/tests/lines_of_code/q2/results/dp_driver.log")
+    dpd = DataplaneDriver(DP_DRIVER_CONF, BASEPATH + SONATA +"/sonata/tests/macro_bench/results/dp_driver.log")
     p4_type = P4_TYPE
     compiled_srcs = ''
 
@@ -173,11 +173,11 @@ def main():
         'em_conf': {'spark_stream_address': SPARK_ADDRESS,
                     'spark_stream_port': 8989,
                     'sniff_interface': SNIFF_INTERFACE,
-                    'log_file': BASEPATH + SONATA +"/sonata/tests/lines_of_code/q2/results/emitter.log"
+                    'log_file': BASEPATH + SONATA +"/sonata/tests/macro_bench/results/emitter.log"
         },
 
         'switch_conf': {
-            'compiled_srcs': BASEPATH + SONATA +'/sonata/tests/lines_of_code/q2/compiled_srcs/',
+            'compiled_srcs': BASEPATH + SONATA +'/sonata/tests/macro_bench/compiled_srcs/',
             'json_p4_compiled': 'compiled.json',
             'p4_compiled': 'compiled.p4',
             'p4c_bm_script': BASEPATH + 'p4c-bmv2/p4c_bm/__main__.py',
