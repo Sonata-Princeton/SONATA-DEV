@@ -19,7 +19,8 @@ def get_violation_flags(G_Trains, learn, n_max, b_max, alpha):
     total_b = {}
 
     for fname in learn:
-        # print fname, learn[fname].final_plan.ncosts, learn[fname].final_plan.bcosts
+        print fname, learn[fname].final_plan
+        # print learn[fname].final_plan.ncosts, learn[fname].final_plan.bcosts
         for ts in G_Trains[fname]:
             if ts not in total_n:
                 total_n[ts] = 0
@@ -276,21 +277,27 @@ if __name__ == '__main__':
     # fname = 'data/hypothesis_graph_2_2017-04-09 14:51:55.766276.pickle'
     # fname1 = 'data/hypothesis_graph_2_2017-04-09 14:51:55.766276.pickle'
     # fname2 = 'data/hypothesis_graph_6_2017-04-09 15:07:16.014979.pickle'
-    fnames = [fname1, fname2]
-    Ns, Bs = get_system_configs(fnames)
-    Ns = [4000]
-    Bs = [40000]
 
-    modes = [2, 3, 4, 5, 6]
-    modes = [5]
+    fname1 = 'data/hypothesis_graph_1_2017-04-12 11:50:20.246240.pickle'
+    fname6 = 'data/hypothesis_graph_6_2017-04-12 12:36:50.995811.pickle'
+
+    fname6 = 'data/hypothesis_graph_6_2017-04-12 15:30:31.466226.pickle'
+    fname1 = 'data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle'
+    fnames = [fname1, fname6]
+    Ns, Bs = get_system_configs(fnames)
+    # Ns = [1500]
+    # Bs = [40000]
+
+    modes = [2, 3, 4, 5]
+    # modes = [5]
     data_dump = {}
     for mode in modes:
         print mode
         operational_alphas, unique_plans = do_alpha_tuning(Ns, Bs, fnames, mode)
         data_dump[mode] = (Ns, Bs, operational_alphas, unique_plans)
 
-    qid = 6
-    fname = 'data/alpha_tuning_dump_'+str(qid)+'_'+ str(datetime.datetime.fromtimestamp(time.time()))+ '.pickle'
+    fname = 'data/alpha_tuning_dump_multi_'+str(datetime.datetime.fromtimestamp(time.time()))+ '.pickle'
+
     print "Dumping data to", fname
-    # with open(fname, 'w') as f:
-    #     pickle.dump(data_dump, f)
+    with open(fname, 'w') as f:
+        pickle.dump(data_dump, f)
