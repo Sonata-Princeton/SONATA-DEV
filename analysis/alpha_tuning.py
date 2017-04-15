@@ -282,14 +282,16 @@ if __name__ == '__main__':
 
 
     # fname = 'data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle'
+
+    fname = '../data/hypothesis_graph_1_2017-04-15 17:28:01.037231.pickle'
     qid = fname.split('_')[2]
     print qid
     Ns, Bs = get_system_configs(fname)
-    Ns = [10]
-    Bs = [1032]
+    # Ns = [100000]
+    # Bs = [500000]
 
     modes = [2, 3, 4, 5]
-    modes = [5]
+    # modes = [5]
     data_dump = {}
     for mode in modes:
         print mode
@@ -299,5 +301,5 @@ if __name__ == '__main__':
 
     fname = 'data/alpha_tuning_dump_' +str(qid)+'_'+ str(datetime.datetime.fromtimestamp(time.time())) + '.pickle'
     print "Dumping data to", fname
-    # with open(fname, 'w') as f:
-    #     pickle.dump(data_dump, f)
+    with open(fname, 'w') as f:
+        pickle.dump(data_dump, f)
