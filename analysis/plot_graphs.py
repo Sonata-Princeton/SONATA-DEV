@@ -60,9 +60,9 @@ def get_alpha_intensity(Ns, Bs, operational_alphas):
 def get_plans_intensity(Ns, Bs, unique_plans, operational_alphas):
     intensity = []
     ctr = 0
-    for n in Ns:
+    for b in Bs:
         intensity.append([])
-        for b in Bs:
+        for n in Ns:
             x = -1
             for plan in unique_plans:
                 if (n, b) in unique_plans[plan]:
@@ -85,10 +85,13 @@ def plot_heatmaps():
     fname = 'data/alpha_tuning_dump_6_2017-04-09 15:55:47.505726.pickle'
     fname = 'data/alpha_tuning_dump_6_2017-04-12 15:54:52.662756.pickle'
     fname = 'data/alpha_tuning_dump_6_2017-04-12 21:19:28.906466.pickle'
+
+    # Query 1 on caida 5mins and 10 seconds spark intervals
+    fname = 'data/alpha_tuning_dump_1_2017-04-15 20:04:56.331188.pickle'
     with open(fname, 'r') as f:
         data_dump = pickle.load(f)
         for mode in data_dump:
-            if mode in [2,3,5]:
+            if mode in [2,3,4,5]:
                 (Ns, Bs, operational_alphas, unique_plans) = data_dump[mode]
                 print mode, unique_plans.keys()
                 intensity_alpha = get_alpha_intensity(Ns, Bs[:-1], operational_alphas)
@@ -98,7 +101,7 @@ def plot_heatmaps():
                 plot_fname2 = fname.split('.pickle')[0]+'_heatmap_plans_'+str(mode)+'.pdf'
                 print plot_fname1
                 heatmap_plot(Ns, Bs[:-1], intensity_alpha, 'Nmax (Kpps)', 'Bmax (Kb)', plot_fname1)
-                # heatmap_plot(Ns, Bs, intensity_plans, 'Nmax (Kpps)', 'Bmax (Kb)', plot_fname2)
+                heatmap_plot(Ns, Bs, intensity_plans, 'Nmax (Kpps)', 'Bmax (Kb)', plot_fname2)
 
 
 def plot_learning_curve():
@@ -129,6 +132,8 @@ def plot_performance_graphs():
 
     fname = 'data/performance_gains_2017-04-11 21:13:09.275776.pickle'
     fname = 'data/hypothesis_graph_6_2017-04-12 15:30:31.466226_performance_gains.pickle'
+
+    fname = 'data/hypothesis_graph_1_2017-04-15 17:28:01.037231_performance_gains.pickle'
     with open(fname,'r') as f:
         data_dump = pickle.load(f)
         plot_ncost = {}
@@ -177,7 +182,7 @@ def plot_update_graphs():
 
 
 if __name__ == '__main__':
-    plot_heatmaps()
+    # plot_heatmaps()
     #plot_learning_curve()
-    # plot_performance_graphs()
+    plot_performance_graphs()
     # plot_update_graphs()
