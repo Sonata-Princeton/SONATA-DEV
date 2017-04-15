@@ -12,7 +12,7 @@ INTERFACE = 'out-veth-1'
 def load_data():
     print "load_data called"
     data = {}
-    fname = "/home/arp/SONATA-DEV/data/udp_traffic_equinix-chicago.20160121-130000.UTC.csv"
+    fname = "/home/vagrant/dev/sonata/tests/macro_bench/campus_dns_5mins.csv"
     with open(fname, 'r') as f:
         for line in f:
             tmp = line.split("\n")[0].split(",")
@@ -57,8 +57,8 @@ def create_attack_traffic(number_of_packets):
 def compose_packet(pkt_tuple):
     random_number = random.randint(1, 10000)
     payload_string = "SONATA"+str(random_number)
-    (sIP, sPort, dIP, dPort, nBytes, proto, sMac, dMac) = pkt_tuple
-    p = Ether() / IP(dst=dIP, src=sIP) / TCP(dport=int(dPort), sport=int(sPort)) / payload_string
+    (sIP, sPort, dIP, dPort, proto, sMac, dMac) = pkt_tuple
+    p = Ether() / IP(dst=dIP, src=sIP) / TCP() / payload_string
     return p
 
 
@@ -132,7 +132,7 @@ def send_packets(use_composed = True):
     composed_packets = {}
     attack_packets = {}
     if use_composed:
-        with open("/home/arp/SONATA-DEV/data/composed_packets.pickle",'r') as f:
+        with open("/home/vagrant/dev/data/composed_packets.pickle",'r') as f:
             composed_packets = pickle.load(f)
             #print composed_packets
     else:
@@ -141,13 +141,17 @@ def send_packets(use_composed = True):
         for ts in ordered_ts:
             composed_packets[ts] = []
             attack_packets[ts] = []
+            pkt_tuples = ipfix_data[ts] #[:1000]
+            print "Packets at ",ts, ":", len(pkt_tuples)
 
-            pkt_tuples = ipfix_data[ts][:1000]
             packet_count[ts] = len(ipfix_data[ts])
+            
             if ctr >= 10 and ctr <= 30:
-                attack_packets[ts].extend(create_attack_traffic())
+                attack_packets[ts].extend(create_attack_traffic(200))
+
             for pkt_tuple in pkt_tuples:
-                composed_packets[ts].append(compose_packet(pkt_tuple[2:]))
+
+                composed_packets[ts].append(compose_packet(pkt_tuple[1:]))
             ctr += 1
 
         with open("composed_packets.pickle",'w') as f:
@@ -183,8 +187,8 @@ def send_packets(use_composed = True):
             time.sleep(sleep_time)
         ctr += 1
 
-#send_packets(False)
-send_created_traffic()
+send_packets(False)
+# send_created_traffic()
 """
 print "Sending dummy packets: ...."
 send_dummy_packets(0)
