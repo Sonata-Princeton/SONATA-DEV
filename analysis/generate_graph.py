@@ -162,7 +162,7 @@ if __name__ == '__main__':
           .map(keys=('sIP',))
           )
 
-    queries = [q3, q4, q6]
+    queries = [q6]
     # queries = [q2]
     sc = create_spark_context()
     for q in queries:
