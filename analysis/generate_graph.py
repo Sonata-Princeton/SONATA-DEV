@@ -18,6 +18,8 @@ def parse_log_line(logline):
 
 def generate_graph(sc, query):
     TD_PATH = '/mnt/anon_all_flows_5min.csv'
+    TD_PATH = '/mnt/caida_5min.csv'
+
     # TD_PATH = '/mnt/anon_all_flows_1min.csv'
     # TD_PATH = '/mnt/anon_all_flows_5min.csv/part-00500'
     # TD_PATH = '/mnt/anon_all_flows_1min.csv'
@@ -160,8 +162,8 @@ if __name__ == '__main__':
           .map(keys=('sIP',))
           )
 
-    queries = [q1, q3, q4, q5, q6]
-    queries = [q2]
+    queries = [q1]#, q3, q4, q5, q6]
+    # queries = [q2]
     sc = create_spark_context()
     for q in queries:
         generate_graph(sc, q)
