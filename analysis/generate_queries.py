@@ -85,6 +85,7 @@ if __name__ == '__main__':
           .filter(filter_vals=('count',), func=('geq', '99'))
           .map(keys=('dIP',))
           )
+
     # DNS TTL change detection
     q5 = (PacketStream(5)
           .filter(filter_keys=('sPort',), func=('eq', 53))

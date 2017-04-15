@@ -9,7 +9,7 @@ from multiprocessing import Process, Queue
 from sonata.core.training.learn.learn import Learn
 from analysis.utils import chunkify, get_training_graph
 
-TRAIN_DURATION = 5
+TRAIN_DURATION = 10
 
 
 def get_violation_flags(G_Trains, learn, n_max, b_max, alpha):
@@ -257,8 +257,8 @@ def get_system_configs(fnames):
     print "Nmax:", total_nmax, "Bmax:", total_bmax
     print nStep, bStep
 
-    Ns = range(1, int(11*nStep + 1), int(nStep))
-    Bs = range(1, int(11*bStep + 1), int(bStep))
+    Ns = range(int(nStep), 20*int(nStep), int(nStep))
+    Bs = range(int(nStep), 20*int(bStep), int(bStep))
     print "Ns:", Ns, "Bs:", Bs
     return Ns, Bs
 
@@ -282,7 +282,7 @@ if __name__ == '__main__':
     Bs = [40000]
 
     modes = [2, 3, 4, 5, 6]
-    modes = [6]
+    modes = [5]
     data_dump = {}
     for mode in modes:
         print mode
