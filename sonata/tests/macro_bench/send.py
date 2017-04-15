@@ -5,6 +5,7 @@ import glob
 import math, time
 import pickle
 from multiprocessing.connection import Listener
+import math
 
 SERVER = True
 
@@ -71,17 +72,27 @@ def send_campus_data():
     DURATION = 60
     T = len(packets)/DURATION
 
+    packets_based_on_ts = {}
+
+    for packet in packets:
+        ts = math.ceil(packet.time)
+        if ts not in packets_based_on_ts:
+            packets_based_on_ts[ts] = []
+        packets_based_on_ts[ts].append(packet)
+
+
+    timestamps = packets_based_on_ts.keys()
+    timestamps.sort()
+
     ctr = 0
-    for ts in range(0,60):
-        packets_for_ts = []
+    for ts in timestamps:
+        print "Timstamp: ",ts
         start = time.time()
-        print "For TS: ", ts, "Range: ", ctr, ":", ctr+T
-        packets_for_ts = packets[ctr:ctr+T]
-        if ts > 20 and ts < 31:
+        if ctr > 20 and ctr < 31:
             # 304 packets on server
-            packets_for_ts.extend(create_attack_traffic(304))
-        sendp(packets_for_ts, iface = INTERFACE, verbose=0)
-        ctr += T
+            packets_based_on_ts[ts].extend(create_attack_traffic(304))
+        sendp(packets_based_on_ts[ts], iface = INTERFACE, verbose=0)
+        ctr += 1
         total = time.time()-start
         sleep_time = 1-total
         print sleep_time
