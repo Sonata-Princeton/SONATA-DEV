@@ -84,6 +84,8 @@ def send_campus_data():
         ctr += T
         total = time.time()-start
         sleep_time = 1-total
+        print sleep_time
+
         if sleep_time > 0:
             time.sleep(sleep_time)
 

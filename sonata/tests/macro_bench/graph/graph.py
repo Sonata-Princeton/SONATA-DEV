@@ -41,7 +41,7 @@ def plot_line(xlab, data, xlab2, data2, XLabel, YLabel, fname):
     plot_name = fname+'.png'
     pl.savefig(plot_name)
 
-f = open('results/emitter.log')
+f = open('../results/emitter.log')
 csv_f = csv.reader(f)
 
 ts_packet_count = {}
@@ -85,4 +85,4 @@ print data, len(ordered_ts)
 plot_line(len(data), data, len(data_original[1:]), data_original[1:],
           'Time (seconds)',
           'Number of Packets',
-          'graph/macro_n_packets')
+          '../graph/macro_n_packets')
