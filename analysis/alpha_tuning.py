@@ -283,7 +283,11 @@ if __name__ == '__main__':
 
     # fname = 'data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle'
 
+    # Query 1: Caida 5mins for 10 seconds spark
     fname = 'data/hypothesis_graph_1_2017-04-15 17:28:01.037231.pickle'
+
+    # Query 3: Caida 5mins for 10 seconds spark
+    fname = 'data/hypothesis_graph_3_2017-04-15\ 20\:40\:06.382573.pickle'
     qid = fname.split('_')[2]
     print qid
     Ns, Bs = get_system_configs(fname)
