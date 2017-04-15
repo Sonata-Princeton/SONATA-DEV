@@ -8,7 +8,7 @@ from multiprocessing.connection import Client
 import pickle
 from sonata.core.partition import get_dataplane_query
 
-SERVER = False
+SERVER = True
 
 if SERVER:
     BASE_PATH = '/home/sonata/SONATA-DEV/sonata/tests/micro_seq_recirculate/results/'

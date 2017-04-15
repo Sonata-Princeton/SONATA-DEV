@@ -1,7 +1,7 @@
 # Training related parameters
 ALPHA = 0.5
 BETA = 0.5
-GRAN = 16
+GRAN = 4
 GRAN_MAX = 33
 
 # Fold size for learning
