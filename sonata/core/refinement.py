@@ -31,6 +31,7 @@ def get_thresh(training_data, spark_query, spread, refinement_level, satisfied_s
         if thresh == 1:
             thresh += 1
         #thresh = 5
+        thresh = 40052290.8561
         print "Thresh:", thresh, refinement_level
 
     else:
@@ -56,6 +57,7 @@ def get_thresh(training_data, spark_query, spread, refinement_level, satisfied_s
                 "95 %", np.percentile(data, 95), "99 %", np.percentile(data, 99), "99.9 %", np.percentile(data, 99.9), \
                 "99.99 %", np.percentile(data, 99.99), "99.999 %", np.percentile(data, 99.999)
         print "Thresh:", thresh, refinement_level
+
 
     return thresh
 
@@ -208,6 +210,8 @@ class Refinement(object):
 
                     thresh = get_thresh(training_data, prev_spark_query, spread, ref_level, satisfied_spark_query,
                                         self.ref_levels)
+
+                    # thresh = 40052290.8561
 
                     # Update all the following intermediate Sonata Queries
                     for tmp_qid in qids_after_this_filter:
