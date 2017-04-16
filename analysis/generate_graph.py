@@ -40,6 +40,7 @@ def generate_graph(sc, query):
         training_data = (sc.textFile(flows_File)
                          .map(parse_log_line)
                          .map(lambda s: tuple([int(math.ceil(int(s[0])/T))]+(list(s[1:]))))
+                         .filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(proto) == '17')
                          )
 
     if query.qid == 3:
@@ -163,7 +164,7 @@ if __name__ == '__main__':
           )
 
     queries = [q6]
-    # queries = [q2]
+    queries = [q2]
     sc = create_spark_context()
     for q in queries:
         generate_graph(sc, q)
