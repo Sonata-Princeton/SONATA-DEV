@@ -46,4 +46,4 @@ The graph is generated in folder `sonata/tests/macro_bench/graph/macro_n_packets
 
 The Graph generated looks like below:
 
-![MacroBenchmarking](https://github.com/Sonata-Princeton/SONATA-DEV/blob/master/sonata/tests/macro_bench/graph/macro_n_packets.png)
+![MacroBenchmarking](https://github.com/Sonata-Princeton/SONATA-DEV/blob/micro/sonata/tests/macro_bench/graph/macro_n_packets.png)
