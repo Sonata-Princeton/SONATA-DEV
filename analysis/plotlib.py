@@ -6,14 +6,16 @@ import matplotlib
 
 matplotlib.rc('text', usetex=True)
 matplotlib.use('Agg')
-# from matplotlib import rc_file
-# rc_file('/Users/glex/Documents/WAP/dev/analysis/matplotlibrc')
+from matplotlib import rc_file
+from matplotlib import rc
+rc_file('/Users/arpit/Documents/SONATA-DEV/analysis/matplotlibrc')
 import matplotlib.pyplot as plt
 # from netaddr import *
 from scipy.stats import cumfreq
 import pylab as pl
 import numpy as np
 from matplotlib.ticker import MaxNLocator
+rc("text", usetex=True)
 
 my_locator = MaxNLocator(6)
 
@@ -81,7 +83,7 @@ def plotLine(data, order, xlabel, ylabel, Xmax, Xmin, fname, labels=None):
     ax = fig.add_subplot(1, 1, 1)
     color_n = ['r', 'b', 'm', 'c', 'm', 'b', 'm', 'g', 'm', 'c', 'r', 'b', 'k', 'g', 'm', 'c', 'r', 'b', 'k', 'g', 'm',
                'c', 'r', 'b', 'k', 'w']
-    markers = ['o', '*', '^', 's', 'd', '3', 'd', 'o', '*', '^', '1', '4', 'o', '*', '^', 's', 'd', '3', 'd', 'o', '*',
+    markers = ['o', 'o', '*', '*','^', '^', 's', 's', 'd', '3', 'd', 'o', '*', '^', '1', '4', 'o', '*', '^', 's', 'd', '3', 'd', 'o', '*',
                '^', '1', '4', 'o', '*', '^', 's', 'd', '3', 'd', 'o', '*', '^', '1', '4']
     linestyles = ['-', ':', '--', '-.', '--', ':', '-', '-.', '--', ':', '-', '-.', '--', ':', '-', '-.', '--', ':',
                   '-', '-.', '--', ':', '-', '-.']
@@ -98,8 +100,7 @@ def plotLine(data, order, xlabel, ylabel, Xmax, Xmin, fname, labels=None):
         ctr += 1
 
     if len(labels) > 1:
-        ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.15),
-                  ncol=5, fancybox=True, shadow=False)
+        ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.15), ncol=2, fancybox=True, shadow=False)
 
     # pl.legend((p), legnd, 'lower right')
     pl.xlabel(xlabel)
