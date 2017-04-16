@@ -87,6 +87,12 @@ def send_campus_data():
     timestamps = packets_based_on_ts.keys()
     timestamps.sort()
 
+    # packet_count = []
+    # for ts in timestamps:
+    #     packet_count.append(len(packets_based_on_ts[ts]))
+
+    # print packet_count
+
     ctr = 0
     for ts in timestamps:
         print "Timstamp: ",ts
