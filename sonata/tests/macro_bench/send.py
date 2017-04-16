@@ -6,6 +6,7 @@ import math, time
 import pickle
 from multiprocessing.connection import Listener
 import math
+from random import randint
 
 SERVER = True
 
@@ -92,23 +93,30 @@ def send_campus_data():
     #     packet_count.append(len(packets_based_on_ts[ts]))
 
     # print packet_count
-
+    packet_count = []
     ctr = 0
     for ts in timestamps:
         print "Timstamp: ",ts
+        total = 0
         start = time.time()
-        packets_based_on_ts[ts] = packets_based_on_ts[ts][:100]
+        rand = randint(0,50)
+        packets_based_on_ts[ts] = packets_based_on_ts[ts][:100+rand]
+        total = 100+rand
         if ctr > 20 and ctr < 31:
             # 304 packets on server
             packets_based_on_ts[ts].extend(create_attack_traffic(304))
+            total += 304
         ctr += 1
+        packet_count.append(total)
         sendp(packets_based_on_ts[ts], iface = INTERFACE, verbose=0)
         total = time.time()-start
-        sleep_time = 1-total
+        sleep_time = 1 - total
         print sleep_time
 
         if sleep_time > 0:
             time.sleep(sleep_time)
+
+    print packet_count
 
 send_campus_data()
 # send_created_traffic()
