@@ -31,7 +31,6 @@ def get_thresh(training_data, spark_query, spread, refinement_level, satisfied_s
         if thresh == 1:
             thresh += 1
         #thresh = 5
-        thresh = 40052290.8561
         print "Thresh:", thresh, refinement_level
 
     else:

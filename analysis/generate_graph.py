@@ -19,6 +19,7 @@ def parse_log_line(logline):
 def generate_graph(sc, query):
     TD_PATH = '/mnt/anon_all_flows_5min.csv'
     TD_PATH = '/mnt/caida_5min.csv'
+    TD_PATH = '/mnt/anon_all_flows_15min.csv'
 
     # TD_PATH = '/mnt/anon_all_flows_1min.csv'
     # TD_PATH = '/mnt/anon_all_flows_5min.csv/part-00500'
@@ -40,7 +41,7 @@ def generate_graph(sc, query):
         training_data = (sc.textFile(flows_File)
                          .map(parse_log_line)
                          .map(lambda s: tuple([int(math.ceil(int(s[0])/T))]+(list(s[1:]))))
-                         .filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(proto) == '17')
+                         # .filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(proto) == '17')
                          )
 
     if query.qid == 3:
@@ -127,7 +128,7 @@ if __name__ == '__main__':
           .distinct(keys=('dIP', 'sIP', 'nBytes'))
           .map(keys=('dIP','nBytes'), map_values=('count',), func=('eq', 1,))
           .reduce(keys=('dIP','nBytes'), func=('sum',))
-          .filter(filter_vals=('count',), func=('geq', '99'))
+          .filter(filter_vals=('count',), func=('geq', '99.99'))
           .map(keys=('dIP',))
           )
 
@@ -164,7 +165,7 @@ if __name__ == '__main__':
           )
 
     queries = [q6]
-    queries = [q2]
+    queries = [q1, q6]
     sc = create_spark_context()
     for q in queries:
         generate_graph(sc, q)
