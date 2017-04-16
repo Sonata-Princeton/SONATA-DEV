@@ -86,10 +86,10 @@ def get_data_plane_cost(sc, operator_name, transformation_function, query_out, t
 
             n_bits_sketch = w.join(bits_per_element).map(lambda s: (s[0], int(s[1][0] * s[1][1] * d)))
             #print "With Sketches", n_bits_sketch.collect()
-            n_bits_sketch_mean = np.mean(n_bits_sketch.map(lambda s: s[1]).collect())
+            # n_bits_sketch_mean = np.mean(n_bits_sketch.map(lambda s: s[1]).map(lambda x: sum(x) / len(x)).collect())
             # print "With Sketches", n_bits_sketch_mean, "W/o Sketches", n_bits_wo_cmsketch_mean
 
-            n_bits_min = min([n_bits_wo_cmsketch_mean, n_bits_sketch_mean])
+            # n_bits_min = min([n_bits_wo_cmsketch_mean, n_bits_sketch_mean])
             n_bits = n_bits_wo_cmsketch.join(n_bits_sketch).map(lambda s: (s[0], (s[1][0], s[1][1])))
             # # print n_bits_min
             # if n_bits_min == n_bits_wo_cmsketch_mean:
