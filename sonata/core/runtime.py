@@ -219,7 +219,7 @@ class Runtime(object):
                     # reset these state variables
                 # print "delta config: ", delta_config
                 updateDeltaConfig = False
-                self.logger.info("runtime,create_delta_config," + str(start) + ",%.20f" % time.time())
+                if delta_config != {}: self.logger.info("runtime,create_delta_config," + str(start) + ",%.20f" % time.time())
                 queries_received = {}
 
             # TODO: Update the send_to_dp_driver function logic
