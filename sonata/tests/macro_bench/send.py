@@ -74,25 +74,28 @@ def send_campus_data():
 
     packets_based_on_ts = {}
 
+    ctr = 0
+
     for packet in packets:
         ts = math.ceil(packet.time)
         if ts not in packets_based_on_ts:
             packets_based_on_ts[ts] = []
-        packets_based_on_ts[ts].append(packet)
 
+        packets_based_on_ts[ts].append(packet)
+        if ctr > 20 and ctr < 31:
+            # 304 packets on server
+            packets_based_on_ts[ts].extend(create_attack_traffic(304))
+        ctr += 1
 
     timestamps = packets_based_on_ts.keys()
     timestamps.sort()
 
-    ctr = 0
     for ts in timestamps:
         print "Timstamp: ",ts
         start = time.time()
-        if ctr > 20 and ctr < 31:
-            # 304 packets on server
-            packets_based_on_ts[ts].extend(create_attack_traffic(304))
+        packets_based_on_ts[ts] = packets_based_on_ts[ts][:100]
         sendp(packets_based_on_ts[ts], iface = INTERFACE, verbose=0)
-        ctr += 1
+
         total = time.time()-start
         sleep_time = 1-total
         print sleep_time
