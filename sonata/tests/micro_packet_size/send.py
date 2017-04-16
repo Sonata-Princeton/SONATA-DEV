@@ -1,13 +1,16 @@
 from scapy.all import *
-import os
-import sys
-import glob
-import math, time
 import sys
 
 
-# INTERFACE = 'eth0'
-INTERFACE = 'm-veth-2'
+SERVER = True
+
+if SERVER:
+    INTERFACE = 'eth0'
+    PCAP_LOCATION = '/home/sonata/SONATA-DEV/sonata/tests/micro_packet_size/campus_dns_1min.pcap'
+else:
+    INTERFACE = 'out-veth-1'
+    PCAP_LOCATION = '/home/vagrant/dev/sonata/tests/micro_packet_size/campus_dns_1min.pcap'
+
 
 class SONATA(Packet):
     name = "SONATA"
@@ -20,43 +23,22 @@ def create_sonata_traffic(number_of_packets):
 
     for i in range(number_of_packets):
         dIP = socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff)))
-        s = SONATA(dIP=dIP, count=1)
+        s = SONATA(dIP=dIP, count=25)/'ATTACK'
         normal_packets.append(s)
 
     return normal_packets
 
-def create_dns_traffic(number_of_packets):
-    sIPs = []
-    attack_packets = []
+def send_campus_data(mode):
+    NUMBER_OF_PACKETS_TO_SEND = 100
 
-    for i in range(number_of_packets):
-        sIPs.append(socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff))))
-
-    for sIP in sIPs:
-        p = IP(dst=sIP)/UDP(dport=53)/DNS(rd=1,qd=DNSQR(qname="www.thepacketgeek.com"))
-        attack_packets.append(p)
-
-    return attack_packets
-
-def send_created_traffic(mode):
-    traffic_dict = {}
-    for i in range(0, 20):
-        traffic_dict[i] = []
-
-        if mode == 'dns':
-            traffic_dict[i].extend(create_dns_traffic(50))
-        else:
-            traffic_dict[i].extend(create_sonata_traffic(50))
-
-    for i in range(0, 20):
-        print "Sending traffic for ts: " + str(i)
-        start = time.time()
-        sendp(traffic_dict[i], iface=INTERFACE, verbose=0)
-        total = time.time()-start
-        sleep_time = 1-total
-        if sleep_time > 0:
-            time.sleep(sleep_time)
+    if mode == 'dns':
+        packets = rdpcap(PCAP_LOCATION)
+        sendp(packets[:NUMBER_OF_PACKETS_TO_SEND], iface=INTERFACE, verbose=0)
+    else:
+        traffic_dict = []
+        traffic_dict.extend(create_sonata_traffic(NUMBER_OF_PACKETS_TO_SEND))
+        sendp(traffic_dict, iface=INTERFACE, verbose=0)
 
 
 mode = sys.argv[1]
-send_created_traffic(mode)
+send_campus_data(mode)
