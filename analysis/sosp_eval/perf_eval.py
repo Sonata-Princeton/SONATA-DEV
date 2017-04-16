@@ -10,13 +10,7 @@ from sonata.core.training.learn.query_plan import QueryPlan
 from sonata.core.training.learn.sonata_search import Search, map_input_graph
 
 
-def get_timestamps_from_fnames(fnames):
-    for fname in fnames:
-        with open(fname, 'r') as f:
-            G = pickle.load(f)
-            timestamps = G.keys()
-            timestamps.sort()
-            return timestamps
+
 
 
 def do_bias_variance_analysis(fnames, Ns, Bs, modes, TDs, Tmax=300):
@@ -118,6 +112,208 @@ def plotLine_lcurve(data, order, xlabel, ylabel, Xmax, Xmin, fname, labels=None)
     pl.savefig(plot_name)
 
 
+def plot_perf_overheads(dump_fname):
+    with open(dump_fname, 'r') as f:
+        data = pickle.load(f)
+        # print data
+        plot_data = {}
+        for qid in data:
+            for mode in data[qid]:
+                if mode in [5]:
+                    for (n_max, b_max) in data[qid][mode]:
+                        y1 = np.median([x[4][0] for x in data[qid][mode][(n_max, b_max)].values()])
+                        yerr1 = np.std([x[4][0] for x in data[qid][mode][(n_max, b_max)].values()])
+                        y2 = np.median([x[4][1] for x in data[qid][mode][(n_max, b_max)].values()])
+                        yerr2 = np.std([x[4][1] for x in data[qid][mode][(n_max, b_max)].values()])
+                        y3 = np.median([x[4][2] for x in data[qid][mode][(n_max, b_max)].values()])
+                        yerr3 = np.std([x[4][2] for x in data[qid][mode][(n_max, b_max)].values()])
+                        if mode not in plot_data:
+                            plot_data[mode] = {}
+                        plot_data[mode][qid] = ((y1, y2, y2), (yerr1, yerr2, yerr3))
+                        print mode, qid, plot_data[mode][qid]
+
+        qids = data.keys()
+        xlabels = []
+        qids.sort()
+        for qid in qids:
+            if len(str(qid)) > 1:
+                tmp = '{'
+                for elem in str(qid):
+                    tmp += 'Q' + elem + ','
+                tmp = tmp[:-1] + '}'
+            else:
+                tmp = 'Q' + str(qid)
+            print tmp
+            xlabels.append(tmp)
+        modes = plot_data.keys()
+        bar_width = 20
+        shift = (0.5+len(modes)) * bar_width
+        fig = plt.figure()
+        ax = fig.add_subplot(1, 1, 1)
+        i = 0
+        xticks = [0.5 * bar_width + q * shift + 0.5 * len(modes) * bar_width for q in range(len(qids))]
+        print xticks, xlabels
+        mode_2_color = {0:'r', 1:'b', 2:'g'}
+        mode_2_hatches = {0: '/', 1: '\\', 2: '+', 3: 'o', 4: 'x', 5: '.', 6: 'o', 7: 'O', 8: '.'}
+        mode_2_legend = {2:"OF Only",3: "P4 Only", 4: "Static Ref", 5: "SONATA"}
+
+        for mode in modes:
+            x = [0.5 * bar_width + q * shift + i * bar_width for q in range(len(qids))]
+            y1 = [int(plot_data[mode][qid][0][0]) for qid in qids]
+            y2 = [int(plot_data[mode][qid][0][1]) for qid in qids]
+            y3 = [int(plot_data[mode][qid][0][2]) for qid in qids]
+            color_alpha = 1
+            ax.bar(x, y1, bar_width, alpha=color_alpha, color=mode_2_color[0], label="Parser", hatch=mode_2_hatches[0])
+            ax.bar(x, y2, bar_width, alpha=color_alpha, color=mode_2_color[1], label="Runtime", hatch=mode_2_hatches[1],
+                   bottom = y1)
+            ax.bar(x, y3, bar_width, alpha=color_alpha, color=mode_2_color[2], label="Driver Overhead", hatch=mode_2_hatches[2],
+                   bottom = y2)
+            print mode, x, y1, y2, y3
+            i += 1
+        ax.yaxis.set_major_locator(my_locator)
+        ax.legend(loc='upper center', bbox_to_anchor=(0.50, 1.1), ncol=3, fancybox=True, shadow=False)
+        ax.set_xlim(xmin=0)
+        ax.set_xlim(xmax=xticks[-1] + (float(len(modes)) / 2 + 0.5) * bar_width)
+        pl.xlabel('Queries')
+        pl.ylabel('Time (ms)')
+        plt.xticks(xticks, xlabels)
+
+        # ax.grid(True)
+        plt.tight_layout()
+        plot_fname = dump_fname.split('.pickle')[0] + '_overheads.pdf'
+        pl.savefig(plot_fname)
+        print "Saving...", plot_fname
+
+
+
+def plot_perf_deltas(dump_fname):
+    with open(dump_fname, 'r') as f:
+        data = pickle.load(f)
+        # print data
+        plot_data = {}
+        for qid in data:
+            for mode in data[qid]:
+                if mode in [4, 5]:
+                    for (n_max, b_max) in data[qid][mode]:
+                        y = np.median([x[2] for x in data[qid][mode][(n_max, b_max)].values()])
+                        yerr = np.std([x[2] for x in data[qid][mode][(n_max, b_max)].values()])
+                        if mode not in plot_data:
+                            plot_data[mode] = {}
+                        plot_data[mode][qid] = (y, yerr)
+                        print mode, qid, y
+
+        qids = data.keys()
+        xlabels = []
+        qids.sort()
+        for qid in qids:
+            if len(str(qid)) > 1:
+                tmp = '{'
+                for elem in str(qid):
+                    tmp += 'Q' + elem + ','
+                tmp = tmp[:-1] + '}'
+            else:
+                tmp = 'Q' + str(qid)
+            print tmp
+            xlabels.append(tmp)
+        modes = plot_data.keys()
+        bar_width = 20
+        shift = (0.5+len(modes)) * bar_width
+        fig = plt.figure()
+        ax = fig.add_subplot(1, 1, 1)
+        i = 0
+        xticks = [0.5 * bar_width + q * shift + 0.5 * len(modes) * bar_width for q in range(len(qids))]
+        print xticks, xlabels
+        mode_2_color = {5:'g', 3:'r', 4:'m', 2:'b'}
+        mode_2_hatches = {0: '/', 1: '-', 2: '+', 3: 'o', 4: '\\', 5: 'x', 6: 'o', 7: 'O', 8: '.'}
+        mode_2_legend = {2:"OF Only",3: "P4 Only", 4: "Static Ref", 5: "SONATA"}
+        for mode in modes:
+            x = [0.5 * bar_width + q * shift + i * bar_width for q in range(len(qids))]
+            y = [int(plot_data[mode][qid][0]) for qid in qids]
+            ax.bar(x, y, bar_width, color=mode_2_color[mode], label=mode_2_legend[mode], hatch=mode_2_hatches[mode])
+            print mode, x, y
+            i += 1
+        ax.yaxis.set_major_locator(my_locator)
+        ax.legend(loc='upper center', bbox_to_anchor=(0.50, 1.1), ncol=3, fancybox=True, shadow=False)
+        ax.set_xlim(xmin=0)
+        ax.set_xlim(xmax=xticks[-1] + (float(len(modes)) / 2 + 0.5) * bar_width)
+        pl.xlabel('Queries')
+        pl.ylabel('Number of Updates')
+        plt.xticks(xticks, xlabels)
+
+        ax.grid(True)
+        plt.tight_layout()
+        plot_fname = dump_fname.split('.pickle')[0] + '_deltas.pdf'
+        pl.savefig(plot_fname)
+        print "Saving...", plot_fname
+
+
+def plot_perf_delay(dump_fname):
+    with open(dump_fname, 'r') as f:
+        data = pickle.load(f)
+        # print data
+        plot_data = {}
+        for qid in data:
+            for mode in data[qid]:
+                if mode in [2,4,5]:
+                    for (n_max, b_max) in data[qid][mode]:
+                        y = np.median([x[3] for x in data[qid][mode][(n_max, b_max)].values()])
+                        yerr = np.std([x[3] for x in data[qid][mode][(n_max, b_max)].values()])
+                        if mode not in plot_data:
+                            plot_data[mode] = {}
+                        plot_data[mode][qid] = (y, yerr)
+                        print mode, qid, y
+
+        qids = data.keys()
+        xlabels = []
+        qids.sort()
+        for qid in qids:
+            if len(str(qid)) > 1:
+                tmp = '{'
+                for elem in str(qid):
+                    tmp += 'Q' + elem + ','
+                tmp = tmp[:-1] + '}'
+            else:
+                tmp = 'Q' + str(qid)
+            print tmp
+            xlabels.append(tmp)
+        modes = plot_data.keys()
+        modes.sort()
+        bar_width = 20
+        shift = (0.5+len(modes)) * bar_width
+        fig = plt.figure()
+        ax = fig.add_subplot(1, 1, 1)
+        i = 0
+        xticks = [0.5 * bar_width + q * shift + 0.5 * len(modes) * bar_width for q in range(len(qids))]
+        print xticks, xlabels
+        mode_2_color = {5:'g', 3:'r', 4:'m', 2:'b'}
+        mode_2_hatches = {0: '/', 1: '-', 2: '+', 3: 'o', 4: '\\', 5: 'x', 6: 'o', 7: 'O', 8: '.'}
+        mode_2_legend = {2:"No Ref.",4: "Static Ref.", 5: "SONATA"}
+        all_ys = []
+        for mode in modes:
+            x = [0.5 * bar_width + q * shift + i * bar_width for q in range(len(qids))]
+            y = [int(plot_data[mode][qid][0])-1 for qid in qids]
+            all_ys += y
+            ax.bar(x, y, bar_width, color=mode_2_color[mode], label=mode_2_legend[mode], hatch=mode_2_hatches[mode])
+            print mode, x, y
+            i += 1
+        ax.yaxis.set_major_locator(my_locator)
+        ax.legend(loc='upper center', bbox_to_anchor=(0.50, 1.1), ncol=3, fancybox=True, shadow=False)
+        ax.set_xlim(xmin=0)
+        ax.set_xlim(xmax=xticks[-1] + (float(len(modes)) / 2 + 0.5) * bar_width)
+        ax.set_ylim(ymax=2+max(all_ys))
+        pl.xlabel('Queries')
+        pl.ylabel('Detection Delay (seconds)')
+        plt.xticks(xticks, xlabels)
+
+        ax.grid(True)
+        plt.tight_layout()
+        plot_fname = dump_fname.split('.pickle')[0] + '_delay.pdf'
+        pl.savefig(plot_fname)
+        print "Saving...", plot_fname
+
+
+
+
 def plot_perf_bgain(dump_fname):
     with open(dump_fname, 'r') as f:
         data = pickle.load(f)
@@ -155,13 +351,13 @@ def plot_perf_bgain(dump_fname):
         i = 0
         xticks = [0.5 * bar_width + q * shift + 0.5 * len(modes) * bar_width for q in range(len(qids))]
         print xticks, xlabels
-        color_n = ['r', 'b', 'm', 'c', 'r', 'b', 'm', 'c']
-        hatches = {0: '/', 1: '-', 2: '+', 3: 'o', 4: '\\', 5: 'x', 6: 'o', 7: 'O', 8: '.'}
+        mode_2_color = {5:'g', 3:'r', 4:'m', 2:'b'}
+        mode_2_hatches = {0: '/', 1: '-', 2: '+', 3: 'o', 4: '\\', 5: 'x', 6: 'o', 7: 'O', 8: '.'}
         mode_2_legend = {3: "P4 Target", 4: "Static Ref.", 5: "SONATA"}
         for mode in modes:
             x = [0.5 * bar_width + q * shift + i * bar_width for q in range(len(qids))]
-            y = [plot_data[mode][qid][0] for qid in qids]
-            ax.bar(x, y, bar_width, color=color_n[i], label=mode_2_legend[mode], hatch=hatches[i])
+            y = [float(plot_data[mode][qid][0])/1000 for qid in qids]
+            ax.bar(x, y, bar_width, color=mode_2_color[mode], label=mode_2_legend[mode], hatch=mode_2_hatches[mode])
             print mode, x, y
             i += 1
         ax.yaxis.set_major_locator(my_locator)
@@ -169,14 +365,14 @@ def plot_perf_bgain(dump_fname):
         ax.set_xlim(xmin=0)
         ax.set_xlim(xmax=xticks[-1] + (float(len(modes)) / 2 + 0.5) * bar_width)
         pl.xlabel('Queries')
-        pl.ylabel('Number of Tuples')
+        pl.ylabel('State (Kb)')
         plt.xticks(xticks, xlabels)
 
         ax.grid(True)
         plt.tight_layout()
-        plot_name = 'data/test_bgain.pdf'
-        pl.savefig(plot_name)
-        print "Saving...", plot_name
+        plot_fname = dump_fname.split('.pickle')[0] + '_bgain.pdf'
+        pl.savefig(plot_fname)
+        print "Saving...", plot_fname
 
 
 def plot_perf_ngain(dump_fname):
@@ -216,13 +412,13 @@ def plot_perf_ngain(dump_fname):
         i = 0
         xticks = [0.5 * bar_width + q * shift + 0.5 * len(modes) * bar_width for q in range(len(qids))]
         print xticks, xlabels
-        color_n = ['r', 'b', 'm', 'c', 'r', 'b', 'm', 'c']
-        hatches = {0: '/', 1: '-', 2: '+', 3: 'o', 4: '\\', 5: 'x', 6: 'o', 7: 'O', 8: '.'}
+        mode_2_color = {5:'g', 3:'r', 4:'m', 2:'b'}
+        mode_2_hatches = {0: '/', 1: '-', 2: '+', 3: 'o', 4: '\\', 5: 'x', 6: 'o', 7: 'O', 8: '.'}
         mode_2_legend = {2: "OF Target", 5: "SONATA"}
         for mode in modes:
             x = [0.5 * bar_width + q * shift + i * bar_width for q in range(len(qids))]
             y = [plot_data[mode][qid][0] for qid in qids]
-            ax.bar(x, y, bar_width, color=color_n[i], label=mode_2_legend[mode], hatch=hatches[i])
+            ax.bar(x, y, bar_width, color=mode_2_color[mode], label=mode_2_legend[mode], hatch=mode_2_hatches[mode])
             print mode, x, y
             i += 1
         ax.yaxis.set_major_locator(my_locator)
@@ -235,9 +431,9 @@ def plot_perf_ngain(dump_fname):
 
         ax.grid(True)
         plt.tight_layout()
-        plot_name = 'test.pdf'
-        pl.savefig(plot_name)
-        print "Saving...", plot_name
+        plot_fname = dump_fname.split('.pickle')[0] + '_ngain.pdf'
+        pl.savefig(plot_fname)
+        print "Saving...", plot_fname
 
 
 def plot_lcurve(dump_fname):
@@ -277,8 +473,8 @@ def plot_lcurve(dump_fname):
             queries = queries[:-1]
             order.append('Test Error ' + queries)
 
-        dump_fname.split('.pickle')[0]
-        plot_fname = dump_fname.split('.pickle')[0] + '_lcurve_.pdf'
+
+        plot_fname = dump_fname.split('.pickle')[0] + '_lcurve.pdf'
         print plot_fname, plot_data, order
 
         plotLine_lcurve(plot_data, order, 'Training Data Size (seconds)', 'Error', 'N/A', 'N/A', plot_fname)
@@ -318,21 +514,37 @@ def do_perf_gains_analysis(fnames, Ns, Bs, modes, td):
                 operational_alphas, unique_plans, learn = alpha_tuning_iter(fnames, n_max, b_max, mode, td)
                 timestamps = get_timestamps_from_fnames(fnames)
                 fname_2_G = {}
+                fname_2_pmax = {}
                 for fname in fnames:
                     with open(fname, 'r') as f:
                         G = pickle.load(f)
+                        v,e = G[G.keys()[0]]
+                        p_max = 0
+                        for r,p,l in v:
+                            if p > p_max:
+                                p_max = p
                         fname_2_G[fname] = G
+                        fname_2_pmax[fname] = p_max
                 for ts in timestamps[td:]:
                     n_cost = 0
                     b_cost = 0
+                    delta_updates = 0
+                    detection_delay = {}
+                    parse_time_raw = 1
+                    parse_time_tuple = 0.5
+                    runtime_overhead = 1
+                    driver_overhead = 1
+
                     for fname in fnames:
                         G = fname_2_G[fname]
+                        p_max = fname_2_pmax[fname]
+
                         v, e = G[ts]
-                        in_sample_error = {}
-                        out_sample_error = {}
                         trained_learn = learn[fname]
                         trained_path = trained_learn.final_plan.path
                         alpha = operational_alphas[(n_max, b_max)]
+
+                        detection_delay[fname] = len(trained_learn.final_plan.path[:-1])
 
                         for (e1, e2) in zip(trained_path[:-1], trained_path[1:])[:-1]:
                             # print e1, e2, e[(e1.state, e2.state)]
@@ -342,7 +554,22 @@ def do_perf_gains_analysis(fnames, Ns, Bs, modes, td):
                                 b_cost += min(e[(e1.state, e2.state)][0])
                             n_cost += e[(e1.state, e2.state)][1]
 
-                    data_dump[mode][(n_max, b_max)][ts] = (n_cost, b_cost)
+                            # update delta updates
+                            r2, p2, l2 = e2.state
+                            e2_new = r2, p_max, l2
+                            delta_updates += e[(e1.state, e2_new)][1]
+
+                    t_runtime = runtime_overhead*delta_updates
+                    t_driver = driver_overhead*delta_updates
+                    if mode == 2:
+                        t_parse = parse_time_raw*n_cost
+                    else:
+                        t_parse = parse_time_tuple*n_cost
+                    overheads = (t_parse, t_runtime, t_driver)
+
+                    data_dump[mode][(n_max, b_max)][ts] = (n_cost, b_cost, delta_updates,
+                                                           np.median(detection_delay.values()), overheads)
+
     return data_dump
     #
     # # print data_dump
@@ -370,20 +597,24 @@ def perf_gain_analysis(qid_2_fnames, qid_2_Ns, qid_2_Bs):
     with open(dump_fname, 'w') as f:
         pickle.dump(data, f)
     plot_perf_ngain(dump_fname)
+    plot_perf_bgain(dump_fname)
+    plot_perf_deltas(dump_fname)
+    plot_perf_delay(dump_fname)
+    plot_perf_overheads(dump_fname)
 
 
 def do_perf_eval():
     qid_2_fnames = {1: ['data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle'],
-                    6: ['data/hypothesis_graph_6_2017-04-12 15:30:31.466226.pickle'],
-                    16: ['data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle',
+                    2: ['data/hypothesis_graph_6_2017-04-12 15:30:31.466226.pickle'],
+                    12: ['data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle',
                          'data/hypothesis_graph_6_2017-04-12 15:30:31.466226.pickle']
                     }
-    qid_2_fnames = {1: ['data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle'],
-                    16: ['data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle',
-                         'data/hypothesis_graph_6_2017-04-12 15:30:31.466226.pickle']
-                    }
-    qid_2_Ns = {1: [1000], 6: [1000], 16: [2000]}
-    qid_2_Bs = {1: [50000], 6: [40000], 16: [90000]}
+    # qid_2_fnames = {1: ['data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle'],
+    #                 16: ['data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle',
+    #                      'data/hypothesis_graph_6_2017-04-12 15:30:31.466226.pickle']
+    #                 }
+    qid_2_Ns = {1: [1000], 2: [1000], 12: [2000]}
+    qid_2_Bs = {1: [50000], 2: [40000], 12: [90000]}
 
     # error_analysis(qid_2_fnames, qid_2_Ns, qid_2_Bs)
     perf_gain_analysis(qid_2_fnames, qid_2_Ns, qid_2_Bs)
@@ -394,6 +625,10 @@ if __name__ == '__main__':
 
     # dump_fname = 'data/error_analysis_1,62017-04-15 20:53:19.680790.pickle'
     # plot_lcurve(dump_fname)
-    dump_fname = 'data/perf_gain_analysis_16_1_2017-04-15 22:38:18.909253.pickle'
-    plot_perf_ngain(dump_fname)
-    plot_perf_bgain(dump_fname)
+
+    dump_fname = 'data/perf_gain_analysis_1_2_12_2017-04-16 11:13:54.285945.pickle'
+    # plot_perf_ngain(dump_fname)
+    # plot_perf_bgain(dump_fname)
+    # plot_perf_deltas(dump_fname)
+    # plot_perf_delay(dump_fname)
+    plot_perf_overheads(dump_fname)
