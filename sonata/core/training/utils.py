@@ -280,7 +280,7 @@ def create_spark_context():
             .setMaster("local[*]")
             .setAppName("SONATA-Training")
             .set("spark.executor.memory","5g")
-            .set("spark.driver.memory","5g")
+            .set("spark.driver.memory","50g")
             .set("spark.cores.max","96")
             .set("spark.python.worker.memory","2g"))
 
