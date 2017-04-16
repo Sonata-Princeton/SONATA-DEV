@@ -23,7 +23,7 @@ def generate_graph(sc, query):
     TD_PATH = "s3://sonata-input/anon_all_flows_5min.csv/"
     # TD_PATH = '/mnt/anon_all_flows_1min.csv'
     # TD_PATH = '/mnt/anon_all_flows_5min.csv/part-00500'
-    # TD_PATH = '/mnt/anon_all_flows_1min.csv'
+    TD_PATH = '/mnt/anon_all_flows_1min.csv'
     # TD_PATH = '/home/vagrant/dev/data/anon_all_flows_1min.csv/part-00496'
     # TD_PATH = '/mnt/anon_all_flows_1min.csv/part-00496'
     # TD_PATH = '/home/vagrant/dev/data/anon_all_flows_1min.csv'
@@ -165,7 +165,7 @@ if __name__ == '__main__':
           )
 
     queries = [q6]
-    queries = [q1, q6]
+    queries = [q2]
     sc = create_spark_context()
     for q in queries:
         generate_graph(sc, q)
