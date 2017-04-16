@@ -31,12 +31,12 @@ def create_return_logger(PATH):
     return logger
 
 def delete_entries_from_table(number_of_entries,table_name,dataplane,JSON_P4_COMPILED,P4_DELTA_COMMANDS, logger):
-    start = "%.20f" %time.time()
     commands_string = ""
     for i in range(0, number_of_entries):
         CMD = "table_delete %s %s"%(table_name, i)
         commands_string += CMD + "\n"
 
+    start = "%.20f" %time.time()
     dataplane.send_delta_commands(commands_string)
     end = "%.20f"%time.time()
 
@@ -44,13 +44,15 @@ def delete_entries_from_table(number_of_entries,table_name,dataplane,JSON_P4_COM
 
 
 def add_entries_to_table(number_of_entries, table_name, p4_dataplane_obj, JSON_P4_COMPILED, P4_DELTA_COMMANDS, logger):
-    start = "%.20f" %time.time()
+
 
     commands_string = ""
     for i in range(0, number_of_entries):
         IP = "%d.%d.0.0" % (random.randint(0, 255),random.randint(0, 255))
         CMD = "table_add %s _nop  %s/16 =>"%(table_name, IP)
         commands_string += CMD + "\n"
+
+    start = "%.20f" %time.time()
     p4_dataplane_obj.send_delta_commands(commands_string)
     end = "%.20f"%time.time()
 
