@@ -67,7 +67,7 @@ class Emitter(object):
         ind = 2
         # print str(self.queries)
         while qid in self.queries and qid != 0:
-            start = time.time()
+            start = "%.20f" %time.time()
             query = self.queries[qid]
             out_headers = query['headers']
 
@@ -102,7 +102,7 @@ class Emitter(object):
             # TODO removed this packet is unrelated stuff - maybe it is necessary
             self.send_data(send_tuple + "\n")
 
-            self.logger.info("emitter,"+ str(qid) + ","+str(start)+","+str(time.time()))
+            self.logger.info("emitter,"+ str(qid) + ","+str(start)+",%.20f"%str(time.time()))
             qid = int(str(self.qid_struct.unpack(p_str[ind:ind+2])[0]))
             ind += 2
 

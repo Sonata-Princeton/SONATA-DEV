@@ -179,7 +179,9 @@ class Runtime(object):
         # SM depending on where filter operation is applied (mostly DP)
         self.op_handler_socket = self.conf['sm_conf']['op_handler_socket']
         self.op_handler_listener = Listener(self.op_handler_socket)
-        start = time.time()
+
+        start = "%.20f" %time.time()
+        
         queries_received = {}
         updateDeltaConfig = False
         while True:
@@ -204,7 +206,7 @@ class Runtime(object):
             delta_config = {}
             #print "## Received output for query", src_qid, "at time", time.time() - start
             if updateDeltaConfig:
-                start = time.time()
+                start = "%.20f" %time.time()
                 for src_qid in queries_received:
                     if src_qid in self.query_out_mappings:
                         table_match_entries = queries_received[src_qid]
@@ -217,7 +219,7 @@ class Runtime(object):
                     # reset these state variables
                 # print "delta config: ", delta_config
                 updateDeltaConfig = False
-                self.logger.info("runtime,create_delta_config," + str(start) + "," + str(time.time()))
+                self.logger.info("runtime,create_delta_config," + str(start) + ",%.20f" % time.time())
                 queries_received = {}
 
             # TODO: Update the send_to_dp_driver function logic
@@ -276,21 +278,21 @@ class Runtime(object):
 
     def send_to_sm(self):
         # Send compiled query expression to streaming manager
-        start = time.time()
+        start = "%.20f" %time.time()
         serialized_queries = pickle.dumps(self.sp_queries)
         conn = Client(self.conf['sm_conf']['sm_socket'])
         conn.send(serialized_queries)
-        self.logger.info("runtime,sm_init," + str(start) + "," + str(time.time()))
+        self.logger.info("runtime,sm_init," + str(start) + ",%.20f" % time.time())
         time.sleep(3)
 
     def send_to_dp_driver(self, message_type, content):
         # Send compiled query expression to fabric manager
-        start = time.time()
+        start = "%.20f" %time.time()
         message = {message_type: {0: content, 1: self.target_id}}
         serialized_queries = pickle.dumps(message)
         conn = Client(self.conf['fm_conf']['fm_socket'])
         conn.send(serialized_queries)
-        self.logger.info("runtime,fm_" + message_type + "," + str(start) + "," + str(time.time()))
+        self.logger.info("runtime,fm_" + message_type + "," + str(start) + ",%.20f" % time.time())
         time.sleep(1)
         conn.close()
         return ''

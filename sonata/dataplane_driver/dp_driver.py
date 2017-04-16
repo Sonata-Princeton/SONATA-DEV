@@ -70,20 +70,20 @@ class DataplaneDriver(object):
             message = pickle.loads(raw_data)
             for key in message.keys():
                 if key == 'init':
-                    start = time.time()
+                    start = "%.20f" %time.time()
                     self.logger.debug('received "init" message')
                     application = message[key][0]
                     target_id = message[key][1]
                     print "application", application
                     self.configure(application, target_id)
-                    self.metrics.info("init", len(application), start, time.time())
+                    self.metrics.info("init" + ","+ len(application) +"," + start +",%.20f" % time.time())
                 elif key == 'delta':
                     # self.logger.debug('received "delta" message')
-                    start = time.time()
+                    start = "%.20f" %time.time()
                     filter_update = message[key][0]
                     target_id = message[key][1]
                     self.update_configuration(filter_update, target_id)
-                    self.metrics.info("delta", len(filter_update), start, time.time())
+                    self.metrics.info("delta" + ","+ len(filter_update) +"," + start +",%.20f" % time.time())
                 elif key == 'is_supported':
                     self.logger.debug('received "is_supported" message')
                     application = message[key][0]
