@@ -158,7 +158,7 @@ if __name__ == '__main__':
     # initialize dataplane and run the configuration
     # dataplane.initialize(JSON_P4_COMPILED, P4_COMMANDS)
 
-    entries = [1, 10, 10, 100, 1000, 10000, 100000]
+    entries = [1, 10, 10, 100]
     logger = create_return_logger(BASE_PATH+"results/tables.log")
 
     for entry in entries:
