@@ -32,36 +32,29 @@ def create_return_logger(PATH):
 
 def delete_entries_from_table(number_of_entries,table_name,dataplane,JSON_P4_COMPILED,P4_DELTA_COMMANDS, logger):
     start = "%.20f" %time.time()
-    commands = []
+    commands_string = ""
     for i in range(0, number_of_entries):
         CMD = "table_delete %s %s"%(table_name, i)
-        commands.append(CMD)
+        commands_string += CMD + "\n"
 
-    commands_string = "\n".join(commands)
-    # # print commands_string
-    # write_to_file(P4_DELTA_COMMANDS, commands_string)
     dataplane.send_delta_commands(commands_string)
-    end = time.time()
+    end = "%.20f"%time.time()
 
-    logger.info("delete|"+str(number_of_entries)+"|"+str(start)+",%.20f"%time.time())
+    logger.info("delete|"+str(number_of_entries)+"|"+str(start)+","+end)
 
 
 def add_entries_to_table(number_of_entries, table_name, p4_dataplane_obj, JSON_P4_COMPILED, P4_DELTA_COMMANDS, logger):
     start = "%.20f" %time.time()
 
-    commands = []
+    commands_string = ""
     for i in range(0, number_of_entries):
         IP = "%d.%d.0.0" % (random.randint(0, 255),random.randint(0, 255))
         CMD = "table_add %s _nop  %s/16 =>"%(table_name, IP)
-        commands.append(CMD)
-
-    commands_string = "\n".join(commands)
-    # # print commands_string
-    # write_to_file(P4_DELTA_COMMANDS, commands_string)
+        commands_string += CMD + "\n"
     p4_dataplane_obj.send_delta_commands(commands_string)
-    end = time.time()
+    end = "%.20f"%time.time()
 
-    logger.info("update|"+str(number_of_entries)+"|"+str(start)+",%.20f"%time.time())
+    logger.info("update|"+str(number_of_entries)+"|"+str(start)+","+end)
 
 class Switch(threading.Thread):
     def __init__(self,p4_json_path, switch_path):
