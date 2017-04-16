@@ -38,8 +38,8 @@ def delete_entries_from_table(number_of_entries,table_name,dataplane,JSON_P4_COM
         commands.append(CMD)
 
     commands_string = "\n".join(commands)
-    # print commands_string
-    write_to_file(P4_DELTA_COMMANDS, commands_string)
+    # # print commands_string
+    # write_to_file(P4_DELTA_COMMANDS, commands_string)
     dataplane.send_delta_commands(commands_string)
     end = time.time()
 
@@ -56,8 +56,8 @@ def add_entries_to_table(number_of_entries, table_name, p4_dataplane_obj, JSON_P
         commands.append(CMD)
 
     commands_string = "\n".join(commands)
-    # print commands_string
-    write_to_file(P4_DELTA_COMMANDS, commands_string)
+    # # print commands_string
+    # write_to_file(P4_DELTA_COMMANDS, commands_string)
     p4_dataplane_obj.send_delta_commands(commands_string)
     end = time.time()
 
