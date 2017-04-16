@@ -20,7 +20,7 @@ def generate_graph(sc, query):
     TD_PATH = '/mnt/anon_all_flows_5min.csv'
     TD_PATH = '/mnt/caida_5min.csv'
 
-    TD_PATH = '/mnt/anon_all_flows_1min.csv'
+    # TD_PATH = '/mnt/anon_all_flows_1min.csv'
     # TD_PATH = '/mnt/anon_all_flows_5min.csv/part-00500'
     # TD_PATH = '/mnt/anon_all_flows_1min.csv'
     # TD_PATH = '/home/vagrant/dev/data/anon_all_flows_1min.csv/part-00496'
@@ -40,7 +40,6 @@ def generate_graph(sc, query):
         training_data = (sc.textFile(flows_File)
                          .map(parse_log_line)
                          .map(lambda s: tuple([int(math.ceil(int(s[0])/T))]+(list(s[1:]))))
-                         # .filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(proto) == '17')
                          )
 
     if query.qid == 3:
