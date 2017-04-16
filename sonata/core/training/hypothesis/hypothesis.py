@@ -79,17 +79,17 @@ class Hypothesis(object):
         else:
             # Run the query over training data to get various counts
             counts = Counts(self.query, self.sc, self.training_data, self.timestamps, self.refinement_object, self.target)
-            count_fname = 'data/counts_'+str(self.query.qid)+'_'+str(datetime.datetime.fromtimestamp(time.time()))+'.pickle'
-            with open(count_fname, 'w') as f:
-                print "Dumping query_out_transit into pickle...", count_fname
-                pickle.dump(counts.query_out_transit, f)
+            # count_fname = 'data/counts_'+str(self.query.qid)+'_'+str(datetime.datetime.fromtimestamp(time.time()))+'.pickle'
+            # with open(count_fname, 'w') as f:
+            #     print "Dumping query_out_transit into pickle...", count_fname
+            #     pickle.dump(counts.query_out_transit, f)
             # Apply the costs model over counts to estimate costs for different edges
             costs = Costs(counts, self.P, self.target.N_max, self.target.B_max).costs
-            print costs
-            cost_fname = 'data/costs_'+str(self.query.qid)+'_'+str(datetime.datetime.fromtimestamp(time.time()))+'.pickle'
-            with open(cost_fname, 'w') as f:
-                print "Dumping costs into pickle...", cost_fname
-                pickle.dump(costs, f)
+            # print costs
+            # cost_fname = 'data/costs_'+str(self.query.qid)+'_'+str(datetime.datetime.fromtimestamp(time.time()))+'.pickle'
+            # with open(cost_fname, 'w') as f:
+            #     print "Dumping costs into pickle...", cost_fname
+            #     pickle.dump(costs, f)
 
 
         E = {}

@@ -106,7 +106,7 @@ if __name__ == '__main__':
           # .filter(filter_keys=('proto',), func=('eq', 6))
           .map(keys=('dIP', 'dPort','sPort','sIP'), values=('nBytes',))
           .reduce(keys=('dIP', 'dPort','sPort','sIP',), func=('sum',))
-          .filter(filter_vals=('nBytes',), func=('geq', '99'))
+          .filter(filter_vals=('nBytes',), func=('geq', '99.999'))
           .map(keys=('dIP',))
           )
 
@@ -163,7 +163,7 @@ if __name__ == '__main__':
           )
 
     queries = [q6]
-    # queries = [q2]
+    queries = [q2]
     sc = create_spark_context()
     for q in queries:
         generate_graph(sc, q)
