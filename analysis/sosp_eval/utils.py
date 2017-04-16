@@ -4,6 +4,59 @@ from sonata.core.training.learn.learn import Learn
 from analysis.utils import chunkify, get_training_graph
 
 
+def get_system_configs(fnames):
+    import math
+    max_counts = {}
+    total_nmax = 0
+    total_bmax = 0
+    for fname in fnames:
+        nmax = 0
+        bmax = 0
+        p_max = 0
+        with open(fname, 'r') as f:
+            G = pickle.load(f)
+            G_Train = get_training_graph(G, 20)
+            for ts in G_Train:
+                v, e = G_Train[ts]
+                for r, p, l in v:
+                    if p > p_max:
+                        p_max = p
+                n = int(e[(0, 0, 0), (32, 0, 1)][1])
+                if type(e[(0, 0, 0), (32, p_max, 1)][0]) == type(1):
+                    b = int(e[(0, 0, 0), (32, p_max, 1)][0])
+                else:
+                    b = int(max(e[(0, 0, 0), (32, p_max, 1)][0]))
+
+                if b > bmax:
+                    bmax = b
+                if n > nmax:
+                    nmax = n
+        total_nmax += nmax
+        total_bmax += bmax
+        max_counts[fname] = (nmax,bmax)
+    print max_counts
+
+
+    nStep = math.ceil(float(total_nmax) / 10)
+    bStep = math.ceil(float(total_bmax) / 10)
+
+    print "Nmax:", total_nmax, "Bmax:", total_bmax
+    print nStep, bStep
+
+    Ns = range(int(nStep), 20*int(nStep), int(nStep))
+    Bs = range(int(nStep), 20*int(bStep), int(bStep))
+    print "Ns:", Ns, "Bs:", Bs
+    return Ns, Bs
+
+
+def get_timestamps_from_fnames(fnames):
+    for fname in fnames:
+        with open(fname, 'r') as f:
+            G = pickle.load(f)
+            timestamps = G.keys()
+            timestamps.sort()
+            return timestamps
+
 def update_edges(G, n_max, b_max, alpha, mode):
     G_new = {}
     (v, edges) = G

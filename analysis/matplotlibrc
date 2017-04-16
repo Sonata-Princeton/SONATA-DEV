@@ -466,7 +466,7 @@
 #animation.mencoder_args: ''       # Additional arguments to pass to mencoder
 
 
-#text.usetex: True
+text.usetex: True
 font.family: serif
 font.sans-serif: Times
 font.size: 8
