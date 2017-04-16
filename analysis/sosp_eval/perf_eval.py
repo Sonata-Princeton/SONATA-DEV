@@ -118,16 +118,16 @@ def plotLine_lcurve(data, order, xlabel, ylabel, Xmax, Xmin, fname, labels=None)
     pl.savefig(plot_name)
 
 
-def plot_perf_ngain(dump_fname):
+def plot_perf_bgain(dump_fname):
     with open(dump_fname, 'r') as f:
         data = pickle.load(f)
         # print data
         plot_data = {}
         for qid in data:
             for mode in data[qid]:
-                if mode in [2, 5]:
+                if mode in [3, 4, 5]:
                     for (n_max, b_max) in data[qid][mode]:
-                        y = np.median([x[0] for x in data[qid][mode][(n_max, b_max)].values()])
+                        y = np.median([x[1] for x in data[qid][mode][(n_max, b_max)].values()])
                         yerr = np.std([x[1] for x in data[qid][mode][(n_max, b_max)].values()])
                         if mode not in plot_data:
                             plot_data[mode] = {}
@@ -141,33 +141,94 @@ def plot_perf_ngain(dump_fname):
             if len(str(qid)) > 1:
                 tmp = '{'
                 for elem in str(qid):
-                    tmp += 'Q'+elem+','
-                tmp = tmp[:-1]+'}'
+                    tmp += 'Q' + elem + ','
+                tmp = tmp[:-1] + '}'
             else:
-                tmp = 'Q'+str(qid)
+                tmp = 'Q' + str(qid)
             print tmp
             xlabels.append(tmp)
         modes = plot_data.keys()
         bar_width = 20
-        shift = 2.5*bar_width
+        shift = (0.5+len(modes)) * bar_width
         fig = plt.figure()
-        ax = fig.add_subplot(1,1,1)
+        ax = fig.add_subplot(1, 1, 1)
         i = 0
-        xticks = [0.5*bar_width+q*shift+0.5*len(modes)*bar_width for q in range(len(qids))]
+        xticks = [0.5 * bar_width + q * shift + 0.5 * len(modes) * bar_width for q in range(len(qids))]
         print xticks, xlabels
         color_n = ['r', 'b', 'm', 'c', 'r', 'b', 'm', 'c']
-        hatches = {0:'/', 1:'-', 2:'+', 3:'o', 4:'\\', 5:'x', 6:'o', 7:'O', 8:'.'}
-        mode_2_legend = {2:"OF Target", 5:"SONATA"}
+        hatches = {0: '/', 1: '-', 2: '+', 3: 'o', 4: '\\', 5: 'x', 6: 'o', 7: 'O', 8: '.'}
+        mode_2_legend = {3: "P4 Target", 4: "Static Ref.", 5: "SONATA"}
         for mode in modes:
-            x = [0.5*bar_width+q*shift+i*bar_width for q in range(len(qids))]
+            x = [0.5 * bar_width + q * shift + i * bar_width for q in range(len(qids))]
             y = [plot_data[mode][qid][0] for qid in qids]
-            ax.bar(x, y, bar_width, color=color_n[i],label=mode_2_legend[mode], hatch =hatches[i])
-            print mode, x,y
+            ax.bar(x, y, bar_width, color=color_n[i], label=mode_2_legend[mode], hatch=hatches[i])
+            print mode, x, y
+            i += 1
+        ax.yaxis.set_major_locator(my_locator)
+        ax.legend(loc='upper center', bbox_to_anchor=(0.50, 1.1), ncol=3, fancybox=True, shadow=False)
+        ax.set_xlim(xmin=0)
+        ax.set_xlim(xmax=xticks[-1] + (float(len(modes)) / 2 + 0.5) * bar_width)
+        pl.xlabel('Queries')
+        pl.ylabel('Number of Tuples')
+        plt.xticks(xticks, xlabels)
+
+        ax.grid(True)
+        plt.tight_layout()
+        plot_name = 'data/test_bgain.pdf'
+        pl.savefig(plot_name)
+        print "Saving...", plot_name
+
+
+def plot_perf_ngain(dump_fname):
+    with open(dump_fname, 'r') as f:
+        data = pickle.load(f)
+        # print data
+        plot_data = {}
+        for qid in data:
+            for mode in data[qid]:
+                if mode in [2, 5]:
+                    for (n_max, b_max) in data[qid][mode]:
+                        y = np.median([x[0] for x in data[qid][mode][(n_max, b_max)].values()])
+                        yerr = np.std([x[0] for x in data[qid][mode][(n_max, b_max)].values()])
+                        if mode not in plot_data:
+                            plot_data[mode] = {}
+                        plot_data[mode][qid] = (y, yerr)
+                        print mode, qid, y
+
+        qids = data.keys()
+        xlabels = []
+        qids.sort()
+        for qid in qids:
+            if len(str(qid)) > 1:
+                tmp = '{'
+                for elem in str(qid):
+                    tmp += 'Q' + elem + ','
+                tmp = tmp[:-1] + '}'
+            else:
+                tmp = 'Q' + str(qid)
+            print tmp
+            xlabels.append(tmp)
+        modes = plot_data.keys()
+        bar_width = 20
+        shift = 2.5 * bar_width
+        fig = plt.figure()
+        ax = fig.add_subplot(1, 1, 1)
+        i = 0
+        xticks = [0.5 * bar_width + q * shift + 0.5 * len(modes) * bar_width for q in range(len(qids))]
+        print xticks, xlabels
+        color_n = ['r', 'b', 'm', 'c', 'r', 'b', 'm', 'c']
+        hatches = {0: '/', 1: '-', 2: '+', 3: 'o', 4: '\\', 5: 'x', 6: 'o', 7: 'O', 8: '.'}
+        mode_2_legend = {2: "OF Target", 5: "SONATA"}
+        for mode in modes:
+            x = [0.5 * bar_width + q * shift + i * bar_width for q in range(len(qids))]
+            y = [plot_data[mode][qid][0] for qid in qids]
+            ax.bar(x, y, bar_width, color=color_n[i], label=mode_2_legend[mode], hatch=hatches[i])
+            print mode, x, y
             i += 1
         ax.yaxis.set_major_locator(my_locator)
         ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.15), ncol=2, fancybox=True, shadow=False)
-        ax.set_xlim(xmin = 0)
-        ax.set_xlim(xmax = xticks[-1]+(len(modes)/2+0.5)*bar_width)
+        ax.set_xlim(xmin=0)
+        ax.set_xlim(xmax=xticks[-1] + (len(modes) / 2 + 0.5) * bar_width)
         pl.xlabel('Queries')
         pl.ylabel('Number of Tuples')
         plt.xticks(xticks, xlabels)
@@ -335,3 +396,4 @@ if __name__ == '__main__':
     # plot_lcurve(dump_fname)
     dump_fname = 'data/perf_gain_analysis_16_1_2017-04-15 22:38:18.909253.pickle'
     plot_perf_ngain(dump_fname)
+    plot_perf_bgain(dump_fname)
