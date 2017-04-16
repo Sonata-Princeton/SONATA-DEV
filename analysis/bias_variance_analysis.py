@@ -138,15 +138,12 @@ def update_edges(G, n_max, b_max, alpha, mode):
     return G_new
 
 
-def do_bias_variance_analysis(Ns, Bs):
-    fname = 'data/hypothesis_graph_2017-03-29 03:29:50.290812.pickle'
-
-    fname = 'data/hypothesis_graph_4_2017-04-11 22:58:56.434682.pickle'
+def do_bias_variance_analysis(fname,Ns, Bs):
     with open(fname, 'r') as f:
         G = pickle.load(f)
         print "Loaded graph file", fname
         modes = [2, 3, 4, 5, 6]
-        modes = [6]
+        modes = [5]
         TDs = range(0, 101, 10)[1:]
         # TDs = [5, 10, 20, 30]
 
@@ -173,7 +170,7 @@ def do_bias_variance_analysis(Ns, Bs):
                         timestamps = G.keys()
                         timestamps.sort()
                         ctr = 1
-                        for ts in timestamps[:]:
+                        for ts in timestamps[:50]:
                             g = update_edges(G[ts], n_max, b_max, alpha, mode)
                             training_plan = QueryPlan(map_input_graph(g), trained_learn.final_plan.path)
                             local_best_plan = QueryPlan(map_input_graph(g), Search(g).final_plan.path)
@@ -198,18 +195,25 @@ def do_bias_variance_analysis(Ns, Bs):
 
         fname_dump = 'data/bias_var_analysis_' + str(datetime.datetime.fromtimestamp(time.time())) + '.pickle'
         print "Dumping data to", fname_dump
-        with open(fname_dump, 'w') as f:
-            pickle.dump(data_dump, f)
+        # with open(fname_dump, 'w') as f:
+        #     pickle.dump(data_dump, f)
+        return data_dump
 
 
 if __name__ == '__main__':
     # Ns = [3100]
     # Bs = [21000]
 
-    Ns = [100]
+    Ns = [1000]
     Bs = [20000]
 
-    do_bias_variance_analysis(Ns, Bs)
+    fname = 'data/hypothesis_graph_2017-03-29 03:29:50.290812.pickle'
+
+    fname = 'data/hypothesis_graph_4_2017-04-11 22:58:56.434682.pickle'
+    fname6 = 'data/hypothesis_graph_6_2017-04-12 15:30:31.466226.pickle'
+    fname1 = 'data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle'
+
+    do_bias_variance_analysis(fname1, Ns, Bs)
 
 
 
