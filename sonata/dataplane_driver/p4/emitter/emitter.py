@@ -102,7 +102,7 @@ class Emitter(object):
             # TODO removed this packet is unrelated stuff - maybe it is necessary
             self.send_data(send_tuple + "\n")
 
-            self.logger.info("emitter,"+ str(qid) + ","+str(start)+",%.20f"%str(time.time()))
+            self.logger.info("emitter,"+ str(qid) + ","+str(start)+",%.20f"%time.time())
             qid = int(str(self.qid_struct.unpack(p_str[ind:ind+2])[0]))
             ind += 2
 
