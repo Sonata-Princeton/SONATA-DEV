@@ -4,11 +4,20 @@ from sonata.dataplane_driver.utils import write_to_file
 from sonata.tests.micro_tables.utils import get_sequential_code, get_filter_table
 import random, logging, time
 from sonata.dataplane_driver.utils import get_out
-BASE_PATH = '/home/vagrant/dev/sonata/tests/micro_tables/'
-HOME_BASE = '/home/vagrant/'
+
 import os
 import threading
 
+SERVER = True
+
+if SERVER:
+    internal_interfaces = {"ens1f0": 11, "ens1f1":10, "ens4f0": 12}
+    BASE_PATH = '/home/sonata/SONATA-DEV/sonata/tests/micro_tables/'
+    HOME_BASE = '/home/sonata/'
+else:
+    internal_interfaces = {"m-veth-1": 11, "m-veth-2":12, "m-veth-3": 13}
+    BASE_PATH = '/home/vagrant/dev/sonata/tests/micro_tables/'
+    HOME_BASE = '/home/vagrant/'
 
 def create_return_logger(PATH):
     # create a logger for the object
@@ -22,7 +31,7 @@ def create_return_logger(PATH):
     return logger
 
 def delete_entries_from_table(number_of_entries,table_name,dataplane,JSON_P4_COMPILED,P4_DELTA_COMMANDS, logger):
-    start = time.time()
+    start = "%.20f" %time.time()
     commands = []
     for i in range(0, number_of_entries):
         CMD = "table_delete %s %s"%(table_name, i)
@@ -34,10 +43,11 @@ def delete_entries_from_table(number_of_entries,table_name,dataplane,JSON_P4_COM
     dataplane.send_commands(JSON_P4_COMPILED,P4_DELTA_COMMANDS)
     end = time.time()
 
-    logger.info("delete|"+str(number_of_entries) +"|"+str(start)+"|"+str(end))
+    logger.info("delete|"+str(number_of_entries)+"|"+str(start)+",%.20f"%time.time())
+
 
 def add_entries_to_table(number_of_entries, table_name, p4_dataplane_obj, JSON_P4_COMPILED, P4_DELTA_COMMANDS, logger):
-    start = time.time()
+    start = "%.20f" %time.time()
 
     commands = []
     for i in range(0, number_of_entries):
@@ -51,8 +61,7 @@ def add_entries_to_table(number_of_entries, table_name, p4_dataplane_obj, JSON_P
     p4_dataplane_obj.send_commands(JSON_P4_COMPILED,P4_DELTA_COMMANDS)
     end = time.time()
 
-    logger.info("update|"+str(number_of_entries)+"|"+str(start)+"|"+str(end))
-
+    logger.info("update|"+str(number_of_entries)+"|"+str(start)+",%.20f"%time.time())
 
 class Switch(threading.Thread):
     def __init__(self,p4_json_path, switch_path):
@@ -62,7 +71,12 @@ class Switch(threading.Thread):
         self.p4_json_path = p4_json_path
 
     def run(self):
-        COMMAND = "sudo %s %s -i 11@m-veth-1 -i 12@m-veth-2 -i 13@m-veth-3 --thrift-port 22222 &"%(self.switch_path, self.p4_json_path)
+        compose_interfaces = ""
+        for inter,port in internal_interfaces.iteritems():
+            new_interface = " -i %s@%s "%(port,inter)
+            compose_interfaces +=new_interface
+
+        COMMAND = "sudo %s %s %s --thrift-port 22222"%(self.switch_path, self.p4_json_path, compose_interfaces)
         print COMMAND
         os.system(COMMAND)
 
