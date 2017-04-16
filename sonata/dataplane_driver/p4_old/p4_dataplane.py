@@ -101,6 +101,11 @@ class P4DataPlane(object):
         cmd = "echo \'reset_state\' | " + self.cli_path + " --thrift-port "+str(self.thrift_port)
         get_out(cmd)
 
+    def send_delta_commands(self, delta):
+        self.logger.info('delta update state')
+        cmd = "echo \'"+delta+"\' | " + self.cli_path + " --thrift-port "+str(self.thrift_port)
+        get_out(cmd)
+
     def send_commands(self, p4_json_path, command_path):
         self.logger.info('send commands')
         cmd = [self.cli_path, p4_json_path, str(self.thrift_port)]

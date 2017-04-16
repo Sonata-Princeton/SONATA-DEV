@@ -40,7 +40,7 @@ def delete_entries_from_table(number_of_entries,table_name,dataplane,JSON_P4_COM
     commands_string = "\n".join(commands)
     # print commands_string
     write_to_file(P4_DELTA_COMMANDS, commands_string)
-    dataplane.send_commands(JSON_P4_COMPILED,P4_DELTA_COMMANDS)
+    dataplane.send_delta_commands(commands_string)
     end = time.time()
 
     logger.info("delete|"+str(number_of_entries)+"|"+str(start)+",%.20f"%time.time())
@@ -58,7 +58,7 @@ def add_entries_to_table(number_of_entries, table_name, p4_dataplane_obj, JSON_P
     commands_string = "\n".join(commands)
     # print commands_string
     write_to_file(P4_DELTA_COMMANDS, commands_string)
-    p4_dataplane_obj.send_commands(JSON_P4_COMPILED,P4_DELTA_COMMANDS)
+    p4_dataplane_obj.send_delta_commands(commands_string)
     end = time.time()
 
     logger.info("update|"+str(number_of_entries)+"|"+str(start)+",%.20f"%time.time())
