@@ -102,7 +102,7 @@ class P4DataPlane(object):
         get_out(cmd)
 
     def send_delta_commands(self, delta):
-        self.logger.info('delta update state')
+        # self.logger.info('delta update state')
         cmd = "echo \'"+delta+"\' | " + self.cli_path + " --thrift-port "+str(self.thrift_port)
         get_out(cmd)
 
