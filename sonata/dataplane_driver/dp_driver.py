@@ -76,14 +76,14 @@ class DataplaneDriver(object):
                     target_id = message[key][1]
                     print "application", application
                     self.configure(application, target_id)
-                    self.metrics.info("init" + ","+ str(len(application)) +"," + start +",%.20f" % time.time())
+                    # self.metrics.info("init" + ","+ str(len(application)) +"," + start +",%.20f" % time.time())
                 elif key == 'delta':
                     # self.logger.debug('received "delta" message')
                     start = "%.20f" %time.time()
                     filter_update = message[key][0]
                     target_id = message[key][1]
                     self.update_configuration(filter_update, target_id)
-                    self.metrics.info("delta" + ","+ str(len(filter_update)) +"," + start +",%.20f" % time.time())
+                    # self.metrics.info("delta" + ","+ str(len(filter_update)) +"," + start +",%.20f" % time.time())
                 elif key == 'is_supported':
                     self.logger.debug('received "is_supported" message')
                     application = message[key][0]
