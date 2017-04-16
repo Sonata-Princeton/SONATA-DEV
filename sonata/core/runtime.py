@@ -181,7 +181,7 @@ class Runtime(object):
         self.op_handler_listener = Listener(self.op_handler_socket)
 
         start = "%.20f" %time.time()
-        
+
         queries_received = {}
         updateDeltaConfig = False
         while True:
