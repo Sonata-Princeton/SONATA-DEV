@@ -278,11 +278,11 @@ def create_spark_context():
     from pyspark import SparkContext, SparkConf
     conf = (SparkConf()
             .setMaster("local[*]")
-            .setAppName("SONATA-Training")
-            .set("spark.executor.memory","50g")
-            .set("spark.driver.memory","50g")
-            .set("spark.cores.max","96")
-            .set("spark.python.worker.memory","2g")
+            # .setAppName("SONATA-Training")
+            # .set("spark.executor.memory","50g")
+            # .set("spark.driver.memory","50g")
+            # .set("spark.cores.max","96")
+            # .set("spark.python.worker.memory","2g")
             )
 
     sc = SparkContext(conf=conf)
