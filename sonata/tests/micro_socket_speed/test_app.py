@@ -10,17 +10,17 @@ import threading
 from multiprocessing.connection import Client, Listener
 import pickle
 
-SERVER = True
+SERVER = False
 
 if SERVER:
     recv_socket = ("localhost", 6666)
     sender_socket = ("localhost", 6666)
-    BASE_PATH = '/home/sonata/SONATA-DEV/sonata/tests/micro_tables/'
+    BASE_PATH = '/home/sonata/SONATA-DEV/sonata/tests/micro_socket_speed/'
     HOME_BASE = '/home/sonata/'
 else:
     recv_socket = ("localhost", 6666)
     sender_socket = ("localhost", 6666)
-    BASE_PATH = '/home/vagrant/dev/sonata/tests/micro_tables/'
+    BASE_PATH = '/home/vagrant/dev/sonata/tests/micro_socket_speed/'
     HOME_BASE = '/home/vagrant/'
 
 def create_return_logger(PATH):
