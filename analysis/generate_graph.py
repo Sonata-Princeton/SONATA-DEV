@@ -165,8 +165,8 @@ if __name__ == '__main__':
           )
 
     queries = [q6]
-    # queries = [q6]
+    queries = [q1, q6]
     sc = create_spark_context()
     for q in queries:
-        for hr in range(0, 2):
+        for hr in range(0, 15):
             generate_graph(sc, q, hr)
