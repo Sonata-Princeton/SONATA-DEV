@@ -16,12 +16,12 @@ from sonata.core.training.hypothesis.hypothesis import Hypothesis
 def parse_log_line(logline):
     return tuple(logline.split(","))
 
-def generate_graph(sc, query, hr):
+def generate_graph(sc, query, min):
     TD_PATH = '/mnt/anon_all_flows_5min.csv'
     TD_PATH = '/mnt/caida_5min.csv'
     TD_PATH = '/mnt/anon_all_flows_15min.csv'
 
-    TD_PATH = '/mnt/anon_all_flows_2hour_splits/%s.csv' % (hr)
+    TD_PATH = '/mnt/anon_all_flows_2hour_splits/%s.csv' % (min)
     # TD_PATH = '/mnt/anon_all_flows_5min.csv/part-00500'
     # TD_PATH = '/mnt/anon_all_flows_1min.csv'
     # TD_PATH = '/home/vagrant/dev/data/anon_all_flows_1min.csv/part-00496'
@@ -75,7 +75,7 @@ def generate_graph(sc, query, hr):
                          .filter(lambda (ts,sIP,sPort,dIP,dPort,nBytes,proto,sMac,dMac): str(proto) == '17')
                          )
 
-    print "Collecting the training data for the first time ...", training_data.take(2)
+    # print "Collecting the training data for the first time ...", training_data.take(2)
     training_data = sc.parallelize(training_data.collect())
     print "Collecting timestamps for the experiment ..."
     timestamps = training_data.map(lambda s: s[0]).distinct().collect()
@@ -85,7 +85,7 @@ def generate_graph(sc, query, hr):
     refinement_object.update_filter(training_data)
     hypothesis = Hypothesis(query, sc, training_data, timestamps,refinement_object, target)
     G = hypothesis.G
-    fname = 'data/anon_all_flows_2hour_splits/hypothesis_graph_'+str(query.qid) + '_hr_' + str(hr) + '_'+str(datetime.datetime.fromtimestamp(time.time()))+'.pickle'
+    fname = 'data/anon_all_flows_2hour_splits/hypothesis_graph_'+str(query.qid) + '_min_' + str(min) + '_'+str(datetime.datetime.fromtimestamp(time.time()))+'.pickle'
 
     # dump the hypothesis graph: {ts:G[ts], ...}
     print "Dumping graph to", fname
@@ -168,6 +168,6 @@ if __name__ == '__main__':
     queries = [q1, q6]
     sc = create_spark_context()
     for q in queries:
-        for hr in range(0, 15):
-            print "Starting: ", str(q.qid), " Hour:", str(hr)
-            generate_graph(sc, q, hr)
+        for min in range(0, 60):
+            print "Starting: ", str(q.qid), " Hour:", str(min)
+            generate_graph(sc, q, min)
