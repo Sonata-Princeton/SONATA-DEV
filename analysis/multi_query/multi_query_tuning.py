@@ -17,10 +17,11 @@ def get_violation_flags(G_Trains, learn, n_max, b_max, alpha):
     b_viol = False
     total_n = {}
     total_b = {}
+    debug = True
 
     for fname in learn:
-        print fname, learn[fname].final_plan
-        # print learn[fname].final_plan.ncosts, learn[fname].final_plan.bcosts
+        if debug: print alpha, fname, learn[fname].final_plan
+        print max(learn[fname].final_plan.ncosts.values()), max(learn[fname].final_plan.bcosts.values())
         for ts in G_Trains[fname]:
             if ts not in total_n:
                 total_n[ts] = 0
@@ -31,8 +32,8 @@ def get_violation_flags(G_Trains, learn, n_max, b_max, alpha):
 
     max_n = max(total_n.values())
     max_b = max(total_b.values())
-    print "max tuples for this plan", alpha, max_n
-    print "max bits for this plan", alpha, max_b
+    if debug: print "max tuples for this plan", alpha, max_n
+    if debug: print "max bits for this plan", alpha, max_b
     if max_n > n_max:
         n_viol = True
     if max_b > b_max:
@@ -42,8 +43,7 @@ def get_violation_flags(G_Trains, learn, n_max, b_max, alpha):
 
 
 def update_operational_alphas(operational_alphas, fnames, n_max, b_max, alpha):
-    for fname in fnames:
-        operational_alphas[fname][(n_max, b_max)] = alpha
+    operational_alphas[(n_max, b_max)] = alpha
 
 
 def update_unique_plans(unique_plans, fnames, path_strings, n_max, b_max, alpha):
@@ -54,20 +54,20 @@ def update_unique_plans(unique_plans, fnames, path_strings, n_max, b_max, alpha)
         unique_plans[fname][path_string][(n_max, b_max)] = alpha
 
 
-def alpha_tuning_iter(fnames, n_max, b_max, mode, q=None):
+def alpha_tuning_iter(fnames, n_max, b_max, mode, td, q=None):
     memoized_learning = {}
 
-    def memoize_learning(G, alpha, beta, n_max, b_max, mode):
-        if (alpha, beta, n_max, b_max, mode) not in memoized_learning:
-            memoized_learning[(alpha, beta, n_max, b_max, mode)] = Learn(G, alpha, beta, n_max, b_max, mode)
-        return memoized_learning[(alpha, beta, n_max, b_max, mode)]
+    def memoize_learning(G, alpha, beta, n_max, b_max, mode, fname):
+        if (alpha, beta, n_max, b_max, mode, fname) not in memoized_learning:
+            memoized_learning[(alpha, beta, n_max, b_max, mode, fname)] = Learn(G, alpha, beta, n_max, b_max, mode)
+        return memoized_learning[(alpha, beta, n_max, b_max, mode, fname)]
 
     def learn_for_alpha(G, fnames, alpha, beta, n_max, b_max, mode):
         learn = {}
         path_strings = {}
         cost = 0
         for fname in fnames:
-            learn[fname] = memoize_learning(G[fname], alpha, beta, n_max, b_max, mode)
+            learn[fname] = memoize_learning(G[fname], alpha, beta, n_max, b_max, mode, fname)
             path_strings[fname] = learn[fname].final_plan.__repr__()
             cost += learn[fname].final_plan.cost
 
@@ -81,8 +81,8 @@ def alpha_tuning_iter(fnames, n_max, b_max, mode, q=None):
     for fname in fnames:
         with open(fname,'r') as f:
             G = pickle.load(f)
-            G_Trains[fname] = get_training_graph(G, TRAIN_DURATION)
-        operational_alphas[fname] = {}
+            # print "Training Duration", td
+            G_Trains[fname] = get_training_graph(G, td)
         unique_plans[fname] = {}
 
     prev_alpha = 0
@@ -97,7 +97,7 @@ def alpha_tuning_iter(fnames, n_max, b_max, mode, q=None):
 
     max_iter = 10
 
-    print n_max, b_max
+    # print n_max, b_max
     debug = False
     debug = True
     while True:
@@ -137,7 +137,7 @@ def alpha_tuning_iter(fnames, n_max, b_max, mode, q=None):
             if n_viol_left or b_viol_left:
                 cost_left = 100
 
-            print cost_left, curr_cost, cost_right
+            if debug: print cost_left, curr_cost, cost_right
             if cost_left < curr_cost:
                 upper_limit = alpha_left
                 alpha = alpha_left
@@ -162,25 +162,30 @@ def alpha_tuning_iter(fnames, n_max, b_max, mode, q=None):
         q.put((operational_alphas, unique_plans))
 
 
-def process_chunk(fnames, chunk, mode, q=None):
+def process_chunk(fnames, chunk, mode, td, q=None):
     operational_alphas = {}
     unique_plans = {}
+    print chunk
     for (n_max, b_max) in chunk:
-        tmp1, tmp2 = alpha_tuning_iter(fnames, n_max, b_max, mode)
+        tmp1, tmp2 = alpha_tuning_iter(fnames, n_max, b_max, mode, td)
+        print tmp1
         operational_alphas.update(tmp1)
-        for path_string in tmp2:
-            if path_string not in unique_plans:
-                unique_plans[path_string] = tmp2[path_string]
-            else:
-                unique_plans[path_string].update(tmp2[path_string])
-    # print unique_plans, operational_alphas
+        for fname in fnames:
+            if fname not in unique_plans:
+                unique_plans[fname] = {}
+
+            for path_string in tmp2[fname]:
+                if path_string not in unique_plans[fname]:
+                    unique_plans[fname][path_string] = tmp2[fname][path_string]
+                else:
+                    unique_plans[fname][path_string].update(tmp2[fname][path_string])
     if q is None:
         return operational_alphas, unique_plans
     else:
         q.put((operational_alphas, unique_plans))
 
 
-def do_alpha_tuning(Ns, Bs, fnames, mode):
+def do_alpha_tuning(Ns, Bs, fnames, mode, td):
     operational_alphas = {}
     unique_plans = {}
     configs = []
@@ -195,7 +200,7 @@ def do_alpha_tuning(Ns, Bs, fnames, mode):
         if len(chunk) > 0:
             q = Queue()
             queues.append(q)
-            p = Process(target=process_chunk, args=(fnames, chunk, mode, q,))
+            p = Process(target=process_chunk, args=(fnames, chunk, mode, td, q,))
             processes.append(p)
             p.start()
     for ctr in range(len(processes)):
@@ -203,17 +208,21 @@ def do_alpha_tuning(Ns, Bs, fnames, mode):
         q = queues[ctr]
 
         (tmp1, tmp2) = q.get()
-        print tmp1, tmp2
+        # print tmp1, tmp2
         operational_alphas.update(tmp1)
-        for path_string in tmp2:
-            if path_string not in unique_plans:
-                unique_plans[path_string] = tmp2[path_string]
-            else:
-                unique_plans[path_string].update(tmp2[path_string])
+        for fname in fnames:
+            if fname not in unique_plans:
+                unique_plans[fname] = {}
+
+            for path_string in tmp2[fname]:
+                if path_string not in unique_plans[fname]:
+                    unique_plans[fname][path_string] = tmp2[fname][path_string]
+                else:
+                    unique_plans[fname][path_string].update(tmp2[fname][path_string])
         p.join()
 
-    print operational_alphas
-    print unique_plans
+    # print operational_alphas
+    # print unique_plans
     # print [(k, len(v)) for k, v in unique_plans.iteritems()]
 
     return operational_alphas, unique_plans
@@ -240,7 +249,7 @@ def get_system_configs(fnames):
                 if type(e[(0, 0, 0), (32, p_max, 1)][0]) == type(1):
                     b = int(e[(0, 0, 0), (32, p_max, 1)][0])
                 else:
-                    b = int(max(e[(0, 0, 0), (32, p_max, 1)][0]))
+                    b = int(min(e[(0, 0, 0), (32, p_max, 1)][0]))
 
                 if b > bmax:
                     bmax = b
@@ -283,21 +292,23 @@ if __name__ == '__main__':
 
     fname6 = 'data/hypothesis_graph_6_2017-04-12 15:30:31.466226.pickle'
     fname1 = 'data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle'
-    fnames = [fname1, fname6]
+    fname2 = 'data/hypothesis_graph_2_2017-04-16 23:29:09.655075.pickle'
+    fnames = [fname2]
     Ns, Bs = get_system_configs(fnames)
-    # Ns = [1500]
-    # Bs = [40000]
+    Ns = [10000]
+    Bs = [1000]
 
     modes = [2, 3, 4, 5]
-    # modes = [5]
+    modes = [5]
+    Td = 20
     data_dump = {}
     for mode in modes:
         print mode
-        operational_alphas, unique_plans = do_alpha_tuning(Ns, Bs, fnames, mode)
+        operational_alphas, unique_plans = do_alpha_tuning(Ns, Bs, fnames, mode, Td)
         data_dump[mode] = (Ns, Bs, operational_alphas, unique_plans)
 
     fname = 'data/alpha_tuning_dump_multi_'+str(datetime.datetime.fromtimestamp(time.time()))+ '.pickle'
 
     print "Dumping data to", fname
-    with open(fname, 'w') as f:
-        pickle.dump(data_dump, f)
+    # with open(fname, 'w') as f:
+    #     pickle.dump(data_dump, f)
