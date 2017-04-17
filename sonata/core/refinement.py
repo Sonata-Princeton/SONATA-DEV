@@ -120,6 +120,7 @@ class Refinement(object):
             # This function will be useful if we need to add ts in recursion
             for operator in q.operators:
                 operator.keys = tuple(['ts'] + list(operator.keys))
+                print operator.name, operator.keys
 
         for qid in self.qid_2_query:
             query = self.qid_2_query[qid]
