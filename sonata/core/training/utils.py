@@ -198,7 +198,6 @@ def generate_query_string_prev_level_out_mapped(qid, ref_level_prev, query_out_r
         iter_qids_prev = query_out_refinement_level[qid][ref_level_prev].keys()
         iter_qids_prev.sort()
         prev_level_out = query_out_refinement_level[qid][ref_level_prev][iter_qids_prev[-1]]
-        print "Taking prev_level_out", qid, ref_level_prev, iter_qids_prev[-1]
         prev_query = refined_spark_queries[qid][ref_level_prev][iter_qids_prev[-1]]
     else:
         prev_level_out = out0

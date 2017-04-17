@@ -127,7 +127,7 @@ class Counts(object):
                         if debug: print curr_query, curr_level_out[:2]
                         query_cost_transit[qid][transit][iter_qid_curr] = eval(transit_query_string)
                         # print query_cost_transit[qid][transit][iter_qid_curr]
-                        print "prev_level_counts evaled",eval("prev_level_out_mapped.map(lambda x: (x[0][0],1)).reduceByKey(lambda x,y: x+y).collect()")
+                        # print "prev_level_counts evaled",eval("prev_level_out_mapped.map(lambda x: (x[0][0],1)).reduceByKey(lambda x,y: x+y).collect()")
 
 
                         print "#############################QID:0######################################"
