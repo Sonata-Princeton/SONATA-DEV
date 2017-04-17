@@ -169,4 +169,5 @@ if __name__ == '__main__':
     sc = create_spark_context()
     for q in queries:
         for hr in range(0, 15):
+            print "Starting: ", str(q.qid), " Hour:", str(hr)
             generate_graph(sc, q, hr)
