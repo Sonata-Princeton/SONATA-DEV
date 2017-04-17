@@ -165,7 +165,7 @@ if __name__ == '__main__':
           )
 
     queries = [q6]
-    queries = [q2,q1,q6]
+    queries = [q1,q6]
     for q in queries:
         # for min in range(0, 60):
         min=0
