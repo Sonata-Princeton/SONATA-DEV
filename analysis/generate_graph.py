@@ -165,7 +165,7 @@ if __name__ == '__main__':
 
     queries = [q1,q6]
     for q in queries:
-        for min in range(1, 60):
+        for min in range(0, 60):
             sc = create_spark_context()
             print "Starting: ", str(q.qid), " Min:", str(min)
             generate_graph(sc, q, min)

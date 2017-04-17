@@ -119,8 +119,8 @@ class Refinement(object):
         def add_timestamp_to_query(q):
             # This function will be useful if we need to add ts in recursion
             for operator in q.operators:
-                operator.keys = tuple(['ts'] + list(operator.keys))
-                print operator.name, operator.keys
+                if 'ts' not in list(operator.keys):
+                    operator.keys = tuple(['ts'] + list(operator.keys))
 
         for qid in self.qid_2_query:
             query = self.qid_2_query[qid]
