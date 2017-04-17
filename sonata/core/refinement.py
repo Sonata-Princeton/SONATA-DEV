@@ -20,7 +20,7 @@ def get_thresh(training_data, spark_query, spread, refinement_level, satisfied_s
         # test_data = eval(test_str)
         # print test_data[:5]
         query_string = 'training_data.' + spark_query.compile() + '.map(lambda s: s[1]).collect()'
-        # print query_string
+        print query_string
         data = [float(x) for x in (eval(query_string))]
         thresh = 0.0
         if len(data) > 0:
