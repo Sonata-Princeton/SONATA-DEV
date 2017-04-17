@@ -2,6 +2,47 @@ import pickle
 
 from sonata.core.training.learn.learn import Learn
 from analysis.utils import chunkify, get_training_graph
+from analysis.plotlib import *
+
+
+def heatmap_plot(X, Y, data, xlabel, ylabel, plot_name):
+    # here's our data to plot, all normal Python lists
+    # x = [math.log(e, 10) for e in X]
+    # y = [math.log(e, 10) for e in Y]
+    x = [float(t) / 1000 for t in X]
+    y = [float(t) / 1000 for t in Y]
+    intensity = data
+
+    # setup the 2D grid with Numpy
+    x, y = np.meshgrid(x, y)
+
+    # convert intensity (list of lists) to a numpy array for plotting
+    intensity = np.array(intensity)
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    ax.locator_params(nbins=6)
+    plt.tight_layout()
+
+    # now just plug the data into pcolormesh, it's that easy!
+    plt.pcolormesh(x, y, intensity, cmap='gnuplot')
+    plt.axis([x.min(), x.max(), y.min(), y.max()])
+    plt.colorbar()  # need a colorbar to show the intensity scale
+    plt.savefig(plot_name)
+
+
+def get_alpha_intensity(Ns, Bs, operational_alphas):
+    intensity = []
+    ctr = 0
+    for b in Bs:
+
+        intensity.append([])
+        for n in Ns:
+            intensity[ctr].append(operational_alphas[(n, b)])
+        ctr += 1
+
+    return intensity
 
 
 def get_system_configs(fnames):
@@ -44,7 +85,7 @@ def get_system_configs(fnames):
     print nStep, bStep
 
     Ns = range(int(nStep), 20*int(nStep), int(nStep))
-    Bs = range(int(nStep), 20*int(bStep), int(bStep))
+    Bs = range(int(bStep), 20*int(bStep), int(bStep))
     print "Ns:", Ns, "Bs:", Bs
     return Ns, Bs
 
@@ -89,10 +130,11 @@ def get_violation_flags(G_Trains, learn, n_max, b_max, alpha):
     b_viol = False
     total_n = {}
     total_b = {}
+    debug = True
 
     for fname in learn:
-        # print fname, learn[fname].final_plan
-        # print learn[fname].final_plan.ncosts, learn[fname].final_plan.bcosts
+        if debug: print alpha, fname, learn[fname].final_plan
+        print max(learn[fname].final_plan.ncosts.values()), max(learn[fname].final_plan.bcosts.values())
         for ts in G_Trains[fname]:
             if ts not in total_n:
                 total_n[ts] = 0
@@ -103,8 +145,8 @@ def get_violation_flags(G_Trains, learn, n_max, b_max, alpha):
 
     max_n = max(total_n.values())
     max_b = max(total_b.values())
-    # print "max tuples for this plan", alpha, max_n
-    # print "max bits for this plan", alpha, max_b
+    if debug: print "max tuples for this plan", alpha, max_n
+    if debug: print "max bits for this plan", alpha, max_b
     if max_n > n_max:
         n_viol = True
     if max_b > b_max:
@@ -114,8 +156,7 @@ def get_violation_flags(G_Trains, learn, n_max, b_max, alpha):
 
 
 def update_operational_alphas(operational_alphas, fnames, n_max, b_max, alpha):
-    for fname in fnames:
-        operational_alphas[fname][(n_max, b_max)] = alpha
+    operational_alphas[(n_max, b_max)] = alpha
 
 
 def update_unique_plans(unique_plans, fnames, path_strings, n_max, b_max, alpha):
@@ -126,20 +167,20 @@ def update_unique_plans(unique_plans, fnames, path_strings, n_max, b_max, alpha)
         unique_plans[fname][path_string][(n_max, b_max)] = alpha
 
 
-def alpha_tuning_iter(fnames, n_max, b_max, mode, Td, q=None):
+def alpha_tuning_iter(fnames, n_max, b_max, mode, td, q=None):
     memoized_learning = {}
 
-    def memoize_learning(G, alpha, beta, n_max, b_max, mode):
-        if (alpha, beta, n_max, b_max, mode) not in memoized_learning:
-            memoized_learning[(alpha, beta, n_max, b_max, mode)] = Learn(G, alpha, beta, n_max, b_max, mode)
-        return memoized_learning[(alpha, beta, n_max, b_max, mode)]
+    def memoize_learning(G, alpha, beta, n_max, b_max, mode, fname):
+        if (alpha, beta, n_max, b_max, mode, fname) not in memoized_learning:
+            memoized_learning[(alpha, beta, n_max, b_max, mode, fname)] = Learn(G, alpha, beta, n_max, b_max, mode)
+        return memoized_learning[(alpha, beta, n_max, b_max, mode, fname)]
 
     def learn_for_alpha(G, fnames, alpha, beta, n_max, b_max, mode):
         learn = {}
         path_strings = {}
         cost = 0
         for fname in fnames:
-            learn[fname] = memoize_learning(G[fname], alpha, beta, n_max, b_max, mode)
+            learn[fname] = memoize_learning(G[fname], alpha, beta, n_max, b_max, mode, fname)
             path_strings[fname] = learn[fname].final_plan.__repr__()
             cost += learn[fname].final_plan.cost
 
@@ -150,12 +191,11 @@ def alpha_tuning_iter(fnames, n_max, b_max, mode, Td, q=None):
     G_Trains = {}
     operational_alphas = {}
     unique_plans = {}
-    learn = {}
     for fname in fnames:
         with open(fname,'r') as f:
             G = pickle.load(f)
-            G_Trains[fname] = get_training_graph(G, Td)
-        operational_alphas[fname] = {}
+            # print "Training Duration", td
+            G_Trains[fname] = get_training_graph(G, td)
         unique_plans[fname] = {}
 
     prev_alpha = 0
@@ -170,7 +210,7 @@ def alpha_tuning_iter(fnames, n_max, b_max, mode, Td, q=None):
 
     max_iter = 10
 
-    print n_max, b_max
+    # print n_max, b_max
     debug = False
     debug = True
     while True:
@@ -210,7 +250,7 @@ def alpha_tuning_iter(fnames, n_max, b_max, mode, Td, q=None):
             if n_viol_left or b_viol_left:
                 cost_left = 100
 
-            print cost_left, curr_cost, cost_right
+            if debug: print cost_left, curr_cost, cost_right
             if cost_left < curr_cost:
                 upper_limit = alpha_left
                 alpha = alpha_left
@@ -233,3 +273,4 @@ def alpha_tuning_iter(fnames, n_max, b_max, mode, Td, q=None):
         return operational_alphas, unique_plans, learn
     else:
         q.put((operational_alphas, unique_plans, learn))
+
