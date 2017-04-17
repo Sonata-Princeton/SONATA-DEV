@@ -23,7 +23,7 @@ def generate_graph(sc, query, min):
 
     TD_PATH = '/mnt/anon_all_flows_2hour_splits/%s.csv' % (min)
     # TD_PATH = '/mnt/anon_all_flows_5min.csv/part-00500'
-    # TD_PATH = '/mnt/anon_all_flows_1min.csv'
+    TD_PATH = '/mnt/anon_all_flows_1min.csv'
     # TD_PATH = '/home/vagrant/dev/data/anon_all_flows_1min.csv/part-00496'
     # TD_PATH = '/mnt/anon_all_flows_1min.csv/part-00496'
     # TD_PATH = '/home/vagrant/dev/data/anon_all_flows_1min.csv'
@@ -165,9 +165,11 @@ if __name__ == '__main__':
           )
 
     queries = [q6]
-    queries = [q1, q6]
-    sc = create_spark_context()
+    queries = [q2,q1,q6]
     for q in queries:
-        for min in range(0, 60):
-            print "Starting: ", str(q.qid), " Min:", str(min)
-            generate_graph(sc, q, min)
+        # for min in range(0, 60):
+        min=0
+        sc = create_spark_context()
+        print "Starting: ", str(q.qid), " Min:", str(min)
+        generate_graph(sc, q, min)
+        sc.stop()

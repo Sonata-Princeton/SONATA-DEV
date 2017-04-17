@@ -130,12 +130,12 @@ class Counts(object):
                         # print "prev_level_counts evaled",eval("prev_level_out_mapped.map(lambda x: (x[0][0],1)).reduceByKey(lambda x,y: x+y).collect()")
 
 
-                        print "#############################QID:0######################################"
-                        print "Prev level:", ref_level_prev
-                        print "Curr level:", ref_level_curr
-                        print "Prev level out", prev_level_out_mapped.take(5), prev_level_out_mapped.count()
+                        if debug: print "#############################QID:0######################################"
+                        if debug: print "Prev level:", ref_level_prev
+                        if debug: print "Curr level:", ref_level_curr
+                        if debug: print "Prev level out", prev_level_out_mapped.take(5), prev_level_out_mapped.count()
                         if debug: print transit, iter_qid_curr, len(query_cost_transit[qid][transit][iter_qid_curr])
-                        print "#############################END-QID:0######################################"
+                        if debug: print "#############################END-QID:0######################################"
 
         self.query_out_transit = query_cost_transit
 
