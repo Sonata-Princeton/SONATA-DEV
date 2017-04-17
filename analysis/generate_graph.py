@@ -16,11 +16,12 @@ from sonata.core.training.hypothesis.hypothesis import Hypothesis
 def parse_log_line(logline):
     return tuple(logline.split(","))
 
-def generate_graph(sc, query):
+def generate_graph(sc, query, hr):
     TD_PATH = '/mnt/anon_all_flows_5min.csv'
     TD_PATH = '/mnt/caida_5min.csv'
     TD_PATH = '/mnt/anon_all_flows_15min.csv'
-    TD_PATH = '/mnt/anon_all_flows_1min.csv'
+
+    TD_PATH = '/mnt/anon_all_flows_2hour_splits/%s.csv' % (hr)
     # TD_PATH = '/mnt/anon_all_flows_5min.csv/part-00500'
     # TD_PATH = '/mnt/anon_all_flows_1min.csv'
     # TD_PATH = '/home/vagrant/dev/data/anon_all_flows_1min.csv/part-00496'
@@ -84,7 +85,7 @@ def generate_graph(sc, query):
     refinement_object.update_filter(training_data)
     hypothesis = Hypothesis(query, sc, training_data, timestamps,refinement_object, target)
     G = hypothesis.G
-    fname = 'data/hypothesis_graph_'+str(query.qid)+'_'+str(datetime.datetime.fromtimestamp(time.time()))+'.pickle'
+    fname = 'data/anon_all_flows_2hour_splits/hypothesis_graph_'+str(query.qid) + '_hr_' + str(hr) + '_'+str(datetime.datetime.fromtimestamp(time.time()))+'.pickle'
 
     # dump the hypothesis graph: {ts:G[ts], ...}
     print "Dumping graph to", fname
@@ -164,7 +165,8 @@ if __name__ == '__main__':
           )
 
     queries = [q6]
-    queries = [q1]
+    # queries = [q6]
     sc = create_spark_context()
     for q in queries:
-        generate_graph(sc, q)
+        for hr in range(0, 2):
+            generate_graph(sc, q, hr)
