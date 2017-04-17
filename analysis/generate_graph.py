@@ -21,7 +21,7 @@ def generate_graph(sc, query):
     TD_PATH = '/mnt/caida_5min.csv'
     TD_PATH = '/mnt/anon_all_flows_15min.csv'
     TD_PATH = "s3://sonata-input/anon_all_flows_1min.csv/"
-    # TD_PATH = '/mnt/anon_all_flows_1min.csv'
+    TD_PATH = '/mnt/anon_all_flows_1min.csv'
     # TD_PATH = '/mnt/anon_all_flows_5min.csv/part-00500'
     # TD_PATH = '/mnt/anon_all_flows_1min.csv'
     # TD_PATH = '/home/vagrant/dev/data/anon_all_flows_1min.csv/part-00496'
@@ -108,7 +108,7 @@ if __name__ == '__main__':
           # .filter(filter_keys=('proto',), func=('eq', 6))
           .map(keys=('dIP', 'dPort','sPort','sIP'), values=('nBytes',))
           .reduce(keys=('dIP', 'dPort','sPort','sIP',), func=('sum',))
-          .filter(filter_vals=('nBytes',), func=('geq', '99.999'))
+          .filter(filter_vals=('nBytes',), func=('geq', '99.9'))
           .map(keys=('dIP',))
           )
 
