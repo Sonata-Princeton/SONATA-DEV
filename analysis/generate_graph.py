@@ -169,5 +169,5 @@ if __name__ == '__main__':
     sc = create_spark_context()
     for q in queries:
         for min in range(0, 60):
-            print "Starting: ", str(q.qid), " Hour:", str(min)
+            print "Starting: ", str(q.qid), " Min:", str(min)
             generate_graph(sc, q, min)
