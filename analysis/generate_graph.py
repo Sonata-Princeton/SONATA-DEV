@@ -16,8 +16,8 @@ from sonata.core.training.hypothesis.hypothesis import Hypothesis
 def parse_log_line(logline):
     return tuple(logline.split(","))
 
-def generate_graph(sc, query, min):
-    # TD_PATH = '/mnt/anon_all_flows_5min.csv'
+def generate_graph(sc, query, min,threshold):
+    TD_PATH = '/mnt/anon_all_flows_5min.csv'
     # TD_PATH = '/mnt/caida_5min.csv'
     # TD_PATH = '/mnt/anon_all_flows_15min.csv'
     # TD_PATH = '/mnt/anon_all_flows_5min.csv/part-00500'
@@ -28,10 +28,10 @@ def generate_graph(sc, query, min):
 
     # TD_PATH = '/mnt/anon_all_flows_2hour_splits/%s.csv' % (min)
 
-    TD_PATH = '/mnt/anon_60mins_data_5minSplits/%s.csv'%min
+    # TD_PATH = '/mnt/anon_60mins_data_5minSplits/%s.csv'%min
 
     flows_File = TD_PATH
-    T = 1
+    T = 10
     if query.qid == 1:
         training_data = (sc.textFile(flows_File)
                          .map(parse_log_line)
@@ -86,7 +86,7 @@ def generate_graph(sc, query, min):
     refinement_object.update_filter(training_data)
     hypothesis = Hypothesis(query, sc, training_data, timestamps,refinement_object, target)
     G = hypothesis.G
-    fname = 'data/hypothesis_graph_'+str(query.qid) + '_5min_' + str(min) + '_'+str(datetime.datetime.fromtimestamp(time.time()))+'.pickle'
+    fname = 'data/hypothesis_graph_'+str(query.qid) + '_threshold_' + threshold +'_5min_' + str(min) + '_'+str(datetime.datetime.fromtimestamp(time.time()))+'.pickle'
 
     # dump the hypothesis graph: {ts:G[ts], ...}
     print "Dumping graph to", fname
@@ -177,10 +177,28 @@ if __name__ == '__main__':
           )
 
     # queries = [q1,q6]
-    queries = [q1, q6]
-    for q in queries:
-        for min in range(0, 12):
-            sc = create_spark_context()
-            print "Starting: ", str(q.qid), " Min:", str(min)
-            generate_graph(sc, q, min)
-            sc.stop()
+    # queries = [q1, q6]
+    # queries = [q2]
+    thresholds = ['99.99', '99.9', '99.999']
+
+    for threshold in thresholds:
+        sc = create_spark_context()
+        q = (PacketStream(2)
+                  # .filter(filter_keys=('proto',), func=('eq', 6))
+                  .map(keys=('sIP', 'dPort'))
+                  .distinct(keys=('sIP', 'dPort'))
+                  .map(keys=('sIP',), map_values=('count',), func=('eq', 1,))
+                  .reduce(keys=('sIP',), func=('sum',))
+                  .filter(filter_vals=('count',), func=('geq', threshold))
+                  .map(keys=('sIP',))
+                  )
+        print "Starting: ", str(q.qid), " Min:", str(min)
+        generate_graph(sc, q, 0, threshold)
+        sc.stop()
+
+    # for q in queries:
+    #     for min in range(0, 12):
+    #         sc = create_spark_context()
+    #         print "Starting: ", str(q.qid), " Min:", str(min)
+    #         generate_graph(sc, q, min)
+    #         sc.stop()
