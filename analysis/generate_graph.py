@@ -127,7 +127,7 @@ if __name__ == '__main__':
           .distinct(keys=('sIP', 'dPort'))
           .map(keys=('sIP',), map_values=('count',), func=('eq', 1,))
           .reduce(keys=('sIP',), func=('sum',))
-          .filter(filter_vals=('count',), func=('geq', '99.9'))
+          .filter(filter_vals=('count',), func=('geq', '99.99'))
           .map(keys=('sIP',))
           )
 
