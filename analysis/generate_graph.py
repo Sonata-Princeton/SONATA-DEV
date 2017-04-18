@@ -28,7 +28,7 @@ def generate_graph(sc, query, min):
 
     # TD_PATH = '/mnt/anon_all_flows_2hour_splits/%s.csv' % (min)
 
-    TD_PATH = '/mnt/anon_60mins_data_5minSplits/%s.csv'
+    TD_PATH = '/mnt/anon_60mins_data_5minSplits/%s.csv'%min
 
     flows_File = TD_PATH
     T = 1
