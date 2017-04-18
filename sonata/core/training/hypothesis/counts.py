@@ -9,7 +9,7 @@ from sonata.core.training.utils import *
 from sonata.core.utils import *
 
 debug = False
-# debug = True
+debug = True
 
 
 class Counts(object):

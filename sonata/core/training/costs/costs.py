@@ -5,7 +5,7 @@ from sonata.system_config import *
 from sonata.core.training.utils import *
 
 debug = False
-# debug = True
+debug = True
 
 def convertNoneToZero(s):
     key = s[0]

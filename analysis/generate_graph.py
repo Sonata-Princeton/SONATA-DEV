@@ -84,7 +84,7 @@ def generate_graph(sc, query, min):
     refinement_object.update_filter(training_data)
     hypothesis = Hypothesis(query, sc, training_data, timestamps,refinement_object, target)
     G = hypothesis.G
-    fname = 'data/anon_all_flows_2hour_splits/hypothesis_graph_'+str(query.qid) + '_min_' + str(min) + '_'+str(datetime.datetime.fromtimestamp(time.time()))+'.pickle'
+    fname = 'data/anon_all_flows_2hour_splits_dummy/hypothesis_graph_'+str(query.qid) + '_min_' + str(min) + '_'+str(datetime.datetime.fromtimestamp(time.time()))+'.pickle'
 
     # dump the hypothesis graph: {ts:G[ts], ...}
     print "Dumping graph to", fname
@@ -99,7 +99,7 @@ if __name__ == '__main__':
           .distinct(keys=('dIP', 'sIP'))
           .map(keys=('dIP',), map_values=('count',), func=('eq', 1,))
           .reduce(keys=('dIP',), func=('sum',))
-          .filter(filter_vals=('count',), func=('geq', '99.99'))
+          .filter(filter_vals=('count',), func=('geq', '99.9'))
           .map(keys=('dIP',))
           )
     # heavy hitter detection
@@ -163,9 +163,10 @@ if __name__ == '__main__':
           .map(keys=('sIP',))
           )
 
-    queries = [q1,q6]
+    # queries = [q1,q6]
+    queries = [q1]
     for q in queries:
-        for min in range(0, 60):
+        for min in range(0, 4):
             sc = create_spark_context()
             print "Starting: ", str(q.qid), " Min:", str(min)
             generate_graph(sc, q, min)
