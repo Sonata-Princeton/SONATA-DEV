@@ -29,7 +29,7 @@ def generate_graph(sc, query, min):
     TD_PATH = '/mnt/anon_all_flows_2hour_splits/%s.csv' % (min)
 
     flows_File = TD_PATH
-    T = 1
+    T = 10
     if query.qid == 1:
         training_data = (sc.textFile(flows_File)
                          .map(parse_log_line)
