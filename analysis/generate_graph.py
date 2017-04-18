@@ -17,7 +17,7 @@ def parse_log_line(logline):
     return tuple(logline.split(","))
 
 def generate_graph(sc, query, min):
-    TD_PATH = '/mnt/anon_all_flows_5min.csv'
+    # TD_PATH = '/mnt/anon_all_flows_5min.csv'
     # TD_PATH = '/mnt/caida_5min.csv'
     # TD_PATH = '/mnt/anon_all_flows_15min.csv'
     # TD_PATH = '/mnt/anon_all_flows_5min.csv/part-00500'
@@ -27,6 +27,8 @@ def generate_graph(sc, query, min):
     # TD_PATH = '/home/vagrant/dev/data/anon_all_flows_1min.csv'
 
     # TD_PATH = '/mnt/anon_all_flows_2hour_splits/%s.csv' % (min)
+
+    TD_PATH = '/mnt/anon_60mins_data_5minSplits/%s.csv'
 
     flows_File = TD_PATH
     T = 1
@@ -84,7 +86,7 @@ def generate_graph(sc, query, min):
     refinement_object.update_filter(training_data)
     hypothesis = Hypothesis(query, sc, training_data, timestamps,refinement_object, target)
     G = hypothesis.G
-    fname = 'data/anon_all_flows_2hour_splits_dummy/hypothesis_graph_'+str(query.qid) + '_min_' + str(min) + '_'+str(datetime.datetime.fromtimestamp(time.time()))+'.pickle'
+    fname = 'data/hypothesis_graph_'+str(query.qid) + '_5min_' + str(min) + '_'+str(datetime.datetime.fromtimestamp(time.time()))+'.pickle'
 
     # dump the hypothesis graph: {ts:G[ts], ...}
     print "Dumping graph to", fname
@@ -175,9 +177,9 @@ if __name__ == '__main__':
           )
 
     # queries = [q1,q6]
-    queries = [q2]
+    queries = [q1, q6]
     for q in queries:
-        for min in range(0, 1):
+        for min in range(0, 12):
             sc = create_spark_context()
             print "Starting: ", str(q.qid), " Min:", str(min)
             generate_graph(sc, q, min)
