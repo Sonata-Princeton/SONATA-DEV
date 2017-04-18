@@ -293,13 +293,21 @@ if __name__ == '__main__':
     fname6 = 'data/hypothesis_graph_6_2017-04-12 15:30:31.466226.pickle'
     fname1 = 'data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle'
     fname2 = 'data/hypothesis_graph_2_2017-04-16 23:29:09.655075.pickle'
+    fname1 = 'data/hypothesis_graph_1_merged_2017-04-17 17:57:50.958863.pickle'
+    fname6 = 'data/hypothesis_graph_6_merged_2017-04-17 17:57:50.958863.pickle'
+    fname2 = 'data/hypothesis_graph_2_2017-04-17 00:40:52.285241.pickle'
+    # fname2 = 'data/hypothesis_graph_2_2017-04-16 23:29:09.655075.pickle'
+
+    # port scanning
+    fname2 = 'data/hypothesis_graph_2_min_0_2017-04-18 02:21:52.502334.pickle' # 99.9
+    fname2 = 'data/hypothesis_graph_2_min_0_2017-04-18 02:55:20.608072.pickle' # 99.99
     fnames = [fname2]
     Ns, Bs = get_system_configs(fnames)
-    Ns = [10000]
-    Bs = [1000]
+    Ns = [5000]
+    Bs = [20000]
 
     modes = [2, 3, 4, 5]
-    modes = [5]
+    modes = [3]
     Td = 20
     data_dump = {}
     for mode in modes:
