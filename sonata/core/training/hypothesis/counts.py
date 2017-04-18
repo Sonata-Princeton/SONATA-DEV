@@ -202,7 +202,7 @@ class Counts(object):
                         print "No query to process for", qid, "refinement level", ref_level, "iteration id", iter_qid
                         out = []
                     query_out_refinement_level[qid][ref_level][iter_qid] = out
-                    if debug: print ref_level, iter_qid, query_string, out[:2]
+                    # if debug: print ref_level, iter_qid, query_string, out[:2]
                     #print len(query_out_refinement_level[qid][ref_level][iter_qid])
 
             query_out_refinement_level[qid][ref_level][0] = out0
