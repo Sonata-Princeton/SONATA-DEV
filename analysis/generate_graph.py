@@ -29,7 +29,7 @@ def generate_graph(sc, query, min):
     # TD_PATH = '/mnt/anon_all_flows_2hour_splits/%s.csv' % (min)
 
     flows_File = TD_PATH
-    T = 10
+    T = 1
     if query.qid == 1:
         training_data = (sc.textFile(flows_File)
                          .map(parse_log_line)
@@ -164,7 +164,7 @@ if __name__ == '__main__':
           )
 
     # queries = [q1,q6]
-    queries = [q1]
+    queries = [q2]
     for q in queries:
         for min in range(0, 1):
             sc = create_spark_context()

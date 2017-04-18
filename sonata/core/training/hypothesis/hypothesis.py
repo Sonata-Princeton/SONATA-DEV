@@ -114,7 +114,7 @@ class Hypothesis(object):
                     if partition_plan in costs[qid][transit]:
                         for (ts, (b, n)) in costs[qid][transit][partition_plan]:
                             E[ts][edge] = (b,n)
-                            if ts == 1440289056:
+                            if ts == 144028905:
                                 print ts, edge, b, n, E[ts][edge]
 
         # Add edges for the final refinement level and the final target (T) node
@@ -124,7 +124,7 @@ class Hypothesis(object):
                 for ts in self.timestamps:
                     if ts not in E:
                         E[ts] = {}
-                    if ts == 1440289056:
+                    if ts == 144028905:
                         print ts, edge
                     E[ts][edge] = ((0,0), 0)
 
