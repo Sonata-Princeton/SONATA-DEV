@@ -93,7 +93,7 @@ class Counts(object):
                 transit_query_string = 'self.sc.parallelize(out)'
                 transit_query_string = generate_query_to_collect_transit_cost(transit_query_string, spark_query)
                 query_cost_transit[qid][transit][iter_qid] = eval(transit_query_string)
-                if debug: print transit, iter_qid, transit_query_string
+                # if debug: print transit, iter_qid, transit_query_string
                 # if debug: print transit, iter_qid, query_cost_transit[qid][transit][iter_qid][:2]
                 #break
 
