@@ -102,14 +102,14 @@ if __name__ == '__main__':
           .filter(filter_vals=('count',), func=('geq', '99.9'))
           .map(keys=('dIP',))
           )
-    # heavy hitter detection
-    q2 = (PacketStream(2)
-          # .filter(filter_keys=('proto',), func=('eq', 6))
-          .map(keys=('dIP', 'dPort','sPort','sIP'), values=('nBytes',))
-          .reduce(keys=('dIP', 'dPort','sPort','sIP',), func=('sum',))
-          .filter(filter_vals=('nBytes',), func=('geq', '99.9'))
-          .map(keys=('dIP',))
-          )
+    # # heavy hitter detection
+    # q2 = (PacketStream(2)
+    #       # .filter(filter_keys=('proto',), func=('eq', 6))
+    #       .map(keys=('dIP', 'dPort','sPort','sIP'), values=('nBytes',))
+    #       .reduce(keys=('dIP', 'dPort','sPort','sIP',), func=('sum',))
+    #       .filter(filter_vals=('nBytes',), func=('geq', '99.9'))
+    #       .map(keys=('dIP',))
+    #       )
 
     # q2 = (PacketStream(2)
     #       # .filter(filter_keys=('proto',), func=('eq', 6))
@@ -119,6 +119,16 @@ if __name__ == '__main__':
     #       .filter(filter_vals=('count',), func=('geq', '99'))
     #       .map(keys=('dIP',))
     #       )
+
+    q2 = (PacketStream(2)
+          # .filter(filter_keys=('proto',), func=('eq', 6))
+          .map(keys=('sIP', 'dPort'))
+          .distinct(keys=('sIP', 'dPort'))
+          .map(keys=('sIP','dPort'), map_values=('count',), func=('eq', 1,))
+          .reduce(keys=('sIP',), func=('sum',))
+          .filter(filter_vals=('count',), func=('geq', '99.9'))
+          .map(keys=('sIP',))
+          )
 
     # ssh brute forcing
     q3 = (PacketStream(3)
