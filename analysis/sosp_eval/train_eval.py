@@ -21,10 +21,11 @@ def plot_alpha(dump_fname):
             for mode in data[qid]:
                 Ns = data[qid][mode][-2]
                 Bs = data[qid][mode][-1]
-                print data[qid][mode]
+                # print data[qid][mode]
                 operational_alphas = data[qid][mode][3]
                 intensity_alpha = get_alpha_intensity(Ns, Bs[:-1], operational_alphas)
                 plot_fname = dump_fname.split('.pickle')[0] + '_heatmap_alpha_' + str(qid) + '_' + str(mode) + '.pdf'
+                print "Dumping", plot_fname
                 heatmap_plot(Ns, Bs[:-1], intensity_alpha, 'Nmax (Kpps)', 'Bmax (Kb)', plot_fname)
 
 
@@ -221,6 +222,7 @@ def do_train_eval():
 
 
 if __name__ == '__main__':
-    do_train_eval()
+    # do_train_eval()
     dump_fname = 'data/perf_gain_analysis_1_2_12_2017-04-16 17:38:00.128793.pickle'
-    # plot_alpha(dump_fname)
+    dump_fname = 'data/perf_gain_analysis_1_2_12_2017-04-17 08:11:44.377775.pickle'
+    plot_alpha(dump_fname)
