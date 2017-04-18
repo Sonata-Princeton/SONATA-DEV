@@ -17,11 +17,11 @@ def parse_log_line(logline):
     return tuple(logline.split(","))
 
 def generate_graph(sc, query, min):
-    # TD_PATH = '/mnt/anon_all_flows_5min.csv'
+    TD_PATH = '/mnt/anon_all_flows_5min.csv'
     # TD_PATH = '/mnt/caida_5min.csv'
     # TD_PATH = '/mnt/anon_all_flows_15min.csv'
     # TD_PATH = '/mnt/anon_all_flows_5min.csv/part-00500'
-    TD_PATH = '/mnt/anon_all_flows_1min.csv'
+    # TD_PATH = '/mnt/anon_all_flows_1min.csv'
     # TD_PATH = '/home/vagrant/dev/data/anon_all_flows_1min.csv/part-00496'
     # TD_PATH = '/mnt/anon_all_flows_1min.csv/part-00496'
     # TD_PATH = '/home/vagrant/dev/data/anon_all_flows_1min.csv'
@@ -120,6 +120,7 @@ if __name__ == '__main__':
     #       .map(keys=('dIP',))
     #       )
 
+    # port scan
     q2 = (PacketStream(2)
           # .filter(filter_keys=('proto',), func=('eq', 6))
           .map(keys=('sIP', 'dPort'))
