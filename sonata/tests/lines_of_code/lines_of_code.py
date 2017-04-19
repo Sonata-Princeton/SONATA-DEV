@@ -22,14 +22,14 @@ if SERVER:
     DP_DRIVER_CONF = ('172.17.0.101', 6666)
     SPARK_ADDRESS = '172.17.0.98'
     SNIFF_INTERFACE = 'ens1f1'
-    RESULTS_FOLDER = '/home/sonata/SONATA-DEV/sonata/tests/lines_of_code/q2/results/'
+    RESULTS_FOLDER = '/home/sonata/SONATA-DEV/sonata/tests/lines_of_code/q6/results/'
 else:
     BASEPATH = '/home/vagrant/'
     SONATA = 'dev'
     DP_DRIVER_CONF = ('localhost', 6666)
     SPARK_ADDRESS = 'localhost'
     SNIFF_INTERFACE = 'm-veth-2'
-    RESULTS_FOLDER = '/home/vagrant/dev/sonata/tests/lines_of_code/q2/results/'
+    RESULTS_FOLDER = '/home/vagrant/dev/sonata/tests/lines_of_code/q6/results/'
 
 
 featuresPath = ''
@@ -131,7 +131,18 @@ if __name__ == '__main__':
           )
 
 
-    queries = [q2]
+    # port scan
+    q6 = (PacketStream(6)
+          # .filter(filter_keys=('proto',), func=('eq', 6))
+          .map(keys=('sIP', 'dPort'))
+          .distinct(keys=('sIP', 'dPort'))
+          .map(keys=('sIP',), map_values=('count',), func=('eq', 1,))
+          .reduce(keys=('sIP',), func=('sum',))
+          .filter(filter_vals=('count',), func=('geq', '99.99'))
+          .map(keys=('sIP',))
+          )
+
+    queries = [q6]
 
     runtime = Runtime(conf, queries)
 
