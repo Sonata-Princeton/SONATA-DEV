@@ -161,7 +161,6 @@ def plot_perf_overheads(dump_fname):
                                 if d in add_count_2_time:
                                     t_driver.append(add_count_2_time[d])
                                 else:
-                                    print "##", qid, d
                                     t_driver.append(add_count_2_time[dmax])
                                 t_runtime.append(d * parser_overhead['tuple'])
                             # print qid, t_parse
@@ -689,8 +688,8 @@ if __name__ == '__main__':
     """
     dump_fname = 'data/perf_gain_analysis_123_1_2_3_2017-04-18 19:39:34.483612.pickle'
 
-    # plot_perf_ngain(dump_fname)
-    # plot_perf_bgain(dump_fname)
-    # plot_perf_deltas(dump_fname)
-    # plot_perf_delay(dump_fname)
+    plot_perf_ngain(dump_fname)
+    plot_perf_bgain(dump_fname)
+    plot_perf_deltas(dump_fname)
+    plot_perf_delay(dump_fname)
     plot_perf_overheads(dump_fname)
