@@ -16,11 +16,11 @@ from sonata.core.training.hypothesis.hypothesis import Hypothesis
 def parse_log_line(logline):
     return tuple(logline.split(","))
 
-def generate_graph(sc, query, min,T):
+def generate_graph(sc, query, min,thres):
     TD_PATH = '/mnt/anon_all_flows_1min.csv'
 
     flows_File = TD_PATH
-    T = T
+    T = 1
     if query.qid == 1:
         training_data = (sc.textFile(flows_File)
                          .map(parse_log_line)
@@ -75,7 +75,7 @@ def generate_graph(sc, query, min,T):
     refinement_object.update_filter(training_data)
     hypothesis = Hypothesis(query, sc, training_data, timestamps,refinement_object, target)
     G = hypothesis.G
-    fname = 'data/hypothesis_graph_'+str(query.qid) + '_T_' + T +'_1min_' + str(min) + '_'+str(datetime.datetime.fromtimestamp(time.time()))+'.pickle'
+    fname = 'data/hypothesis_graph_'+str(query.qid) + '_threshold_' + thres +'_1min_' + str(min) + '_'+str(datetime.datetime.fromtimestamp(time.time()))+'.pickle'
 
     # dump the hypothesis graph: {ts:G[ts], ...}
     print "Dumping graph to", fname
@@ -84,19 +84,19 @@ def generate_graph(sc, query, min,T):
 
 if __name__ == '__main__':
 
-    timeSlots = range(1, 11)
+    thresholds = ['90', '99', '99.9', '99.99', '99.999']
 
-    for T in timeSlots:
+    for thres in thresholds:
         sc = create_spark_context()
         q = (PacketStream(1)
-              # .filter(filter_keys=('proto',), func=('eq', 6))
-              .map(keys=('dIP', 'sIP'))
-              .distinct(keys=('dIP', 'sIP'))
-              .map(keys=('dIP',), map_values=('count',), func=('eq', 1,))
-              .reduce(keys=('dIP',), func=('sum',))
-              .filter(filter_vals=('count',), func=('geq', '99.9'))
-              .map(keys=('dIP',))
-              )
+             # .filter(filter_keys=('proto',), func=('eq', 6))
+             .map(keys=('dIP', 'sIP'))
+             .distinct(keys=('dIP', 'sIP'))
+             .map(keys=('dIP',), map_values=('count',), func=('eq', 1,))
+             .reduce(keys=('dIP',), func=('sum',))
+             .filter(filter_vals=('count',), func=('geq', thres))
+             .map(keys=('dIP',))
+             )
         print "Starting: ", str(q.qid), " Min:", str(min)
-        generate_graph(sc, q, 0, T)
+        generate_graph(sc, q, 0, thres)
         sc.stop()
