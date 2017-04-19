@@ -145,36 +145,39 @@ def plot_perf_overheads(dump_fname):
         # print data
         plot_data = {}
         for qid in data:
-            for mode in data[qid]:
-                if mode in [5]:
-                    for (n_max, b_max) in data[qid][mode]:
-                        t_parse = []
-                        t_driver = []
-                        t_runtime = []
-                        dmax = max(add_count_2_time.keys())
-                        for ts in data[qid][mode][(n_max, b_max)]:
-                            n = data[qid][mode][(n_max, b_max)][ts][0]
-                            d = 10*int(data[qid][mode][(n_max, b_max)][ts][2])/10
-                            # print qid, n,d, n*parser_overhead['tuple'], d*parser_overhead['tuple']
-                            t_parse.append(n*parser_overhead['tuple'])
-                            if d in add_count_2_time:
-                                t_driver.append(add_count_2_time[d])
-                            else:
-                                t_driver.append(add_count_2_time[dmax])
-                            t_runtime.append(d*parser_overhead['tuple'])
-                        # print qid, t_parse
-                        y1 = np.median(t_parse)
-                        yerr1 = np.std(t_parse)
-                        y3 = np.median(t_driver)
-                        yerr3 = np.std(t_driver)
-                        y2 = np.median(t_runtime)
-                        yerr2 = np.std(t_runtime)
-                        if mode not in plot_data:
-                            plot_data[mode] = {}
-                        plot_data[mode][qid] = ((y1, y2, y2), (yerr1, yerr2, yerr3))
-                        print mode, qid, plot_data[mode][qid]
+            if qid in data.keys():
+                for mode in data[qid]:
+                    if mode in [5]:
+                        for (n_max, b_max) in data[qid][mode]:
+                            t_parse = []
+                            t_driver = []
+                            t_runtime = []
+                            dmax = max(add_count_2_time.keys())
+                            for ts in data[qid][mode][(n_max, b_max)]:
+                                n = data[qid][mode][(n_max, b_max)][ts][0]
+                                d = 10 * (int(data[qid][mode][(n_max, b_max)][ts][2]) / 10)
+                                # print qid, n, d, data[qid][mode][(n_max, b_max)][ts][2], dmax, add_count_2_time[dmax]
+                                t_parse.append(n * parser_overhead['tuple'])
+                                if d in add_count_2_time:
+                                    t_driver.append(add_count_2_time[d])
+                                else:
+                                    print "##", qid, d
+                                    t_driver.append(add_count_2_time[dmax])
+                                t_runtime.append(d * parser_overhead['tuple'])
+                            # print qid, t_parse
+                            y1 = np.median(t_parse)
+                            yerr1 = np.std(t_parse)
+                            y3 = np.median(t_driver)
+                            yerr3 = np.std(t_driver)
+                            y2 = np.median(t_runtime)
+                            yerr2 = np.std(t_runtime)
+                            if mode not in plot_data:
+                                plot_data[mode] = {}
+                            plot_data[mode][qid] = ((y1, y2, y3), (yerr1, yerr2, yerr3))
+                            print mode, qid, plot_data[mode][qid]
 
         qids = data.keys()
+        # qids = [3]
         xlabels = []
         qids.sort()
         for qid in qids:
@@ -200,25 +203,28 @@ def plot_perf_overheads(dump_fname):
 
         for mode in modes:
             x = [0.5 * bar_width + q * shift + i * bar_width for q in range(len(qids))]
-            y1 = [int(plot_data[mode][qid][0][0]) for qid in qids]
-            y2 = [int(plot_data[mode][qid][0][1]) for qid in qids]
-            y3 = [int(plot_data[mode][qid][0][2]) for qid in qids]
+            y1 = [1000*int(plot_data[mode][qid][0][0]) for qid in qids]
+            y2 = [1000*int(plot_data[mode][qid][0][1]) for qid in qids]
+            y3 = [1000*int(plot_data[mode][qid][0][2]) for qid in qids]
             color_alpha = 1
-            ax.bar(x, y1, bar_width, alpha=color_alpha, color=mode_2_color[0], label="Parser", hatch=mode_2_hatches[0])
+            # ax.bar(x, y1, bar_width, alpha=color_alpha, color=mode_2_color[0], label="Parser", hatch=mode_2_hatches[0])
             ax.bar(x, y2, bar_width, alpha=color_alpha, color=mode_2_color[1], label="Runtime", hatch=mode_2_hatches[1],
-                   bottom=y1)
+                   # bottom=y1
+                   )
             ax.bar(x, y3, bar_width, alpha=color_alpha, color=mode_2_color[2], label="Driver Overhead",
                    hatch=mode_2_hatches[2],
-                   bottom=[a+b for (a,b) in zip(y1,y2)])
+                   bottom=y2
+                   # bottom=[a + b for (a, b) in zip(y1, y2)]
+                   )
             print mode, x, y1, y2, y3
             i += 1
         ax.yaxis.set_major_locator(my_locator)
         ax.legend(loc='upper center', bbox_to_anchor=(0.50, 1.1), ncol=3, fancybox=True, shadow=False)
         ax.set_xlim(xmin=0)
         ax.set_xlim(xmax=xticks[-1] + (float(len(modes)) / 2 + 0.5) * bar_width)
-        ax.set_ylim(ymax=80)
+        # ax.set_ylim(ymax=80)
         pl.xlabel('Queries')
-        pl.ylabel('Time (ms)')
+        pl.ylabel('Time (micro seconds)')
         plt.xticks(xticks, xlabels)
 
         # ax.grid(True)
@@ -640,17 +646,19 @@ def perf_gain_analysis(qid_2_fnames, qid_2_Ns, qid_2_Bs):
 def do_perf_eval():
     qid_2_fnames = {1: ['data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle'],
                     2: ['data/hypothesis_graph_6_2017-04-12 15:30:31.466226.pickle'],
-                    12: ['data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle',
-                         'data/hypothesis_graph_6_2017-04-12 15:30:31.466226.pickle']
+                    3: ['data/hypothesis_graph_2_min_0_2017-04-18 04:25:11.918672.pickle'],
+                    123: ['data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle',
+                          'data/hypothesis_graph_6_2017-04-12 15:30:31.466226.pickle',
+                          'data/hypothesis_graph_2_min_0_2017-04-18 04:25:11.918672.pickle']
                     }
     # qid_2_fnames = {1: ['data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle'],
     #                 16: ['data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle',
     #                      'data/hypothesis_graph_6_2017-04-12 15:30:31.466226.pickle']
     #                 }
-    qid_2_Ns = {1: [1500], 2: [1000], 12: [1000]}
-    qid_2_Bs = {1: [20000], 2: [45000], 12: [70000]}
+    qid_2_Ns = {1: [1500], 2: [1000], 3: [2500], 123: [1000]}
+    qid_2_Bs = {1: [20000], 2: [45000], 3: [20000], 123: [95000]}
 
-    error_analysis(qid_2_fnames, qid_2_Ns, qid_2_Bs)
+    # error_analysis(qid_2_fnames, qid_2_Ns, qid_2_Bs)
     perf_gain_analysis(qid_2_fnames, qid_2_Ns, qid_2_Bs)
 
 
@@ -660,7 +668,26 @@ if __name__ == '__main__':
     # dump_fname = 'data/error_analysis_1,62017-04-15 20:53:19.680790.pickle'
     # plot_lcurve(dump_fname)
 
+
+
+
+
+    # used for results till April 18th
     dump_fname = 'data/perf_gain_analysis_1_2_12_2017-04-16 16:36:31.767328.pickle'
+
+    """
+    #Config:
+    qid_2_fnames = {1: ['data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle'],
+                    2: ['data/hypothesis_graph_6_2017-04-12 15:30:31.466226.pickle'],
+                    3: ['data/hypothesis_graph_2_min_0_2017-04-18 04:25:11.918672.pickle'],
+                    123: ['data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle',
+                          'data/hypothesis_graph_6_2017-04-12 15:30:31.466226.pickle',
+                          'data/hypothesis_graph_2_min_0_2017-04-18 04:25:11.918672.pickle']
+                    }
+    qid_2_Ns = {1: [1500], 2: [1000], 3: [2500], 123: [1000]}
+    qid_2_Bs = {1: [20000], 2: [45000], 3: [20000], 123: [95000]}
+    """
+    dump_fname = 'data/perf_gain_analysis_123_1_2_3_2017-04-18 19:39:34.483612.pickle'
 
     # plot_perf_ngain(dump_fname)
     # plot_perf_bgain(dump_fname)
