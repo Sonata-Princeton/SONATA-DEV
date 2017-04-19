@@ -34,7 +34,7 @@ def plot_var_thresh(dump_fname):
         xlabels = thresholds
         modes = plot_data.keys()
         bar_width = 20
-        shift = 3.5 * bar_width
+        shift = (len(thresholds)-1.5) * bar_width
         fig = plt.figure()
         ax = fig.add_subplot(1, 1, 1)
         i = 0
@@ -52,7 +52,7 @@ def plot_var_thresh(dump_fname):
         ax.yaxis.set_major_locator(my_locator)
         ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.05), ncol=3, fancybox=True, shadow=False)
         ax.set_xlim(xmin=0)
-        ax.set_xlim(xmax=xticks[-1] + (len(modes) / 2 + 0.5) * bar_width)
+        ax.set_xlim(xmax=xticks[-1] + (len(thresholds) / 2 + 0.5) * bar_width)
         pl.xlabel('Threshold (percentile)')
         pl.ylabel('State (Kb)')
         plt.xticks(xticks, xlabels)
