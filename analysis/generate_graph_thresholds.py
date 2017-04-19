@@ -97,6 +97,6 @@ if __name__ == '__main__':
              .filter(filter_vals=('count',), func=('geq', thres))
              .map(keys=('dIP',))
              )
-        print "Starting: ", str(q.qid), " Min:", str(min)
+        print "Starting: ", str(q.qid), " thres:", str(thres)
         generate_graph(sc, q, 0, thres)
         sc.stop()
