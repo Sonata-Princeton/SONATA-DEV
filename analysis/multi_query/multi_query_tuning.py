@@ -301,13 +301,18 @@ if __name__ == '__main__':
     # port scanning
     fname2 = 'data/hypothesis_graph_2_min_0_2017-04-18 02:21:52.502334.pickle' # 99.9
     fname2 = 'data/hypothesis_graph_2_min_0_2017-04-18 02:55:20.608072.pickle' # 99.99
+    # Query 2: 5min : 99.99 thres port scan
+    fname2 = 'data/hypothesis_graph_2_min_0_2017-04-18 04:25:11.918672.pickle'
     fnames = [fname2]
+    fnames = ['data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle',
+          'data/hypothesis_graph_6_2017-04-12 15:30:31.466226.pickle',
+          'data/hypothesis_graph_2_min_0_2017-04-18 04:25:11.918672.pickle']
     Ns, Bs = get_system_configs(fnames)
     Ns = [5000]
-    Bs = [20000]
+    Bs = [90000]
 
     modes = [2, 3, 4, 5]
-    modes = [3]
+    modes = [5]
     Td = 20
     data_dump = {}
     for mode in modes:
