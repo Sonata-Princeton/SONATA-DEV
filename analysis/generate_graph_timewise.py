@@ -17,7 +17,7 @@ def parse_log_line(logline):
     return tuple(logline.split(","))
 
 def generate_graph(sc, query, min,T):
-    TD_PATH = '/mnt/anon_all_flows_1min.csv'
+    TD_PATH = '/mnt/anon_all_flows_5min.csv'
 
     flows_File = TD_PATH
     T = T
@@ -75,7 +75,7 @@ def generate_graph(sc, query, min,T):
     refinement_object.update_filter(training_data)
     hypothesis = Hypothesis(query, sc, training_data, timestamps,refinement_object, target)
     G = hypothesis.G
-    fname = 'data/hypothesis_graph_'+str(query.qid) + '_T_' + str(T) +'_1min_' + str(min) + '_'+str(datetime.datetime.fromtimestamp(time.time()))+'.pickle'
+    fname = 'data/hypothesis_graph_'+str(query.qid) + '_T_' + str(T) +'_5min_' + str(min) + '_'+str(datetime.datetime.fromtimestamp(time.time()))+'.pickle'
 
     # dump the hypothesis graph: {ts:G[ts], ...}
     print "Dumping graph to", fname

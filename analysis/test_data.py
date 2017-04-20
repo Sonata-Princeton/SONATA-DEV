@@ -6,7 +6,7 @@ fname = 'data/hypothesis_graph_6_2017-04-12 15:30:31.466226.pickle'
 fname = 'data/hypothesis_graph_2_threshold_99.99_5min_0_2017-04-18 23:58:49.831630.pickle'
 fname = 'data/hypothesis_graph_2_threshold_99.9_5min_0_2017-04-19 00:47:08.188306.pickle'
 fname= 'data/hypothesis_graph_2_threshold_99.999_5min_0_2017-04-19 01:34:59.979759.pickle'
-
+fname = 'data/hypothesis_graph_1_T_6_1min_0_2017-04-19 03:24:42.626011.pickle'
 with open(fname,'r') as f:
     data = pickle.load(f)
     print len(data.keys())

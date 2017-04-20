@@ -306,12 +306,14 @@ if __name__ == '__main__':
     fname2 = 'data/hypothesis_graph_2_threshold_99.99_5min_0_2017-04-18 23:58:49.831630.pickle'
     fname2 = 'data/hypothesis_graph_2_threshold_99.9_5min_0_2017-04-19 00:47:08.188306.pickle'
     fname2 = 'data/hypothesis_graph_2_threshold_99.999_5min_0_2017-04-19 01:34:59.979759.pickle'
+
+    fname2 = 'data/hypothesis_graph_1_T_6_1min_0_2017-04-19 03:24:42.626011.pickle'
     fnames = [fname2]
     # fnames = ['data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle',
     #       'data/hypothesis_graph_6_2017-04-12 15:30:31.466226.pickle',
     #       'data/hypothesis_graph_2_min_0_2017-04-18 04:25:11.918672.pickle']
     Ns, Bs = get_system_configs(fnames)
-    Ns = [100000]
+    Ns = [1000]
     Bs = [150000]
 
     modes = [2, 3, 4, 5]

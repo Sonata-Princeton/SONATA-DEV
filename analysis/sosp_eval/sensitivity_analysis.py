@@ -154,19 +154,21 @@ def variable_window():
                          }
     intervals = interval_2_fnames.keys()
     intervals.sort()
+    # intervals = [7,8,9,10]
     data = {}
     modes = [2, 3, 4, 5]
     # modes = [5]
-    TD = 10
-    Ns = [1500]
-    Bs = [20000]
+    TD = 2
+    Ns = [2500]
+    Bs = [25000]
     for interval in intervals:
         fnames = interval_2_fnames[interval]
         print fnames
-        data[interval] = do_perf_gains_analysis([str(x) for x in fnames], [interval*x for x in Ns], [interval*x for x in Bs], modes, TD)
+        data[interval] = do_perf_gains_analysis([str(x) for x in fnames], [x for x in Ns], [interval*x for x in Bs], modes, TD)
     threshes = '_'.join([str(x) for x in interval_2_fnames.keys()]) + '_'
     dump_fname = 'data/var_intervals_' + str(threshes) + str(datetime.datetime.fromtimestamp(time.time())) + '.pickle'
     print "Dumping result to file:", dump_fname
+    print data
     with open(dump_fname, 'w') as f:
         pickle.dump(data, f)
     plot_var_intervals(dump_fname)

@@ -589,6 +589,7 @@ def do_perf_gains_analysis(fnames, Ns, Bs, modes, td):
                         trained_learn = learn[fname]
                         trained_path = trained_learn.final_plan.path
                         alpha = operational_alphas[(n_max, b_max)]
+                        print "alpha", alpha
 
                         detection_delay[fname] = len(trained_learn.final_plan.path[:-1])
 
@@ -615,6 +616,7 @@ def do_perf_gains_analysis(fnames, Ns, Bs, modes, td):
 
                     data_dump[mode][(n_max, b_max)][ts] = (n_cost, b_cost, delta_updates,
                                                            np.median(detection_delay.values()), overheads)
+                    print data_dump[mode][(n_max, b_max)][ts]
 
     return data_dump
 
