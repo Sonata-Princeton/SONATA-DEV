@@ -59,7 +59,7 @@ def plot_var_thresh(dump_fname):
 
         ax.grid(True)
         plt.tight_layout()
-        plot_fname = dump_fname.split('.pickle')[0] + '_var_thresh.pdf'
+        plot_fname = 'data/var_thresh.pdf'
         pl.savefig(plot_fname)
         print "Saving...", plot_fname
 
@@ -126,9 +126,9 @@ def variable_threshold():
     data = {}
     modes = [2, 3, 4, 5]
     # modes = [5]
-    TD = 10
-    Ns = [1500]
-    Bs = [20000]
+    TD = 20
+    Ns = [1000]
+    Bs = [70000]
     for thresh in thresholds:
         fnames = [thresh_2_fname[thresh]]
         data[thresh] = do_perf_gains_analysis(fnames, Ns, Bs, modes, TD)
@@ -157,9 +157,9 @@ def variable_window():
     # intervals = [7,8,9,10]
     data = {}
     modes = [2, 3, 4, 5]
-    # modes = [5]
+    modes = [5]
     TD = 2
-    Ns = [2500]
+    Ns = [1000]
     Bs = [25000]
     for interval in intervals:
         fnames = interval_2_fnames[interval]
@@ -175,7 +175,7 @@ def variable_window():
 
 
 if __name__ == '__main__':
-    # variable_threshold()
-    variable_window()
-    dump_fname = 'data/var_thresh_99.999_90_99_99.99_99.9_2017-04-18 22:58:52.522746.pickle'
+    variable_threshold()
+    # variable_window()
+    # dump_fname = 'data/var_thresh_99.999_90_99_99.99_99.9_2017-04-18 22:58:52.522746.pickle'
     # plot_var_thresh(dump_fname)

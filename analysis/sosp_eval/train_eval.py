@@ -244,8 +244,27 @@ def do_train_eval():
 
 
 if __name__ == '__main__':
-    do_train_eval()
+    # do_train_eval()
     dump_fname = 'data/perf_gain_analysis_1_2_12_2017-04-16 17:38:00.128793.pickle'
 
     dump_fname = 'data/perf_gain_analysis_1_2_12_2017-04-17 08:11:44.377775.pickle'
-    plot_alpha(dump_fname)
+
+
+    """
+    Config:
+    qid_2_fnames = {1: ['data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle'],
+                    2: ['data/hypothesis_graph_6_2017-04-12 15:30:31.466226.pickle'],
+                    3: ['data/hypothesis_graph_2_min_0_2017-04-18 04:25:11.918672.pickle'],
+                    123: ['data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle',
+                          'data/hypothesis_graph_6_2017-04-12 15:30:31.466226.pickle',
+                          'data/hypothesis_graph_2_min_0_2017-04-18 04:25:11.918672.pickle']
+                    }
+    modes = [2, 3, 4, 5]
+    # modes = [5]
+    TD = 30
+    Tmax = 20
+    """
+    dump_fname = 'data/perf_gain_analysis_123_1_2_3_2017-04-20 09:32:07.821087.pickle'
+    # plot_alpha(dump_fname)
+    plot_unique_plans(dump_fname)
+    plot_infeasible_configs(dump_fname)
