@@ -31,6 +31,49 @@ def heatmap_plot(X, Y, data, xlabel, ylabel, plot_name):
     plt.colorbar()  # need a colorbar to show the intensity scale
     plt.savefig(plot_name)
 
+def heatmap_sub_plot(dataAll):
+    # here's our data to plot, all normal Python lists
+    # x = [math.log(e, 10) for e in X]
+    # y = [math.log(e, 10) for e in Y]
+
+    data = dataAll[0]
+    matplotlib.rcParams.update({'font.size': 11})
+    matplotlib.rcParams.update({'figure.figsize': (6.3, 3.9)})  #6.3, 3.9
+
+    x = [float(t) / 1000 for t in data['Ns']]
+    y = [float(t) / 1000 for t in data['Bs']]
+    # setup the 2D grid with Numpy
+    x, y = np.meshgrid(x, y)
+
+
+    f, axes = plt.subplots(2, 2, sharex='col', sharey='row')
+
+
+    plt.subplots_adjust(wspace=0.1, hspace=0.2)
+
+    f.add_subplot(111, frameon=False)
+
+    # ax = f.add_subplot(1, 1, 1)
+    for ax in axes.flat:
+        ax.locator_params(nbins=6)
+        ax.set_xlim(xmax = x.max())
+        ax.set_ylim(ymax = y.max())
+        ax.set_xlim(xmin = x.min())
+        ax.set_ylim(ymin = y.min())
+
+
+    plt.tick_params(labelcolor='none', top='off', bottom='off', left='off', right='off')
+    plt.xlabel('Nmax (Kpps)')
+    plt.ylabel('Bmax (Kb)')
+
+    for data, ax in zip(dataAll, axes.flat):
+        im = ax.pcolormesh(x, y, data['intensity_alpha'], cmap='gnuplot')
+        ax.set_title(data['title'])
+
+    cax = f.add_axes([.91, 0.1, 0.03, 0.8])
+    foo = f.colorbar(im, cax=cax)
+
+    plt.savefig('data/perf_gain_analysis_1_2_12_2017-04-17 08:11:44.377775_heatmap_alpha_1_2.pdf')
 
 def get_alpha_intensity(Ns, Bs, operational_alphas):
     intensity = []

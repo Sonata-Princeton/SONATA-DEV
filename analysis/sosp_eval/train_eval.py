@@ -16,7 +16,7 @@ def plot_alpha(dump_fname):
     with open(dump_fname, 'r') as f:
         data = pickle.load(f)
         # print data
-        plot_data = {}
+        plot_data = []
         for qid in data:
             for mode in data[qid]:
                 Ns = data[qid][mode][-2]
@@ -25,9 +25,23 @@ def plot_alpha(dump_fname):
                 operational_alphas = data[qid][mode][3]
                 intensity_alpha = get_alpha_intensity(Ns, Bs[:-1], operational_alphas)
                 plot_fname = dump_fname.split('.pickle')[0] + '_heatmap_alpha_' + str(qid) + '_' + str(mode) + '.pdf'
-                print "Dumping", plot_fname
-                heatmap_plot(Ns, Bs[:-1], intensity_alpha, 'Nmax (Kpps)', 'Bmax (Kb)', plot_fname)
+                # print "Dumping", plot_fname
+                if mode == 2: title = 'OF Switches'
+                elif mode == 3: title = 'PISA Switches'
+                elif mode == 4: title = 'Static Refinement'
+                elif mode == 5: title = 'Sonata'
 
+                plot_data.append({'Ns': Ns,
+                                  'Bs': Bs[:-1],
+                                  'intensity_alpha': intensity_alpha,
+                                  'plot_fname':plot_fname,
+                                  'title': title
+                                  })
+
+                # print Ns, Bs
+                # heatmap_plot(Ns, Bs[:-1], intensity_alpha, 'Nmax (Kpps)', 'Bmax (Kb)', plot_fname)
+        # print plot_data
+        heatmap_sub_plot(plot_data)
 
 def plot_unique_plans(dump_fname):
     with open(dump_fname, 'r') as f:
@@ -224,5 +238,6 @@ def do_train_eval():
 if __name__ == '__main__':
     # do_train_eval()
     dump_fname = 'data/perf_gain_analysis_1_2_12_2017-04-16 17:38:00.128793.pickle'
+
     dump_fname = 'data/perf_gain_analysis_1_2_12_2017-04-17 08:11:44.377775.pickle'
     plot_alpha(dump_fname)

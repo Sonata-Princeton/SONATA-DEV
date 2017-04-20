@@ -552,7 +552,7 @@ def do_perf_gains_analysis(fnames, Ns, Bs, modes, td):
 
     data_dump = {}
     for mode in modes:
-        print "Mode:", mode
+        print "Mode:", mode, Ns, Bs, fnames
         data_dump[mode] = {}
         for n_max in Ns:
             for b_max in Bs:
