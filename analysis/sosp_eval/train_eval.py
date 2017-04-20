@@ -215,15 +215,23 @@ def system_config_space_analysis(qid_2_fnames, qid_2_Ns, qid_2_Bs):
 
 
 def do_train_eval():
-    qid_2_fnames = {1: ['data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle'],
-                    2: ['data/hypothesis_graph_6_2017-04-12 15:30:31.466226.pickle'],
-                    12: ['data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle',
-                         'data/hypothesis_graph_6_2017-04-12 15:30:31.466226.pickle']
-                    }
+    # qid_2_fnames = {1: ['data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle'],
+    #                 2: ['data/hypothesis_graph_6_2017-04-12 15:30:31.466226.pickle'],
+    #                 12: ['data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle',
+    #                      'data/hypothesis_graph_6_2017-04-12 15:30:31.466226.pickle']
+    #                 }
 
     # qid_2_fnames = {
     #     1: ['data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle']
     # }
+
+    qid_2_fnames = {1: ['data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle'],
+                    2: ['data/hypothesis_graph_6_2017-04-12 15:30:31.466226.pickle'],
+                    3: ['data/hypothesis_graph_2_min_0_2017-04-18 04:25:11.918672.pickle'],
+                    123: ['data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle',
+                          'data/hypothesis_graph_6_2017-04-12 15:30:31.466226.pickle',
+                          'data/hypothesis_graph_2_min_0_2017-04-18 04:25:11.918672.pickle']
+                    }
     qid_2_Ns = {}
     qid_2_Bs = {}
     for qid in qid_2_fnames:
@@ -236,7 +244,7 @@ def do_train_eval():
 
 
 if __name__ == '__main__':
-    # do_train_eval()
+    do_train_eval()
     dump_fname = 'data/perf_gain_analysis_1_2_12_2017-04-16 17:38:00.128793.pickle'
 
     dump_fname = 'data/perf_gain_analysis_1_2_12_2017-04-17 08:11:44.377775.pickle'
