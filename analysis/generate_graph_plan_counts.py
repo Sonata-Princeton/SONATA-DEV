@@ -17,7 +17,7 @@ def parse_log_line(logline):
     return tuple(logline.split(","))
 
 def generate_graph(sc, query):
-    TD_PATH = '/mnt/anon_all_flows_5min.csv'
+    TD_PATH = '/mnt/caida_5min.csv'
 
     flows_File = TD_PATH
     T = 10
