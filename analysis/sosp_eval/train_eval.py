@@ -68,13 +68,14 @@ def plot_plans(dump_fname):
 
                 for fname in uniquePlans.keys():
                     for plan in uniquePlans[fname].keys():
-                        uniquePlansOneQuery[uniquePlansListForKey.index(plan)] = uniquePlans[fname][plan]
+                        print uniquePlansListForKey.index(plan)
+                        uniquePlansOneQuery[uniquePlansListForKey.index(plan)+1] = uniquePlans[fname][plan]
                     print mode, uniquePlans[fname].keys(), uniquePlansOneQuery.keys()
 
                 # print data[qid][mode]
                 operational_alphas = data[qid][mode][3]
 
-                intensity_plans = get_plans_intensity(Ns, Bs[:-1], uniquePlansOneQuery, operational_alphas)
+                intensity_plans = get_plans_intensity(mode, Ns, Bs[:-1], uniquePlansOneQuery, operational_alphas)
 
                 if mode == 2: title = 'Part-OF'
                 elif mode == 3: title = 'Part-PISA'

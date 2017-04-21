@@ -45,7 +45,6 @@ def heatmap_sub_plot(dataAll,fname):
     # setup the 2D grid with Numpy
     x, y = np.meshgrid(x, y)
 
-
     f, axes = plt.subplots(2, 2, sharex='col', sharey='row')
 
 
@@ -67,11 +66,11 @@ def heatmap_sub_plot(dataAll,fname):
     plt.ylabel('Bmax (Kb)')
 
     for data, ax in zip(dataAll, axes.flat):
-        im = ax.pcolormesh(x, y, np.array(data['intensity_alpha']), cmap='gnuplot')
+        im = ax.pcolormesh(x, y, np.array(data['intensity_alpha']), cmap='gnuplot',vmin=x.min(), vmax=x.max())
         ax.set_title(data['title'])
 
     cax = f.add_axes([.91, 0.1, 0.03, 0.8])
-    foo = f.colorbar(im, cax=cax)
+    f.colorbar(im, cax=cax)
 
     plt.savefig(fname)
 
@@ -87,7 +86,7 @@ def get_alpha_intensity(Ns, Bs, operational_alphas):
 
     return intensity
 
-def get_plans_intensity(Ns, Bs, unique_plans, operational_alphas):
+def get_plans_intensity(mode, Ns, Bs, unique_plans, operational_alphas):
     intensity = []
     ctr = 0
     for b in Bs:
@@ -97,7 +96,7 @@ def get_plans_intensity(Ns, Bs, unique_plans, operational_alphas):
             for plan in unique_plans:
                 if (n, b) in unique_plans[plan]:
                     if operational_alphas[(n,b)] > 0:
-                        x = 1 * (1 + unique_plans.keys().index(plan))
+                        x = plan
                     else:
                         x = 0
                     # print n, b, plan, x

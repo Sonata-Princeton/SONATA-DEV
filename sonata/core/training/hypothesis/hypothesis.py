@@ -50,7 +50,7 @@ class Hypothesis(object):
         # P = {}
         for qid in query_2_plans:
             P = query_2_plans[qid]
-        print "Partitioning Plans (P)", P
+        # print "Partitioning Plans (P)", P
         self.P = P
 
     def get_iteration_levels(self):
@@ -93,7 +93,7 @@ class Hypothesis(object):
 
 
         E = {}
-        print "Vertices", self.V
+        # print "Vertices", self.V
         for (r1, p1, l1) in self.V:
             for (r2, p2, l2) in self.V:
                 if r1 < r2 and l2 == l1 + 1:
@@ -114,8 +114,8 @@ class Hypothesis(object):
                     if partition_plan in costs[qid][transit]:
                         for (ts, (b, n)) in costs[qid][transit][partition_plan]:
                             E[ts][edge] = (b,n)
-                            if ts == 1440289056:
-                                print ts, edge, b, n, E[ts][edge]
+                            # if ts == 1440289056:
+                            #     print ts, edge, b, n, E[ts][edge]
 
         # Add edges for the final refinement level and the final target (T) node
         for (r, p, l) in self.V:
@@ -124,8 +124,8 @@ class Hypothesis(object):
                 for ts in self.timestamps:
                     if ts not in E:
                         E[ts] = {}
-                    if ts == 1440289056:
-                        print ts, edge
+                    # if ts == 1440289056:
+                    #     print ts, edge
                     E[ts][edge] = ((0,0), 0)
 
         self.E = E
