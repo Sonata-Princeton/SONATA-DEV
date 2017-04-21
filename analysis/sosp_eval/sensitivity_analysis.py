@@ -127,8 +127,8 @@ def variable_threshold():
     modes = [2, 3, 4, 5]
     # modes = [5]
     TD = 20
-    Ns = [1000]
-    Bs = [70000]
+    Ns = [1500]
+    Bs = [20000]
     for thresh in thresholds:
         fnames = [thresh_2_fname[thresh]]
         data[thresh] = do_perf_gains_analysis(fnames, Ns, Bs, modes, TD)

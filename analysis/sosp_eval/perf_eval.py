@@ -372,7 +372,6 @@ def plot_perf_delay(dump_fname):
 
 
 def plot_perf_bgain(dump_fname):
-    for_ymax = []
     with open(dump_fname, 'r') as f:
         data = pickle.load(f)
         # print data
@@ -381,8 +380,8 @@ def plot_perf_bgain(dump_fname):
             for mode in data[qid]:
                 if mode in [3, 4, 5]:
                     for (n_max, b_max) in data[qid][mode]:
-                        y = np.median([x[1] for x in data[qid][mode][(n_max, b_max)].values()])
-                        yerr = np.std([x[1] for x in data[qid][mode][(n_max, b_max)].values()])
+                        y = np.median([x[1]/8 for x in data[qid][mode][(n_max, b_max)].values()])
+                        yerr = np.std([x[1]/8 for x in data[qid][mode][(n_max, b_max)].values()])
                         if mode not in plot_data:
                             plot_data[mode] = {}
                         plot_data[mode][qid] = (y, yerr)
@@ -427,7 +426,7 @@ def plot_perf_bgain(dump_fname):
         ax.set_xlim(xmin=0)
         ax.set_xlim(xmax=xticks[-1] + (float(len(modes)) / 2 + 0.5) * bar_width)
         pl.xlabel('Queries')
-        pl.ylabel('State (Kb)')
+        pl.ylabel('State (KB)')
         plt.xticks(xticks, xlabels)
 
         ax.grid(True)
@@ -449,7 +448,7 @@ def plot_perf_ngain(dump_fname):
                 if mode in [2, 5]:
                     for (n_max, b_max) in data[qid][mode]:
                         y = np.median([x[0]/1000 for x in data[qid][mode][(n_max, b_max)].values()])
-                        yerr = np.std([x[0] for x in data[qid][mode][(n_max, b_max)].values()])
+                        yerr = np.std([x[0]/1000 for x in data[qid][mode][(n_max, b_max)].values()])
                         for_ymax.extend([x[0]/1000 for x in data[qid][mode][(n_max, b_max)].values()])
                         if mode not in plot_data:
                             plot_data[mode] = {}

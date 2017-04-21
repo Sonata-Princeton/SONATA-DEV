@@ -237,14 +237,14 @@ def do_system_config_space_analysis(fnames, Ns, Bs, modes, td):
 def system_config_space_analysis(qid_2_fnames, qid_2_Ns, qid_2_Bs):
     data = {}
     modes = [2, 3, 4, 5]
-    # modes = [5]
-    TD = 20
+    modes = [5]
+    TD = 30
     Tmax = 20
     for qid in qid_2_fnames:
         print "Generating results for query", qid
         fnames = qid_2_fnames[qid]
         print "Running analysis for query", qid, "using:", fnames
-        data[qid] = do_system_config_space_analysis_unique_plans(fnames, qid_2_Ns[qid], qid_2_Bs[qid], modes, TD)
+        data[qid] = do_system_config_space_analysis(fnames, qid_2_Ns[qid], qid_2_Bs[qid], modes, TD)
     print data
     qids = '_'.join([str(x) for x in qid_2_fnames.keys()]) + '_'
     dump_fname = 'data/perf_gain_analysis_' + str(qids) + str(datetime.datetime.fromtimestamp(time.time())) + '.pickle'
@@ -266,6 +266,7 @@ def do_train_eval():
     # qid_2_fnames = {
     #     1: ['data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle']
     # }
+    ## FINAL
     qid_2_fnames = {1: ['data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle'],
                     2: ['data/hypothesis_graph_6_2017-04-12 15:30:31.466226.pickle'],
                     3: ['data/hypothesis_graph_2_min_0_2017-04-18 04:25:11.918672.pickle'],
@@ -273,8 +274,16 @@ def do_train_eval():
                           'data/hypothesis_graph_6_2017-04-12 15:30:31.466226.pickle',
                           'data/hypothesis_graph_2_min_0_2017-04-18 04:25:11.918672.pickle']
                     }
-
+    ## FINAL FOR UNIQUE PLANS
     qid_2_fnames = {1: ['data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle'] }
+
+    qid_2_fnames = {1: ['data/hypothesis_graph_1_plan_counts__5min_caida_2017-04-20 18:30:11.123669.pickle'],
+                    2: ['data/hypothesis_graph_2_plan_counts__5min_caida_2017-04-20 19:22:24.625582.pickle'],
+                    3: ['data/hypothesis_graph_3_plan_counts__5min_caida_2017-04-20 19:27:13.770639.pickle'],
+                    4: ['data/hypothesis_graph_4_plan_counts__5min_caida_2017-04-20 19:34:34.652234.pickle'],
+                    6: ['data/hypothesis_graph_6_plan_counts__5min_caida_2017-04-20 19:49:56.064561.pickle']
+                    }
+
     qid_2_Ns = {}
     qid_2_Bs = {}
     for qid in qid_2_fnames:
