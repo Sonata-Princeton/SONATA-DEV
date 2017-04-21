@@ -31,7 +31,7 @@ def heatmap_plot(X, Y, data, xlabel, ylabel, plot_name):
     plt.colorbar()  # need a colorbar to show the intensity scale
     plt.savefig(plot_name)
 
-def heatmap_sub_plot(dataAll):
+def heatmap_sub_plot(dataAll,fname):
     # here's our data to plot, all normal Python lists
     # x = [math.log(e, 10) for e in X]
     # y = [math.log(e, 10) for e in Y]
@@ -73,7 +73,7 @@ def heatmap_sub_plot(dataAll):
     cax = f.add_axes([.91, 0.1, 0.03, 0.8])
     foo = f.colorbar(im, cax=cax)
 
-    plt.savefig('data/heatmap_alpha.pdf')
+    plt.savefig(fname)
 
 def get_alpha_intensity(Ns, Bs, operational_alphas):
     intensity = []
@@ -87,6 +87,25 @@ def get_alpha_intensity(Ns, Bs, operational_alphas):
 
     return intensity
 
+def get_plans_intensity(Ns, Bs, unique_plans, operational_alphas):
+    intensity = []
+    ctr = 0
+    for b in Bs:
+        intensity.append([])
+        for n in Ns:
+            x = -1
+            for plan in unique_plans:
+                if (n, b) in unique_plans[plan]:
+                    if operational_alphas[(n,b)] > 0:
+                        x = 1 * (1 + unique_plans.keys().index(plan))
+                    else:
+                        x = 0
+                    # print n, b, plan, x
+                    break
+            intensity[ctr].append(x)
+        ctr += 1
+
+    return intensity
 
 def get_system_configs(fnames):
     import math

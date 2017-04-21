@@ -41,7 +41,54 @@ def plot_alpha(dump_fname):
                 # print Ns, Bs
                 # heatmap_plot(Ns, Bs[:-1], intensity_alpha, 'Nmax (Kpps)', 'Bmax (Kb)', plot_fname)
         # print plot_data
-        heatmap_sub_plot(plot_data)
+        heatmap_sub_plot(plot_data, 'data/heatmap_alpha.pdf')
+
+
+def plot_plans(dump_fname):
+    with open(dump_fname, 'r') as f:
+        data = pickle.load(f)
+        # print data
+        plot_data = []
+        uniquePlansSet = set()
+        for qid in data:
+            for mode in data[qid]:
+                uniquePlans = data[qid][mode][-1]
+                for fname in uniquePlans.keys():
+                    uniquePlansSet = uniquePlansSet.union(set(uniquePlans[fname].keys()))
+
+            uniquePlansListForKey = list(uniquePlansSet)
+            for mode in data[qid]:
+                Ns = data[qid][mode][-3]
+                Bs = data[qid][mode][-2]
+                uniquePlans = data[qid][mode][-1]
+
+                uniquePlansOneQuery = {}
+
+
+
+                for fname in uniquePlans.keys():
+                    for plan in uniquePlans[fname].keys():
+                        uniquePlansOneQuery[uniquePlansListForKey.index(plan)] = uniquePlans[fname][plan]
+                    print mode, uniquePlans[fname].keys(), uniquePlansOneQuery.keys()
+
+                # print data[qid][mode]
+                operational_alphas = data[qid][mode][3]
+
+                intensity_plans = get_plans_intensity(Ns, Bs[:-1], uniquePlansOneQuery, operational_alphas)
+
+                if mode == 2: title = 'Part-OF'
+                elif mode == 3: title = 'Part-PISA'
+                elif mode == 4: title = 'Fixed Refinement'
+                elif mode == 5: title = 'Sonata'
+
+                plot_data.append({'Ns': Ns,
+                                  'Bs': Bs[:-1],
+                                  'intensity_alpha': intensity_plans,
+                                  'title': title
+                                  })
+
+        heatmap_sub_plot(plot_data, 'data/heatmap_plan.pdf')
+
 
 def plot_unique_plans(dump_fname):
     with open(dump_fname, 'r') as f:
@@ -296,11 +343,14 @@ def do_train_eval():
 
 
 if __name__ == '__main__':
-    do_train_eval()
+    # do_train_eval()
     dump_fname = 'data/perf_gain_analysis_1_2_12_2017-04-16 17:38:00.128793.pickle'
 
     # dump_fname = 'data/perf_gain_analysis_1_2_12_2017-04-17 08:11:44.377775.pickle'
     # plot_alpha(dump_fname)
+
+    dump_fname = 'data/perf_gain_analysis_1_2017-04-21 02:01:10.135641.pickle'
+    plot_plans(dump_fname)
     """
     Config:
     qid_2_fnames = {1: ['data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle'],
