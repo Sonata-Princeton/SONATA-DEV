@@ -350,14 +350,14 @@ def do_train_eval():
 
 
 if __name__ == '__main__':
-    # do_train_eval()
-    dump_fname = 'data/perf_gain_analysis_1_2_12_2017-04-16 17:38:00.128793.pickle'
-
-    # dump_fname = 'data/perf_gain_analysis_1_2_12_2017-04-17 08:11:44.377775.pickle'
-    # plot_alpha(dump_fname)
-
-    dump_fname = 'data/perf_gain_analysis_1_2017-04-21 02:01:10.135641.pickle'
-    plot_plans(dump_fname)
+    do_train_eval()
+    # dump_fname = 'data/perf_gain_analysis_1_2_12_2017-04-16 17:38:00.128793.pickle'
+    #
+    # # dump_fname = 'data/perf_gain_analysis_1_2_12_2017-04-17 08:11:44.377775.pickle'
+    # # plot_alpha(dump_fname)
+    #
+    # dump_fname = 'data/perf_gain_analysis_1_2017-04-21 02:01:10.135641.pickle'
+    # plot_plans(dump_fname)
     """
     Config:
     qid_2_fnames = {1: ['data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle'],
