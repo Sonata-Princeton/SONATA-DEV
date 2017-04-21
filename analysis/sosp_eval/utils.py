@@ -67,13 +67,13 @@ def heatmap_sub_plot(dataAll):
     plt.ylabel('Bmax (Kb)')
 
     for data, ax in zip(dataAll, axes.flat):
-        im = ax.pcolormesh(x, y, data['intensity_alpha'], cmap='gnuplot')
+        im = ax.pcolormesh(x, y, np.array(data['intensity_alpha']), cmap='gnuplot')
         ax.set_title(data['title'])
 
     cax = f.add_axes([.91, 0.1, 0.03, 0.8])
     foo = f.colorbar(im, cax=cax)
 
-    plt.savefig('data/perf_gain_analysis_1_2_12_2017-04-17 08:11:44.377775_heatmap_alpha_1_2.pdf')
+    plt.savefig('data/heatmap_alpha.pdf')
 
 def get_alpha_intensity(Ns, Bs, operational_alphas):
     intensity = []

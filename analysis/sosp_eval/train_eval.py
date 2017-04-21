@@ -26,9 +26,9 @@ def plot_alpha(dump_fname):
                 intensity_alpha = get_alpha_intensity(Ns, Bs[:-1], operational_alphas)
                 plot_fname = dump_fname.split('.pickle')[0] + '_heatmap_alpha_' + str(qid) + '_' + str(mode) + '.pdf'
                 # print "Dumping", plot_fname
-                if mode == 2: title = 'OF Switches'
-                elif mode == 3: title = 'PISA Switches'
-                elif mode == 4: title = 'Static Refinement'
+                if mode == 2: title = 'Part-OF'
+                elif mode == 3: title = 'Part-PISA'
+                elif mode == 4: title = 'Fixed Refinement'
                 elif mode == 5: title = 'Sonata'
 
                 plot_data.append({'Ns': Ns,
@@ -61,12 +61,16 @@ def plot_unique_plans(dump_fname):
         qids.sort()
         for qid in qids:
             if len(str(qid)) > 1:
-                tmp = '{'
-                for elem in str(qid):
-                    tmp += 'Q' + elem + ','
-                tmp = tmp[:-1] + '}'
+                # tmp = '{'
+                # for elem in str(qid):
+                #     tmp += 'Q' + elem + ','
+                # tmp = tmp[:-1] + '}'
+                tmp = 'All'
             else:
-                tmp = 'Q' + str(qid)
+                if qid == 1: tmp = 'DDoS-UDP'
+                elif qid == 2: tmp = 'SSpreader'
+                elif qid == 3: tmp = 'PortScan'
+                else: tmp = 'Q' + str(qid)
             print tmp
             xlabels.append(tmp)
         modes = plot_data.keys()
@@ -119,12 +123,16 @@ def plot_infeasible_configs(dump_fname):
         qids.sort()
         for qid in qids:
             if len(str(qid)) > 1:
-                tmp = '{'
-                for elem in str(qid):
-                    tmp += 'Q' + elem + ','
-                tmp = tmp[:-1] + '}'
+                # tmp = '{'
+                # for elem in str(qid):
+                #     tmp += 'Q' + elem + ','
+                # tmp = tmp[:-1] + '}'
+                tmp = 'All'
             else:
-                tmp = 'Q' + str(qid)
+                if qid == 1: tmp = 'DDoS-UDP'
+                elif qid == 2: tmp = 'SSpreader'
+                elif qid == 3: tmp = 'PortScan'
+                else: tmp = 'Q' + str(qid)
             print tmp
             xlabels.append(tmp)
         modes = plot_data.keys()
@@ -158,6 +166,40 @@ def plot_infeasible_configs(dump_fname):
         pl.savefig(plot_fname)
         print "Saving...", plot_fname
 
+
+def do_system_config_space_analysis_unique_plans(fnames, Ns, Bs, modes, td):
+    debug = False
+    debug = True
+    # Ns = Ns[:2]
+    # Bs = Bs[:2]
+
+    out_data = {}
+    for mode in modes:
+        print "Mode:", mode
+        out_data[mode] = {}
+        operational_alphas, unique_plans = do_alpha_tuning(Ns, Bs, fnames, mode, td)
+        print operational_alphas
+
+        unique_plans_count = 0
+        infeasible_config_counts = 0
+        feasible_config_counts = 0
+        final_alpha_values = {}
+        for fname in unique_plans:
+            unique_plans_count += len(unique_plans[fname].keys())
+
+        for config in operational_alphas:
+            alpha = operational_alphas[config]
+            final_alpha_values[config] = alpha
+            if alpha < 0:
+                infeasible_config_counts += 1
+            else:
+                feasible_config_counts += 1
+
+        out_data[mode] = (
+            unique_plans_count, infeasible_config_counts, feasible_config_counts,
+            final_alpha_values, Ns, Bs,
+            unique_plans)
+    return out_data
 
 def do_system_config_space_analysis(fnames, Ns, Bs, modes, td):
     debug = False
@@ -196,13 +238,13 @@ def system_config_space_analysis(qid_2_fnames, qid_2_Ns, qid_2_Bs):
     data = {}
     modes = [2, 3, 4, 5]
     # modes = [5]
-    TD = 30
+    TD = 20
     Tmax = 20
     for qid in qid_2_fnames:
         print "Generating results for query", qid
         fnames = qid_2_fnames[qid]
         print "Running analysis for query", qid, "using:", fnames
-        data[qid] = do_system_config_space_analysis(fnames, qid_2_Ns[qid], qid_2_Bs[qid], modes, TD)
+        data[qid] = do_system_config_space_analysis_unique_plans(fnames, qid_2_Ns[qid], qid_2_Bs[qid], modes, TD)
     print data
     qids = '_'.join([str(x) for x in qid_2_fnames.keys()]) + '_'
     dump_fname = 'data/perf_gain_analysis_' + str(qids) + str(datetime.datetime.fromtimestamp(time.time())) + '.pickle'
@@ -224,7 +266,6 @@ def do_train_eval():
     # qid_2_fnames = {
     #     1: ['data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle']
     # }
-
     qid_2_fnames = {1: ['data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle'],
                     2: ['data/hypothesis_graph_6_2017-04-12 15:30:31.466226.pickle'],
                     3: ['data/hypothesis_graph_2_min_0_2017-04-18 04:25:11.918672.pickle'],
@@ -232,6 +273,8 @@ def do_train_eval():
                           'data/hypothesis_graph_6_2017-04-12 15:30:31.466226.pickle',
                           'data/hypothesis_graph_2_min_0_2017-04-18 04:25:11.918672.pickle']
                     }
+
+    qid_2_fnames = {1: ['data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle'] }
     qid_2_Ns = {}
     qid_2_Bs = {}
     for qid in qid_2_fnames:
@@ -244,12 +287,11 @@ def do_train_eval():
 
 
 if __name__ == '__main__':
-    # do_train_eval()
+    do_train_eval()
     dump_fname = 'data/perf_gain_analysis_1_2_12_2017-04-16 17:38:00.128793.pickle'
 
-    dump_fname = 'data/perf_gain_analysis_1_2_12_2017-04-17 08:11:44.377775.pickle'
-
-
+    # dump_fname = 'data/perf_gain_analysis_1_2_12_2017-04-17 08:11:44.377775.pickle'
+    # plot_alpha(dump_fname)
     """
     Config:
     qid_2_fnames = {1: ['data/hypothesis_graph_1_2017-04-11 02:18:03.593744.pickle'],
@@ -264,7 +306,7 @@ if __name__ == '__main__':
     TD = 30
     Tmax = 20
     """
-    dump_fname = 'data/perf_gain_analysis_123_1_2_3_2017-04-20 09:32:07.821087.pickle'
+    # dump_fname = 'data/perf_gain_analysis_123_1_2_3_2017-04-20 09:32:07.821087.pickle'
     # plot_alpha(dump_fname)
-    plot_unique_plans(dump_fname)
-    plot_infeasible_configs(dump_fname)
+    # plot_unique_plans(dump_fname)
+    # plot_infeasible_configs(dump_fname)

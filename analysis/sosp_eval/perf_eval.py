@@ -8,6 +8,7 @@ from analysis.sosp_eval.utils import *
 from analysis.plotlib import *
 from sonata.core.training.learn.query_plan import QueryPlan
 from sonata.core.training.learn.sonata_search import Search, map_input_graph
+matplotlib.rcParams.update({'font.size': 8})
 
 # Packet Parser Overhead
 parser_overhead = {'dns': 0.052094459533691406, 'tuple': 0.055909156799316406}
@@ -198,7 +199,7 @@ def plot_perf_overheads(dump_fname):
         print xticks, xlabels
         mode_2_color = {0: 'r', 1: 'b', 2: 'g'}
         mode_2_hatches = {0: '/', 1: '\\', 2: '+', 3: 'o', 4: 'x', 5: '.', 6: 'o', 7: 'O', 8: '.'}
-        mode_2_legend = {2: "OF Only", 3: "P4 Only", 4: "Static Ref", 5: "SONATA"}
+        mode_2_legend = {2: "OF Only", 3: "P4 Only", 4: "Fixed Ref", 5: "SONATA"}
 
         for mode in modes:
             x = [0.5 * bar_width + q * shift + i * bar_width for q in range(len(qids))]
@@ -254,12 +255,16 @@ def plot_perf_deltas(dump_fname):
         qids.sort()
         for qid in qids:
             if len(str(qid)) > 1:
-                tmp = '{'
-                for elem in str(qid):
-                    tmp += 'Q' + elem + ','
-                tmp = tmp[:-1] + '}'
+                # tmp = '{'
+                # for elem in str(qid):
+                #     tmp += 'Q' + elem + ','
+                # tmp = tmp[:-1] + '}'
+                tmp = 'All'
             else:
-                tmp = 'Q' + str(qid)
+                if qid == 1: tmp = 'DDoS-UDP'
+                elif qid == 2: tmp = 'SSpreader'
+                elif qid == 3: tmp = 'PortScan'
+                else: tmp = 'Q' + str(qid)
             print tmp
             xlabels.append(tmp)
         modes = plot_data.keys()
@@ -272,7 +277,7 @@ def plot_perf_deltas(dump_fname):
         print xticks, xlabels
         mode_2_color = {5: 'g', 3: 'r', 4: 'm', 2: 'b'}
         mode_2_hatches = {0: '/', 1: '-', 2: '+', 3: 'o', 4: '\\', 5: 'x', 6: 'o', 7: 'O', 8: '.'}
-        mode_2_legend = {2: "OF Only", 3: "P4 Only", 4: "Static Ref", 5: "SONATA"}
+        mode_2_legend = {2: "Part-OF", 3: "Part-PISA", 4: "Fixed Ref", 5: "SONATA"}
         for mode in modes:
             x = [0.5 * bar_width + q * shift + i * bar_width for q in range(len(qids))]
             y = [int(plot_data[mode][qid][0]) for qid in qids]
@@ -280,7 +285,7 @@ def plot_perf_deltas(dump_fname):
             print mode, x, y
             i += 1
         ax.yaxis.set_major_locator(my_locator)
-        ax.legend(loc='upper center', bbox_to_anchor=(0.50, 1.1), ncol=3, fancybox=True, shadow=False)
+        ax.legend(loc='upper center', bbox_to_anchor=(0.50, 1.1), ncol=3, fancybox=True, shadow=False, fontsize=7)
         ax.set_xlim(xmin=0)
         ax.set_xlim(xmax=xticks[-1] + (float(len(modes)) / 2 + 0.5) * bar_width)
 
@@ -291,6 +296,7 @@ def plot_perf_deltas(dump_fname):
         ax.grid(True)
         plt.tight_layout()
         plot_fname = dump_fname.split('.pickle')[0] + '_deltas.pdf'
+        plot_fname = 'data/deltas.pdf'
         pl.savefig(plot_fname)
         print "Saving...", plot_fname
 
@@ -316,12 +322,16 @@ def plot_perf_delay(dump_fname):
         qids.sort()
         for qid in qids:
             if len(str(qid)) > 1:
-                tmp = '{'
-                for elem in str(qid):
-                    tmp += 'Q' + elem + ','
-                tmp = tmp[:-1] + '}'
+                # tmp = '{'
+                # for elem in str(qid):
+                #     tmp += 'Q' + elem + ','
+                # tmp = tmp[:-1] + '}'
+                tmp = 'All'
             else:
-                tmp = 'Q' + str(qid)
+                if qid == 1: tmp = 'DDoS-UDP'
+                elif qid == 2: tmp = 'SSpreader'
+                elif qid == 3: tmp = 'PortScan'
+                else: tmp = 'Q' + str(qid)
             print tmp
             xlabels.append(tmp)
         modes = plot_data.keys()
@@ -335,7 +345,7 @@ def plot_perf_delay(dump_fname):
         print xticks, xlabels
         mode_2_color = {5: 'g', 3: 'r', 4: 'm', 2: 'b'}
         mode_2_hatches = {0: '/', 1: '-', 2: '+', 3: 'o', 4: '\\', 5: 'x', 6: 'o', 7: 'O', 8: '.'}
-        mode_2_legend = {2: "No Ref.", 4: "Static Ref.", 5: "SONATA"}
+        mode_2_legend = {2: "Part Only", 4: "Fixed Ref.", 5: "SONATA"}
         all_ys = []
         for mode in modes:
             x = [0.5 * bar_width + q * shift + i * bar_width for q in range(len(qids))]
@@ -345,7 +355,7 @@ def plot_perf_delay(dump_fname):
             print mode, x, y
             i += 1
         ax.yaxis.set_major_locator(my_locator)
-        ax.legend(loc='upper center', bbox_to_anchor=(0.50, 1.1), ncol=3, fancybox=True, shadow=False)
+        ax.legend(loc='upper center', bbox_to_anchor=(0.50, 1.1), ncol=3, fancybox=True, shadow=False, fontsize=7)
         ax.set_xlim(xmin=0)
         ax.set_xlim(xmax=xticks[-1] + (float(len(modes)) / 2 + 0.5) * bar_width)
         ax.set_ylim(ymax=2 + max(all_ys))
@@ -356,11 +366,13 @@ def plot_perf_delay(dump_fname):
         ax.grid(True)
         plt.tight_layout()
         plot_fname = dump_fname.split('.pickle')[0] + '_delay.pdf'
+        plot_fname = 'data/delays.pdf'
         pl.savefig(plot_fname)
         print "Saving...", plot_fname
 
 
 def plot_perf_bgain(dump_fname):
+    for_ymax = []
     with open(dump_fname, 'r') as f:
         data = pickle.load(f)
         # print data
@@ -381,12 +393,16 @@ def plot_perf_bgain(dump_fname):
         qids.sort()
         for qid in qids:
             if len(str(qid)) > 1:
-                tmp = '{'
-                for elem in str(qid):
-                    tmp += 'Q' + elem + ','
-                tmp = tmp[:-1] + '}'
+                # tmp = '{'
+                # for elem in str(qid):
+                #     tmp += 'Q' + elem + ','
+                # tmp = tmp[:-1] + '}'
+                tmp = 'All'
             else:
-                tmp = 'Q' + str(qid)
+                if qid == 1: tmp = 'DDoS-UDP'
+                elif qid == 2: tmp = 'SSpreader'
+                elif qid == 3: tmp = 'PortScan'
+                else: tmp = 'Q' + str(qid)
             print tmp
             xlabels.append(tmp)
         modes = plot_data.keys()
@@ -399,7 +415,7 @@ def plot_perf_bgain(dump_fname):
         print xticks, xlabels
         mode_2_color = {5: 'g', 3: 'r', 4: 'm', 2: 'b'}
         mode_2_hatches = {0: '/', 1: '-', 2: '+', 3: 'o', 4: '\\', 5: 'x', 6: 'o', 7: 'O', 8: '.'}
-        mode_2_legend = {3: "P4 Target", 4: "Static Ref.", 5: "SONATA"}
+        mode_2_legend = {3: "Part-PISA", 4: "Fixed Ref.", 5: "SONATA"}
         for mode in modes:
             x = [0.5 * bar_width + q * shift + i * bar_width for q in range(len(qids))]
             y = [float(plot_data[mode][qid][0]) / 1000 for qid in qids]
@@ -407,7 +423,7 @@ def plot_perf_bgain(dump_fname):
             print mode, x, y
             i += 1
         ax.yaxis.set_major_locator(my_locator)
-        ax.legend(loc='upper center', bbox_to_anchor=(0.50, 1.1), ncol=3, fancybox=True, shadow=False)
+        ax.legend(loc='upper center', bbox_to_anchor=(0.50, 1.1), ncol=3, fancybox=True, shadow=False, fontsize=7)
         ax.set_xlim(xmin=0)
         ax.set_xlim(xmax=xticks[-1] + (float(len(modes)) / 2 + 0.5) * bar_width)
         pl.xlabel('Queries')
@@ -417,11 +433,13 @@ def plot_perf_bgain(dump_fname):
         ax.grid(True)
         plt.tight_layout()
         plot_fname = dump_fname.split('.pickle')[0] + '_bgain.pdf'
+        plot_fname = 'data/bgain.pdf'
         pl.savefig(plot_fname)
         print "Saving...", plot_fname
 
 
 def plot_perf_ngain(dump_fname):
+    for_ymax = []
     with open(dump_fname, 'r') as f:
         data = pickle.load(f)
         # print data
@@ -430,8 +448,9 @@ def plot_perf_ngain(dump_fname):
             for mode in data[qid]:
                 if mode in [2, 5]:
                     for (n_max, b_max) in data[qid][mode]:
-                        y = np.median([x[0] for x in data[qid][mode][(n_max, b_max)].values()])
+                        y = np.median([x[0]/1000 for x in data[qid][mode][(n_max, b_max)].values()])
                         yerr = np.std([x[0] for x in data[qid][mode][(n_max, b_max)].values()])
+                        for_ymax.extend([x[0]/1000 for x in data[qid][mode][(n_max, b_max)].values()])
                         if mode not in plot_data:
                             plot_data[mode] = {}
                         plot_data[mode][qid] = (y, yerr)
@@ -441,13 +460,18 @@ def plot_perf_ngain(dump_fname):
         xlabels = []
         qids.sort()
         for qid in qids:
+            tmp = ''
             if len(str(qid)) > 1:
-                tmp = '{'
-                for elem in str(qid):
-                    tmp += 'Q' + elem + ','
-                tmp = tmp[:-1] + '}'
+                tmp = 'All'
+                # tmp = '{'
+                # for elem in str(qid):
+                #     tmp += 'Q' + elem + ','
+                # tmp = tmp[:-1] + '}'
             else:
-                tmp = 'Q' + str(qid)
+                if qid == 1: tmp = 'DDoS-UDP'
+                elif qid == 2: tmp = 'SSpreader'
+                elif qid == 3: tmp = 'PortScan'
+                else: tmp = 'Q' + str(qid)
             print tmp
             xlabels.append(tmp)
         modes = plot_data.keys()
@@ -460,7 +484,7 @@ def plot_perf_ngain(dump_fname):
         print xticks, xlabels
         mode_2_color = {5: 'g', 3: 'r', 4: 'm', 2: 'b'}
         mode_2_hatches = {0: '/', 1: '-', 2: '+', 3: 'o', 4: '\\', 5: 'x', 6: 'o', 7: 'O', 8: '.'}
-        mode_2_legend = {2: "OF Target", 5: "SONATA"}
+        mode_2_legend = {2: "Part-OF", 5: "SONATA"}
         for mode in modes:
             x = [0.5 * bar_width + q * shift + i * bar_width for q in range(len(qids))]
             y = [plot_data[mode][qid][0] for qid in qids]
@@ -469,16 +493,18 @@ def plot_perf_ngain(dump_fname):
             print mode, x, y
             i += 1
         ax.yaxis.set_major_locator(my_locator)
-        ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.15), ncol=2, fancybox=True, shadow=False)
+        ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.1), ncol=2, fancybox=True, shadow=False, fontsize=7)
         ax.set_xlim(xmin=0)
         ax.set_xlim(xmax=xticks[-1] + (len(modes) / 2 + 0.5) * bar_width)
+        ax.set_ylim(ymax=max(for_ymax) + (max(for_ymax)*.15))
         pl.xlabel('Queries')
-        pl.ylabel('Number of Tuples')
+        pl.ylabel('Number of Tuples (x1000)')
         plt.xticks(xticks, xlabels)
 
         ax.grid(True)
         plt.tight_layout()
         plot_fname = dump_fname.split('.pickle')[0] + '_ngain.pdf'
+        plot_fname = 'data/ngain.pdf'
         pl.savefig(plot_fname)
         print "Saving...", plot_fname
 

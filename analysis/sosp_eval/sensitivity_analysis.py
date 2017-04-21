@@ -42,7 +42,7 @@ def plot_var_thresh(dump_fname):
         print xticks, xlabels
         mode_2_color = {5: 'g', 3: 'r', 4: 'm', 2: 'b'}
         mode_2_hatches = {0: '/', 1: '-', 2: '+', 3: 'o', 4: '\\', 5: 'x', 6: 'o', 7: 'O', 8: '.'}
-        mode_2_legend = {3: "Only Part.", 4: "Static Ref.", 5: "SONATA"}
+        mode_2_legend = {3: "Part-PISA", 4: "Static Ref.", 5: "SONATA"}
         for mode in modes:
             x = [0.5 * bar_width + q * shift + i * bar_width for q in range(len(thresholds))]
             y = [float(plot_data[mode][qid][0]) / 1000 for qid in thresholds]
@@ -50,7 +50,7 @@ def plot_var_thresh(dump_fname):
             print mode, x, y
             i += 1
         ax.yaxis.set_major_locator(my_locator)
-        ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.05), ncol=3, fancybox=True, shadow=False)
+        ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.05), ncol=3, fancybox=True, shadow=False, fontsize=7)
         ax.set_xlim(xmin=0)
         ax.set_xlim(xmax=xticks[-1] + (len(thresholds) / 2 + 0.5) * bar_width)
         pl.xlabel('Threshold (percentile)')
