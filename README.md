@@ -17,7 +17,7 @@ To get started install these softwares on your ```host``` machine:
     * For MAC OS install [XQuartz](http://xquartz.macosforge.org/trac/wiki) and Terminal.app (builtin)
     * Linux comes pre-installed with X server and Gnome terminal + SSH (buitlin)   
 
-###Basics
+### Basics
 
 * Clone the ```Sonata``` repository from Github:
 ```bash 
