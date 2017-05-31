@@ -1,4 +1,4 @@
-# SONATA: Network Monitoring as a Streaming Analytics Problem
+# SONATA: Query-Driven Network Telemetry
 
 ## Installation: Vagrant Setup
 
