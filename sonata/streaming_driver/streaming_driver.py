@@ -49,7 +49,7 @@ class StreamingDriver(object):
         self.sm_socket = conf['sm_socket']
         self.sm_listener = Listener(self.sm_socket)
         self.op_handler_socket = conf['op_handler_socket']
-        print("In Streaming Manager", self.redKeysPath, self.featuresPath)
+        # print("In Streaming Manager", self.redKeysPath, self.featuresPath)
         self.start_time = time.time()
         #self.reduction_socket = Client(conf['op_handler_socket'])
 
@@ -64,31 +64,31 @@ class StreamingDriver(object):
         #self.sc = conf['sc']
         self.sc.setLogLevel("OFF")
         self.ssc = StreamingContext(self.sc, self.batch_interval)
-        print("spark context initialized...")
+        # print("spark context initialized...")
 
     def start(self):
         lines = self.ssc.socketTextStream(spark_stream_address, spark_stream_port)
         #lines.pprint()
         pktstream = (lines.map(lambda line: processLogLine(line)))
         self.process_pktstream(pktstream)
-        print("process_pktstream initialized...")
+        # print("process_pktstream initialized...")
         self.ssc.start()
         self.ssc.awaitTermination()
 
     def process_pktstream(self, pktstream):
 
-        print("Waiting for streaming query expressions ...")
+        # print("Waiting for streaming query expressions ...")
         conn = self.sm_listener.accept()
-        print("Connection request accepted")
+        # print("Connection request accepted")
         raw_data = conn.recv()
         queries = pickle.loads(raw_data)
-        print ("Received queries from Runtime")
+        # print ("Received queries from Runtime")
         spark_queries = {}
 
         for queryId in queries:
             query = queries[queryId]
             query_str = "pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd.filter(lambda p : (p[1]==str('"+str(queryId)+"'))).map(lambda p : (p[2:]))." + query.compile() + ")).foreachRDD(lambda rdd: send_reduction_keys(rdd, " + str(self.op_handler_socket)+ "," + str(self.start_time)+",\'"+ str(queryId)+"\'))"
-            print(query_str)
+            # print(query_str)
             spark_queries[queryId] = eval(query_str)
 
 

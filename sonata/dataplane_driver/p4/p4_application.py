@@ -17,6 +17,7 @@ else:
     SENDER_PORT = 11
     RECIEVE_PORT = 13
 
+import logging
 
 SESSION_ID = 8001
 SPAN_PORT = 12
@@ -25,7 +26,9 @@ SPAN_PORT = 12
 class P4Application(object):
     def __init__(self, app):
         # LOGGING
+        log_level = logging.ERROR
         self.logger = get_logger('P4Application', 'INFO')
+        self.logger.setLevel(log_level)
         self.logger.info('init')
 
         # define the application metadata

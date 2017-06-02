@@ -69,7 +69,7 @@ def apply_refinement_plan(sonata_query, refinement_key, refined_query_id, ref_le
 
     # Copy operators to the new refined sonata query
     for operator in sonata_query.operators:
-        print "apply_refinement_plan: ", operator.name
+        # print "apply_refinement_plan: ", operator.name
         copy_operators(refined_sonata_query, operator)
 
     return refined_sonata_query

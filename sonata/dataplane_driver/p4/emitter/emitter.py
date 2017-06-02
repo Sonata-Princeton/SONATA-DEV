@@ -17,7 +17,6 @@ HEADER_SIZE = {'sIP': 32, 'dIP': 32, 'sPort': 16, 'dPort': 16,
 class Emitter(object):
     def __init__(self, conf, queries):
         # Interfaces
-        print "********* EMITTER INITIALIZED *********"
         self.spark_stream_address = conf['spark_stream_address']
         self.spark_stream_port = conf['spark_stream_port']
         self.sniff_interface = conf['sniff_interface']
@@ -43,9 +42,9 @@ class Emitter(object):
 
     def start(self):
         while True:
-            print "Waiting for socket"
+            # print "Waiting for socket"
             self.spark_conn = self.listener.accept()
-            print "Now start sniffing the packets from switch"
+            # print "Now start sniffing the packets from switch"
             self.sniff_packets()
 
     def send_data(self, data):

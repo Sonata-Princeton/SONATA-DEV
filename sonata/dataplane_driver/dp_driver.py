@@ -34,7 +34,7 @@ class DataplaneDriver(object):
         self.metrics_log_file = metrics_file
 
         # LOGGING
-        log_level = logging.DEBUG
+        log_level = logging.ERROR
         # add handler
         self.logger = logging.getLogger('DataplaneDriver')
         self.logger.setLevel(log_level)
@@ -74,7 +74,7 @@ class DataplaneDriver(object):
                     self.logger.debug('received "init" message')
                     application = message[key][0]
                     target_id = message[key][1]
-                    print "application", application
+                    # print "application", application
                     self.configure(application, target_id)
                     # self.metrics.info("init" + ","+ str(len(application)) +"," + start +",%.20f" % time.time())
                 elif key == 'delta':
