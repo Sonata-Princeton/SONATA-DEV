@@ -11,7 +11,7 @@ def get_out(args):
             return True, out
         except CalledProcessError as e:
             t.seek(0)
-            print "ERROR: " + str(args) + str(e.returncode) + ',' + t.read()
+            # print "ERROR: " + str(args) + str(e.returncode) + ',' + t.read()
             # raise RuntimeError
             return False, t.read()
 
@@ -30,7 +30,7 @@ def get_in(args, input_data):
             return True, out
         except CalledProcessError as e:
             t.seek(0)
-            print "ERROR: " + str(args) + str(e.returncode) + ',' + t.read()
+            # print "ERROR: " + str(args) + str(e.returncode) + ',' + t.read()
             # raise RuntimeError
 
             return False, t.read()

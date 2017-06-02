@@ -98,15 +98,27 @@ class PicklablePacket:
 
 def send_created_traffic():
     traffic_dict = {}
+    attack = True
     for i in range(0, 20):
         traffic_dict[i] = []
         traffic_dict[i].extend(create_normal_traffic())
         if i > 5 and i < 11:
             traffic_dict[i].extend(create_attack_traffic())
 
+    print "******************** Sending Normal Traffic *************************"
     for i in range(0, 20):
-        print "Sending traffic for ts: " + str(i)
+        # print "Sending traffic for ts: " + str(i)
         start = time.time()
+        if i > 5 and i < 11 and attack:
+            attack = False
+            print "******************** Sending Attack Traffic *************************"
+        if i == 10:
+            attack = False
+
+        if not attack and i > 10:
+            attack = True
+            print "******************** Sending Normal Traffic *************************"
+
         sendp(traffic_dict[i], iface="out-veth-1", verbose=0)
         total = time.time()-start
         sleep_time = 1-total

@@ -53,7 +53,9 @@ class Runtime(object):
                 refinement_object = Refinement(query, target)
                 #print refinement_object.qid_2_refined_queries
                 self.refinement_keys[query.qid] = refinement_object.refinement_key
-
+                print "*********************************************************************"
+                print "*                   Generating Query Plan                           *"
+                print "*********************************************************************\n\n"
                 # fname = "plan_" + str(query.qid) + ".pickle"
                 # usePickledPlan = True
                 # if usePickledPlan:
@@ -125,7 +127,7 @@ class Runtime(object):
             with open('pickled_queries.pickle', 'w') as f:
                 pickle.dump({0: self.dp_queries, 1: self.sp_queries}, f)
 
-        print self.dp_queries
+        # print self.dp_queries
         #print self.sp_queries
 
         #time.sleep(10)
@@ -276,6 +278,9 @@ class Runtime(object):
         conn = Client(self.conf['sm_conf']['sm_socket'])
         conn.send(serialized_queries)
         self.logger.info("runtime,sm_init," + str(start) + "," + str(time.time()))
+        print "*********************************************************************"
+        print "*                   Updating Streaming Driver                       *"
+        print "*********************************************************************\n\n"
         time.sleep(3)
 
     def send_to_dp_driver(self, message_type, content):
@@ -288,6 +293,9 @@ class Runtime(object):
         self.logger.info("runtime,fm_" + message_type + "," + str(start) + "," + str(time.time()))
         time.sleep(1)
         conn.close()
+        print "*********************************************************************"
+        print "*                   Updating Dataplane Driver                       *"
+        print "*********************************************************************\n\n"
         return ''
 
     def initialize_handlers(self):

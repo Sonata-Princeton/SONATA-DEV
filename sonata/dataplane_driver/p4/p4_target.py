@@ -4,7 +4,7 @@
 
 from collections import namedtuple
 from threading import Thread
-
+import logging
 from emitter.emitter import Emitter
 from p4_application import P4Application
 from p4_dataplane import P4DataPlane
@@ -45,7 +45,9 @@ class P4Target(object):
         self.supported_operations = ['Map', 'Filter', 'Reduce', 'Distinct']
 
         # LOGGING
+        log_level = logging.ERROR
         self.logger = get_logger('P4Target', 'INFO')
+        self.logger.setLevel(log_level)
         self.logger.info('init')
 
         # init dataplane

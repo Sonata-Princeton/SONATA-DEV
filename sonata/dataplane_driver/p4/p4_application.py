@@ -6,7 +6,7 @@ from p4_elements import Action, MetaData, MirrorSession, FieldList, Table, Heade
 from p4_primitives import NoOp, CloneIngressPktToEgress, AddHeader, ModifyField
 from p4_query import P4Query
 from sonata.dataplane_driver.utils import get_logger
-
+import logging
 
 SESSION_ID = 8001
 SPAN_PORT = 12
@@ -15,7 +15,9 @@ SPAN_PORT = 12
 class P4Application(object):
     def __init__(self, app):
         # LOGGING
+        log_level = logging.ERROR
         self.logger = get_logger('P4Application', 'INFO')
+        self.logger.setLevel(log_level)
         self.logger.info('init')
 
         # define the application metadata

@@ -10,12 +10,15 @@ from sonata.tests.macro_bench.graph.plotlib import *
 log1 = 'sonata/tests/demos/reflection_dns/graph/emitter.log'
 
 fig, ax = plt.subplots()
-line1, = ax.plot(range(10), [100 for x in range(10)], color='r', label='1', linewidth=4.0)
-line2, = ax.plot(range(10), [100 for x in range(10)], color='k', label='2', linewidth=4.0, linestyle='--')
+line1, = ax.plot(range(10), [100 for x in range(10)], color='r', label='Span Port', linewidth=4.0)
+line2, = ax.plot(range(10), [100 for x in range(10)], color='k', label='Input Port', linewidth=4.0, linestyle='--')
 pl.xlabel("Time (seconds)")
 pl.ylabel("Packets per second")
 ax.set_ylim(ymin=1.0)
 ax.set_ylim(ymax=110.0)
+ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.15), ncol=2, fancybox=True, shadow=False)
+for item in ([ax.xaxis.label, ax.yaxis.label] + ax.get_xticklabels() + ax.get_yticklabels()):
+    item.set_fontsize(15)
 ax.grid(True)
 
 t_start = 4
@@ -61,5 +64,5 @@ def animate(i):
 
 
 
-ani = animation.FuncAnimation(fig, animate, np.arange(1, 21), interval=1000)
+ani = animation.FuncAnimation(fig, animate, np.arange(1, 201), interval=1000)
 plt.show()

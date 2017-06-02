@@ -318,17 +318,17 @@ class P4Map(P4Operator):
             self.func = func
             if func[0] == 'mask' or not func[0]:
                 for field in self.map_keys:
-                    print self.__repr__(), self.map_keys
+                    # print self.__repr__(), self.map_keys
                     mask_size = (func[1]/4)
                     mask = '0x' + ('f' * mask_size) + ('0' * (HEADER_MASK_SIZE[field] - mask_size))
                     field_name = '%s.%s' % (self.meta_init_name, field)
                     primitives.append(BitAnd(field_name, field_name, mask))
-            else:
-                self.logger.error('Got the following func with the Map Operator: %s' % (str(func), ))
-                # raise NotImplementedError
-        else:
-            self.logger.error('Got an invalid func with the Map Operator: %s' % (str(func),))
-            # raise NotImplementedError
+        #     else:
+        #         # self.logger.error('Got the following func with the Map Operator: %s' % (str(func), ))
+        #         # raise NotImplementedError
+        # else:
+        #     # self.logger.error('Got an invalid func with the Map Operator: %s' % (str(func),))
+        #     # raise NotImplementedError
 
         self.action = Action('do_%s' % self.operator_name, primitives)
 

@@ -81,7 +81,7 @@ class Partition(object):
     def generate_partitioned_queries_learning(self):
         sonata_query = self.query
         partition_plans_learning = self.get_partition_plans_learning(sonata_query)
-        print partition_plans_learning
+        # print partition_plans_learning
         intermediate_learning_queries = {}
         prev_qid = 0
         filter_mappings = {}
