@@ -12,7 +12,7 @@ HEADER_SIZE = {'sIP': 32, 'dIP': 32, 'sPort': 16, 'dPort': 16,
                'nBytes': 16, 'proto': 16, 'sMac': 48, 'dMac': 48,
                'qid': 16, 'count': 16}
 
-SERVER = True
+SERVER = False
 if SERVER:
     SNIFF_INTERFACE = "ens4f0"
     LOG_PATH = "/home/sonata/SONATA-DEV/sonata/tests/micro_packet_size/emitter.log"

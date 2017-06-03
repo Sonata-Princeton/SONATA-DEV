@@ -10,7 +10,7 @@ from pyspark import SparkContext, SparkConf
 from pyspark.streaming import StreamingContext
 from multiprocessing.connection import Client, Listener
 
-SERVER = True
+SERVER = False
 
 if SERVER:
     spark_stream_address = '172.17.0.101'

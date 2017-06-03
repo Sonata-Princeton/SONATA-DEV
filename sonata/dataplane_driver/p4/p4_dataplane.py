@@ -16,7 +16,7 @@ from sonata.dataplane_driver.utils import get_out, get_in
 import threading,os
 
 
-SERVER = True
+SERVER = False
 if SERVER:
     internal_interfaces = {"ens1f0": 11, "ens1f1":10, "ens4f0": 12}
 else:

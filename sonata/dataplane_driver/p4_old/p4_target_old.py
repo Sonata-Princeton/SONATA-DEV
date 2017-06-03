@@ -13,7 +13,7 @@ from collections import namedtuple
 
 
 Operator = namedtuple('Operator', 'name keys')
-SERVER = True
+SERVER = False
 
 if SERVER:
     SENDER_PORT = 11

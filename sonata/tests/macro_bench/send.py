@@ -8,7 +8,7 @@ from multiprocessing.connection import Listener
 import math
 from random import randint
 
-SERVER = True
+SERVER = False
 
 if SERVER:
     INTERFACE = 'eth0'
@@ -55,9 +55,9 @@ def send_created_traffic():
         traffic_dict[i] = []
         if i > 5 and i < 11:
             traffic_dict[i].extend(create_attack_traffic(100))
-            traffic_dict[i].extend(create_normal_traffic(100))
+            traffic_dict[i].extend(create_normal_traffic(0))
         else:
-            traffic_dict[i].extend(create_normal_traffic(200))
+            traffic_dict[i].extend(create_normal_traffic(0))
 
     for i in range(0, 20):
         print "Sending traffic for ts: " + str(i)
@@ -118,5 +118,5 @@ def send_campus_data():
 
     print packet_count
 
-send_campus_data()
-# send_created_traffic()
+# send_campus_data()
+send_created_traffic()

@@ -77,7 +77,7 @@ class Runtime(object):
                 # final_plan = self.query_plans[query.qid][1:-1]
                 # print final_plan
 
-                final_plan = [(6, 16, 4, 1), (6, 32, 1, 3)]#(1, 16, 5, 1),
+                final_plan = [(1, 16, 5, 1), (3, 32, 1, 2)]#(1, 16, 5, 1),
                 prev_r = 0
                 prev_qid = 0
 
@@ -234,7 +234,7 @@ class Runtime(object):
         self.dpd_thread = Thread(name='dp_driver', target=dpd.start)
         self.dpd_thread.setDaemon(True)
 
-        p4_type = 'p4_old'
+        p4_type = 'p4'
 
         config = {
             'em_conf': self.conf['emitter_conf'],
