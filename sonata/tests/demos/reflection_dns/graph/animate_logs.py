@@ -9,23 +9,27 @@ import matplotlib.animation as animation
 from sonata.tests.macro_bench.graph.plotlib import *
 log1 = 'sonata/tests/demos/reflection_dns/graph/emitter.log'
 
+total_duration = 20
+attack_duration = 5
+attack_start_time = 10
+NORMAL_PACKET_COUNT = 150
+ATTACK_PACKET_COUNT = 50
+
+
 fig, ax = plt.subplots()
-line1, = ax.plot(range(10), [100 for x in range(10)], color='r', label='Span Port', linewidth=4.0)
-line2, = ax.plot(range(10), [100 for x in range(10)], color='k', label='Input Port', linewidth=4.0, linestyle='--')
+line1, = ax.plot(range(total_duration), [0 for x in range(total_duration)], color='r', label='Span Port', linewidth=4.0)
+line2, = ax.plot(range(total_duration), [NORMAL_PACKET_COUNT for x in range(total_duration)], color='k', label='Input Port', linewidth=4.0, linestyle='--')
 pl.xlabel("Time (seconds)")
 pl.ylabel("Packets per second")
-ax.set_ylim(ymin=1.0)
-ax.set_ylim(ymax=110.0)
+ax.set_ylim(ymin=0)
+ax.set_ylim(ymax=10+NORMAL_PACKET_COUNT)
 ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.15), ncol=2, fancybox=True, shadow=False)
 for item in ([ax.xaxis.label, ax.yaxis.label] + ax.get_xticklabels() + ax.get_yticklabels()):
     item.set_fontsize(15)
 ax.grid(True)
 
-t_start = 4
-
 
 def animate(i):
-    print "Reading first", i, "lines"
     with open(log1, 'r') as f:
         csv_f = csv.reader(f)
         ts_packet_count = {}
@@ -38,27 +42,33 @@ def animate(i):
             ts_packet_count[ts] += 1
             ctr += 1
 
-        xdata = []
-        ydata = []
+        print ts_packet_count
+        xdata = range(1+i)
+        ydata = [0 for x in range(1+i)]
+
+        x2data = range(1+i)
+        y2data = [NORMAL_PACKET_COUNT for x in range(1+i)]
         timestamps = ts_packet_count.keys()
-        timestamps.sort()
-        xmin = timestamps[0]
-        print int(i) - t_start
+        if len(timestamps) > 0:
+            timestamps.sort()
+            xmin = timestamps[0]
+            print int(i) - attack_start_time
 
-        if 0 < (int(i) - t_start):
-            ctr = 0
-            for ts in timestamps:
-                xdata.append(t_start + ts - xmin)
-                ydata.append(ts_packet_count[ts])
-                ctr += 1
-                if ctr > (int(i) - t_start):
-                    break
+            if 0 <= (int(i) - attack_start_time):
+                ctr = 0
+                for ts in timestamps:
+                    index_to_update = attack_start_time + ts - xmin
+                    # xdata.append(attack_start_time + ts - xmin)
+                    ydata[int(index_to_update)] = ts_packet_count[ts]
+                    ctr += 1
+                    if ctr > (int(i) - attack_start_time):
+                        break
 
-            print xdata, ydata
+        print xdata, ydata
 
-            ax.figure.canvas.draw()
-
+        ax.figure.canvas.draw()
         line1.set_data(xdata, ydata)
+        line2.set_data(x2data, y2data)
 
     return line1,line2
 

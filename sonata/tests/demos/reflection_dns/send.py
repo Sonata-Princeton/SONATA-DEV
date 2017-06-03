@@ -6,6 +6,10 @@ import math, time
 import pickle
 from multiprocessing.connection import Listener
 
+
+NORMAL_PACKET_COUNT = 50
+ATTACK_PACKET_COUNT = 50
+
 def load_data():
     print "load_data called"
     data = {}
@@ -27,7 +31,7 @@ def send_packet(pkt_tuple):
     sendp(p, iface = "out-veth-1", verbose=0)
 
 def create_normal_traffic():
-    number_of_packets = 10
+    number_of_packets = NORMAL_PACKET_COUNT
     normal_packets = []
 
     for i in range(number_of_packets):
@@ -39,7 +43,7 @@ def create_normal_traffic():
     return normal_packets
 
 def create_attack_traffic():
-    number_of_packets = 100
+    number_of_packets = ATTACK_PACKET_COUNT
     dIP = '99.7.186.25'
     sIPs = []
     attack_packets = []
@@ -98,15 +102,30 @@ class PicklablePacket:
 
 def send_created_traffic():
     traffic_dict = {}
-    for i in range(0, 20):
+    attack = True
+    total_duration = 20
+    attack_duration = 5
+    attack_start_time = 10
+    for i in range(0, total_duration):
         traffic_dict[i] = []
         traffic_dict[i].extend(create_normal_traffic())
-        if i > 5 and i < 11:
+        if i >= attack_start_time and i < attack_start_time+attack_duration:
             traffic_dict[i].extend(create_attack_traffic())
 
-    for i in range(0, 20):
-        print "Sending traffic for ts: " + str(i)
+    print "******************** Sending Normal Traffic *************************"
+    for i in range(0, total_duration):
+        # print "Sending traffic for ts: " + str(i)
         start = time.time()
+        if i >= attack_start_time and i < attack_start_time+attack_duration and attack:
+            attack = False
+            print "******************** Sending Attack Traffic *************************"
+        if i == attack_start_time+attack_duration:
+            attack = False
+
+        if not attack and i > attack_start_time+attack_duration:
+            attack = True
+            print "******************** Sending Normal Traffic *************************"
+
         sendp(traffic_dict[i], iface="out-veth-1", verbose=0)
         total = time.time()-start
         sleep_time = 1-total

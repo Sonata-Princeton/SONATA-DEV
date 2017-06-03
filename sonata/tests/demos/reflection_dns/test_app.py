@@ -13,7 +13,7 @@ batch_interval = 0.5
 window_length = 1
 sliding_interval = 1
 
-RESULTS_FOLDER = '/home/vagrant/dev/sonata/tests/macro_bench/results/'
+RESULTS_FOLDER = '/home/vagrant/dev/sonata/tests/demos/reflection_dns/graph/'
 
 featuresPath = ''
 redKeysPath = ''
@@ -49,7 +49,7 @@ if __name__ == '__main__':
           .distinct(keys=('dIP', 'sIP'))
           .map(keys=('dIP',), map_values=('count',), func=('eq', 1,))
           .reduce(keys=('dIP',), func=('sum',))
-          .filter(filter_vals=('count',), func=('geq', 90))
+          .filter(filter_vals=('count',), func=('geq', 40))
           .map(keys=('dIP',))
           )
 
@@ -67,5 +67,7 @@ if __name__ == '__main__':
           )
 
     queries = [q1]
-
+    print("*********************************************************************")
+    print("*                   Receiving User Queries                          *")
+    print("*********************************************************************\n\n")
     runtime = Runtime(conf, queries)

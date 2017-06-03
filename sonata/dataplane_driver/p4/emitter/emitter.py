@@ -101,6 +101,10 @@ class Emitter(object):
             print send_tuple
             if qid == 30032: print send_tuple
             # TODO removed this packet is unrelated stuff - maybe it is necessary
+
+            # TODO removed this packet is unrelated stuff - maybe it is necessary
+            # if str(qid) == '10032': print send_tuple
+            if count >= 1: print send_tuple
             self.send_data(send_tuple + "\n")
 
             self.logger.info("emitter,"+ str(qid) + ","+str(start)+",%.20f"%time.time())

@@ -52,25 +52,26 @@ def send_dummy_packets_stream():
 def send_created_traffic():
     traffic_dict = {}
     attack = True
-    for i in range(0, 20):
+    total_duration = 20
+    attack_duration = 5
+    attack_start_time = 10
+    for i in range(0, total_duration):
         traffic_dict[i] = []
-        if i > 5 and i < 11:
-            traffic_dict[i].extend(create_attack_traffic(100))
-            traffic_dict[i].extend(create_normal_traffic(0))
-        else:
-            traffic_dict[i].extend(create_normal_traffic(0))
+        traffic_dict[i].extend(create_normal_traffic())
+        if i >= attack_start_time and i < attack_start_time+attack_duration:
+            traffic_dict[i].extend(create_attack_traffic())
 
     print "******************** Sending Normal Traffic *************************"
-    for i in range(0, 20):
+    for i in range(0, total_duration):
         # print "Sending traffic for ts: " + str(i)
         start = time.time()
-        if i > 5 and i < 11 and attack:
+        if i >= attack_start_time and i < attack_start_time+attack_duration and attack:
             attack = False
             print "******************** Sending Attack Traffic *************************"
-        if i == 10:
+        if i == attack_start_time+attack_duration:
             attack = False
 
-        if not attack and i > 10:
+        if not attack and i > attack_start_time+attack_duration:
             attack = True
             print "******************** Sending Normal Traffic *************************"
 
