@@ -41,7 +41,7 @@ $ vagrant ssh
 
 Inside the VM, 
 ```bash
-$ cd ~/dev/examples/distinct_only/
+$ cd ~/dev/sonata/examples/distinct_only/
 ```
 
 ### End-2-end Testing
