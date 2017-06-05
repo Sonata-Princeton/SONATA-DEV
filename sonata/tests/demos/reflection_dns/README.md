@@ -26,3 +26,4 @@ To visualuze the traffic at the input and the span port, run
 $ python sonata/tests/demos/reflection_dns/graph/animate_logs.py
 ```
 The experiment runs for 30 seconds, sending attack traffic for 10 seconds starting at t=5 seconds. 
+For more details, check out our demo video: https://youtu.be/mXlNMfByp0M
