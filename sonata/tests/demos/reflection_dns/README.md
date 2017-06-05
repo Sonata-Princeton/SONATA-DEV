@@ -13,6 +13,7 @@ Cleans up any previously running processes and kicks off the test app.
 ```bash
 $ sudo sh cleanup.sh && sudo PYTHONPATH=$PYTHONPATH:/home/vagrant/bmv2/mininet:$PWD $SPARK_HOME/bin/spark-submit sonata/tests/demos/reflection_dns/test_app.py
 ```
+You can modify the queries by editting the file: `sonata/tests/demos/reflection_dns/test_app.py`
 
 3. Send Traffic
 
