@@ -9,7 +9,8 @@ import math
 from random import randint
 
 SERVER = False
-
+NORMAL_PACKET_COUNT = 50
+ATTACK_PACKET_COUNT = 50
 if SERVER:
     INTERFACE = 'eth0'
     PCAP_LOCATION = '/home/sonata/SONATA-DEV/sonata/tests/macro_bench/campus_udp_1min.pcap'
@@ -57,9 +58,9 @@ def send_created_traffic():
     attack_start_time = 10
     for i in range(0, total_duration):
         traffic_dict[i] = []
-        traffic_dict[i].extend(create_normal_traffic())
+        traffic_dict[i].extend(create_normal_traffic(NORMAL_PACKET_COUNT))
         if i >= attack_start_time and i < attack_start_time+attack_duration:
-            traffic_dict[i].extend(create_attack_traffic())
+            traffic_dict[i].extend(create_attack_traffic(ATTACK_PACKET_COUNT))
 
     print "******************** Sending Normal Traffic *************************"
     for i in range(0, total_duration):

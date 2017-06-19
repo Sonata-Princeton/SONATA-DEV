@@ -177,7 +177,7 @@ def main():
         'em_conf': {'spark_stream_address': SPARK_ADDRESS,
                     'spark_stream_port': 8989,
                     'sniff_interface': SNIFF_INTERFACE,
-                    'log_file': BASEPATH + SONATA +"/sonata/tests/macro_bench/results/emitter.log"
+                    'log_file': BASEPATH + SONATA +"/sonata/tests/demos/reflection_dns/graph/emitter2.log"
         },
 
         'switch_conf': {

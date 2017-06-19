@@ -22,7 +22,7 @@ if SERVER:
     DP_DRIVER_CONF = ('172.17.0.101', 6666)
     SPARK_ADDRESS = '172.17.0.98'
     SNIFF_INTERFACE = 'ens1f1'
-    RESULTS_FOLDER = '/home/sonata/SONATA-DEV/sonata/tests/macro_bench/results/'
+    RESULTS_FOLDER = '/home/sonata/SONATA-DEV/sonata/tests/demos/reflection_dns/graph/'
 else:
     BASEPATH = '/home/vagrant/'
     SONATA = 'dev'
@@ -64,7 +64,7 @@ if __name__ == '__main__':
           .distinct(keys=('dIP', 'sIP'))
           .map(keys=('dIP',), map_values=('count',), func=('eq', 1,))
           .reduce(keys=('dIP',), func=('sum',))
-          .filter(filter_vals=('count',), func=('geq', 90))
+          .filter(filter_vals=('count',), func=('geq', 45))
           .map(keys=('dIP',))
           )
 
