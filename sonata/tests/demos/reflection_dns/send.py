@@ -89,6 +89,7 @@ class PicklablePacket:
 def send_created_traffic():
     traffic_dict = {}
     attack = True
+
     total_duration = 30
     attack_duration = 10
     attack_start_time = 5
@@ -119,11 +120,4 @@ def send_created_traffic():
         if sleep_time > 0:
             time.sleep(sleep_time)
 
-#send_packets(False)
 send_created_traffic()
-"""
-print "Sending dummy packets: ...."
-send_dummy_packets(0)
-send_dummy_packets(1)
-time.sleep(1)
-"""

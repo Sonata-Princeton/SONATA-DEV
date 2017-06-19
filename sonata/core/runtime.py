@@ -51,7 +51,7 @@ class Runtime(object):
                 target = Target()
                 assert hasattr(target, 'costly_operators')
                 refinement_object = Refinement(query, target)
-                # print refinement_object.qid_2_refined_queries
+
                 self.refinement_keys[query.qid] = refinement_object.refinement_key
                 print "*********************************************************************"
                 print "*                   Generating Query Plan                           *"
@@ -127,9 +127,10 @@ class Runtime(object):
             with open('pickled_queries.pickle', 'w') as f:
                 pickle.dump({0: self.dp_queries, 1: self.sp_queries}, f)
 
-        # print "Dataplane Queries", self.dp_queries
-        # print "\n\n"
-        # print "Streaming Queries", self.sp_queries
+        print "Dataplane Queries", self.dp_queries
+        print "\n\n"
+        print "Streaming Queries", self.sp_queries
+
 
         #time.sleep(10)
         self.initialize_handlers()
@@ -313,6 +314,9 @@ class Runtime(object):
         self.logger.info("runtime,fm_" + message_type + "," + str(start) + ",%.20f" % time.time())
         time.sleep(1)
         conn.close()
+        print "*********************************************************************"
+        print "*                   Updating Dataplane Driver                       *"
+        print "*********************************************************************\n\n"
         return ''
 
     def initialize_handlers(self):

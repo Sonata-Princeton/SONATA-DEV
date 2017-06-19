@@ -29,7 +29,8 @@ else:
     DP_DRIVER_CONF = ('localhost', 6666)
     SPARK_ADDRESS = 'localhost'
     SNIFF_INTERFACE = 'm-veth-2'
-    RESULTS_FOLDER = '/home/vagrant/dev/sonata/tests/macro_bench/results/'
+
+    RESULTS_FOLDER = '/home/vagrant/dev/sonata/tests/demos/reflection_dns/graph/'
 
 
 featuresPath = ''
@@ -57,6 +58,7 @@ if __name__ == '__main__':
             'sm_conf': spark_conf, 'emitter_conf': {}, 'log_file': rt_log_file,
             'fm_conf': {'fm_socket': DP_DRIVER_CONF, 'log_file': fm_log_file}}
 
+
     # New Queries
     q1 = (PacketStream(1)
           # .filter(filter_keys=('proto',), func=('eq', 6))
@@ -81,7 +83,9 @@ if __name__ == '__main__':
           .distinct(keys=('dIP',))
           )
 
+
     queries = [q3]
+
     print("*********************************************************************")
     print("*                   Receiving User Queries                          *")
     print("*********************************************************************\n\n")
