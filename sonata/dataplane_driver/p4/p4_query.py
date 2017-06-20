@@ -6,7 +6,7 @@ from p4_elements import Action, Header, Table
 from p4_operators import P4Distinct, P4Filter, P4Map, P4MapInit, P4Reduce
 from p4_primitives import ModifyField, AddHeader
 from sonata.dataplane_driver.utils import get_logger
-
+import logging
 
 HEADER_MAP = {'sIP': 'ipv4.srcAddr', 'dIP': 'ipv4.dstAddr',
               'sPort': 'tcp.srcPort', 'dPort': 'tcp.dstPort',
@@ -24,7 +24,9 @@ class P4Query(object):
                  clone_meta_field):
 
         # LOGGING
+        log_level = logging.ERROR
         self.logger = get_logger('P4Query - %i' % query_id, 'INFO')
+        self.logger.setLevel(log_level)
         self.logger.info('init')
 
         self.id = query_id
@@ -92,6 +94,12 @@ class P4Query(object):
         for operator in generic_operators:
             self.logger.debug('add %s operator' % (operator.name,))
             operator_id += 1
+
+            #TODO: Confirm if this is the right way
+            keys = filter(lambda x: x != 'payload' and x != 'ts', operator.keys)
+            operator.keys = keys
+            #TODO: Confirm if this is the right way
+
             if operator.name == 'Filter':
                 match_action = self.nop_action
                 miss_action = self.query_drop_action
@@ -191,7 +199,7 @@ class P4Query(object):
     def get_commands(self):
         commands = list()
         for operator in self.operators:
-            print str(operator)
+            # print str(operator)
             commands.extend(operator.get_commands())
 
         commands.append(self.out_header_table.get_default_command())

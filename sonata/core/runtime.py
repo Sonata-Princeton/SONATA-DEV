@@ -51,9 +51,11 @@ class Runtime(object):
                 target = Target()
                 assert hasattr(target, 'costly_operators')
                 refinement_object = Refinement(query, target)
-                #print refinement_object.qid_2_refined_queries
-                self.refinement_keys[query.qid] = refinement_object.refinement_key
 
+                self.refinement_keys[query.qid] = refinement_object.refinement_key
+                print "*********************************************************************"
+                print "*                   Generating Query Plan                           *"
+                print "*********************************************************************\n\n"
                 # fname = "plan_" + str(query.qid) + ".pickle"
                 # usePickledPlan = True
                 # if usePickledPlan:
@@ -77,7 +79,7 @@ class Runtime(object):
                 # final_plan = self.query_plans[query.qid][1:-1]
                 # print final_plan
 
-                final_plan = [(1, 16, 5, 1),(1, 32, 5, 3)]#(1, 16, 5, 1),
+                final_plan = [(1, 16, 5, 1), (3, 32, 1, 2)]#(1, 16, 5, 1),
                 prev_r = 0
                 prev_qid = 0
 
@@ -96,7 +98,7 @@ class Runtime(object):
                     prev_qid = q
 
 
-                self.update_query_mappings(query, final_plan)
+                self.update_query_mappings(refinement_object, final_plan)
 
                 # final_plan = [(16, 5, 1), (32, 1, 1)]
 
@@ -125,25 +127,33 @@ class Runtime(object):
             with open('pickled_queries.pickle', 'w') as f:
                 pickle.dump({0: self.dp_queries, 1: self.sp_queries}, f)
 
-        print self.dp_queries
-        #print self.sp_queries
+        print "Dataplane Queries", self.dp_queries
+        print "\n\n"
+        print "Streaming Queries", self.sp_queries
+
 
         #time.sleep(10)
         self.initialize_handlers()
         time.sleep(2)
         self.send_to_dp_driver('init', self.dp_queries)
+        print "*********************************************************************"
+        print "*                   Updating Dataplane Driver                       *"
+        print "*********************************************************************\n\n"
         if self.sp_queries:
             self.send_to_sm()
 
+        # self.dp_driver_thread.join()
         self.streaming_driver_thread.join()
-        self.dp_driver_thread.join()
-        self.dpd_thread.join()
+        self.op_handler_thread.join()
 
-    def update_query_mappings(self, query, final_plan):
+    def update_query_mappings(self, refinement_object, final_plan):
         if len(final_plan) > 1:
             for ((q1, r1, p1, l1), (q2, r2, p2, l2)) in zip(final_plan, final_plan[1:]):
-                qid1 = get_refined_query_id(query, r1)
-                qid2 = get_refined_query_id(query, r2)
+                query1 = refinement_object.qid_2_query[q1]
+                query2 = refinement_object.qid_2_query[q2]
+
+                qid1 = get_refined_query_id(query1, r1)
+                qid2 = get_refined_query_id(query2, r2)
                 if qid2 not in self.query_in_mappings:
                     self.query_in_mappings[qid2] = []
                 self.query_in_mappings[qid2].append(qid1)
@@ -157,7 +167,7 @@ class Runtime(object):
         # Update the queries whose o/p needs to be displayed to the network operators
         #print final_plan
         r = final_plan[-1][0]
-        qid = get_refined_query_id(query, r)
+        qid = get_refined_query_id(query1, r)
         self.query_out_final[qid] = 0
 
     def start_op_handler(self):
@@ -176,11 +186,13 @@ class Runtime(object):
         # SM depending on where filter operation is applied (mostly DP)
         self.op_handler_socket = self.conf['sm_conf']['op_handler_socket']
         self.op_handler_listener = Listener(self.op_handler_socket)
-        start = time.time()
+
+        start = "%.20f" %time.time()
+
         queries_received = {}
         updateDeltaConfig = False
         while True:
-            #print "Ready to receive data from SM ***************************"
+            # print "Ready to receive data from SM ***************************"
             conn = self.op_handler_listener.accept()
             # Expected (qid,[])
             op_data = conn.recv_bytes()
@@ -193,15 +205,15 @@ class Runtime(object):
                 queries_received[src_qid] = table_match_entries
             else:
                 queries_received[src_qid] = []
-            #print "DP Queries: ", str(len(self.dp_queries.keys())), " Received keys:", str(len(queries_received.keys()))
+            # print "DP Queries: ", str(len(self.dp_queries.keys())), " Received keys:", str(len(queries_received.keys()))
             if len(queries_received.keys()) == len(self.dp_queries.keys()):
                 updateDeltaConfig = True
 
-            #print "Query Out Mappings: ",self.query_out_mappings
+            # print "Query Out Mappings: ",self.query_out_mappings
             delta_config = {}
             #print "## Received output for query", src_qid, "at time", time.time() - start
             if updateDeltaConfig:
-                start = time.time()
+                start = "%.20f" %time.time()
                 for src_qid in queries_received:
                     if src_qid in self.query_out_mappings:
                         table_match_entries = queries_received[src_qid]
@@ -214,12 +226,21 @@ class Runtime(object):
                     # reset these state variables
                 # print "delta config: ", delta_config
                 updateDeltaConfig = False
-                self.logger.info("runtime,create_delta_config," + str(start) + "," + str(time.time()))
+                if delta_config != {}: self.logger.info("runtime,create_delta_config," + str(start) + ",%.20f" % time.time())
                 queries_received = {}
 
             # TODO: Update the send_to_dp_driver function logic
             # now send this delta config to fabric manager and update the filter tables
             if delta_config != {}:
+                IP = ""
+                for qid_key in delta_config.keys():
+                    IP = delta_config[qid_key]
+
+                print "*********************************************************************"
+                print "*                   IP "+IP[0]+" satisfies coarser query            *"
+                print "*                   Reconfiguring Data Plane                        *"
+                print "*********************************************************************\n\n"
+
                 self.send_to_dp_driver("delta", delta_config)
         return 0
 
@@ -229,10 +250,12 @@ class Runtime(object):
         self.dpd_thread = Thread(name='dp_driver', target=dpd.start)
         self.dpd_thread.setDaemon(True)
 
+        p4_type = 'p4'
+
         config = {
             'em_conf': self.conf['emitter_conf'],
             'switch_conf': {
-                'compiled_srcs': '/home/vagrant/dev/sonata/dataplane_driver/p4/compiled_srcs/',
+                'compiled_srcs': '/home/vagrant/dev/sonata/dataplane_driver/'+p4_type+'/compiled_srcs/',
                 'json_p4_compiled': 'compiled.json',
                 'p4_compiled': 'compiled.p4',
                 'p4c_bm_script': '/home/vagrant/p4c-bmv2/p4c_bm/__main__.py',
@@ -245,7 +268,7 @@ class Runtime(object):
                 'p4_delta_commands': 'delta_commands.txt'
             }
         }
-        dpd.add_target('p4', self.target_id, config)
+        dpd.add_target(p4_type, self.target_id, config)
         self.dpd_thread.start()
 
         # fm = DPDriverConfig(self.conf['fm_conf'], self.conf['emitter_conf'])
@@ -271,27 +294,33 @@ class Runtime(object):
 
     def send_to_sm(self):
         # Send compiled query expression to streaming manager
-        start = time.time()
+        start = "%.20f" %time.time()
         serialized_queries = pickle.dumps(self.sp_queries)
         conn = Client(self.conf['sm_conf']['sm_socket'])
         conn.send(serialized_queries)
         self.logger.info("runtime,sm_init," + str(start) + "," + str(time.time()))
+        print "*********************************************************************"
+        print "*                   Updating Streaming Driver                       *"
+        print "*********************************************************************\n\n"
         time.sleep(3)
 
     def send_to_dp_driver(self, message_type, content):
         # Send compiled query expression to fabric manager
-        start = time.time()
+        start = "%.20f" %time.time()
         message = {message_type: {0: content, 1: self.target_id}}
         serialized_queries = pickle.dumps(message)
         conn = Client(self.conf['fm_conf']['fm_socket'])
         conn.send(serialized_queries)
-        self.logger.info("runtime,fm_" + message_type + "," + str(start) + "," + str(time.time()))
+        self.logger.info("runtime,fm_" + message_type + "," + str(start) + ",%.20f" % time.time())
         time.sleep(1)
         conn.close()
+        print "*********************************************************************"
+        print "*                   Updating Dataplane Driver                       *"
+        print "*********************************************************************\n\n"
         return ''
 
     def initialize_handlers(self):
-        target=self.start_dataplane_driver()
+        # target=self.start_dataplane_driver()
         self.streaming_driver_thread = Thread(name='streaming_driver', target=self.start_streaming_driver)
         self.op_handler_thread = Thread(name='op_handler', target=self.start_op_handler)
         # self.fm_thread.setDaemon(True)

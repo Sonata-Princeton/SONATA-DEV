@@ -12,9 +12,9 @@ import numpy as np
 
 def requires_payload_processing(query):
     parse_payload = False
-    for operator in query.operators:
+    for operator in query.operators[1:]:
         if 'payload' in operator.keys:
-            parse_payload = False
+            parse_payload = True
 
     return parse_payload
 

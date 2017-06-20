@@ -41,7 +41,7 @@ def plot_line(xlab, data, xlab2, data2, XLabel, YLabel, fname):
     plot_name = fname+'.png'
     pl.savefig(plot_name)
 
-f = open('results/emitter.log')
+f = open('../results/emitter.log')
 csv_f = csv.reader(f)
 
 ts_packet_count = {}
@@ -67,16 +67,18 @@ print ordered_ts
 for ts in ordered_ts:
     data.append(ts_packet_count[ts])
 
-data = [0,0,0,0] + data
+data = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0] + data + [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
 
 data_original = []
 ctr = 1
-for ts in range(0, 20):
-    count = 10
-    if ctr > 5 and ctr < 11:
-        count += 100
+for ts in range(0, 60):
+    count = 100
+    if ts > 20 and ts < 31:
+        count += 304
     data_original.append(count)
     ctr += 1
+
+data_original = [114, 143, 141, 127, 112, 119, 111, 132, 135, 129, 134, 131, 134, 101, 114, 147, 126, 104, 135, 143, 101, 444, 409, 436, 426, 425, 439, 426, 412, 436, 416, 135, 148, 135, 103, 139, 117, 123, 136, 124, 109, 128, 105, 110, 118, 126, 139, 134, 146, 109, 128, 135, 118, 104, 114, 131, 109, 114, 109, 101]
 
 print "Original Data",len(data_original), data_original
 
@@ -85,4 +87,4 @@ print data, len(ordered_ts)
 plot_line(len(data), data, len(data_original[1:]), data_original[1:],
           'Time (seconds)',
           'Number of Packets',
-          'graph/macro_n_packets')
+          '../graph/macro_n_packets')

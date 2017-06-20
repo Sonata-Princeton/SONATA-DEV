@@ -7,19 +7,31 @@
 $ cd ~/dev
 ```
 
-2. Running the setup. Following command cleans up the results directory for macro-benchmarking.
-Cleans up any previously running processes and kicks off the test app.
-
+2. Cleanup Results Directory
 ```bash
-$ rm -rf sonata/tests/macro_bench/results  && sudo sh cleanup.sh && sudo PYTHONPATH=$PYTHONPATH:/home/vagrant/bmv2/mininet:$PWD $SPARK_HOME/bin/spark-submit sonata/tests/macro_bench/test_app.py
+$ rm -rf sonata/tests/macro_bench/results/*
 ```
 
-3. Send Traffic
+3. Start Dataplane Driver
+```bash
+# Clean up
+$ sudo sh cleanup.sh
+```
+```bash
+# Start the driver
+$ sudo PYTHONPATH=$PYTHONPATH:$PWD python sonata/dataplane_driver/dp_driver.py
+```
+
+4. Start the Application
+```bash
+sudo PYTHONPATH=$PYTHONPATH:/home/vagrant/bmv2/mininet:$PWD $SPARK_HOME/bin/s-submit sonata/tests/macro_bench/test_app.py
+```
+
+5. Send Data
 
 ```bash
 $ sudo python sonata/tests/macro_bench/send.py
 ```
-
 
 ## Generating Graph
 
@@ -34,4 +46,4 @@ The graph is generated in folder `sonata/tests/macro_bench/graph/macro_n_packets
 
 The Graph generated looks like below:
 
-![MacroBenchmarking](https://github.com/Sonata-Princeton/SONATA-DEV/blob/master/sonata/tests/macro_bench/graph/macro_n_packets.png)
+![MacroBenchmarking](https://github.com/Sonata-Princeton/SONATA-DEV/blob/micro/sonata/tests/macro_bench/graph/macro_n_packets.png)

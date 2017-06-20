@@ -1,8 +1,8 @@
 import logging
 import sys
 
-from mininet.link import Intf
 from mininet.net import Mininet
+from mininet.link import Intf
 from mininet.topo import Topo
 sys.path.append("/home/vagrant/bmv2/mininet")
 
@@ -13,6 +13,31 @@ import subprocess
 
 from interfaces import Interfaces
 from sonata.dataplane_driver.utils import get_out, get_in
+import threading,os
+
+
+SERVER = False
+if SERVER:
+    internal_interfaces = {"ens1f0": 11, "ens1f1":10, "ens4f0": 12}
+else:
+    internal_interfaces = {"m-veth-1": 11, "m-veth-2":12, "m-veth-3": 13}
+
+class Switch(threading.Thread):
+    def __init__(self,p4_json_path, switch_path):
+        threading.Thread.__init__(self)
+        self.daemon = True
+        self.switch_path = switch_path
+        self.p4_json_path = p4_json_path
+
+    def run(self):
+        compose_interfaces = ""
+        for inter,port in internal_interfaces.iteritems():
+            new_interface = " -i %s@%s "%(port,inter)
+            compose_interfaces +=new_interface
+
+        COMMAND = "sudo %s %s %s --thrift-port 22222"%(self.switch_path, self.p4_json_path, compose_interfaces)
+        print COMMAND
+        os.system(COMMAND)
 
 
 class P4DataPlane(object):
@@ -40,22 +65,32 @@ class P4DataPlane(object):
 
         self.create_interfaces()
 
+        # cmd = self.switch_path + " >/dev/null 2>&1"
+        # get_out(cmd)
+
+        # self.logger.info('start mininet topology')
+        # topo = P4Topo(self.switch_path,
+        #               p4_json_path,
+        #               self.thrift_port)
+        #
+        # net = Mininet(topo=topo,
+        #               host=P4Host,
+        #               switch=P4Switch,
+        #               controller=None)
+        #
+        # Intf("m-veth-1", net.get('s1'), 11)
+        # Intf("m-veth-2", net.get('s1'), 12)
+        # Intf("m-veth-3", net.get('s1'), 13)
+
+        # net.start()
+
+        get_out("sudo ps -ef | grep simple_switch | grep -v grep | awk '{print $2}' | sudo xargs kill -9")
+        sleep(1)
         cmd = self.switch_path + " >/dev/null 2>&1"
         get_out(cmd)
+        self.switch = Switch(p4_json_path, self.switch_path)
+        self.switch.start()
 
-        self.logger.info('start mininet topology')
-        topo = P4Topo(self.switch_path,
-                      p4_json_path,
-                      self.thrift_port)
-
-        net = Mininet(topo=topo,
-                      host=P4Host,
-                      switch=P4Switch,
-                      controller=None)
-
-        Intf("m-veth-1", net.get('s1'), 11)
-        Intf("m-veth-2", net.get('s1'), 12)
-        net.start()
         sleep(1)
 
         self.send_commands(p4_json_path, p4_commands_path)
