@@ -13,16 +13,7 @@ from collections import namedtuple
 
 
 Operator = namedtuple('Operator', 'name keys')
-SERVER = False
 
-if SERVER:
-    SENDER_PORT = 11
-    RECIEVE_PORT = 10
-else:
-    SENDER_PORT = 11
-    RECIEVE_PORT = 13
-
-ORIGINAL_PACKET = True
 
 class P4Target(object):
     def __init__(self, em_conf, target_conf):
@@ -48,14 +39,13 @@ class P4Target(object):
         # interfaces
         self.interfaces = {
                 'receiver': ['m-veth-1', 'out-veth-1'],
-                'sender': ['m-veth-2', 'out-veth-2'],
-                'original': ['m-veth-3', 'out-veth-3']
+                'sender': ['m-veth-2', 'out-veth-2']
         }
 
         self.supported_operations = ['Map', 'Filter', 'Reduce', 'Distinct']
 
         # LOGGING
-        log_level = logging.INFO
+        log_level = logging.WARNING
         # add handler
         self.logger = logging.getLogger('P4Target')
         self.logger.setLevel(log_level)
@@ -119,12 +109,10 @@ class P4Target(object):
                                            map_keys=operator.map_keys,
                                            func=operator.func)
                 elif operator.name == 'Reduce':
-                    query_pipeline.reduce(keys=keys,threshold=operator.threshold)
+                    query_pipeline.reduce(keys=keys)
 
                 elif operator.name == 'Distinct':
                     query_pipeline.distinct(keys=keys)
-
-            print query_pipeline
 
             p4_queries.append(query_pipeline)
             self.queries[qid] = query_pipeline
@@ -210,24 +198,6 @@ class P4Target(object):
             p4_src += '\tmodify_field(meta_fm.is_drop, 1);\n'
             p4_src += '}\n\n'
 
-        if ORIGINAL_PACKET: p4_src += """
-action repeat(dport) {
-    modify_field(standard_metadata.egress_spec, dport);
-    //modify_field(addition.trash, TRASH);
-    //add_header(addition);
-}
-
-table forward {
-    reads {
-        standard_metadata.ingress_port: exact;
-    }
-    actions {
-        repeat;
-        _drop;
-    }
-    size: 2;
-}\n\n"""
-
         for q in p4_queries:
             p4_src += q.filter_rules
 
@@ -241,31 +211,16 @@ table forward {
             p4_src += '\t\tif (meta_fm.qid_'+str(q.qid)+' == 1){\n'
             p4_src += '\t\t'+q.p4_ingress_start
             p4_src += q.p4_control
-            # TODO: Remove this when micro benchmarking is done
-            if not ORIGINAL_PACKET: p4_src += '\t\t\tapply(copy_to_cpu_'+str(q.qid)+');\n'
+            p4_src += '\t\t\tapply(copy_to_cpu_'+str(q.qid)+');\n'
             p4_src += '\t\t}\n\t}\n'
             p4_commands.append('table_set_default copy_to_cpu_'+str(q.qid)+' do_copy_to_cpu_'+str(q.qid))
-
-        # TODO: Remove Forwarding of original packet
-        if ORIGINAL_PACKET:
-            p4_src += '\tif (meta_fm.f1 == '+str(ctr)+'){\n'
-            p4_src += '\t\t\tapply(forward);\n'
-            p4_src += '\t}\n'
-            p4_commands.append("table_set_default forward _drop")
-            p4_commands.append("table_add forward repeat %s => %s"%(SENDER_PORT, RECIEVE_PORT))
-            p4_commands.append("table_add forward repeat %s => %s"%(RECIEVE_PORT, SENDER_PORT))
-        # TODO: Remove Forwarding of original packet
-
         p4_src += '}\n\n'
 
         p4_src += 'control egress {\n'
         p4_src += '\tif (standard_metadata.instance_type != 1) {\n'
         p4_src += '\t\tif(meta_fm.f1 < '+str(len(p4_queries))+') {\n'
         p4_src += '\t\t\tapply(recirculate_to_ingress);\n\t\t}\n'
-        # TODO: Enable Dropping of original packet
-        if not ORIGINAL_PACKET: p4_src += '\t\telse {\n\t\t\tapply(drop_table);\n\t\t}\n\t'
-        # TODO: Enable Dropping of original packet
-        p4_src += '}\n\n'
+        p4_src += '\t\telse {\n\t\t\tapply(drop_table);\n\t\t}\n\t}\n\n'
         p4_src += '\telse if (standard_metadata.instance_type == 1) {\n'
         p4_src += '\t\tif (meta_fm.is_drop == 1){\n'
         p4_src += '\t\t\tapply(drop_packets);\n\t\t}\n\t\telse {\n'
@@ -327,6 +282,6 @@ table forward {
                 command = 'table_add '+filter_table_fname+' set_meta_fm_'+str(qid)+' '+str(dip)+'/'+str(filter_mask)+' => \n'
                 commands += command
 
-            # self.logger.info(commands)
+            self.logger.info(commands)
             write_to_file(self.P4_DELTA_COMMANDS, commands)
             self.dataplane.send_commands(self.JSON_P4_COMPILED, self.P4_DELTA_COMMANDS)

@@ -28,7 +28,7 @@ class Interfaces(object):
 
     def set_peer(self):
         base = "ip link add name %s type veth peer name %s"%(self.inName, self.outName)
-        # print base
+        print base
         (returncode, error) = get_out(base)
         return returncode
 

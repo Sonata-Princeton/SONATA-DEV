@@ -2,29 +2,14 @@
 
 import logging
 import pickle
-import time
+
 from multiprocessing.connection import Listener
 
 from query_cleaner import get_clean_application
 
 from openflow.openflow import OFTarget
-# from p4.p4_target import P4Target
+from p4.p4_target import P4Target
 
-SERVER = False
-P4_TYPE = 'p4'
-
-if SERVER:
-    BASEPATH = '/home/sonata/'
-    SONATA = 'SONATA-DEV'
-    DP_DRIVER_CONF = ('172.17.0.101', 6666)
-    SPARK_ADDRESS = '0.0.0.0'
-    SNIFF_INTERFACE = 'ens4f0'
-else:
-    BASEPATH = '/home/vagrant/'
-    SONATA = 'dev'
-    DP_DRIVER_CONF = ('localhost', 6666)
-    SPARK_ADDRESS = 'localhost'
-    SNIFF_INTERFACE = 'm-veth-2'
 
 class DataplaneDriver(object):
     def __init__(self, dpd_socket, metrics_file):
@@ -34,7 +19,7 @@ class DataplaneDriver(object):
         self.metrics_log_file = metrics_file
 
         # LOGGING
-        log_level = logging.ERROR
+        log_level = logging.DEBUG
         # add handler
         self.logger = logging.getLogger('DataplaneDriver')
         self.logger.setLevel(log_level)
@@ -59,7 +44,7 @@ class DataplaneDriver(object):
         self.fh.setLevel(logging.INFO)
         self.metrics.addHandler(self.fh)
 
-        # self.metrics.info('init')
+        self.metrics.info('init')
 
     def start(self):
         self.logger.debug('starting the event listener')
@@ -70,20 +55,16 @@ class DataplaneDriver(object):
             message = pickle.loads(raw_data)
             for key in message.keys():
                 if key == 'init':
-                    start = "%.20f" %time.time()
                     self.logger.debug('received "init" message')
                     application = message[key][0]
                     target_id = message[key][1]
-                    # print "application", application
+                    print "application", application
                     self.configure(application, target_id)
-                    # self.metrics.info("init" + ","+ str(len(application)) +"," + start +",%.20f" % time.time())
                 elif key == 'delta':
                     # self.logger.debug('received "delta" message')
-                    start = "%.20f" %time.time()
                     filter_update = message[key][0]
                     target_id = message[key][1]
                     self.update_configuration(filter_update, target_id)
-                    # self.metrics.info("delta" + ","+ str(len(filter_update)) +"," + start +",%.20f" % time.time())
                 elif key == 'is_supported':
                     self.logger.debug('received "is_supported" message')
                     application = message[key][0]
@@ -104,15 +85,6 @@ class DataplaneDriver(object):
         self.logger.info('adding new target of type %s with id %s' % (type, str(tid)))
         target = None
         if target_type == 'p4':
-            from p4.p4_target import P4Target
-            if 'em_conf' not in config or 'switch_conf' not in config:
-                self.logger.error('missing configs')
-                return
-            em_config = config['em_conf']
-            switch_config = config['switch_conf']
-            target = P4Target(em_config, switch_config)
-        elif target_type == 'p4_old':
-            from p4_old.p4_target_old import P4Target
             if 'em_conf' not in config or 'switch_conf' not in config:
                 self.logger.error('missing configs')
                 return
@@ -145,10 +117,9 @@ class DataplaneDriver(object):
         return 999
 
     def configure(self, application, target_id):
-        print application
         # TODO integrate query cleaner
         clean_application = get_clean_application(application)
-        print "Cleaned: ", clean_application
+
         target = self.get_target(target_id)
         target.run(clean_application)
 
@@ -165,38 +136,7 @@ class DataplaneDriver(object):
 
 
 def main():
-
-    dpd = DataplaneDriver(DP_DRIVER_CONF, BASEPATH + SONATA +"/sonata/tests/macro_bench/results/dp_driver.log")
-    p4_type = P4_TYPE
-    compiled_srcs = ''
-
-    if p4_type == 'p4_old': compiled_srcs = 'recirculate'
-    else: compiled_srcs = 'sequential'
-
-    config = {
-        'em_conf': {'spark_stream_address': SPARK_ADDRESS,
-                    'spark_stream_port': 8989,
-                    'sniff_interface': SNIFF_INTERFACE,
-                    'log_file': BASEPATH + SONATA +"/sonata/tests/demos/reflection_dns/graph/emitter2.log"
-        },
-
-        'switch_conf': {
-            'compiled_srcs': BASEPATH + SONATA +'/sonata/tests/macro_bench/compiled_srcs/',
-            'json_p4_compiled': 'compiled.json',
-            'p4_compiled': 'compiled.p4',
-            'p4c_bm_script': BASEPATH + 'p4c-bmv2/p4c_bm/__main__.py',
-            'bmv2_path': BASEPATH + 'bmv2',
-            'bmv2_switch_base': '/targets/simple_switch',
-            'switch_path': '/simple_switch',
-            'cli_path': '/sswitch_CLI',
-            'thriftport': 22222,
-            'p4_commands': 'commands.txt',
-            'p4_delta_commands': 'delta_commands.txt'
-        }
-    }
-
-    dpd.add_target(p4_type, 1, config)
-    dpd.start()
+    pass
 
 
 if __name__ == '__main__':
