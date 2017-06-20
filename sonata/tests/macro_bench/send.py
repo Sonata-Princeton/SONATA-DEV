@@ -58,15 +58,9 @@ def send_created_traffic():
     attack_start_time = 10
     for i in range(0, total_duration):
         traffic_dict[i] = []
-<<<<<<< HEAD
-        traffic_dict[i].extend(create_normal_traffic(NORMAL_PACKET_COUNT))
-        if i >= attack_start_time and i < attack_start_time+attack_duration:
-            traffic_dict[i].extend(create_attack_traffic(ATTACK_PACKET_COUNT))
-=======
         traffic_dict[i].extend(create_normal_traffic())
         if i >= attack_start_time and i < attack_start_time+attack_duration:
             traffic_dict[i].extend(create_attack_traffic())
->>>>>>> ed5e51020f2e3bd404976f03db6f65179a98d03e
 
     print "******************** Sending Normal Traffic *************************"
     for i in range(0, total_duration):
