@@ -6,7 +6,21 @@ from p4_elements import Action, MetaData, MirrorSession, FieldList, Table, Heade
 from p4_primitives import NoOp, CloneIngressPktToEgress, AddHeader, ModifyField
 from p4_query import P4Query
 from sonata.dataplane_driver.utils import get_logger
+<<<<<<< HEAD
 
+SERVER = False
+ORIGINAL_PACKET = False
+
+if SERVER:
+    SENDER_PORT = 11
+    RECIEVE_PORT = 10
+else:
+    SENDER_PORT = 11
+    RECIEVE_PORT = 13
+
+=======
+>>>>>>> ed5e51020f2e3bd404976f03db6f65179a98d03e
+import logging
 
 SESSION_ID = 8001
 SPAN_PORT = 12
@@ -15,7 +29,9 @@ SPAN_PORT = 12
 class P4Application(object):
     def __init__(self, app):
         # LOGGING
+        log_level = logging.ERROR
         self.logger = get_logger('P4Application', 'INFO')
+        self.logger.setLevel(log_level)
         self.logger.info('init')
 
         # define the application metadata
@@ -119,11 +135,17 @@ class P4Application(object):
         # QUERY METADATA, HEADERS, TABLES AND ACTIONS
         p4_src += self.get_code()
 
+        # get original packet repeat code
+        if ORIGINAL_PACKET: p4_src += self.get_original_repeat_code()
+
         # INGRESS PIPELINE
         p4_src += self.get_ingress_pipeline()
 
         # EGRESS PIPELINE
-        p4_src += self.get_egress_pipeline()
+        if ORIGINAL_PACKET:
+            p4_src += "control egress { }"
+        else:
+            p4_src += self.get_egress_pipeline()
 
         return p4_src
 
@@ -173,6 +195,28 @@ class P4Application(object):
             out += query.get_code()
         return out
 
+    def get_original_repeat_code(self):
+        original_repeat = """
+action _drop() {
+	drop();
+}
+
+action repeat(dport) {
+    modify_field(standard_metadata.egress_spec, dport);
+}
+
+table forward {
+    reads {
+        standard_metadata.ingress_port: exact;
+    }
+    actions {
+        repeat;
+        _drop;
+    }
+    size: 2;
+}\n"""
+        return original_repeat
+
     def get_ingress_pipeline(self):
         out = ''
         out += 'control ingress {\n'
@@ -189,6 +233,9 @@ class P4Application(object):
         out += '\tif (%s.%s == 1) {\n' % (self.metadata.get_name(), self.clone_meta_field)
         out += '\t\tapply(%s);\n' % self.report_action_table.get_name()
         out += '\t}\n'
+
+        if ORIGINAL_PACKET: out += '\tapply(forward);\n'
+
         out += '}\n\n'
         return out
 
@@ -216,7 +263,18 @@ class P4Application(object):
         commands.append(self.report_action_table.get_default_command())
         commands.append(self.final_header_table.get_default_command())
         commands.append(self.mirror_session.get_command())
+        if ORIGINAL_PACKET:
+            commands.append("table_set_default forward _drop")
+            commands.append("table_add forward repeat %s => %s"%(SENDER_PORT, RECIEVE_PORT))
+            commands.append("table_add forward repeat %s => %s"%(RECIEVE_PORT, SENDER_PORT))
+
         return commands
+
+    def get_header_format(self):
+        header_format = dict()
+        header_format['parse_payload'] = self.parse_payload
+        header_format['headers'] = self.out_header_fields
+        return header_format
 
     def get_header_formats(self):
         header_formats = dict()
