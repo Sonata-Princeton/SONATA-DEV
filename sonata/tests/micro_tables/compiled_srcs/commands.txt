@@ -1,2 +1,0 @@
-table_set_default send_original_out do_send_original_out
-table_set_default send_filter_updates _drop

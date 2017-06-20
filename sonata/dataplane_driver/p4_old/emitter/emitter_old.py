@@ -59,7 +59,7 @@ class Emitter(object):
         #print "Received packet for query ", qid, type(qid), self.qid_2_query
         if qid in self.qid_2_query:
             query = self.qid_2_query[qid]
-            # print "Query", qid, " parse_payload", query.parse_payload
+            print "Query", qid, " parse_payload", query.parse_payload
             out_headers = query.operators[-1].out_headers
             output_tuple = []
             ind = 2
@@ -82,7 +82,7 @@ class Emitter(object):
                 is_related = True
 
             if query.parse_payload:
-                # print "Adding payload for query", query.qid
+                print "Adding payload for query", query.qid
                 payload = ''
                 if raw_packet.haslayer(Raw):
                     payload = str(raw_packet.getlayer(Raw).load)
@@ -91,7 +91,7 @@ class Emitter(object):
             output_tuple = ['k']+[str(qid)]+output_tuple
             send_tuple = ",".join([str(x) for x in output_tuple])
             if is_related:
-                if qid == 10032: print "Tuple:", send_tuple
+                print "Tuple:", send_tuple
                 self.send_data(send_tuple + "\n")
             else:
                 print "Sniffed unrelated packet."

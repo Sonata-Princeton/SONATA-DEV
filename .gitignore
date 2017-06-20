@@ -1,14 +1,12 @@
 *.vagrant
 *.json
 *.bz2
-*.pickle
 *.pyc
 *.bak
 *.log
 *.aux
 *.pptx
 *.pdf
-*.png
 *.out
 *.blg
 *.bbl
