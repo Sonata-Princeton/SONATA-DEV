@@ -6,7 +6,7 @@ from p4_elements import Action, MetaData, MirrorSession, FieldList, Table, Heade
 from p4_primitives import NoOp, CloneIngressPktToEgress, AddHeader, ModifyField
 from p4_query import P4Query
 from sonata.dataplane_driver.utils import get_logger
-<<<<<<< HEAD
+import logging
 
 SERVER = False
 ORIGINAL_PACKET = False
@@ -18,9 +18,6 @@ else:
     SENDER_PORT = 11
     RECIEVE_PORT = 13
 
-=======
->>>>>>> ed5e51020f2e3bd404976f03db6f65179a98d03e
-import logging
 
 SESSION_ID = 8001
 SPAN_PORT = 12
