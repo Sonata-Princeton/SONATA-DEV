@@ -3,6 +3,7 @@ import struct
 from multiprocessing.connection import Listener
 import time
 import logging
+from datetime import datetime
 
 HEADER_FORMAT = {'sIP': 'BBBB', 'dIP': 'BBBB', 'sPort': '>H', 'dPort': '>H',
                  'nBytes': '>H', 'proto': '>H', 'sMac': 'BBBBBB', 'dMac': 'BBBBBB',
@@ -16,7 +17,6 @@ HEADER_SIZE = {'sIP': 32, 'dIP': 32, 'sPort': 16, 'dPort': 16,
 class Emitter(object):
     def __init__(self, conf, queries):
         # Interfaces
-        print "********* EMITTER INITIALIZED *********"
         self.spark_stream_address = conf['spark_stream_address']
         self.spark_stream_port = conf['spark_stream_port']
         self.sniff_interface = conf['sniff_interface']
@@ -42,9 +42,9 @@ class Emitter(object):
 
     def start(self):
         while True:
-            print "Waiting for socket"
+            # print "Waiting for socket"
             self.spark_conn = self.listener.accept()
-            print "Now start sniffing the packets from switch"
+            # print "Now start sniffing the packets from switch"
             self.sniff_packets()
 
     def send_data(self, data):
@@ -58,18 +58,21 @@ class Emitter(object):
         callback function executed for each capture packet
         '''
 
-        start = time.time()
         p_str = str(raw_packet)
         # raw_packet.show()
         # hexdump(raw_packet)
 
         qid = int(str(self.qid_struct.unpack(p_str[0:2])[0]))
         ind = 2
+        # print str(self.queries)
         while qid in self.queries and qid != 0:
+            start = "%.20f" %time.time()
             query = self.queries[qid]
             out_headers = query['headers']
+
             output_tuple = []
             count = 0
+            # if str(qid) == '30032': print "Headers ", out_headers
             for fld, size in out_headers[1:]:
                 hdr_format = HEADER_FORMAT[fld]
                 strct = struct.Struct(hdr_format)
@@ -87,18 +90,19 @@ class Emitter(object):
             if query['parse_payload']:
                 payload = ''
                 if raw_packet.haslayer(Raw):
-                    payload = str(raw_packet.getlayer(Raw).load)
+                    temp = str(raw_packet.getlayer(Raw).load)
+                    payload = temp.replace('\n', '').replace('\r', '')
+                    payload = "ATTACK"
                 output_tuple.append(payload)
 
             output_tuple = ['k']+[str(qid)]+output_tuple
             send_tuple = ",".join([str(x) for x in output_tuple])
 
-            # TODO removed this packet is unrelated stuff - maybe it is necessary
-            # if str(qid) == '10032': print send_tuple
-            if count > 1: print send_tuple
-            self.send_data(send_tuple + "\n")
-            self.logger.info("emitter,"+ str(qid) + ","+str(start)+","+str(time.time()))
+            print send_tuple
 
+            self.send_data(send_tuple + "\n")
+
+            self.logger.info("emitter,"+ str(qid) + ","+str(start)+",%.20f"%time.time())
             qid = int(str(self.qid_struct.unpack(p_str[ind:ind+2])[0]))
             ind += 2
 
