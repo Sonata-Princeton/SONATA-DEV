@@ -7,7 +7,7 @@ git clone https://github.com/p4lang/p4c-bm.git p4c-bmv2
 
 
 cd p4c-bmv2
-sudo pip install -r requirements.txt
+sudo -H pip install -r requirements.txt
 
 sudo apt-get -yf install
 
@@ -20,4 +20,4 @@ sudo make install
 
 cd ~
 sudo apt-get install mininet
-sudo pip install scapy thrift networkx
+sudo -H pip install scapy thrift networkx

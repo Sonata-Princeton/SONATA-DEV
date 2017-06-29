@@ -7,7 +7,7 @@ cd ~
 #  Dependencies for ryu
 sudo apt-get install -y python-routes python-dev
 
-sudo pip install -r ~/dev/setup/pip-ryu-requires
+sudo -H pip install -r ~/dev/setup/pip-ryu-requires
 
 #  Ryu install
 cd ~
