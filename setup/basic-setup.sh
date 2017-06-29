@@ -18,7 +18,7 @@ python-twisted-conch libtool git tmux vim python-pip python-paramiko \
 python-sphinx mongodb dos2unix wireshark
 
 sudo -H pip install -U pip
-
+sudo -H pip install --upgrade scipy
 sudo -H pip install -r ~/dev/setup/pip-basic-requires
 
 sudo apt-get install -y ssh git emacs sshfs graphviz feh

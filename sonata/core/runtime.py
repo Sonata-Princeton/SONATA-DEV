@@ -320,7 +320,7 @@ class Runtime(object):
         return ''
 
     def initialize_handlers(self):
-        # target=self.start_dataplane_driver()
+        target=self.start_dataplane_driver()
         self.streaming_driver_thread = Thread(name='streaming_driver', target=self.start_streaming_driver)
         self.op_handler_thread = Thread(name='op_handler', target=self.start_op_handler)
         # self.fm_thread.setDaemon(True)
