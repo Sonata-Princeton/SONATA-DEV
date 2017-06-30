@@ -87,8 +87,8 @@ class P4DataPlane(object):
         get_out("sudo ps -ef | grep simple_switch | grep -v grep | awk '{print $2}' | sudo xargs kill -9")
         sleep(1)
         cmd = self.switch_path + " >/dev/null 2>&1"
-        get_out(cmd)
-        self.switch = Switch(p4_json_path, self.switch_path)
+        #get_out(cmd)
+	self.switch = Switch(p4_json_path, self.switch_path)
         self.switch.start()
 
         sleep(1)

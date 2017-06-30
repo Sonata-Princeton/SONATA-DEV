@@ -11,10 +11,13 @@ NORMAL_PACKET_COUNT = 50
 ATTACK_PACKET_COUNT = 50
 
 
+IFACE = "out-veth-1"
+#IFACE = "m-veth-1"
+
 def send_packet(pkt_tuple):
     (sIP, sPort, dIP, dPort, nBytes, proto, sMac, dMac) = pkt_tuple
     p = Ether() / IP(dst=dIP, src=sIP) / TCP(dport=int(dPort), sport=int(sPort)) / "SONATA"
-    sendp(p, iface = "out-veth-1", verbose=0)
+    sendp(p, iface = IFACE, verbose=0)
 
 def create_normal_traffic():
     number_of_packets = NORMAL_PACKET_COUNT
@@ -57,13 +60,13 @@ def send_dummy_packets(mode):
         for sIP in sIPs:
             p = Ether() / IP(dst='112.7.186.25', src=sIP) / TCP() / "SONATA"
             p.summary()
-            sendp(p, iface = "out-veth-1", verbose=0)
+            sendp(p, iface = IFACE, verbose=0)
     else:
         sIPs = ['121.7.186.20', '121.7.186.19', '121.7.186.19', '121.7.186.18']
         for sIP in sIPs:
             p = Ether() / IP(dst='121.7.186.25', src=sIP) / TCP() / "ATTACK"
             p.summary()
-            sendp(p, iface = "out-veth-1", verbose=0)
+            sendp(p, iface = IFACE, verbose=0)
 
 
 
@@ -114,7 +117,7 @@ def send_created_traffic():
             attack = True
             print "******************** Sending Normal Traffic *************************"
 
-        sendp(traffic_dict[i], iface="out-veth-1", verbose=0)
+        sendp(traffic_dict[i], iface=IFACE, verbose=0)
         total = time.time()-start
         sleep_time = 1-total
         if sleep_time > 0:

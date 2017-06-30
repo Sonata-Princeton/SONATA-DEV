@@ -50,12 +50,12 @@ if __name__ == '__main__':
                   'sm_socket': ('0.0.0.0', 5555),
                   'op_handler_socket': ('localhost', 4949)}
 
-    # emitter_conf = {'spark_stream_address': SPARK_ADDRESS,
-    #                 'spark_stream_port': 8989,
-    #                 'sniff_interface': 'out-veth-2', 'log_file': emitter_log_file}
+    emitter_conf = {'spark_stream_address': SPARK_ADDRESS,
+                     'spark_stream_port': 8989,
+                     'sniff_interface': 'out-veth-2', 'log_file': emitter_log_file}
 
     conf = {'dp': 'p4', 'sp': 'spark',
-            'sm_conf': spark_conf, 'emitter_conf': {}, 'log_file': rt_log_file,
+            'sm_conf': spark_conf, 'emitter_conf': emitter_conf, 'log_file': rt_log_file,
             'fm_conf': {'fm_socket': DP_DRIVER_CONF, 'log_file': fm_log_file}}
 
 
