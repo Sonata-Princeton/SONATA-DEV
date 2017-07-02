@@ -88,11 +88,11 @@ class P4DataPlane(object):
         sleep(1)
         cmd = self.switch_path + " >/dev/null 2>&1"
         #get_out(cmd)
-	self.switch = Switch(p4_json_path, self.switch_path)
+        self.switch = Switch(p4_json_path, self.switch_path)
         self.switch.start()
-
-        sleep(1)
-
+        print "\nWaiting for switch to start..."
+        sleep(2)
+        print "Sending commands..."
         self.send_commands(p4_json_path, p4_commands_path)
 
         sleep(1)

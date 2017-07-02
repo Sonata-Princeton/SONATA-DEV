@@ -8,7 +8,7 @@ import matplotlib.animation as animation
 
 from sonata.tests.macro_bench.graph.plotlib import *
 
-log1 = 'emitter.log'
+log1 = '/home/vagrant/dev/sonata/tests/demos/reflection_dns/graph/emitter.log'
 
 total_duration = 30
 attack_duration = 10
