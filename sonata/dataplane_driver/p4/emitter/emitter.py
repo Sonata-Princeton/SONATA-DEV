@@ -44,8 +44,14 @@ class Emitter(object):
         while True:
             # print "Waiting for socket"
             self.spark_conn = self.listener.accept()
+
+            print "*********************************************************************"
+            print "*                           System Ready                            *"
+            print "*********************************************************************\n\n"
+
             # print "Now start sniffing the packets from switch"
             self.sniff_packets()
+
 
     def send_data(self, data):
         self.spark_conn.send_bytes(data)
@@ -98,7 +104,7 @@ class Emitter(object):
             output_tuple = ['k']+[str(qid)]+output_tuple
             send_tuple = ",".join([str(x) for x in output_tuple])
 
-            print send_tuple
+            self.logger.debug(send_tuple)
 
             self.send_data(send_tuple + "\n")
 

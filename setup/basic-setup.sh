@@ -12,14 +12,14 @@ sudo apt-get -f -y install
 
 sudo apt-get update
 
-sudo apt-get install -y build-essential fakeroot debhelper autoconf \
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential fakeroot debhelper autoconf \
 automake libssl-dev graphviz python-all python-qt4 \
 python-twisted-conch libtool git tmux vim python-pip python-paramiko \
 python-sphinx mongodb dos2unix wireshark
 
-sudo pip install -U pip
-
-sudo pip install -r ~/dev/setup/pip-basic-requires
+sudo -H pip install -U pip
+sudo pip install --upgrade scipy
+sudo -H pip install -r ~/dev/setup/pip-basic-requires
 
 sudo apt-get install -y ssh git emacs sshfs graphviz feh
 sudo apt-get install -y libstring-crc32-perl

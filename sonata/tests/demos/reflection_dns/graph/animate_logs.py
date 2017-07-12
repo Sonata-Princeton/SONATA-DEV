@@ -8,8 +8,7 @@ import matplotlib.animation as animation
 
 from sonata.tests.macro_bench.graph.plotlib import *
 
-
-log1 = 'sonata/tests/demos/reflection_dns/graph/emitter.log'
+log1 = '/home/vagrant/dev/sonata/tests/demos/reflection_dns/graph/emitter.log'
 
 total_duration = 30
 attack_duration = 10
@@ -45,16 +44,18 @@ def animate(i):
 
         # count_per_query = {}
         for row in csv_f:
-            (name, qid, start, end) = row
-            ts = round(float(start), 0)
-            # if qid not in count_per_query:
-            #     count_per_query[qid] = 0
-            # count_per_query[qid] += 1
 
-            if ts not in ts_packet_count:
-                ts_packet_count[ts] = 0
-            ts_packet_count[ts] += 1
-            ctr += 1
+            if len(row) == 4:
+                (name, qid, start, end) = row
+                ts = round(float(start), 0)
+                # if qid not in count_per_query:
+                #     count_per_query[qid] = 0
+                # count_per_query[qid] += 1
+
+                if ts not in ts_packet_count:
+                    ts_packet_count[ts] = 0
+                ts_packet_count[ts] += 1
+                ctr += 1
 
         # print ts_packet_count
         # if '10016' in count_per_query: print "Received packets for /16: "+count_per_query['10016']
@@ -76,8 +77,9 @@ def animate(i):
                 for ts in timestamps:
                     index_to_update = attack_start_time + ts - xmin
                     # xdata.append(attack_start_time + ts - xmin)
-                    ydata[int(index_to_update)] = ts_packet_count[ts]
-                    y2data[int(index_to_update)] += ATTACK_PACKET_COUNT
+                    if index_to_update <= total_duration:
+                        ydata[int(index_to_update)] = ts_packet_count[ts]
+                        y2data[int(index_to_update)] += ATTACK_PACKET_COUNT
 
                     ctr += 1
                     if ctr > (int(i) - attack_start_time):

@@ -22,7 +22,7 @@ fi
 killall lt-simple_switch &> /dev/null
 mn -c &> /dev/null
 intf="cpu-veth-0"
-for intf in "m-veth-1" "m-veth-2" "out-veth-1" "out-veth-2"; do
+for intf in "m-veth-1" "m-veth-2" "m-veth-3" "out-veth-1" "out-veth-2" "out-veth-3"; do
 	if ip link show $intf &> /dev/null; then
 	  ip link delete $intf type veth
 	fi
@@ -34,3 +34,5 @@ sudo ps -ef | grep test | grep -v grep | awk '{print $2}' | sudo xargs kill -9 &
 
 sudo ps -ef | grep query_ | grep -v grep | awk '{print $2}' | sudo xargs kill -9 && sudo mn -c && sudo ps -ef | grep simple_switch | grep -v grep | awk '{print $2}' | sudo xargs kill -9
 sudo ps -ef | grep stream | grep -v grep | awk '{print $2}' | sudo xargs kill -9 && sudo mn -c && sudo ps -ef | grep simple_switch | grep -v grep | awk '{print $2}' | sudo xargs kill -9
+
+echo "" > sonata/tests/demos/reflection_dns/graph/emitter.log
