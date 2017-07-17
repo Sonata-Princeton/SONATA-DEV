@@ -15,6 +15,7 @@ from sonata.system_config import *
 
 pstream_qid = 1
 
+
 class PacketStream(Query):
     def __init__(self, id=0, training_data_fname='', isInput=True):
 
@@ -83,7 +84,6 @@ class PacketStream(Query):
             out += operator.__repr__() + "\n\t"
 
         return out
-
 
     def map(self, append_type=0, *args, **kwargs):
         map_dict = dict(*args, **kwargs)
@@ -158,7 +158,7 @@ class PacketStream(Query):
                     if k not in ["count"]:
                         unique_keys[k] = 0
 
-        #print "Concise Query: ", self.qid, unique_keys.keys()
+        # print "Concise Query: ", self.qid, unique_keys.keys()
         concise_query = PacketStream()
         concise_query.basic_headers = unique_keys.keys()
         for operator in self.operators:
@@ -181,9 +181,6 @@ class PacketStream(Query):
 
     """UTIL FUNCTIONS - START"""
 
-
-
-
     def generate_query_out_mapping(self):
         query_out_mapping = {}
         for (qid, ref_level) in self.query_in_mapping:
@@ -197,7 +194,7 @@ class PacketStream(Query):
 
     def generate_query_in_mapping(self, fp, query_2_final_plan, query_in_mapping={}, query_input=[], is_right=False):
         query_id = self.qid
-        #print "Exploring", query_id, "input", query_input
+        # print "Exploring", query_id, "input", query_input
         prev_ref_level = 0
         last_level = 0
 
@@ -220,13 +217,13 @@ class PacketStream(Query):
                     query_in_mapping[(query_id, init_ref_level)] = []
 
                 for elem in query_input:
-                    #print "Adding", elem, "for", query_id, init_ref_level, query_input
+                    # print "Adding", elem, "for", query_id, init_ref_level, query_input
                     # We only expect a single input in this case, maybe change the tuple to elem later
                     query_in_mapping[(query_id, init_ref_level)].append(elem)
 
                 for part_plan, ref_level in ref_plans_to_explore:
                     query_input = []
-                    #print "Generating Query Mapping for", query_id, ref_level, query_input
+                    # print "Generating Query Mapping for", query_id, ref_level, query_input
                     if (query_id, ref_level) not in query_in_mapping:
                         query_in_mapping[(query_id, ref_level)] = []
 
@@ -237,7 +234,8 @@ class PacketStream(Query):
 
                     if self.right_child is not None:
                         # treat right child differently...they are special kids ;)
-                        tmp = self.right_child.generate_query_in_mapping(ref_level, query_2_final_plan, query_in_mapping,
+                        tmp = self.right_child.generate_query_in_mapping(ref_level, query_2_final_plan,
+                                                                         query_in_mapping,
                                                                          query_input=query_input, is_right=True)
                         if tmp != ():
                             query_in_mapping[(query_id, ref_level)].append(tmp)
@@ -248,7 +246,7 @@ class PacketStream(Query):
                         if tmp != ():
                             query_in_mapping[(query_id, ref_level)].append(tmp)
 
-                    #print "Mapping for", query_id, ref_level, "is", query_in_mapping[(query_id, ref_level)], query_input
+                    # print "Mapping for", query_id, ref_level, "is", query_in_mapping[(query_id, ref_level)], query_input
                     # Update these variables for next iteration
                     prev_ref_level = ref_level
                     last_level = ref_level
@@ -269,7 +267,7 @@ class PacketStream(Query):
             ref_plan.sort()
             ctr = 1
             for ref_level in ref_plan:
-                #TODO: Create a dedicated function to generate such qids
+                # TODO: Create a dedicated function to generate such qids
                 refined_queryId = 10000 * orig_queryId + ref_level
                 ctr += 1
                 orig_2_refined[(orig_queryId, ref_level)] = refined_queryId
@@ -292,11 +290,10 @@ class PacketStream(Query):
                     for transit in tmp:
                         query_2_cost[query_id][(p1, p2), transit] = tmp[transit]
         self.query_2_cost = query_2_cost
-        #print "Cost", self.query_2_cost
+        # print "Cost", self.query_2_cost
         return query_2_cost
+
     """UTIL FUNCTIONS - END"""
-
-
 
     """Refinement SPECIFIC - START"""
 
@@ -343,7 +340,7 @@ class PacketStream(Query):
             q_ctr = 1
             for ref_level in self.query_2_refinement_levels[queryId]:
                 # print "Adding refined query for", queryId, ref_level
-                #print self.all_queries
+                # print self.all_queries
                 original_query = self.all_queries[queryId]
                 new_qid = original_query.qid * 10000 + ref_level
                 q_ctr += 1
@@ -357,20 +354,20 @@ class PacketStream(Query):
                                                        .union(set(concise_right.basic_headers)))
                 else:
                     refined_query.basic_headers = concise_query.basic_headers
-                #print "Basic headers for ", queryId, refined_query.basic_headers
+                # print "Basic headers for ", queryId, refined_query.basic_headers
 
                 # print self.query_in_mapping
                 if (queryId, ref_level) in self.query_in_mapping:
                     for (orig_qid_src, mask) in self.query_in_mapping[(queryId, ref_level)]:
                         refined_qid_src = self.orig_2_refined[(orig_qid_src, mask)]
                         refined_query.filter(append_type=1, src=refined_qid_src, filter_keys=(red_key,),
-                                             func=('mask',mask,))
+                                             func=('mask', mask,))
 
                 refined_query.map(map_keys=(red_key,), func=("mask", ref_level))
                 if original_query.right_child is not None:
-                    #print "Left Child", concise_left.keys, concise_left.operators[-1].keys
-                    #print "Right Child", concise_right.operators[-1].keys, concise_right.operators[-1].values
-                    #refined_query.map(keys=list(set(concise_left.operators[-1].keys)
+                    # print "Left Child", concise_left.keys, concise_left.operators[-1].keys
+                    # print "Right Child", concise_right.operators[-1].keys, concise_right.operators[-1].values
+                    # refined_query.map(keys=list(set(concise_left.operators[-1].keys)
                     #                        .union(set(concise_right.operators[-1].keys))
                     #                        .union(set(concise_right.operators[-1].values))))
                     # TODO: get rid of this redundancy
@@ -390,6 +387,7 @@ class PacketStream(Query):
         return refined_queries
 
     """Refinement SPECIFIC - END"""
+
 
 if __name__ == "__main__":
     # Basic test setup for IR and QP implementations

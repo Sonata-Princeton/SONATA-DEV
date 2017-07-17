@@ -6,6 +6,8 @@ from p4_elements import Action, Header, Table
 from p4_operators import P4Distinct, P4Filter, P4Map, P4MapInit, P4Reduce
 from p4_primitives import ModifyField, AddHeader
 from sonata.dataplane_driver.utils import get_logger
+from p4_field import P4Field
+from p4_layer import P4Layer
 import logging
 
 HEADER_MAP = {'sIP': 'ipv4.srcAddr', 'dIP': 'ipv4.dstAddr',
@@ -57,6 +59,10 @@ class P4Query(object):
         self.operators = self.init_operators(generic_operators)
 
         # out_header
+        p4_fields = list()
+        p4_fields.append(P4Field(layer='', target_name="qid", sonata_name="qid", size=16))
+
+
         fields = ['qid'] + self.operators[-1].get_out_headers()
         self.out_header_fields = [(field, HEADER_SIZE[field]) for field in fields]
         self.out_header = Header('out_header_%i' % self.id, self.out_header_fields)

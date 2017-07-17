@@ -5,7 +5,7 @@ from p4_field import P4Field
 
 
 class P4Layer(object):
-    field_that_determine_child = None
+    field_that_determines_child = None
 
     def __init__(self, name, fields=[], offset=0, parent_layer=None, child_layers=None):
         self.name = name
@@ -29,7 +29,7 @@ class P4Layer(object):
 
     def generate_parser_specification(self):
         out = "parser parse_" + self.name + " {\n\textract(" + self.name + ");\n"
-        if self.field_that_determine_child is not None:
+        if self.field_that_determines_child is not None:
             out += "\treturn select(latest.etherType) {\n"
             for k, v in self.child_layers.iteritems():
                 out += "\t\t" + str(k) + " : " + v.name + ";\n"
@@ -62,7 +62,6 @@ class P4Layer(object):
         return out
 
 
-
 class Ethernet(P4Layer):
     def __init__(self, parent_layer=None):
         # type: (object) -> object
@@ -71,7 +70,7 @@ class Ethernet(P4Layer):
         self.fields = [P4Field(self, "dstAddr", "ethernet.dstMac", 48),
                        P4Field(self, "srcAddr", "ethernet.srcMac", 48),
                        P4Field(self, "etherType", "ethernet.ethType", 16)]
-        self.field_that_determine_child = self.fields[-1]
+        self.field_that_determines_child = self.fields[-1]
         self.child_layers = {"0x0800": IPV4(self)}
 
 
@@ -92,7 +91,7 @@ class IPV4(P4Layer):
                        P4Field(self, "srcAddr", "ipv4.srcIP", 32),
                        P4Field(self, "dstAddr", "ipv4.dstIP", 32)
                        ]
-        self.field_that_determine_child = self.fields[-4]  # protocol determines the next layer to parse
+        self.field_that_determines_child = self.fields[-4]  # protocol determines the next layer to parse
         self.child_layers = {6: TCP(self), 17: UDP(self)}
 
 
