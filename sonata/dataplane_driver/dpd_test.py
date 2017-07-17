@@ -35,7 +35,15 @@ class DPDTest(object):
             while True:
                 j += 1
                 try:
-                    self.message = (pickle.load(openfile))
+                    tmp = (pickle.load(openfile))
+                    # TODO: This should not be required with the right query dump
+                    for qid in tmp:
+                        for oprtor in tmp[qid].operators:
+                            if oprtor.name == "Map":
+                                if len(oprtor.map_keys) > 0:
+                                    oprtor.map_keys = ["dIP"]
+
+                    self.message = tmp
                 except EOFError:
                     break
         if j > 1:
@@ -49,7 +57,7 @@ class DPDTest(object):
         config = {
             'em_conf': None,
             'switch_conf': {
-                'compiled_srcs': '/home/vagrant/dev/sonata/dataplane_driver/p4/compiled_srcs/',
+                'compiled_srcs': '/Users/arpit/Documents/SonaTA-deV/sonata/dataplane_driver/p4/compiled_srcs/',
                 'json_p4_compiled': 'compiled.json',
                 'p4_compiled': 'compiled.p4',
                 'p4c_bm_script': '/home/vagrant/p4c-bmv2/p4c_bm/__main__.py',

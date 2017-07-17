@@ -148,9 +148,9 @@ class P4Reduce(P4Operator):
         self.out_headers += ['count']
 
         if threshold == '-1':
-            self.threshold = THRESHOLD
+            self.threshold = int(THRESHOLD)
         else:
-            self.threshold = threshold
+            self.threshold = int(threshold)
 
         # create METADATA to store index and value
         fields = [('value', REGISTER_WIDTH), ('index', REGISTER_NUM_INDEX_BITS)]

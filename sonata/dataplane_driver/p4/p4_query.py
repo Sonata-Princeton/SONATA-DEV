@@ -22,6 +22,8 @@ HEADER_SIZE = {'sIP': 32, 'dIP': 32, 'sPort': 16, 'dPort': 16,
 
 # Class that holds one refined query - which consists of an ordered list of operators
 class P4Query(object):
+    all_fields = []
+
     def __init__(self, query_id, parse_payload, generic_operators, nop_name, drop_meta_field, satisfied_meta_field,
                  clone_meta_field):
 
@@ -56,18 +58,21 @@ class P4Query(object):
         self.satisfied_table = Table('mark_satisfied_%i' % self.id, self.actions['satisfied'].get_name(), [], None, 1)
 
         # initialize operators
+        self.get_all_fields(generic_operators)
         self.operators = self.init_operators(generic_operators)
 
-        # out_header
-        p4_fields = list()
-        p4_fields.append(P4Field(layer='', target_name="qid", sonata_name="qid", size=16))
+        # # out_header
+        # p4_fields = list()
+        # p4_fields.append(P4Field(layer='', target_name="qid", sonata_name="qid", size=16))
 
-
+        # TODO: update this with new field/layer abstraction
         fields = ['qid'] + self.operators[-1].get_out_headers()
         self.out_header_fields = [(field, HEADER_SIZE[field]) for field in fields]
         self.out_header = Header('out_header_%i' % self.id, self.out_header_fields)
 
         # action and table to populate out_header in egress
+        # This portion of control flow is not affected with the new abstractions for fields/layers,
+        # only few minor changes required
         primitives = list()
         primitives.append(AddHeader(self.out_header.get_name()))
         for field_name, _ in self.out_header_fields:
@@ -77,6 +82,15 @@ class P4Query(object):
 
         self.out_header_table = Table('add_out_header_%i' % self.id, self.actions['add_out_header'].get_name(), [],
                                       None, 1)
+
+    def get_all_fields(self, generic_operators):
+        # TODO: only select fields over which we perform any action
+        all_fields = set()
+        for operator in generic_operators:
+            if operator.name in {'Filter', 'Map', 'Reduce', 'Distinct'}:
+                all_fields = all_fields.union(set(operator.get_init_keys()))
+        # TODO remove this
+        self.all_fields = filter(lambda x: x not in ['payload', 'ts', 'count'], all_fields)
 
     def init_operators(self, generic_operators):
         p4_operators = list()
@@ -90,6 +104,7 @@ class P4Query(object):
                 keys = keys.union(set(operator.get_init_keys()))
         # TODO remove this
         keys = filter(lambda x: x != 'payload' and x != 'ts', keys)
+        print "For Query", self.id, "MapInit fields", keys
 
         self.logger.debug('add map_init with keys: %s' % (', '.join(keys),))
         map_init_operator = P4MapInit(self.id, operator_id, keys)
@@ -101,10 +116,10 @@ class P4Query(object):
             self.logger.debug('add %s operator' % (operator.name,))
             operator_id += 1
 
-            #TODO: Confirm if this is the right way
+            # TODO: Confirm if this is the right way
             keys = filter(lambda x: x != 'payload' and x != 'ts', operator.keys)
             operator.keys = keys
-            #TODO: Confirm if this is the right way
+            # TODO: Confirm if this is the right way
 
             if operator.name == 'Filter':
                 match_action = self.nop_action
@@ -143,7 +158,7 @@ class P4Query(object):
                                                self.meta_init_name,
                                                self.query_drop_action,
                                                self.nop_action,
-                                               operator.keys,))
+                                               operator.keys, ))
 
             else:
                 self.logger.error('tried to add an unsupported operator: %s' % operator.name)
@@ -220,6 +235,7 @@ class P4Query(object):
         return self.meta_init_name
 
     def get_header_format(self):
+        # TODO: This will now change
         header_format = dict()
         header_format['parse_payload'] = self.parse_payload
         header_format['headers'] = self.out_header_fields

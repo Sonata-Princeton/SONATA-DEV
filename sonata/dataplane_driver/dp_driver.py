@@ -7,8 +7,8 @@ from multiprocessing.connection import Listener
 
 from query_cleaner import get_clean_application
 
-from openflow.openflow import OFTarget
-# from p4.p4_target import P4Target
+# from openflow.openflow import OFTarget
+from p4.p4_target import P4Target
 
 SERVER = False
 P4_TYPE = 'p4'
@@ -26,8 +26,9 @@ else:
     SPARK_ADDRESS = 'localhost'
     SNIFF_INTERFACE = 'm-veth-2'
 
+
 class DataplaneDriver(object):
-    def __init__(self, dpd_socket, metrics_file):
+    def __init__(self, dpd_socket, metrics_file="test"):
         self.dpd_socket = dpd_socket
 
         self.targets = dict()
@@ -47,8 +48,6 @@ class DataplaneDriver(object):
         # which is separate from debug logger
 
         self.initialize_metrics_logger()
-
-
 
     def initialize_metrics_logger(self):
         # create a logger for the object
@@ -70,7 +69,7 @@ class DataplaneDriver(object):
             message = pickle.loads(raw_data)
             for key in message.keys():
                 if key == 'init':
-                    start = "%.20f" %time.time()
+                    start = "%.20f" % time.time()
                     self.logger.debug('received "init" message')
                     application = message[key][0]
                     target_id = message[key][1]
@@ -79,7 +78,7 @@ class DataplaneDriver(object):
                     # self.metrics.info("init" + ","+ str(len(application)) +"," + start +",%.20f" % time.time())
                 elif key == 'delta':
                     # self.logger.debug('received "delta" message')
-                    start = "%.20f" %time.time()
+                    start = "%.20f" % time.time()
                     filter_update = message[key][0]
                     target_id = message[key][1]
                     self.update_configuration(filter_update, target_id)
@@ -134,7 +133,7 @@ class DataplaneDriver(object):
 
         for query_object in application.values():
             for operator in query_object.operators:
-                self.logger.debug('trying to check if %s is supported.' % (operator.name, ))
+                self.logger.debug('trying to check if %s is supported.' % (operator.name,))
                 if operator.name not in supported_operators:
                     return False
         return True
@@ -165,23 +164,24 @@ class DataplaneDriver(object):
 
 
 def main():
-
-    dpd = DataplaneDriver(DP_DRIVER_CONF, BASEPATH + SONATA +"/sonata/tests/macro_bench/results/dp_driver.log")
+    dpd = DataplaneDriver(DP_DRIVER_CONF, BASEPATH + SONATA + "/sonata/tests/macro_bench/results/dp_driver.log")
     p4_type = P4_TYPE
     compiled_srcs = ''
 
-    if p4_type == 'p4_old': compiled_srcs = 'recirculate'
-    else: compiled_srcs = 'sequential'
+    if p4_type == 'p4_old':
+        compiled_srcs = 'recirculate'
+    else:
+        compiled_srcs = 'sequential'
 
     config = {
         'em_conf': {'spark_stream_address': SPARK_ADDRESS,
                     'spark_stream_port': 8989,
                     'sniff_interface': SNIFF_INTERFACE,
-                    'log_file': BASEPATH + SONATA +"/sonata/tests/demos/reflection_dns/graph/emitter2.log"
-        },
+                    'log_file': BASEPATH + SONATA + "/sonata/tests/demos/reflection_dns/graph/emitter2.log"
+                    },
 
         'switch_conf': {
-            'compiled_srcs': BASEPATH + SONATA +'/sonata/tests/macro_bench/compiled_srcs/',
+            'compiled_srcs': BASEPATH + SONATA + '/sonata/tests/macro_bench/compiled_srcs/',
             'json_p4_compiled': 'compiled.json',
             'p4_compiled': 'compiled.p4',
             'p4c_bm_script': BASEPATH + 'p4c-bmv2/p4c_bm/__main__.py',

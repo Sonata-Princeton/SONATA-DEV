@@ -7,12 +7,17 @@ from p4_field import P4Field
 class P4Layer(object):
     field_that_determines_child = None
 
-    def __init__(self, name, fields=[], offset=0, parent_layer=None, child_layers=None):
+    def __init__(self, name, fields=[], offset=0, parent_layer=None, child_layers=None,
+                 field_that_determines_child=None):
         self.name = name
         self.offset = offset
         self.fields = fields
         self.parent_layer = parent_layer
         self.child_layers = child_layers
+        self.field_that_determines_child = field_that_determines_child
+
+    def get_name(self):
+        return self.name
 
     def get_parent_layers(self):
         return self.parent_layer
@@ -20,17 +25,18 @@ class P4Layer(object):
     def get_child_layers(self):
         return self.child_layers
 
-    def generate_header_specification(self):
+    def get_header_specification_code(self):
         out = "header_type " + self.name + "_t {\n\tfields {\n"
         for fld in self.fields:
             out += "\t\t" + fld.target_name + " : " + str(fld.size) + ";\n"
         out += "\t}\n}\n\n"
         return out
 
-    def generate_parser_specification(self):
+    def get_parser_code(self):
         out = "parser parse_" + self.name + " {\n\textract(" + self.name + ");\n"
         if self.field_that_determines_child is not None:
-            out += "\treturn select(latest.etherType) {\n"
+            fld_to_check = self.field_that_determines_child
+            out += "\treturn select(latest." + fld_to_check.target_name + ") {\n"
             for k, v in self.child_layers.iteritems():
                 out += "\t\t" + str(k) + " : " + v.name + ";\n"
             out += "\t\tdefault: ingress;\n\t}\n"
@@ -123,7 +129,25 @@ class UDP(P4Layer):
                        P4Field(self, "checksum", "udp.checksum", 16)]
 
 
-class P4Fields(object):
+class OutHeaders(P4Layer):
+    def __init__(self, name="", fields=[], parent_layer=None, child_layer=None):
+        P4Layer.__init__(self, name)
+        self.parent_layer = parent_layer
+        self.child_layers = {0: child_layer}
+
+    def get_header_specification_code(self):
+        out = "header_type " + self.name + "_t {\n\tfields {\n"
+        for fld in self.fields:
+            out += "\t\t" + fld.target_name + " : " + str(fld.size) + ";\n"
+        out += "\t}\n}\n"
+        out += 'header %s_t %s;\n\n' % (self.name, self.name)
+        return out
+
+    def get_parser_code(self):
+        return "extract("+self.name+");"
+
+
+class P4RawFields(object):
     all_fields = None
     all_sonata_fields = None
 
@@ -156,13 +180,13 @@ class P4Fields(object):
             if curr_layer.parent_layer is None:
                 layers += [curr_layer]
             else:
-                layers += [curr_layer]+curr_layer.get_all_parent_layers()
+                layers += [curr_layer] + curr_layer.get_all_parent_layers()
 
         return list(set(layers))
 
 
 def test():
-    p4_fields = P4Fields(Ethernet())
+    p4_fields = P4RawFields(Ethernet())
     query_specific_fields = ['ethernet.dstMac', 'udp.sport']
     layers = p4_fields.get_layers_for_fields(query_specific_fields)
     assert "udp" in [layer.name for layer in layers]

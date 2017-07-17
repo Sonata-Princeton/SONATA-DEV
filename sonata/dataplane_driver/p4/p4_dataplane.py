@@ -1,12 +1,6 @@
 import logging
 import sys
 
-from mininet.net import Mininet
-from mininet.link import Intf
-from mininet.topo import Topo
-sys.path.append("/home/vagrant/bmv2/mininet")
-
-from p4_mininet import P4Switch, P4Host
 from time import sleep
 
 import subprocess
@@ -64,6 +58,13 @@ class P4DataPlane(object):
         self.logger.info('initialize')
 
         self.create_interfaces()
+
+        # from mininet.net import Mininet
+        # from mininet.link import Intf
+
+        # sys.path.append("/home/vagrant/bmv2/mininet")
+        #
+        # from p4_mininet import P4Switch, P4Host
 
         # cmd = self.switch_path + " >/dev/null 2>&1"
         # get_out(cmd)
@@ -129,13 +130,14 @@ class P4DataPlane(object):
         get_out(CMD)
 
 
-class P4Topo(Topo):
-    def __init__(self, sw_path, json_path, thrift_port, **opts):
-        # Initialize topology and default options
-        Topo.__init__(self, **opts)
-        switch = self.addSwitch('s1',
-                                sw_path=sw_path,
-                                json_path=json_path,
-                                thrift_port=thrift_port,
-                                pcap_dump=True)
+# class P4Topo(Topo):
+#     from mininet.topo import Topo
+#     def __init__(self, sw_path, json_path, thrift_port, **opts):
+#         # Initialize topology and default options
+#         Topo.__init__(self, **opts)
+#         switch = self.addSwitch('s1',
+#                                 sw_path=sw_path,
+#                                 json_path=json_path,
+#                                 thrift_port=thrift_port,
+#                                 pcap_dump=True)
 
