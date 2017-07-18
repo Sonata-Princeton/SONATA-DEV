@@ -97,8 +97,8 @@ class P4Query(object):
         qid_field = P4Field(layer=self.out_header, target_name="qid", sonata_name="qid", size=QID_SIZE)
         out_header_fields = [qid_field] + out_header_fields
         if 'count' in self.operators[-1].get_out_headers():
-            count_field = P4Field(layer=self.out_header, target_name="count", sonata_name="count", size=COUNT_SIZE)
-            out_header_fields.append(count_field)
+            out_header_fields.append(P4Field(layer=self.out_header, target_name="count", sonata_name="count",
+                                             size=COUNT_SIZE))
 
         # Add fields to this out header
         self.out_header.fields = out_header_fields
@@ -108,7 +108,7 @@ class P4Query(object):
         primitives.append(AddHeader(self.out_header.get_name()))
         for fld in self.out_header.fields:
             primitives.append(ModifyField('%s.%s' % (self.out_header.get_name(), fld.target_name),
-                                          '%s.%s' % (self.meta_init_name, fld.target_name)))
+                                      '%s.%s' % (self.meta_init_name, fld.target_name)))
         self.actions['append_out_header'] = Action('do_add_out_header_%i' % self.id, primitives)
         self.out_header_table = Table('add_out_header_%i' % self.id, self.actions['append_out_header'].get_name(), [],
                                       None, 1)
@@ -268,7 +268,7 @@ class P4Query(object):
         # TODO: This will now change
         header_format = dict()
         header_format['parse_payload'] = self.parse_payload
-        header_format['headers'] = self.out_header_fields
+        header_format['headers'] = self.out_header
         return header_format
 
     def get_update_commands(self, filter_id, update):

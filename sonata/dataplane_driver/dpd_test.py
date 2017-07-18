@@ -11,6 +11,12 @@ from multiprocessing.connection import Client
 
 from dp_driver import DataplaneDriver
 
+BASEPATH = '/home/vagrant/'
+SONATA = 'dev'
+DP_DRIVER_CONF = ('localhost', 6666)
+SPARK_ADDRESS = 'localhost'
+SNIFF_INTERFACE = 'm-veth-2'
+
 
 class DPDTest(object):
     def __init__(self, pickled_file, socket_data):
@@ -55,9 +61,13 @@ class DPDTest(object):
         dpd_thread.setDaemon(True)
 
         config = {
-            'em_conf': None,
+            'em_conf': {'spark_stream_address': SPARK_ADDRESS,
+                        'spark_stream_port': 8989,
+                        'sniff_interface': SNIFF_INTERFACE,
+                        'log_file': BASEPATH + SONATA + "/sonata/tests/demos/reflection_dns/graph/emitter2.log"
+                        },
             'switch_conf': {
-                'compiled_srcs': '/Users/arpit/Documents/SonaTA-deV/sonata/dataplane_driver/p4/compiled_srcs/',
+                'compiled_srcs': BASEPATH + SONATA + '/sonata/dataplane_driver/p4/compiled_srcs/',
                 'json_p4_compiled': 'compiled.json',
                 'p4_compiled': 'compiled.p4',
                 'p4c_bm_script': '/home/vagrant/p4c-bmv2/p4c_bm/__main__.py',

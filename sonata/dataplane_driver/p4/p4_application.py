@@ -299,11 +299,11 @@ table forward {
 
         return commands
 
-    def get_header_format(self):
-        header_format = dict()
-        header_format['parse_payload'] = self.parse_payload
-        header_format['headers'] = self.out_header_fields
-        return header_format
+    # def get_header_format(self):
+    #     header_format = dict()
+    #     header_format['parse_payload'] = self.parse_payload
+    #     header_format['headers'] = self.out_header_fields
+    #     return header_format
 
     def get_header_formats(self):
         # This needs updates as we now change the logic of packet parsing at the emitter

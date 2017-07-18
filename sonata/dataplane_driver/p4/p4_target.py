@@ -46,7 +46,7 @@ class P4Target(object):
         self.supported_operations = ['Map', 'Filter', 'Reduce', 'Distinct']
 
         # LOGGING
-        log_level = logging.ERROR
+        log_level = logging.INFO
         self.logger = get_logger('P4Target', 'INFO')
         self.logger.setLevel(log_level)
         self.logger.info('init')
@@ -60,6 +60,7 @@ class P4Target(object):
 
         # p4 app object
         self.app = None
+        print "P4 target initialized"
 
     def get_supported_operators(self):
         return self.supported_operations
@@ -80,11 +81,13 @@ class P4Target(object):
 
         # compile p4 to json
         self.logger.info('compile p4 code to json')
-        self.dataplane.compile_p4(self.P4_COMPILED, self.JSON_P4_COMPILED)
+        # TODO: uncomment this line
+        # self.dataplane.compile_p4(self.P4_COMPILED, self.JSON_P4_COMPILED)
 
         # initialize dataplane and run the configuration
         self.logger.info('initialize the dataplane with the json configuration')
-        self.dataplane.initialize(self.JSON_P4_COMPILED, self.P4_COMMANDS)
+        # TODO: uncomment this line
+        # self.dataplane.initialize(self.JSON_P4_COMPILED, self.P4_COMMANDS)
 
         # start the emitter
         if self.em_conf:
