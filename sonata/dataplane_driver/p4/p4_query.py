@@ -11,17 +11,12 @@ from p4_layer import P4Layer
 from p4_layer import OutHeaders
 import logging
 
-HEADER_MAP = {'sIP': 'ipv4.srcAddr', 'dIP': 'ipv4.dstAddr',
-              'sPort': 'tcp.srcPort', 'dPort': 'tcp.dstPort',
-              'nBytes': 'ipv4.totalLen', 'proto': 'ipv4.protocol',
-              'sMac': 'ethernet.srcAddr', 'dMac': 'ethernet.dstAddr', 'payload': ''}
-
-HEADER_SIZE = {'sIP': 32, 'dIP': 32, 'sPort': 16, 'dPort': 16,
-               'nBytes': 16, 'proto': 16, 'sMac': 48, 'dMac': 48,
-               'qid': 16, 'count': 16}
-
 QID_SIZE = 16
-COUNTSIZE = 16
+COUNT_SIZE = 16
+
+# TODO: get rid of this local fix. This won't be required after we fix the sonata query module
+local_fix = {'dMac': 'ethernet.dstMac', 'sIP': 'ipv4.srcIP', 'proto': 'ipv4.proto', 'sMac': 'ethernet.dstMac',
+             'nBytes': 'ipv4.totalLen', 'dPort': 'udp.sport', 'sPort': 'udp.sport', 'dIP': 'ipv4.dstIP'}
 
 
 # Class that holds one refined query - which consists of an ordered list of operators
@@ -86,10 +81,6 @@ class P4Query(object):
         self.query_drop_action = self.actions['drop'].get_name()
 
     def create_out_header(self):
-        # TODO: get rid of this local fix. This won't be required after we fix the sonata query module
-        # Start local fix
-        local_fix = {'dMac': 'ethernet.dstMac', 'sIP': 'ipv4.srcIP', 'proto': 'ipv4.proto', 'sMac': 'ethernet.dstMac',
-                     'nBytes': 'ipv4.totalLen', 'dPort': 'udp.sport', 'sPort': 'udp.sport', 'dIP': 'ipv4.dstIP'}
         out_header_name = 'out_header_%i' % self.id
 
         # Create a new layer
@@ -111,7 +102,7 @@ class P4Query(object):
         qid_field = P4Field(layer=self.out_header, target_name="qid", sonata_name="qid", size=QID_SIZE)
         out_header_fields = [qid_field] + out_header_fields
         if 'count' in self.operators[-1].get_out_headers():
-            count_field = P4Field(layer=self.out_header, target_name="count", sonata_name="count", size=COUNTSIZE)
+            count_field = P4Field(layer=self.out_header, target_name="count", sonata_name="count", size=COUNT_SIZE)
             out_header_fields.append(count_field)
 
         # Add fields to this out header
@@ -141,17 +132,16 @@ class P4Query(object):
         operator_id = 1
 
         # Add map init
-        keys = set()
-        keys.add('qid')
-        for operator in generic_operators:
-            if operator.name in {'Filter', 'Map', 'Reduce', 'Distinct'}:
-                keys = keys.union(set(operator.get_init_keys()))
-        # TODO remove this
-        keys = filter(lambda x: x != 'payload' and x != 'ts', keys)
-        print "For Query", self.id, "MapInit fields", keys
+        map_init_fields = dict()
+        for fld in self.all_fields:
+            p4_raw_field = self.p4_raw_fields.get_target_field(local_fix[fld])
+            map_init_fields[p4_raw_field.target_name] = p4_raw_field
+        map_init_fields['qid'] = P4Field(layer=self.out_header, target_name="qid", sonata_name="qid", size=QID_SIZE)
 
-        self.logger.debug('add map_init with keys: %s' % (', '.join(keys),))
-        map_init_operator = P4MapInit(self.id, operator_id, keys)
+        print "For Query", self.id, "MapInit fields", map_init_fields.keys()
+
+        self.logger.debug('add map_init with keys: %s' % (', '.join(map_init_fields.keys()),))
+        map_init_operator = P4MapInit(self.id, operator_id, map_init_fields)
         self.meta_init_name = map_init_operator.get_meta_name()
         p4_operators.append(map_init_operator)
 

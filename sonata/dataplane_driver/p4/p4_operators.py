@@ -254,21 +254,24 @@ class P4MapInit(P4Operator):
 
         # create METADATA object to store data for all keys
         fields = list()
-        for key in self.keys:
-            fields.append((key, HEADER_SIZE[key]))
+        for fld in keys.values():
+            fields.append((fld.sonata_name, fld.size))
 
         self.metadata = MetaData(self.operator_name, fields)
 
         # create ACTION to initialize the metadata
         primitives = list()
-        for key in self.keys:
-            if key in HEADER_MAP:
-                meta_field_name = '%s.%s' % (self.metadata.get_name(), key)
-                field_name = HEADER_MAP[key]
-                primitives.append(ModifyField(meta_field_name, field_name))
-            elif key == 'qid':
-                meta_field_name = '%s.%s' % (self.metadata.get_name(), key)
+        for fld in keys.values():
+            sonata_name = fld.sonata_name
+            target_name = fld.target_name
+            meta_field_name = '%s.%s' % (self.metadata.get_name(), sonata_name)
+
+            if sonata_name == 'qid':
+                # Assign query id to this field
                 primitives.append(ModifyField(meta_field_name, qid))
+            else:
+                # Read data from raw header fields and assign them to these meta fields
+                primitives.append(ModifyField(meta_field_name, target_name))
 
         self.action = Action('do_%s' % self.operator_name, primitives)
 
