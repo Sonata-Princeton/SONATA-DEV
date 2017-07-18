@@ -8,6 +8,7 @@ from p4_primitives import ModifyField, AddHeader
 from sonata.dataplane_driver.utils import get_logger
 from p4_field import P4Field
 from p4_layer import P4Layer
+from p4_layer import OutHeaders
 import logging
 
 HEADER_MAP = {'sIP': 'ipv4.srcAddr', 'dIP': 'ipv4.dstAddr',
@@ -19,13 +20,20 @@ HEADER_SIZE = {'sIP': 32, 'dIP': 32, 'sPort': 16, 'dPort': 16,
                'nBytes': 16, 'proto': 16, 'sMac': 48, 'dMac': 48,
                'qid': 16, 'count': 16}
 
+QID_SIZE = 16
+COUNTSIZE = 16
+
 
 # Class that holds one refined query - which consists of an ordered list of operators
 class P4Query(object):
     all_fields = []
+    out_header = None
+    out_header_table = None
+    query_drop_action = None
+    satisfied_table = None
 
     def __init__(self, query_id, parse_payload, generic_operators, nop_name, drop_meta_field, satisfied_meta_field,
-                 clone_meta_field):
+                 clone_meta_field, p4_raw_fields):
 
         # LOGGING
         log_level = logging.ERROR
@@ -45,42 +53,78 @@ class P4Query(object):
         self.satisfied_meta_field = '%s_%i' % (satisfied_meta_field, self.id)
         self.clone_meta_field = clone_meta_field
 
-        # general drop action which is applied when a packet doesn't satisfy this query
+        self.p4_raw_fields = p4_raw_fields
+
         self.actions = dict()
-        self.actions['drop'] = Action('drop_%i' % self.id, (ModifyField(self.drop_meta_field, 1)))
-        self.query_drop_action = self.actions['drop'].get_name()
+
+        # general drop action which is applied when a packet doesn't satisfy this query
+        self.add_general_drop_action()
 
         # action and table to mark query as satisfied at end of query processing in ingress
+        self.mark_satisfied()
+
+        # initialize operators
+        self.get_all_fields(generic_operators)
+
+        self.operators = self.init_operators(generic_operators)
+
+        # create an out header layer
+        self.create_out_header()
+
+        # action and table to populate out_header in egress
+        self.append_out_header()
+
+    def mark_satisfied(self):
         primitives = list()
         primitives.append(ModifyField(self.satisfied_meta_field, 1))
         primitives.append(ModifyField(self.clone_meta_field, 1))
         self.actions['satisfied'] = Action('do_mark_satisfied_%i' % self.id, primitives)
         self.satisfied_table = Table('mark_satisfied_%i' % self.id, self.actions['satisfied'].get_name(), [], None, 1)
 
-        # initialize operators
-        self.get_all_fields(generic_operators)
-        self.operators = self.init_operators(generic_operators)
+    def add_general_drop_action(self):
+        self.actions['drop'] = Action('drop_%i' % self.id, (ModifyField(self.drop_meta_field, 1)))
+        self.query_drop_action = self.actions['drop'].get_name()
 
-        # # out_header
-        # p4_fields = list()
-        # p4_fields.append(P4Field(layer='', target_name="qid", sonata_name="qid", size=16))
+    def create_out_header(self):
+        # TODO: get rid of this local fix. This won't be required after we fix the sonata query module
+        # Start local fix
+        local_fix = {'dMac': 'ethernet.dstMac', 'sIP': 'ipv4.srcIP', 'proto': 'ipv4.proto', 'sMac': 'ethernet.dstMac',
+                     'nBytes': 'ipv4.totalLen', 'dPort': 'udp.sport', 'sPort': 'udp.sport', 'dIP': 'ipv4.dstIP'}
+        out_header_name = 'out_header_%i' % self.id
 
-        # TODO: update this with new field/layer abstraction
-        fields = ['qid'] + self.operators[-1].get_out_headers()
-        self.out_header_fields = [(field, HEADER_SIZE[field]) for field in fields]
-        self.out_header = Header('out_header_%i' % self.id, self.out_header_fields)
+        # Create a new layer
+        # print "For query", self.id, "last operator", self.operators[-1], "fields",
+        # self.operators[-1].get_out_headers()
+        self.out_header = OutHeaders(out_header_name)
+        sonata_field_list = filter(lambda x: x not in ['payload', 'ts', 'count'], self.operators[-1].get_out_headers())
+        # print [(x, local_fix[x], self.p4_raw_fields.get_target_field(local_fix[x]).target_name) for x in
+        #        sonata_field_list]
+        out_header_fields = [self.p4_raw_fields.get_target_field(local_fix[x]) for x in sonata_field_list]
 
-        # action and table to populate out_header in egress
-        # This portion of control flow is not affected with the new abstractions for fields/layers,
-        # only few minor changes required
+        # Update the layer for each of these fields
+        for fld in out_header_fields:
+            fld.layer = self.out_header
+            # because this is going out to the stream processor, thus we need name that is consistent
+            # among sonata targets
+            fld.target_name = fld.sonata_name
+
+        qid_field = P4Field(layer=self.out_header, target_name="qid", sonata_name="qid", size=QID_SIZE)
+        out_header_fields = [qid_field] + out_header_fields
+        if 'count' in self.operators[-1].get_out_headers():
+            count_field = P4Field(layer=self.out_header, target_name="count", sonata_name="count", size=COUNTSIZE)
+            out_header_fields.append(count_field)
+
+        # Add fields to this out header
+        self.out_header.fields = out_header_fields
+
+    def append_out_header(self):
         primitives = list()
         primitives.append(AddHeader(self.out_header.get_name()))
-        for field_name, _ in self.out_header_fields:
-            primitives.append(ModifyField('%s.%s' % (self.out_header.get_name(), field_name),
-                                          '%s.%s' % (self.meta_init_name, field_name)))
-        self.actions['add_out_header'] = Action('do_add_out_header_%i' % self.id, primitives)
-
-        self.out_header_table = Table('add_out_header_%i' % self.id, self.actions['add_out_header'].get_name(), [],
+        for fld in self.out_header.fields:
+            primitives.append(ModifyField('%s.%s' % (self.out_header.get_name(), fld.target_name),
+                                          '%s.%s' % (self.meta_init_name, fld.target_name)))
+        self.actions['append_out_header'] = Action('do_add_out_header_%i' % self.id, primitives)
+        self.out_header_table = Table('add_out_header_%i' % self.id, self.actions['append_out_header'].get_name(), [],
                                       None, 1)
 
     def get_all_fields(self, generic_operators):
@@ -202,7 +246,7 @@ class P4Query(object):
         out = '// query %i\n' % self.id
 
         # out header
-        out += self.out_header.get_code()
+        out += self.out_header.get_header_specification_code()
 
         # query actions (drop, mark satisfied, add out header, etc)
         for action in self.actions.values():
@@ -227,9 +271,6 @@ class P4Query(object):
         commands.append(self.satisfied_table.get_default_command())
 
         return commands
-
-    def get_out_header(self):
-        return self.out_header.get_name()
 
     def get_metadata_name(self):
         return self.meta_init_name

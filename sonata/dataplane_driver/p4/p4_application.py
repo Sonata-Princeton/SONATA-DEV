@@ -106,7 +106,7 @@ class P4Application(object):
                             nop_name,
                             '%s.%s' % (meta_name, self.drop_meta_field),
                             '%s.%s' % (meta_name, self.satisfied_meta_field),
-                            '%s.%s' % (meta_name, self.clone_meta_field))
+                            '%s.%s' % (meta_name, self.clone_meta_field), self.p4_raw_fields)
             queries[query_id] = query
 
         # define mirroring session
@@ -198,7 +198,7 @@ class P4Application(object):
         out = ''
         out += 'parser parse_out_header {\n'
         for query in self.queries.values():
-            out += '\textract(%s);\n' % query.get_out_header()
+            out += '\textract(%s);\n' % query.out_header.get_name()
         out += '\t%s\n' % self.final_header.get_parser_code()
         out += '\treturn parse_ethernet;\n'
         out += '}\n\n'
