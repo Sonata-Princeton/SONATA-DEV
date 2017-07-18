@@ -3,7 +3,8 @@
 
 
 from p4_elements import Action, Header, Table
-from p4_operators import P4Distinct, P4Filter, P4Map, P4MapInit, P4Reduce
+# TODO: Fix these imports
+from p4_operators import P4Distinct, P4Filter, P4Map, P4MapInit, P4Reduce, local_fix, QID_SIZE, COUNT_SIZE
 from p4_primitives import ModifyField, AddHeader
 from sonata.dataplane_driver.utils import get_logger
 from p4_field import P4Field
@@ -11,12 +12,6 @@ from p4_layer import P4Layer
 from p4_layer import OutHeaders
 import logging
 
-QID_SIZE = 16
-COUNT_SIZE = 16
-
-# TODO: get rid of this local fix. This won't be required after we fix the sonata query module
-local_fix = {'dMac': 'ethernet.dstMac', 'sIP': 'ipv4.srcIP', 'proto': 'ipv4.proto', 'sMac': 'ethernet.dstMac',
-             'nBytes': 'ipv4.totalLen', 'dPort': 'udp.sport', 'sPort': 'udp.sport', 'dIP': 'ipv4.dstIP'}
 
 
 # Class that holds one refined query - which consists of an ordered list of operators
@@ -127,21 +122,25 @@ class P4Query(object):
         # TODO remove this
         self.all_fields = filter(lambda x: x not in ['payload', 'ts', 'count'], all_fields)
 
+    def get_init_fields(self, generic_operators):
+        # TODO: only select fields over which we perform any action
+        all_fields = set()
+        for operator in generic_operators:
+            if operator.name in {'Filter', 'Map', 'Reduce', 'Distinct'}:
+                all_fields = all_fields.union(set(operator.get_init_keys()))
+        # No need to filter out count field
+        return filter(lambda x: x not in ['payload', 'ts'], all_fields)
+
     def init_operators(self, generic_operators):
         p4_operators = list()
         operator_id = 1
 
-        # Add map init
-        map_init_fields = dict()
-        for fld in self.all_fields:
-            p4_raw_field = self.p4_raw_fields.get_target_field(local_fix[fld])
-            map_init_fields[p4_raw_field.target_name] = p4_raw_field
-        map_init_fields['qid'] = P4Field(layer=self.out_header, target_name="qid", sonata_name="qid", size=QID_SIZE)
+        map_init_keys = ['qid'] + self.get_init_fields(generic_operators)
 
-        print "For Query", self.id, "MapInit fields", map_init_fields.keys()
+        print "For Query", self.id, "MapInit fields", map_init_keys
 
-        self.logger.debug('add map_init with keys: %s' % (', '.join(map_init_fields.keys()),))
-        map_init_operator = P4MapInit(self.id, operator_id, map_init_fields)
+        self.logger.debug('add map_init with keys: %s' % (', '.join(map_init_keys),))
+        map_init_operator = P4MapInit(self.id, operator_id, map_init_keys, self.p4_raw_fields)
         self.meta_init_name = map_init_operator.get_meta_name()
         p4_operators.append(map_init_operator)
 
@@ -165,7 +164,7 @@ class P4Query(object):
                                            operator.func,
                                            operator.src,
                                            match_action,
-                                           miss_action)
+                                           miss_action, self.p4_raw_fields)
                 if operator.src != 0:
                     self.src_to_filter_operator[operator.src] = filter_operator
                 p4_operators.append(filter_operator)
@@ -176,7 +175,7 @@ class P4Query(object):
                                           self.meta_init_name,
                                           operator.keys,
                                           operator.map_keys,
-                                          operator.func))
+                                          operator.func, self.p4_raw_fields))
 
             elif operator.name == 'Reduce':
                 p4_operators.append(P4Reduce(self.id,
@@ -184,7 +183,7 @@ class P4Query(object):
                                              self.meta_init_name,
                                              self.query_drop_action,
                                              operator.keys,
-                                             operator.threshold))
+                                             operator.threshold, self.p4_raw_fields))
 
             elif operator.name == 'Distinct':
                 p4_operators.append(P4Distinct(self.id,
@@ -192,7 +191,7 @@ class P4Query(object):
                                                self.meta_init_name,
                                                self.query_drop_action,
                                                self.nop_action,
-                                               operator.keys, ))
+                                               operator.keys, self.p4_raw_fields))
 
             else:
                 self.logger.error('tried to add an unsupported operator: %s' % operator.name)
