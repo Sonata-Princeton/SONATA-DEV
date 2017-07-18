@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+rm sonata/tests/demos/reflection_dns/graph/emitter.log && touch sonata/tests/demos/reflection_dns/graph/emitter.log && sudo sh cleanup.sh && sudo PYTHONPATH=$PYTHONPATH:/home/vagrant/bmv2/mininet:$PWD $SPARK_HOME/bin/spark-submit sonata/tests/demos/reflection_dns/test_app.py
