@@ -33,13 +33,14 @@ class P4Layer(object):
         out += 'header %s_t %s;\n\n' % (self.name, self.name)
         return out
 
-    def get_parser_code(self):
+    def get_parser_code(self, all_layers):
         out = "parser parse_" + self.name + " {\n\textract(" + self.name + ");\n"
         if self.field_that_determines_child is not None:
             fld_to_check = self.field_that_determines_child
             out += "\treturn select(latest." + fld_to_check.target_name + ") {\n"
             for k, v in self.child_layers.iteritems():
-                out += "\t\t" + str(k) + " : " + v.name + ";\n"
+                if v.name in [l.name for l in all_layers]:
+                    out += "\t\t" + str(k) + " : parse_" + v.name + ";\n"
             out += "\t\tdefault: ingress;\n\t}\n"
         else:
             out += "\treturn ingress;\n"
@@ -74,9 +75,9 @@ class Ethernet(P4Layer):
         # type: (object) -> object
         P4Layer.__init__(self, "ethernet")
         self.parent_layer = parent_layer
-        self.fields = [P4Field(self, "ethernet.dstAddr", "ethernet.dstMac", 48),
-                       P4Field(self, "ethernet.srcAddr", "ethernet.srcMac", 48),
-                       P4Field(self, "ethernet.etherType", "ethernet.ethType", 16)]
+        self.fields = [P4Field(self, "dstAddr", "ethernet.dstMac", 48),
+                       P4Field(self, "srcAddr", "ethernet.srcMac", 48),
+                       P4Field(self, "etherType", "ethernet.ethType", 16)]
         self.field_that_determines_child = self.fields[-1]
         self.child_layers = {"0x0800": IPV4(self)}
 
@@ -85,18 +86,18 @@ class IPV4(P4Layer):
     def __init__(self, parent_layer=None):
         P4Layer.__init__(self, "ipv4")
         self.parent_layer = parent_layer
-        self.fields = [P4Field(self, "ipv4.version", "ipv4.version", 4),
-                       P4Field(self, "ipv4.ihl", "ipv4.ihl", 4),
-                       P4Field(self, "ipv4.diffserv", "ipv4.diffserv", 8),
-                       P4Field(self, "ipv4.totalLen", "ipv4.totalLen", 16),
-                       P4Field(self, "ipv4.identification", "ipv4.identification", 16),
-                       P4Field(self, "ipv4.flags", "ipv4.flags", 3),
-                       P4Field(self, "ipv4.fragOffset", "ipv4.fragOffset", 13),
-                       P4Field(self, "ipv4.ttl", "ipv4.ttl", 8),
-                       P4Field(self, "ipv4.protocol", "ipv4.proto", 8),
-                       P4Field(self, "ipv4.hdrChecksum", "ipv4.hdrChecksum", 16),
-                       P4Field(self, "ipv4.srcAddr", "ipv4.srcIP", 32),
-                       P4Field(self, "ipv4.dstAddr", "ipv4.dstIP", 32)
+        self.fields = [P4Field(self, "version", "ipv4.version", 4),
+                       P4Field(self, "ihl", "ipv4.ihl", 4),
+                       P4Field(self, "diffserv", "ipv4.diffserv", 8),
+                       P4Field(self, "totalLen", "ipv4.totalLen", 16),
+                       P4Field(self, "identification", "ipv4.identification", 16),
+                       P4Field(self, "flags", "ipv4.flags", 3),
+                       P4Field(self, "fragOffset", "ipv4.fragOffset", 13),
+                       P4Field(self, "ttl", "ipv4.ttl", 8),
+                       P4Field(self, "protocol", "ipv4.proto", 8),
+                       P4Field(self, "hdrChecksum", "ipv4.hdrChecksum", 16),
+                       P4Field(self, "srcAddr", "ipv4.srcIP", 32),
+                       P4Field(self, "dstAddr", "ipv4.dstIP", 32)
                        ]
         self.field_that_determines_child = self.fields[-4]  # protocol determines the next layer to parse
         self.child_layers = {6: TCP(self), 17: UDP(self)}
@@ -106,17 +107,17 @@ class TCP(P4Layer):
     def __init__(self, parent_layer=None):
         P4Layer.__init__(self, "tcp")
         self.parent_layer = parent_layer
-        self.fields = [P4Field(self, "tcp.srcPort", "tcp.sport", 16),
-                       P4Field(self, "tcp.dstPort", "tcp.dport", 16),
-                       P4Field(self, "tcp.seqNo", "tcp.seqNo", 32),
-                       P4Field(self, "tcp.ackNo", "tcp.ackNo", 32),
-                       P4Field(self, "tcp.dataOffset", "tcp.dataOffset", 4),
-                       P4Field(self, "tcp.res", "tcp.res", 3),
-                       P4Field(self, "tcp.ecn", "tcp.ecn", 3),
-                       P4Field(self, "tcp.ctrl", "tcp.ctrl", 6),
-                       P4Field(self, "tcp.window", "tcp.window", 16),
-                       P4Field(self, "tcp.checksum", "tcp.checksum", 16),
-                       P4Field(self, "tcp.urgentPtr", "tcp.urgentPtr", 16)
+        self.fields = [P4Field(self, "srcPort", "tcp.sport", 16),
+                       P4Field(self, "dstPort", "tcp.dport", 16),
+                       P4Field(self, "seqNo", "tcp.seqNo", 32),
+                       P4Field(self, "ackNo", "tcp.ackNo", 32),
+                       P4Field(self, "dataOffset", "tcp.dataOffset", 4),
+                       P4Field(self, "res", "tcp.res", 3),
+                       P4Field(self, "ecn", "tcp.ecn", 3),
+                       P4Field(self, "ctrl", "tcp.ctrl", 6),
+                       P4Field(self, "window", "tcp.window", 16),
+                       P4Field(self, "checksum", "tcp.checksum", 16),
+                       P4Field(self, "urgentPtr", "tcp.urgentPtr", 16)
                        ]
 
 
@@ -124,10 +125,10 @@ class UDP(P4Layer):
     def __init__(self, parent_layer=None):
         P4Layer.__init__(self, "udp")
         self.parent_layer = parent_layer
-        self.fields = [P4Field(self, "udp.srcPort", "udp.sport", 16),
-                       P4Field(self, "udp.dstPort", "udp.dport", 16),
-                       P4Field(self, "udp.length_", "udp.len", 16),
-                       P4Field(self, "udp.checksum", "udp.checksum", 16)]
+        self.fields = [P4Field(self, "srcPort", "udp.sport", 16),
+                       P4Field(self, "dstPort", "udp.dport", 16),
+                       P4Field(self, "length_", "udp.len", 16),
+                       P4Field(self, "checksum", "udp.checksum", 16)]
 
 
 class OutHeaders(P4Layer):
@@ -139,7 +140,7 @@ class OutHeaders(P4Layer):
     def get_header_specification_code(self):
         out = "header_type " + self.name + "_t {\n\tfields {\n"
         for fld in self.fields:
-            out += "\t\t" + fld.target_name + " : " + str(fld.size) + ";\n"
+            out += "\t\t" + fld.sonata_name.replace(".", "_") + " : " + str(fld.size) + ";\n"
         out += "\t}\n}\n"
         out += 'header %s_t %s;\n\n' % (self.name, self.name)
         return out

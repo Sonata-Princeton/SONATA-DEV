@@ -173,7 +173,7 @@ class P4Application(object):
         out = ""
         for layer in raw_layers:
             out += layer.get_header_specification_code()
-            out += layer.get_parser_code()
+            out += layer.get_parser_code(raw_layers)
 
         return out
 
@@ -191,6 +191,7 @@ class P4Application(object):
         # End local fix
 
         raw_layers = self.p4_raw_fields.get_layers_for_fields(raw_fields)
+        print raw_layers
         return raw_layers
 
     def get_out_header_parser(self):

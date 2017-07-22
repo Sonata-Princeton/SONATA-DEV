@@ -77,17 +77,18 @@ class P4Target(object):
 
         p4_commands = self.app.get_commands()
         commands_string = "\n".join(p4_commands)
+        self.logger.info("Commands: " + commands_string)
         write_to_file(self.P4_COMMANDS, commands_string)
 
         # compile p4 to json
         self.logger.info('compile p4 code to json')
         # TODO: uncomment this line
-        # self.dataplane.compile_p4(self.P4_COMPILED, self.JSON_P4_COMPILED)
+        self.dataplane.compile_p4(self.P4_COMPILED, self.JSON_P4_COMPILED)
 
         # initialize dataplane and run the configuration
         self.logger.info('initialize the dataplane with the json configuration')
         # TODO: uncomment this line
-        # self.dataplane.initialize(self.JSON_P4_COMPILED, self.P4_COMMANDS)
+        self.dataplane.initialize(self.JSON_P4_COMPILED, self.P4_COMMANDS)
 
         # start the emitter
         if self.em_conf:

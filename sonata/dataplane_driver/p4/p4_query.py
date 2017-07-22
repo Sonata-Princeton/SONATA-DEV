@@ -87,12 +87,13 @@ class P4Query(object):
         #        sonata_field_list]
         out_header_fields = [self.p4_raw_fields.get_target_field(local_fix[x]) for x in sonata_field_list]
 
+        #TODO: Removed in order to get P4 syntax right
         # Update the layer for each of these fields
-        for fld in out_header_fields:
-            fld.layer = self.out_header
-            # because this is going out to the stream processor, thus we need name that is consistent
-            # among sonata targets
-            fld.target_name = fld.sonata_name
+        # for fld in out_header_fields:
+        #     fld.layer = self.out_header
+        #     # because this is going out to the stream processor, thus we need name that is consistent
+        #     # among sonata targets
+        #     fld.target_name = fld.sonata_name
 
         qid_field = P4Field(layer=self.out_header, target_name="qid", sonata_name="qid", size=QID_SIZE)
         out_header_fields = [qid_field] + out_header_fields
@@ -107,8 +108,8 @@ class P4Query(object):
         primitives = list()
         primitives.append(AddHeader(self.out_header.get_name()))
         for fld in self.out_header.fields:
-            primitives.append(ModifyField('%s.%s' % (self.out_header.get_name(), fld.target_name),
-                                      '%s.%s' % (self.meta_init_name, fld.target_name)))
+            primitives.append(ModifyField('%s.%s' % (self.out_header.get_name(), fld.sonata_name.replace(".", "_")),
+                                      '%s.%s' % (self.meta_init_name, fld.sonata_name.replace(".", "_"))))
         self.actions['append_out_header'] = Action('do_add_out_header_%i' % self.id, primitives)
         self.out_header_table = Table('add_out_header_%i' % self.id, self.actions['append_out_header'].get_name(), [],
                                       None, 1)
