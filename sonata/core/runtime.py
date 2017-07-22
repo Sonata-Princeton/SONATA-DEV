@@ -22,6 +22,7 @@ from sonata.core.partition import get_dataplane_query, get_streaming_query
 from sonata.core.integration import Target
 from sonata.dataplane_driver.dp_driver import DataplaneDriver
 
+
 class Runtime(object):
     dp_queries = {}
     sp_queries = {}
@@ -30,13 +31,15 @@ class Runtime(object):
     query_in_mappings = {}
     query_out_mappings = {}
     query_out_final = {}
+    op_handler_socket = None
+    op_handler_listener = None
 
     def __init__(self, conf, queries):
         self.conf = conf
         self.queries = queries
         self.initialize_logging()
         self.target_id = 1
-        #self.sc = create_spark_context()
+        # self.sc = create_spark_context()
 
         use_pickled_queries = False
         if use_pickled_queries:
@@ -45,7 +48,7 @@ class Runtime(object):
                 self.dp_queries = pickled_queries[0]
                 self.sp_queries = pickled_queries[1]
         else:
-            #(self.timestamps, self.training_data) = get_spark_context_batch(self.sc)
+            # (self.timestamps, self.training_data) = get_spark_context_batch(self.sc)
             # Learn the query plan
             for query in self.queries:
                 target = Target()
@@ -79,7 +82,7 @@ class Runtime(object):
                 # final_plan = self.query_plans[query.qid][1:-1]
                 # print final_plan
 
-                final_plan = [(1, 16, 5, 1), (3, 32, 1, 2)]#(1, 16, 5, 1),
+                final_plan = [(1, 16, 5, 1), (3, 32, 1, 2)]  # (1, 16, 5, 1),
                 prev_r = 0
                 prev_qid = 0
 
@@ -89,14 +92,13 @@ class Runtime(object):
 
                     refined_sonata_query = refinement_object.get_refined_updated_query(qry.qid, r, prev_qid, prev_r)
                     if prev_r > 0:
-                         p += 1
+                        p += 1
                     dp_query = get_dataplane_query(refined_sonata_query, refined_query_id, p)
                     self.dp_queries[refined_query_id] = dp_query
                     sp_query = get_streaming_query(refined_sonata_query, refined_query_id, p)
                     self.sp_queries[refined_query_id] = sp_query
                     prev_r = r
                     prev_qid = q
-
 
                 self.update_query_mappings(refinement_object, final_plan)
 
@@ -123,7 +125,7 @@ class Runtime(object):
                 #     self.sp_queries[refined_query_id] = sp_query
                 #
                 #     prev_r = r
-            #sc.stop()
+            # sc.stop()
             with open('pickled_queries.pickle', 'w') as f:
                 pickle.dump({0: self.dp_queries, 1: self.sp_queries}, f)
 
@@ -131,8 +133,7 @@ class Runtime(object):
         print "\n\n"
         print "Streaming Queries", self.sp_queries
 
-
-        #time.sleep(10)
+        # time.sleep(10)
         self.initialize_handlers()
         time.sleep(2)
         self.send_to_dp_driver('init', self.dp_queries)
@@ -165,7 +166,7 @@ class Runtime(object):
             print "No mapping update required"
 
         # Update the queries whose o/p needs to be displayed to the network operators
-        #print final_plan
+        # print final_plan
         r = final_plan[-1][0]
         qid = get_refined_query_id(query1, r)
         self.query_out_final[qid] = 0
@@ -187,7 +188,7 @@ class Runtime(object):
         self.op_handler_socket = self.conf['sm_conf']['op_handler_socket']
         self.op_handler_listener = Listener(self.op_handler_socket)
 
-        start = "%.20f" %time.time()
+        start = "%.20f" % time.time()
 
         queries_received = {}
         updateDeltaConfig = False
@@ -197,7 +198,7 @@ class Runtime(object):
             # Expected (qid,[])
             op_data = conn.recv_bytes()
             op_data = op_data.strip('\n')
-            #print "$$$$ OP Handler received:" + str(op_data)
+            # print "$$$$ OP Handler received:" + str(op_data)
             received_data = op_data.split(",")
             src_qid = int(received_data[1])
             if received_data[2:] != ['']:
@@ -211,9 +212,9 @@ class Runtime(object):
 
             # print "Query Out Mappings: ",self.query_out_mappings
             delta_config = {}
-            #print "## Received output for query", src_qid, "at time", time.time() - start
+            # print "## Received output for query", src_qid, "at time", time.time() - start
             if updateDeltaConfig:
-                start = "%.20f" %time.time()
+                start = "%.20f" % time.time()
                 for src_qid in queries_received:
                     if src_qid in self.query_out_mappings:
                         table_match_entries = queries_received[src_qid]
@@ -221,12 +222,13 @@ class Runtime(object):
                             out_queries = self.query_out_mappings[src_qid]
                             for out_qid in out_queries:
                                 # find the queries that take the output of this query as input
-                                #print out_qid, src_qid
+                                # print out_qid, src_qid
                                 delta_config[(out_qid, src_qid)] = table_match_entries
-                    # reset these state variables
+                                # reset these state variables
                 # print "delta config: ", delta_config
                 updateDeltaConfig = False
-                if delta_config != {}: self.logger.info("runtime,create_delta_config," + str(start) + ",%.20f" % time.time())
+                if delta_config != {}: self.logger.info(
+                    "runtime,create_delta_config," + str(start) + ",%.20f" % time.time())
                 queries_received = {}
 
             # TODO: Update the send_to_dp_driver function logic
@@ -237,7 +239,7 @@ class Runtime(object):
                     IP = delta_config[qid_key]
 
                 print "*********************************************************************"
-                print "*                   IP "+IP[0]+" satisfies coarser query            *"
+                print "*                   IP " + IP[0] + " satisfies coarser query            *"
                 print "*                   Reconfiguring Data Plane                        *"
                 print "*********************************************************************\n\n"
 
@@ -255,7 +257,7 @@ class Runtime(object):
         config = {
             'em_conf': self.conf['emitter_conf'],
             'switch_conf': {
-                'compiled_srcs': '/home/vagrant/dev/sonata/dataplane_driver/'+p4_type+'/compiled_srcs/',
+                'compiled_srcs': '/home/vagrant/dev/sonata/dataplane_driver/' + p4_type + '/compiled_srcs/',
                 'json_p4_compiled': 'compiled.json',
                 'p4_compiled': 'compiled.p4',
                 'p4c_bm_script': '/home/vagrant/p4c-bmv2/p4c_bm/__main__.py',
@@ -279,7 +281,7 @@ class Runtime(object):
 
     def start_streaming_driver(self):
         # Start streaming managers local to each stream processor
-        #self.conf['sm_conf']['sc']=self.sc
+        # self.conf['sm_conf']['sc']=self.sc
         sm = StreamingDriver(self.conf['sm_conf'])
         sm.start()
         while True:
@@ -294,7 +296,7 @@ class Runtime(object):
 
     def send_to_sm(self):
         # Send compiled query expression to streaming manager
-        start = "%.20f" %time.time()
+        start = "%.20f" % time.time()
         serialized_queries = pickle.dumps(self.sp_queries)
         conn = Client(self.conf['sm_conf']['sm_socket'])
         conn.send(serialized_queries)
@@ -306,7 +308,7 @@ class Runtime(object):
 
     def send_to_dp_driver(self, message_type, content):
         # Send compiled query expression to fabric manager
-        start = "%.20f" %time.time()
+        start = "%.20f" % time.time()
         message = {message_type: {0: content, 1: self.target_id}}
         serialized_queries = pickle.dumps(message)
         conn = Client(self.conf['fm_conf']['fm_socket'])
@@ -320,7 +322,7 @@ class Runtime(object):
         return ''
 
     def initialize_handlers(self):
-        target=self.start_dataplane_driver()
+        target = self.start_dataplane_driver()
         self.streaming_driver_thread = Thread(name='streaming_driver', target=self.start_streaming_driver)
         self.op_handler_thread = Thread(name='op_handler', target=self.start_op_handler)
         # self.fm_thread.setDaemon(True)
@@ -329,7 +331,7 @@ class Runtime(object):
         time.sleep(1)
 
     def initialize_logging(self):
-        #print "######Setup Logger##########",self.conf['log_file']
+        # print "######Setup Logger##########",self.conf['log_file']
         # create a logger for the object
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)
@@ -337,4 +339,3 @@ class Runtime(object):
         self.fh = logging.FileHandler(self.conf['log_file'])
         self.fh.setLevel(logging.INFO)
         self.logger.addHandler(self.fh)
-
