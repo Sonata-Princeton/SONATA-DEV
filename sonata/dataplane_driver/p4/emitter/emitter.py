@@ -4,6 +4,7 @@ from multiprocessing.connection import Listener
 import time
 import logging
 from datetime import datetime
+from emitter_field import Field, IPField, MacField
 
 HEADER_FORMAT = {'sIP': 'BBBB', 'dIP': 'BBBB', 'sPort': '>H', 'dPort': '>H',
                  'nBytes': '>H', 'proto': '>H', 'sMac': 'BBBBBB', 'dMac': 'BBBBBB',
@@ -13,6 +14,8 @@ HEADER_SIZE = {'sIP': 32, 'dIP': 32, 'sPort': 16, 'dPort': 16,
                'nBytes': 16, 'proto': 16, 'sMac': 48, 'dMac': 48,
                'qid': 16, 'count': 16}
 
+QID_SIZE = 16
+BYTE_SIZE = 8
 
 class Emitter(object):
     def __init__(self, conf, queries):
@@ -31,7 +34,8 @@ class Emitter(object):
         #       - key: parse_payload, value: boolean
         #       - key: headers, values: list of tuples with (field name, field size)
         self.queries = queries
-        self.qid_struct = struct.Struct('>H')
+        self.qid_field = Field(layer='', target_name='qid', sonata_name='qid', size=QID_SIZE/BYTE_SIZE,
+                               format='>H', offset=0)
 
         # create a logger for the object
         self.logger = logging.getLogger(__name__)
@@ -67,6 +71,28 @@ class Emitter(object):
         p_str = str(raw_packet)
         # raw_packet.show()
         # hexdump(raw_packet)
+        offset = 0
+
+
+        while True:
+            # Read first two bits to dechipher query id
+            self.qid_field.offset = offset
+            qid = self.qid_field.extract_field(p_str)
+            if qid in self.queries and qid != 0:
+                query = self.queries[qid]
+                out_headers = query['headers']
+                output_tuple = list()
+
+                if out_headers is not None:
+                    for fld in out_headers.fields:
+                        fld_name = fld.sonata_name
+                        fld_size = fld.size
+                        if IP in fld_name:
+                            ipfield = IPField()
+
+
+
+
 
         qid = int(str(self.qid_struct.unpack(p_str[0:2])[0]))
         ind = 2

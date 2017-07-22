@@ -268,7 +268,11 @@ class P4Query(object):
         # TODO: This will now change
         header_format = dict()
         header_format['parse_payload'] = self.parse_payload
-        header_format['headers'] = self.out_header
+        if self.parse_payload:
+            header_format['headers'] = self.out_header
+        else:
+            header_format['headers'] = None
+
         return header_format
 
     def get_update_commands(self, filter_id, update):
