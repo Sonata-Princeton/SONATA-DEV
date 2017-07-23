@@ -8,7 +8,8 @@
 from sonata.dataplane_driver.query_object import QueryObject as DP_QO
 from sonata.streaming_driver.query_object import PacketStream as SP_QO
 from sonata.query_engine.utils import copy_operators
-from sonata.core.utils import requires_payload_processing, copy_sonata_operators_to_sp_query, get_flattened_sub_queries, get_payload_fields
+from sonata.core.utils import requires_payload_processing, copy_sonata_operators_to_sp_query,\
+    get_flattened_sub_queries, get_payload_fields, flatten_streaming_field_names
 from sonata.query_engine.sonata_queries import PacketStream
 from sonata.system_config import BASIC_HEADERS
 from integration import sonata_2_dp_query
@@ -48,6 +49,9 @@ def get_streaming_query(query, qid, partition_plan):
             # update the basic headers
             # Add 'k' field to filter out garbled message received by the stream processor
             sp_query.basic_headers = list(query.operators[n_operators_dp-1].keys) + list(query.operators[n_operators_dp-1].values)
+
+            sp_query.basic_headers = flatten_streaming_field_names(sp_query.basic_headers)
+
             border_operator = query.operators[n_operators_dp-1]
             if border_operator.name == "Reduce":
                 # We need to duplicate reduce operator in the data plane
@@ -59,10 +63,10 @@ def get_streaming_query(query, qid, partition_plan):
         # sp_query = sp_query.filter_init(qid=qid, keys=sp_query.basic_headers)
         dp_operator = query.operators[n_operators_dp-1]
         if hasattr(dp_operator,"map_values"):
-            sp_query.map(keys=dp_operator.keys,
-                         values=dp_operator.map_values)
+            sp_query.map(keys=flatten_streaming_field_names(dp_operator.keys),
+                         values=flatten_streaming_field_names(dp_operator.map_values))
         else:
-            sp_query.map(keys=dp_operator.keys,
+            sp_query.map(keys=flatten_streaming_field_names(dp_operator.keys),
                          values=list())
 
         # Update the remainder operators
@@ -72,6 +76,7 @@ def get_streaming_query(query, qid, partition_plan):
         sp_query.parse_payload = requires_payload_processing(query)
 
         return sp_query
+
 
 
 class Partition(object):

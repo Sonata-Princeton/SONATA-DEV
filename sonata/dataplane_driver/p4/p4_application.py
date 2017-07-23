@@ -98,7 +98,6 @@ class P4Application(object):
         # transforms queries
         for query_id in app:
             self.logger.debug('create query pipeline for qid: %i' % (query_id))
-            print app[query_id].parse_payload, app[query_id].payload_fields
             parse_payload = app[query_id].parse_payload
             payload_fields = app[query_id].payload_fields
             operators = app[query_id].operators
@@ -192,7 +191,6 @@ class P4Application(object):
         # End local fix
 
         raw_layers = self.p4_raw_fields.get_layers_for_fields(raw_fields)
-        print raw_layers
         return raw_layers
 
     def get_out_header_parser(self):

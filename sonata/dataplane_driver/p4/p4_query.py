@@ -85,7 +85,6 @@ class P4Query(object):
         self.out_header = OutHeaders(out_header_name)
         print "Last Operator", self.operators[-1], self.payload_fields+['ts', 'count']
         sonata_field_list = filter(lambda x: x not in self.payload_fields+['ts', 'count'], self.operators[-1].get_out_headers())
-        print sonata_field_list
         # print [(x, local_fix[x], self.p4_raw_fields.get_target_field(local_fix[x]).target_name) for x in
         #        sonata_field_list]
         out_header_fields = [self.p4_raw_fields.get_target_field(local_fix[x]) for x in sonata_field_list]

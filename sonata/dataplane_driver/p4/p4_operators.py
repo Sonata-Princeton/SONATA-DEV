@@ -308,7 +308,6 @@ class P4MapInit(P4Operator):
 
         # create METADATA object to store data for all keys
         meta_fields = list()
-        print map_init_fields
         for fld in map_init_fields:
             meta_fields.append((fld.sonata_name.replace(".", "_"), fld.size))
 

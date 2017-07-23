@@ -187,13 +187,11 @@ class P4RawFields(object):
         return list(set(layers))
 
     def get_target_field(self, sonata_field_name):
-        print self.all_sonata_fields.keys(), sonata_field_name,
         return self.all_sonata_fields[sonata_field_name]
 
 
 def test():
     p4_fields = P4RawFields(Ethernet())
-    print p4_fields.all_sonata_fields.keys()
     # query_specific_fields = ['ethernet.dstMac', 'udp.sport']
     # layers = p4_fields.get_layers_for_fields(query_specific_fields)
     # assert "udp" in [layer.name for layer in layers]

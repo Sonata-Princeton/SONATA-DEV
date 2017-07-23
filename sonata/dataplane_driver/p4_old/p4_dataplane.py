@@ -33,7 +33,6 @@ class Switch(threading.Thread):
             compose_interfaces +=new_interface
 
         COMMAND = "sudo %s %s %s --thrift-port 22222"%(self.switch_path, self.p4_json_path, compose_interfaces)
-        print COMMAND
         os.system(COMMAND)
 
 class P4DataPlane(object):

@@ -88,7 +88,7 @@ class StreamingDriver(object):
         for queryId in queries:
             query = queries[queryId]
             query_str = "pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd.filter(lambda p : (p[1]==str('"+str(queryId)+"'))).map(lambda p : (p[2:]))." + query.compile() + ")).foreachRDD(lambda rdd: send_reduction_keys(rdd, " + str(self.op_handler_socket)+ "," + str(self.start_time)+",\'"+ str(queryId)+"\'))"
-            # print(query_str)
+            print(query_str)
             spark_queries[queryId] = eval(query_str)
 
 
