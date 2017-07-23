@@ -62,29 +62,29 @@ if __name__ == '__main__':
     # New Queries
     q1 = (PacketStream(1)
           # .filter(filter_keys=('proto',), func=('eq', 6))
-          .map(keys=('dIP', 'sIP'))
-          .distinct(keys=('dIP', 'sIP'))
-          .map(keys=('dIP',), map_values=('count',), func=('eq', 1,))
-          .reduce(keys=('dIP',), func=('sum',))
+          .map(keys=('ipv4.dstIP', 'ipv4.srcIP'))
+          .distinct(keys=('ipv4.dstIP', 'ipv4.srcIP'))
+          .map(keys=('ipv4.dstIP',), map_values=('count',), func=('eq', 1,))
+          .reduce(keys=('ipv4.dstIP',), func=('sum',))
           .filter(filter_vals=('count',), func=('geq', 45))
-          .map(keys=('dIP',))
+          .map(keys=('ipv4.dstIP',))
           )
 
     q2 = (PacketStream(2)
           # .filter(filter_keys=('proto',), func=('eq', 6))
-          .map(keys=('dIP', 'payload'))
+          .map(keys=('ipv4.dstIP', 'payload'))
           )
 
     q3 = (q2.join(new_qid=3, query=q1)
-          .map(keys=('dIP', 'payload'), map_values=('count',), func=('eq', 1))
-          .reduce(keys=('dIP', 'payload'), func=('sum',))
+          .map(keys=('ipv4.dstIP', 'payload'), map_values=('count',), func=('eq', 1))
+          .reduce(keys=('ipv4.dstIP', 'payload'), func=('sum',))
           .filter(filter_vals=('count',), func=('geq', 1))
-          .map(keys=('dIP',))
-          .distinct(keys=('dIP',))
+          .map(keys=('ipv4.dstIP',))
+          .distinct(keys=('ipv4.dstIP',))
           )
 
 
-    queries = [q3]
+    queries = [q1]
 
     print("*********************************************************************")
     print("*                   Receiving User Queries                          *")

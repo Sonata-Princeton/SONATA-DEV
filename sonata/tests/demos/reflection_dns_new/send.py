@@ -27,6 +27,7 @@ def create_normal_traffic():
         sIP = socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff)))
         dIP = socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff)))
         p = Ether() / IP(dst=dIP, src=sIP) / TCP() / "SONATA NORMAL"
+        # print p.summary()
         normal_packets.append(p)
 
     return normal_packets
@@ -41,7 +42,11 @@ def create_attack_traffic():
         sIPs.append(socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff))))
 
     for sIP in sIPs:
-        p = Ether() / IP(dst=dIP, src=sIP) / TCP() / "ATTACK"
+        p = Ether() / IP(dst=dIP, src=sIP) / UDP(sport=53)/DNS(nscount=1, ns=DNSRR(type=46))
+        # print p.show()
+        # print sIP, p.proto, p.sport, p.ns.type
+        # print len(str(p)), "Ether(): ", len(str(Ether())), "IP: ", len(str(IP(dst=dIP, src=sIP))), \
+        #     "UDP: ",len(str(UDP(sport=53))),"DNS: ", len(str(DNS(nscount=1, ns=DNSRR(type=46)))), "\n"
         attack_packets.append(p)
 
     return attack_packets

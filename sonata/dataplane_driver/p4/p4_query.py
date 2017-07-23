@@ -273,6 +273,7 @@ class P4Query(object):
         # TODO: This will now change
         header_format = dict()
         header_format['parse_payload'] = self.parse_payload
+        header_format['payload_fields'] = self.payload_fields
         if self.parse_payload:
             header_format['headers'] = self.out_header
         else:

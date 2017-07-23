@@ -59,36 +59,10 @@ class P4DataPlane(object):
 
         self.create_interfaces()
 
-        # from mininet.net import Mininet
-        # from mininet.link import Intf
-
-        # sys.path.append("/home/vagrant/bmv2/mininet")
-        #
-        # from p4_mininet import P4Switch, P4Host
-
-        # cmd = self.switch_path + " >/dev/null 2>&1"
-        # get_out(cmd)
-
-        # self.logger.info('start mininet topology')
-        # topo = P4Topo(self.switch_path,
-        #               p4_json_path,
-        #               self.thrift_port)
-        #
-        # net = Mininet(topo=topo,
-        #               host=P4Host,
-        #               switch=P4Switch,
-        #               controller=None)
-        #
-        # Intf("m-veth-1", net.get('s1'), 11)
-        # Intf("m-veth-2", net.get('s1'), 12)
-        # Intf("m-veth-3", net.get('s1'), 13)
-
-        # net.start()
-
         get_out("sudo ps -ef | grep simple_switch | grep -v grep | awk '{print $2}' | sudo xargs kill -9")
         sleep(1)
         cmd = self.switch_path + " >/dev/null 2>&1"
-        #get_out(cmd)
+        get_out(cmd)
         self.switch = Switch(p4_json_path, self.switch_path)
         self.switch.start()
         print "\nWaiting for switch to start..."
@@ -112,6 +86,7 @@ class P4DataPlane(object):
     def send_commands(self, p4_json_path, command_path):
         self.logger.info('send commands')
         cmd = [self.cli_path, p4_json_path, str(self.thrift_port)]
+        print cmd
         with open(command_path, "r") as f:
             try:
                 output = subprocess.check_output(cmd, stdin=f)
@@ -128,16 +103,3 @@ class P4DataPlane(object):
         self.logger.info('compile p4 to json')
         CMD = self.bm_script + " " + p4_compiled + " --json " + json_p4_compiled
         get_out(CMD)
-
-
-# class P4Topo(Topo):
-#     from mininet.topo import Topo
-#     def __init__(self, sw_path, json_path, thrift_port, **opts):
-#         # Initialize topology and default options
-#         Topo.__init__(self, **opts)
-#         switch = self.addSwitch('s1',
-#                                 sw_path=sw_path,
-#                                 json_path=json_path,
-#                                 thrift_port=thrift_port,
-#                                 pcap_dump=True)
-

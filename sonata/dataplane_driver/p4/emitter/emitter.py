@@ -5,6 +5,7 @@ import time
 import logging
 from datetime import datetime
 from emitter_field import Field, IPField, MacField
+from scapy.config import conf
 
 QID_SIZE = 16
 BYTE_SIZE = 8
@@ -16,7 +17,7 @@ class Emitter(object):
         self.spark_stream_address = conf['spark_stream_address']
         self.spark_stream_port = conf['spark_stream_port']
         self.sniff_interface = conf['sniff_interface']
-
+        print self.sniff_interface
         self.listener = Listener((self.spark_stream_address, self.spark_stream_port))
         self.spark_conn = None
 
@@ -26,7 +27,7 @@ class Emitter(object):
         #       - key: parse_payload, value: boolean
         #       - key: headers, values: list of tuples with (field name, field size)
         self.queries = queries
-        self.qid_field = Field(target_name='qid', sonata_name='qid', size=QID_SIZE/BYTE_SIZE,
+        self.qid_field = Field(target_name='qid', sonata_name='qid', size=QID_SIZE,
                                format='>H', offset=0)
 
         # create a logger for the object
@@ -46,39 +47,44 @@ class Emitter(object):
             print "*                           System Ready                            *"
             print "*********************************************************************\n\n"
 
-            # print "Now start sniffing the packets from switch"
+            print "Now start sniffing the packets from switch"
             self.sniff_packets()
 
     def send_data(self, data):
         self.spark_conn.send_bytes(data)
 
     def sniff_packets(self):
+        print "Interface confirming: ", self.sniff_interface
         sniff(iface=self.sniff_interface, prn=lambda x: self.process_packet(x))
 
     def process_packet(self, raw_packet):
         '''
         callback function executed for each capture packet
         '''
-
+        # print "Received packet at Emitter"
         p_str = str(raw_packet)
-        # raw_packet.show()
-        # hexdump(raw_packet)
+        # print raw_packet.summary()
+        # # hexdump(raw_packet)
         offset = 0
 
-        # Read first two bits to extract query id (first field for all out headers is qid)
-        qid = self.qid_field.extract_field(p_str)
 
+        # Read first two bits to extract query id (first field for all out headers is qid)
+        qid = int(self.qid_field.extract_field(p_str))
+        offset = self.qid_field.get_updated_offset()
         output_tuple = []
+        print "Qid: ", qid, self.queries.keys()
 
         while True:
             start = "%.20f" %time.time()
-            if qid in self.queries and qid != 0:
+            if int(qid) in [int(x) for x in self.queries.keys()] and int(qid) != 0:
+                print "Inside if loop", qid
                 query = self.queries[qid]
                 out_headers = query['headers']
+                print [fld.sonata_name for fld in out_headers.fields]
                 output_tuple = list()
 
                 if out_headers is not None:
-                    for fld in out_headers.fields:
+                    for fld in out_headers.fields[1:]:
                         fld_name = fld.sonata_name
                         fld_size = fld.size
                         if 'IP' in fld_name:
@@ -86,36 +92,64 @@ class Emitter(object):
                         elif 'Mac' in fld_name:
                             fld = MacField(fld_name, fld_name, offset)
                         else:
-                            fld = Field(fld_name, fld_name, offset)
+                            format = ''
+                            if fld_size == 8:
+                                format = 'B'
+                            elif fld_size == 16:
+                                format = '>H'
+                            fld = Field(fld_name, fld_name, fld_size, format, offset)
 
-                        offset += fld.get_updated_offset()
-                        output_tuple.append(fld.extract_field())
+                        offset = fld.get_updated_offset()
+                        field_value = fld.extract_field(p_str)
+                        print fld_name, len(p_str), fld.offset, fld.ctr, field_value, fld.offset, fld.sonata_name
+                        output_tuple.append(field_value)
 
-                if query['parse_payload']:
-                    payload_fields = query['payload_fields']
-                    # TODO: get rid of this hardcoding
-                    payload_fields = ['dns.ns.type']
-                    for fld in payload_fields:
-                        fld_str = 'raw_packet.'+fld
-                        payload_fld = eval(fld_str)
-                        output_tuple.append(payload_fld)
+
+                conf.l3types.register_num2layer(3, Ether)
+
+                new_raw_packet = conf.l3types[3](p_str[17:])
+
+                print type(raw_packet), type(new_raw_packet)
+
+                if new_raw_packet.haslayer(DNS):
+                    print "DNS is there"
+                    print new_raw_packet.ns.type
+
+                print new_raw_packet.show()
+                # sendp([str(p_str[17:])], iface="m-veth-3", verbose=0)
+
+
+                # if query['parse_payload']:
+                #     payload_fields = query['payload_fields']
+                #     for fld in payload_fields:
+                #         fld = 'ns.type'
+                #         fld_str = 'raw_packet.'+fld
+                #         if remove_layers.haslayer(DNS):
+                #             print "DNS is there"
+                #             print remove_layers.ns.type
+                #         # print fld_str
+                #         # payload_fld = eval(fld_str)
+                #         # output_tuple.append(payload_fld)
 
                 output_tuple = ['k']+[str(qid)]+output_tuple
                 send_tuple = ",".join([str(x) for x in output_tuple])
                 self.logger.debug(send_tuple)
+                print send_tuple
                 self.send_data(send_tuple + "\n")
                 self.logger.info("emitter,"+ str(qid) + ","+str(start)+",%.20f"%time.time())
 
                 self.qid_field.offset = offset
                 # Read first two bits for the next out header layer
                 qid = self.qid_field.extract_field(p_str)
-                if qid in self.queries and qid != 0:
+                if qid in self.queries.keys() and qid != 0:
                     # we need to parse another layer for this packet
-                    offset += qid.get_updated_offset()
+                    offset = self.qid_field.get_updated_offset()
                     continue
                 else:
                     # we have extracted all layers for this packet now
                     break
+            else:
+                break
 
 if __name__ == '__main__':
     emitter_conf = {'spark_stream_address': 'localhost',
