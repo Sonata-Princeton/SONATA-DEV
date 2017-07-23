@@ -7,9 +7,14 @@ class Query(object):
     """
     Abstract Query Class
     """
-    basic_headers = ["sIP", "sPort", "dIP", "dPort", "nBytes",
-                     "proto", "sMac", "dMac", "payload"]
-    refinement_headers = ["dIP", "sIP"]
+    basic_headers = ['ipv4.hdrChecksum', 'tcp.dport', 'ethernet.dstMac', 'udp.len', 'tcp.ctrl',
+                     'ethernet.srcMac', 'udp.sport', 'udp.dport', 'tcp.res', 'ipv4.ihl', 'ipv4.diffserv',
+                     'ipv4.totalLen', 'ipv4.dstIP', 'ipv4.flags', 'ipv4.proto', 'udp.checksum', 'tcp.seqNo',
+                     'ipv4.ttl', 'tcp.ackNo', 'ipv4.srcIP', 'ipv4.version', 'ipv4.identification', 'tcp.ecn',
+                     'tcp.window', 'tcp.checksum', 'tcp.dataOffset', 'ipv4.fragOffset', 'tcp.sport',
+                     'tcp.urgentPtr', 'ethernet.ethType']
+    payload_headers = ['dns.ns.type']
+    refinement_headers = ["ipv4.dstIP", "ipv4.srcIP"]
 
     def __init__(self, *args, **kwargs):
         self.fields = []

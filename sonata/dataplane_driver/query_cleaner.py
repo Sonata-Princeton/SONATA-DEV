@@ -18,6 +18,7 @@ def get_clean_application(application):
     for query_id, query in application.iteritems():
         new_qo = QueryObject(query_id)
         new_qo.parse_payload = query.parse_payload
+        new_qo.payload_fields = query.payload_fields
         skip_next_filter = False
         for index, operator in enumerate(query.operators):
             # skip filter following a reduce as the reduce and filter are combined:

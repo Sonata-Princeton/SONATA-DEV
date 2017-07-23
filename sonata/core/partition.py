@@ -8,7 +8,7 @@
 from sonata.dataplane_driver.query_object import QueryObject as DP_QO
 from sonata.streaming_driver.query_object import PacketStream as SP_QO
 from sonata.query_engine.utils import copy_operators
-from sonata.core.utils import requires_payload_processing, copy_sonata_operators_to_sp_query, get_flattened_sub_queries
+from sonata.core.utils import requires_payload_processing, copy_sonata_operators_to_sp_query, get_flattened_sub_queries, get_payload_fields
 from sonata.query_engine.sonata_queries import PacketStream
 from sonata.system_config import BASIC_HEADERS
 from integration import sonata_2_dp_query
@@ -31,6 +31,8 @@ def get_dataplane_query(query, qid, partition_plan):
             dp_query.operators.append(operator)
             # copy_sonata_operators_to_dp_query(dp_query, operator)
         dp_query.parse_payload = requires_payload_processing(query)
+        dp_query.payload_fields = get_payload_fields(query)
+        print "Payload Fields", dp_query.payload_fields
 
     return dp_query
 
@@ -56,9 +58,12 @@ def get_streaming_query(query, qid, partition_plan):
         # to their respective pipelines in the stream processor
         # sp_query = sp_query.filter_init(qid=qid, keys=sp_query.basic_headers)
         dp_operator = query.operators[n_operators_dp-1]
-        sp_query.map(keys=dp_operator.keys,
-                     values=dp_operator.map_values)
-
+        if hasattr(dp_operator,"map_values"):
+            sp_query.map(keys=dp_operator.keys,
+                         values=dp_operator.map_values)
+        else:
+            sp_query.map(keys=dp_operator.keys,
+                         values=list())
 
         # Update the remainder operators
         for operator in query.operators[n_operators_dp:]:

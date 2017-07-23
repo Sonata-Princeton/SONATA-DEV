@@ -4,7 +4,7 @@
 
 from p4_elements import Action, MetaData, MirrorSession, FieldList, Table, Header
 from p4_primitives import NoOp, CloneIngressPktToEgress, AddHeader, ModifyField
-from p4_query import P4Query
+from p4_query import P4Query, local_fix
 from p4_layer import P4Layer, OutHeaders, P4RawFields, Ethernet
 from p4_field import P4Field
 from sonata.dataplane_driver.utils import get_logger
@@ -97,11 +97,14 @@ class P4Application(object):
 
         # transforms queries
         for query_id in app:
-            self.logger.debug('create query pipeline for qid: %i' % (query_id,))
+            self.logger.debug('create query pipeline for qid: %i' % (query_id))
+            print app[query_id].parse_payload, app[query_id].payload_fields
             parse_payload = app[query_id].parse_payload
+            payload_fields = app[query_id].payload_fields
             operators = app[query_id].operators
             query = P4Query(query_id,
                             parse_payload,
+                            payload_fields,
                             operators,
                             nop_name,
                             '%s.%s' % (meta_name, self.drop_meta_field),
@@ -185,8 +188,6 @@ class P4Application(object):
 
         # TODO: get rid of this local fix. This won't be required after we fix the sonata query module
         # Start local fix
-        local_fix = {'dMac': 'ethernet.dstMac', 'sIP': 'ipv4.dstIP', 'proto': 'ipv4.proto', 'sMac': 'ethernet.dstMac',
-                     'nBytes': 'ipv4.totalLen', 'dPort': 'udp.sport', 'sPort': 'udp.sport', 'dIP': 'ipv4.srcIP'}
         raw_fields = [local_fix[x] for x in raw_fields]
         # End local fix
 

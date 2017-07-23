@@ -9,14 +9,21 @@ from sonata.core.training.utils import *
 import numpy as np
 
 
-
 def requires_payload_processing(query):
     parse_payload = False
     for operator in query.operators[1:]:
-        if 'payload' in operator.keys:
+        if len(set(query.payload_headers).intersection(set(operator.keys))) > 0:
             parse_payload = True
 
     return parse_payload
+
+
+def get_payload_fields(query):
+    payload_fields = set()
+    for operator in query.operators[1:]:
+        payload_fields = payload_fields.union(set(query.payload_headers).intersection(set(operator.keys)))
+
+    return list(payload_fields)
 
 
 def copy_sonata_operators_to_sp_query(query, optr):
@@ -63,12 +70,13 @@ def copy_sonata_operators_to_dp_query(query, optr):
 
 
 def get_refinement_keys(query):
+    print query
     red_keys = set([])
     if query.left_child is not None:
         red_keys_left = get_refinement_keys(query.left_child)
         red_keys_right = get_refinement_keys(query.right_child)
-        # print "left keys", red_keys_left, query.qid
-        # print "right keys", red_keys_right, query.qid
+        print "left keys", red_keys_left, query.qid
+        print "right keys", red_keys_right, query.qid
         # TODO: make sure that we better handle the case when first reduce operator has both sIP and dIP as reduction keys
         if len(red_keys_right) > 0:
             red_keys = set(red_keys_left).intersection(red_keys_right)
@@ -78,7 +86,7 @@ def get_refinement_keys(query):
         for operator in query.operators:
             if operator.name in ['Distinct', 'Reduce']:
                 red_keys = red_keys.intersection(set(operator.keys))
-                # print query.qid, operator.name, red_keys
+                print query.qid, operator.name, red_keys
 
         red_keys = red_keys.intersection(query.refinement_headers)
 
@@ -90,7 +98,7 @@ def get_refinement_keys(query):
             if operator.name in ['Distinct', 'Reduce']:
                 red_keys = red_keys.intersection(set(operator.keys))
 
-    # print "Reduction Key Search", query.qid, red_keys
+    print "Reduction Key Search", query.qid, red_keys
     return red_keys
 
 

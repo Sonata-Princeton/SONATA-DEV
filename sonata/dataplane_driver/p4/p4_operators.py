@@ -14,8 +14,16 @@ TABLE_SIZE = 64
 THRESHOLD = 5
 
 # TODO: get rid of this local fix. This won't be required after we fix the sonata query module
-local_fix = {'dMac': 'ethernet.dstMac', 'sIP': 'ipv4.srcIP', 'proto': 'ipv4.proto', 'sMac': 'ethernet.srcMac',
-             'nBytes': 'ipv4.totalLen', 'dPort': 'udp.dport', 'sPort': 'udp.sport', 'dIP': 'ipv4.dstIP'}
+local_fix = {'ethernet.dstMac': 'ethernet.dstMac', 'ipv4.srcIP': 'ipv4.srcIP', 'ipv4.proto': 'ipv4.proto',
+             'ethernet.srcMac': 'ethernet.srcMac', 'nBytes': 'ipv4.totalLen', 'udp.dport': 'udp.dport',
+             'udp.sport': 'udp.sport', 'ipv4.dstIP': 'ipv4.dstIP'}
+
+# sonata_raw_fields = ['ipv4.hdrChecksum', 'tcp.dport', 'ethernet.dstMac', 'udp.len', 'tcp.ctrl',
+#                      'ethernet.srcMac', 'udp.sport', 'udp.dport', 'tcp.res', 'ipv4.ihl', 'ipv4.diffserv',
+#                      'ipv4.totalLen', 'ipv4.dstIP', 'ipv4.flags', 'ipv4.proto', 'udp.checksum', 'tcp.seqNo',
+#                      'ipv4.ttl', 'tcp.ackNo', 'ipv4.srcIP', 'ipv4.version', 'ipv4.identification', 'tcp.ecn',
+#                      'tcp.window', 'tcp.checksum', 'tcp.dataOffset', 'ipv4.fragOffset', 'tcp.sport',
+#                      'tcp.urgentPtr', 'ethernet.ethType']
 
 # TODO: figure out a cleaner way of getting rid of these magical numbers
 HEADER_MASK_SIZE = {'ipv4.srcIP': 8, 'ipv4.dstIP': 8, 'udp.sport': 4, 'udp.dport': 4,
@@ -443,16 +451,18 @@ class P4Filter(P4Operator):
                 self.filter_mask = func[1]
                 self.filter_values = func[2:]
             elif func[0] == 'eq':
-                self.filter_values = func[1:]
+                self.filter_values = [func[1:]]
 
         reads_fields = list()
         for filter_key in self.filter_keys:
             sonata_name = local_fix[filter_key]
             if self.func == 'mask':
-                reads_fields.append((self.operator_specific_fields[sonata_name], 'lpm'))
+                reads_fields.append((self.operator_specific_fields[sonata_name].layer.name + "." +
+                                     self.operator_specific_fields[sonata_name].target_name, 'lpm'))
             else:
-                reads_fields.append((self.operator_specific_fields[sonata_name], 'exact'))
-
+                reads_fields.append((self.operator_specific_fields[sonata_name].layer.name + "." +
+                                     self.operator_specific_fields[sonata_name].target_name, 'exact'))
+        print "Debug P4Filter", self.operator_name, miss_action, (match_action, ), reads_fields, TABLE_SIZE
         self.table = Table(self.operator_name, miss_action, (match_action, ), reads_fields, TABLE_SIZE)
 
     def __repr__(self):

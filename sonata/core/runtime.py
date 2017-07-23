@@ -83,6 +83,7 @@ class Runtime(object):
                 # print final_plan
 
                 final_plan = [(1, 16, 5, 1), (3, 32, 1, 2)]  # (1, 16, 5, 1),
+                final_plan = [(1, 32, 3, 1)]# (3, 32, 1, 2)]  # (1, 16, 5, 1),
                 prev_r = 0
                 prev_qid = 0
 
@@ -95,10 +96,13 @@ class Runtime(object):
                         p += 1
                     dp_query = get_dataplane_query(refined_sonata_query, refined_query_id, p)
                     self.dp_queries[refined_query_id] = dp_query
+
                     sp_query = get_streaming_query(refined_sonata_query, refined_query_id, p)
                     self.sp_queries[refined_query_id] = sp_query
                     prev_r = r
                     prev_qid = q
+
+                print self.dp_queries, self.sp_queries
 
                 self.update_query_mappings(refinement_object, final_plan)
 
@@ -149,6 +153,7 @@ class Runtime(object):
 
     def update_query_mappings(self, refinement_object, final_plan):
         if len(final_plan) > 1:
+            query1 = refinement_object.qid_2_query[final_plan[0][0]]
             for ((q1, r1, p1, l1), (q2, r2, p2, l2)) in zip(final_plan, final_plan[1:]):
                 query1 = refinement_object.qid_2_query[q1]
                 query2 = refinement_object.qid_2_query[q2]
@@ -162,14 +167,16 @@ class Runtime(object):
                 if qid1 not in self.query_out_mappings:
                     self.query_out_mappings[qid1] = []
                 self.query_out_mappings[qid1].append(qid2)
+
+                # Update the queries whose o/p needs to be displayed to the network operators
+            # print final_plan
+            r = final_plan[-1][0]
+            qid = get_refined_query_id(query1, r)
+            self.query_out_final[qid] = 0
         else:
             print "No mapping update required"
 
-        # Update the queries whose o/p needs to be displayed to the network operators
-        # print final_plan
-        r = final_plan[-1][0]
-        qid = get_refined_query_id(query1, r)
-        self.query_out_final[qid] = 0
+
 
     def start_op_handler(self):
         """

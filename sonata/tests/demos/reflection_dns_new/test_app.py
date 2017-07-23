@@ -32,7 +32,6 @@ else:
 
     RESULTS_FOLDER = '/home/vagrant/dev/sonata/tests/demos/reflection_dns/graph/'
 
-
 featuresPath = ''
 redKeysPath = ''
 
@@ -51,27 +50,24 @@ if __name__ == '__main__':
                   'op_handler_socket': ('localhost', 4949)}
 
     emitter_conf = {'spark_stream_address': SPARK_ADDRESS,
-                     'spark_stream_port': 8989,
-                     'sniff_interface': 'out-veth-2', 'log_file': emitter_log_file}
+                    'spark_stream_port': 8989,
+                    'sniff_interface': 'out-veth-2', 'log_file': emitter_log_file}
 
     conf = {'dp': 'p4', 'sp': 'spark',
             'sm_conf': spark_conf, 'emitter_conf': emitter_conf, 'log_file': rt_log_file,
             'fm_conf': {'fm_socket': DP_DRIVER_CONF, 'log_file': fm_log_file}}
 
-
-
     q1 = (PacketStream(1)
-          .filter(filter_keys=('ip.proto',), func=('eq', 6))
-          .filter(filter_keys=('udp.srcport',), func=('eq', 53))
-          .filter(filter_keys=('dns.rr.type',), func=('eq', 46))
-          .map(keys=('dIP', 'sIP'))
-          .distinct(keys=('dIP', 'sIP'))
-          .map(keys=('dIP',), map_values=('count',), func=('eq', 1,))
-          .reduce(keys=('dIP',), func=('sum',))
+          .filter(filter_keys=('ipv4.proto',), func=('eq', 17))
+          .filter(filter_keys=('udp.sport',), func=('eq', 53))
+          .filter(filter_keys=('dns.ns.type',), func=('eq', 46))
+          .map(keys=('ipv4.dstIP', 'ipv4.srcIP'))
+          .distinct(keys=('ipv4.dstIP', 'ipv4.srcIP'))
+          .map(keys=('ipv4.dstIP',), map_values=('count',), func=('eq', 1,))
+          .reduce(keys=('ipv4.dstIP',), func=('sum',))
           .filter(filter_vals=('count',), func=('geq', 45))
-          .map(keys=('dIP',))
+          .map(keys=('ipv4.dstIP',))
           )
-
 
     queries = [q1]
 

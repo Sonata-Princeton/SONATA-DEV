@@ -55,9 +55,13 @@ def get_thresh(training_data, spark_query, spread, refinement_level, satisfied_s
 def get_concise_headers(query):
     concise_keys = set()
     for operator in query.operators:
-        concise_keys = concise_keys.union(set(operator.keys))
+        if operator.name in {"Distinct", "Map", "Reduce"}:
+            concise_keys = concise_keys.union(set(operator.keys))
+        elif operator.name in ["Filter"]:
+            concise_keys = concise_keys.union(set(operator.filter_keys))
 
     return list(concise_keys)
+
 
 def apply_refinement_plan(sonata_query, refinement_key, refined_query_id, ref_level):
     # base refined query + headers

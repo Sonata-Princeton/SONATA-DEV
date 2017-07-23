@@ -22,8 +22,8 @@ class P4Query(object):
     query_drop_action = None
     satisfied_table = None
 
-    def __init__(self, query_id, parse_payload, generic_operators, nop_name, drop_meta_field, satisfied_meta_field,
-                 clone_meta_field, p4_raw_fields):
+    def __init__(self, query_id, parse_payload, payload_fields, generic_operators, nop_name, drop_meta_field,
+                 satisfied_meta_field, clone_meta_field, p4_raw_fields):
 
         # LOGGING
         log_level = logging.ERROR
@@ -33,6 +33,7 @@ class P4Query(object):
 
         self.id = query_id
         self.parse_payload = parse_payload
+        self.payload_fields = payload_fields
         self.meta_init_name = ''
 
         self.src_to_filter_operator = dict()
@@ -82,7 +83,9 @@ class P4Query(object):
         # print "For query", self.id, "last operator", self.operators[-1], "fields",
         # self.operators[-1].get_out_headers()
         self.out_header = OutHeaders(out_header_name)
-        sonata_field_list = filter(lambda x: x not in ['payload', 'ts', 'count'], self.operators[-1].get_out_headers())
+        print "Last Operator", self.operators[-1], self.payload_fields+['ts', 'count']
+        sonata_field_list = filter(lambda x: x not in self.payload_fields+['ts', 'count'], self.operators[-1].get_out_headers())
+        print sonata_field_list
         # print [(x, local_fix[x], self.p4_raw_fields.get_target_field(local_fix[x]).target_name) for x in
         #        sonata_field_list]
         out_header_fields = [self.p4_raw_fields.get_target_field(local_fix[x]) for x in sonata_field_list]
@@ -121,16 +124,18 @@ class P4Query(object):
             if operator.name in {'Filter', 'Map', 'Reduce', 'Distinct'}:
                 all_fields = all_fields.union(set(operator.get_init_keys()))
         # TODO remove this
-        self.all_fields = filter(lambda x: x not in ['payload', 'ts', 'count'], all_fields)
+        self.all_fields = filter(lambda x: x not in self.payload_fields+['ts', 'count'], all_fields)
 
     def get_init_fields(self, generic_operators):
         # TODO: only select fields over which we perform any action
+        print "#DEBUG INIT FIELDS:", generic_operators
         all_fields = set()
         for operator in generic_operators:
-            if operator.name in {'Filter', 'Map', 'Reduce', 'Distinct'}:
+            if operator.name in {'Map', 'Reduce', 'Distinct'}:
+                print "#DEBUG INIT FIELDS:", operator.name, operator.get_init_keys()
                 all_fields = all_fields.union(set(operator.get_init_keys()))
         # No need to filter out count field
-        return filter(lambda x: x not in ['payload', 'ts'], all_fields)
+        return filter(lambda x: x not in self.payload_fields+['ts'], all_fields)
 
     def init_operators(self, generic_operators):
         p4_operators = list()
