@@ -12,10 +12,11 @@ if has_layer(dns)
         return ns.type
 """
 
+scapy_fields_supported = {'dns.ns.type': "DNS.ns.type"}
 
 class PayloadField(object):
-    def __init__(self, target_name, sonata_name):
-        self.target_name = target_name
+    def __init__(self, sonata_name):
+        self.target_name = scapy_fields_supported[sonata_name]
         self.sonata_name = sonata_name
 
     def get_sonata_name(self):

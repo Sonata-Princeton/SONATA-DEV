@@ -109,33 +109,13 @@ class Emitter(object):
 
                 new_raw_packet = conf.l3types[3](p_str[17:])
 
-                # print type(raw_packet), type(new_raw_packet)
-
-                if new_raw_packet.haslayer(DNS):
-                    print "DNS is there"
-                    if hasattr(new_raw_packet, 'ns') and new_raw_packet.ns: print new_raw_packet.ns.type
-                    if hasattr(new_raw_packet, 'an') and new_raw_packet.an: print new_raw_packet.an.rdata
-
-                payload_field = PayloadField("DNS.ns.type", "dns.ns.type")
-                extracted_value = payload_field.extract_field(new_raw_packet)
-                print "Extracted Value: " + extracted_value
-                output_tuple.append(extracted_value)
-
-                # print new_raw_packet.show()
-                # # sendp([str(p_str[17:])], iface="m-veth-3", verbose=0)
-                #
-                #
-                # if query['parse_payload']:
-                #     payload_fields = query['payload_fields']
-                #     for fld in payload_fields:
-                #         fld = 'ns.type'
-                #         fld_str = 'raw_packet.'+fld
-                #         if remove_layers.haslayer(DNS):
-                #             print "DNS is there"
-                #             print remove_layers.ns.type
-                #         # print fld_str
-                #         # payload_fld = eval(fld_str)
-                        # output_tuple.append(payload_fld)
+                if query['parse_payload']:
+                    payload_fields = query['payload_fields']
+                    for fld in payload_fields:
+                        payload_field = PayloadField(fld)
+                        extracted_value = payload_field.extract_field(new_raw_packet)
+                        print "Extracted Value: " + extracted_value
+                        output_tuple.append(extracted_value)
 
                 output_tuple = ['k']+[str(qid)]+output_tuple
                 send_tuple = ",".join([str(x) for x in output_tuple])
