@@ -1,12 +1,50 @@
 #!/usr/bin/env python
 # Author: Arpit Gupta (arpitg@cs.princeton.edu)
 
-#from scapy.all import *
+from scapy.all import *
 import struct
+
+"""
+dns.ns.type
+dns, ns, type
+if has_layer(dns)
+    if has_layer(ns)
+        return ns.type
+"""
+
+
+class PayloadField(object):
+    def __init__(self, target_name, sonata_name):
+        self.target_name = target_name
+        self.sonata_name = sonata_name
+
+    def get_sonata_name(self):
+        return self.sonata_name
+
+    def get_target_name(self):
+        return self.target_name
+
+    def extract_field(self, raw_packet):
+        layer = self.target_name.split('.')[0]
+        layer_str = "raw_packet.haslayer(" + layer + ")"
+        extracted_value = ''
+        has_field = True
+        if eval(layer_str):
+            cum_str = 'raw_packet'
+            for intermediate_field in self.target_name.split('.')[1:-1]:
+                cum_str += '.'+intermediate_field
+                if not eval(cum_str):
+                    has_field = False
+                    break
+            if has_field:
+                extracted_value = str(eval(cum_str + "." + self.target_name.split('.')[-1]))
+
+        return extracted_value
 
 
 class Field(object):
     byte_size = 8
+
     def __init__(self, target_name, sonata_name, size, format='>H', offset=0):
         self.target_name = target_name
         self.sonata_name = sonata_name
@@ -23,7 +61,6 @@ class Field(object):
         return self.target_name
 
     def extract_field(self, packet_as_string):
-
         return str(self.unpack_struct.unpack(packet_as_string[self.offset:self.offset + self.ctr])[0])
 
     def get_updated_offset(self):
@@ -40,7 +77,8 @@ class IPField(Field):
         self.ctr = self.size / self.byte_size
 
     def extract_field(self, packet_as_string):
-        return ".".join([str(x) for x in list(self.unpack_struct.unpack(packet_as_string[self.offset:self.offset + self.ctr]))])
+        return ".".join(
+            [str(x) for x in list(self.unpack_struct.unpack(packet_as_string[self.offset:self.offset + self.ctr]))])
 
 
 class MacField(Field):
@@ -53,4 +91,5 @@ class MacField(Field):
         self.ctr = self.size / self.byte_size
 
     def extract_field(self, packet_as_string):
-        return ".".join([str(x) for x in list(self.unpack_struct.unpack(packet_as_string[self.offset:self.offset + self.ctr]))])
+        return ".".join(
+            [str(x) for x in list(self.unpack_struct.unpack(packet_as_string[self.offset:self.offset + self.ctr]))])
