@@ -107,4 +107,6 @@ class P4Target(object):
         commands = self.app.get_update_commands(filter_update)
         commands_string = "\n".join(commands)
         write_to_file(self.P4_DELTA_COMMANDS, commands_string)
+        self.dataplane.send_commands(self.JSON_P4_COMPILED, self.P4_COMMANDS)
         self.dataplane.send_commands(self.JSON_P4_COMPILED, self.P4_DELTA_COMMANDS)
+

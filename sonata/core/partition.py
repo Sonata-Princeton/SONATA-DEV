@@ -9,7 +9,7 @@ from sonata.dataplane_driver.query_object import QueryObject as DP_QO
 from sonata.streaming_driver.query_object import PacketStream as SP_QO
 from sonata.query_engine.utils import copy_operators
 from sonata.core.utils import requires_payload_processing, copy_sonata_operators_to_sp_query,\
-    get_flattened_sub_queries, get_payload_fields, flatten_streaming_field_names
+    get_flattened_sub_queries, get_payload_fields, flatten_streaming_field_names,filter_payload_fields_append_to_end
 from sonata.query_engine.sonata_queries import PacketStream
 from sonata.system_config import BASIC_HEADERS
 from integration import sonata_2_dp_query
@@ -37,7 +37,9 @@ def get_dataplane_query(query, qid, partition_plan):
 
     return dp_query
 
-
+"""
+Function also rearranges the payload fields to the end.
+"""
 def get_streaming_query(query, qid, partition_plan):
     # number of operators in the data plane
     n_operators_dp = int(partition_plan)
@@ -48,8 +50,9 @@ def get_streaming_query(query, qid, partition_plan):
         if n_operators_dp > 0:
             # update the basic headers
             # Add 'k' field to filter out garbled message received by the stream processor
-            sp_query.basic_headers = list(query.operators[n_operators_dp-1].keys) + list(query.operators[n_operators_dp-1].values)
-
+            tmp_basic_headers = list(query.operators[n_operators_dp-1].keys) + list(query.operators[n_operators_dp-1].values)
+            basic_fields = filter_payload_fields_append_to_end(tmp_basic_headers)
+            sp_query.basic_headers = basic_fields
             sp_query.basic_headers = flatten_streaming_field_names(sp_query.basic_headers)
 
             border_operator = query.operators[n_operators_dp-1]
@@ -63,10 +66,10 @@ def get_streaming_query(query, qid, partition_plan):
         # sp_query = sp_query.filter_init(qid=qid, keys=sp_query.basic_headers)
         dp_operator = query.operators[n_operators_dp-1]
         if hasattr(dp_operator,"map_values"):
-            sp_query.map(keys=flatten_streaming_field_names(dp_operator.keys),
-                         values=flatten_streaming_field_names(dp_operator.map_values))
+            sp_query.map(keys=flatten_streaming_field_names(filter_payload_fields_append_to_end(dp_operator.keys)),
+                         values=flatten_streaming_field_names(filter_payload_fields_append_to_end(dp_operator.map_values)))
         else:
-            sp_query.map(keys=flatten_streaming_field_names(dp_operator.keys),
+            sp_query.map(keys=flatten_streaming_field_names(filter_payload_fields_append_to_end(dp_operator.keys)),
                          values=list())
 
         # Update the remainder operators

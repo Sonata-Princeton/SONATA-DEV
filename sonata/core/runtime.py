@@ -214,11 +214,11 @@ class Runtime(object):
                 queries_received[src_qid] = table_match_entries
             else:
                 queries_received[src_qid] = []
-            # print "DP Queries: ", str(len(self.dp_queries.keys())), " Received keys:", str(len(queries_received.keys()))
+            print "DP Queries: ", str(len(self.dp_queries.keys())), " Received keys:", str(len(queries_received.keys()))
             if len(queries_received.keys()) == len(self.dp_queries.keys()):
                 updateDeltaConfig = True
 
-            # print "Query Out Mappings: ",self.query_out_mappings
+            print "Query Out Mappings: ",self.query_out_mappings
             delta_config = {}
             # print "## Received output for query", src_qid, "at time", time.time() - start
             if updateDeltaConfig:

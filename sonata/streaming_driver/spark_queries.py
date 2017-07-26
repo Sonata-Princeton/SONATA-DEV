@@ -301,18 +301,18 @@ class Filter(StreamingQuery):
         self.filter_expr = '('
         for fld in self.filter_keys:
             if self.func[0] == 'eq':
-                self.filter_expr += str(fld) + '==' + str(self.func[1]) + ' &&'
+                self.filter_expr += 'float(' + str(fld) + ')' + '==' + str(self.func[1]) + ' &&'
             elif self.func[0] == 'geq':
                 self.filter_expr += str(fld) + '>=' + str(self.func[1]) + ' &&'
             elif self.func[0] == 'leq':
                 self.filter_expr += str(fld) + '<=' + str(self.func[1]) + '&&'
         for fld in self.filter_vals:
             if self.func[0] == 'eq':
-                self.filter_expr += str(fld) + '==' + str(self.func[1]) + ' &&'
+                self.filter_expr += 'float(' + str(fld) + ')' + '==' + str(self.func[1]) + ' &&'
             elif self.func[0] == 'geq':
                 self.filter_expr += 'float(' + str(fld) + ')' + '>=' + str(self.func[1]) + ' &&'
             elif self.func[0] == 'leq':
-                self.filter_expr += str(fld) + '<=' + str(self.func[1]) + '&&'
+                self.filter_expr += 'float(' + str(fld) + ')' + '<=' + str(self.func[1]) + '&&'
         self.filter_expr = self.filter_expr[:-2]
         self.filter_expr += ')'
         out = '.filter(lambda (('+str(self.keys)+'), ('+str(self.values)+')): '+self.filter_expr+')'
@@ -322,18 +322,18 @@ class Filter(StreamingQuery):
         self.filter_expr = '('
         for fld in self.filter_keys:
             if self.func[0] == 'eq':
-                self.filter_expr += str(fld) + '==' + str(self.func[1]) + ' &&'
-            elif self.func[0] == 'geq':
-                self.filter_expr += str(fld) + '>=' + str(self.func[1]) + ' &&'
-            elif self.func[0] == 'leq':
-                self.filter_expr += str(fld) + '<=' + str(self.func[1]) + '&&'
-        for fld in self.filter_vals:
-            if self.func[0] == 'eq':
-                self.filter_expr += str(fld) + '==' + str(self.func[1]) + ' &&'
+                self.filter_expr += 'float(' + str(fld) + ')' + '==' + str(self.func[1]) + ' &&'
             elif self.func[0] == 'geq':
                 self.filter_expr += 'float(' + str(fld) + ')' + '>=' + str(self.func[1]) + ' &&'
             elif self.func[0] == 'leq':
-                self.filter_expr += str(fld) + '<=' + str(self.func[1]) + '&&'
+                self.filter_expr += 'float(' + str(fld) + ')' + '<=' + str(self.func[1]) + '&&'
+        for fld in self.filter_vals:
+            if self.func[0] == 'eq':
+                self.filter_expr += 'float(' + str(fld) + ')' + '==' + str(self.func[1]) + ' &&'
+            elif self.func[0] == 'geq':
+                self.filter_expr += 'float(' + str(fld) + ')' + '>=' + str(self.func[1]) + ' &&'
+            elif self.func[0] == 'leq':
+                self.filter_expr += 'float(' + str(fld) + ')' + '<=' + str(self.func[1]) + '&&'
         self.filter_expr = self.filter_expr[:-2]
         self.filter_expr += ')'
         #print "Filter Keys: " + str(self.values)

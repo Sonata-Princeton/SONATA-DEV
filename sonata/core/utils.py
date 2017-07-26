@@ -25,28 +25,39 @@ def get_payload_fields(query):
 
     return list(payload_fields)
 
+
+def filter_payload_fields_append_to_end(fields):
+    payload_fields = set()
+
+    payload_fields = payload_fields.union(set(Query().payload_headers).intersection(set(fields)))
+    other = [x for x in fields if x not in payload_fields]
+    other.extend(list(payload_fields))
+    return other
+
+
 def flatten_streaming_field_names(fields):
     flattened_fields = [field.replace(".", "_") for field in fields]
 
     return flattened_fields
 
+
 def copy_sonata_operators_to_sp_query(query, optr):
     if optr.name == 'Filter':
-        query.filter(filter_keys=flatten_streaming_field_names(optr.filter_keys),
-                     filter_vals=flatten_streaming_field_names(optr.filter_vals),
+        query.filter(filter_keys=flatten_streaming_field_names(filter_payload_fields_append_to_end(optr.filter_keys)),
+                     filter_vals=flatten_streaming_field_names(filter_payload_fields_append_to_end(optr.filter_vals)),
                      func=optr.func)
     elif optr.name == "Map":
-        query.map(keys=flatten_streaming_field_names(optr.keys),
-                  values=flatten_streaming_field_names(optr.values),
-                  map_keys=flatten_streaming_field_names(optr.map_keys),
-                  map_values=flatten_streaming_field_names(optr.map_values),
+        query.map(keys=flatten_streaming_field_names(filter_payload_fields_append_to_end(optr.keys)),
+                  values=flatten_streaming_field_names(filter_payload_fields_append_to_end(optr.values)),
+                  map_keys=flatten_streaming_field_names(filter_payload_fields_append_to_end(optr.map_keys)),
+                  map_values=flatten_streaming_field_names(filter_payload_fields_append_to_end(optr.map_values)),
                   func=optr.func)
     elif optr.name == "Reduce":
-        query.reduce(keys=flatten_streaming_field_names(optr.keys),
+        query.reduce(keys=flatten_streaming_field_names(filter_payload_fields_append_to_end(optr.keys)),
                      func=optr.func)
 
     elif optr.name == "Distinct":
-        query.distinct(keys=flatten_streaming_field_names(optr.keys))
+        query.distinct(keys=flatten_streaming_field_names(filter_payload_fields_append_to_end(optr.keys)))
 
 
 def filter_payload(keys):

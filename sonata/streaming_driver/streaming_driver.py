@@ -77,12 +77,9 @@ class StreamingDriver(object):
 
     def process_pktstream(self, pktstream):
 
-        # print("Waiting for streaming query expressions ...")
         conn = self.sm_listener.accept()
-        # print("Connection request accepted")
         raw_data = conn.recv()
         queries = pickle.loads(raw_data)
-        # print ("Received queries from Runtime")
         spark_queries = {}
 
         for queryId in queries:
