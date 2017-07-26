@@ -61,26 +61,21 @@ class Emitter(object):
         '''
         callback function executed for each capture packet
         '''
-        # print "Received packet at Emitter"
         p_str = str(raw_packet)
-        # print raw_packet.summary()
-        # # hexdump(raw_packet)
         offset = 0
-
-
         # Read first two bits to extract query id (first field for all out headers is qid)
+        self.qid_field.offset = offset
         qid = int(self.qid_field.extract_field(p_str))
         offset = self.qid_field.get_updated_offset()
+        ctr = 0
+        ctr += self.qid_field.ctr
         output_tuple = []
-        print "Qid: ", qid, self.queries.keys()
 
         while True:
             start = "%.20f" %time.time()
             if int(qid) in [int(x) for x in self.queries.keys()] and int(qid) != 0:
-                print "Inside if loop", qid
                 query = self.queries[qid]
                 out_headers = query['headers']
-                print [fld.sonata_name for fld in out_headers.fields]
                 output_tuple = list()
 
                 if out_headers is not None:
@@ -100,21 +95,19 @@ class Emitter(object):
                             fld = Field(fld_name, fld_name, fld_size, format, offset)
 
                         offset = fld.get_updated_offset()
+                        ctr += fld.ctr
                         field_value = fld.extract_field(p_str)
-                        print fld_name, len(p_str), fld.offset, fld.ctr, field_value, fld.offset, fld.sonata_name
                         output_tuple.append(field_value)
 
-
                 conf.l3types.register_num2layer(3, Ether)
-
-                new_raw_packet = conf.l3types[3](p_str[17:])
+                ctr += 4
+                new_raw_packet = conf.l3types[3](p_str[ctr:])
 
                 if query['parse_payload']:
                     payload_fields = query['payload_fields']
                     for fld in payload_fields:
                         payload_field = PayloadField(fld)
                         extracted_value = payload_field.extract_field(new_raw_packet)
-                        print "Extracted Value: " + extracted_value
                         output_tuple.append(extracted_value)
 
                 output_tuple = ['k']+[str(qid)]+output_tuple
@@ -127,6 +120,7 @@ class Emitter(object):
                 self.qid_field.offset = offset
                 # Read first two bits for the next out header layer
                 qid = self.qid_field.extract_field(p_str)
+                ctr += self.qid_field.ctr
                 if qid in self.queries.keys() and qid != 0:
                     # we need to parse another layer for this packet
                     offset = self.qid_field.get_updated_offset()

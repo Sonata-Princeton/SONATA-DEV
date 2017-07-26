@@ -14,6 +14,7 @@ if has_layer(dns)
 
 scapy_fields_supported = {'dns.ns.type': "DNS.ns.type"}
 
+
 class PayloadField(object):
     def __init__(self, sonata_name):
         self.target_name = scapy_fields_supported[sonata_name]
@@ -33,7 +34,7 @@ class PayloadField(object):
         if eval(layer_str):
             cum_str = 'raw_packet'
             for intermediate_field in self.target_name.split('.')[1:-1]:
-                cum_str += '.'+intermediate_field
+                cum_str += '.' + intermediate_field
                 if not eval(cum_str):
                     has_field = False
                     break
