@@ -20,8 +20,25 @@ header ipv4_t ipv4;
 parser parse_ipv4 {
 	extract(ipv4);
 	return select(latest.protocol) {
+		17 : parse_udp;
 		default: ingress;
 	}
+}
+
+header_type udp_t {
+	fields {
+		srcPort : 16;
+		dstPort : 16;
+		length_ : 16;
+		checksum : 16;
+	}
+}
+
+header udp_t udp;
+
+parser parse_udp {
+	extract(udp);
+	return ingress;
 }
 
 header_type ethernet_t {
@@ -121,8 +138,10 @@ table add_final_header {
 header_type out_header_10032_t {
 	fields {
 		qid : 16;
-		ipv4_dstIP : 32;
+		udp_sport : 16;
+		ipv4_proto : 8;
 		ipv4_srcIP : 32;
+		ipv4_dstIP : 32;
 	}
 }
 header out_header_10032_t out_header_10032;
@@ -139,8 +158,10 @@ action do_mark_satisfied_10032(){
 action do_add_out_header_10032(){
 	add_header(out_header_10032);
 	modify_field(out_header_10032.qid, meta_mapinit_10032_1.qid);
-	modify_field(out_header_10032.ipv4_dstIP, meta_mapinit_10032_1.ipv4_dstIP);
+	modify_field(out_header_10032.udp_sport, meta_mapinit_10032_1.udp_sport);
+	modify_field(out_header_10032.ipv4_proto, meta_mapinit_10032_1.ipv4_proto);
 	modify_field(out_header_10032.ipv4_srcIP, meta_mapinit_10032_1.ipv4_srcIP);
+	modify_field(out_header_10032.ipv4_dstIP, meta_mapinit_10032_1.ipv4_dstIP);
 }
 
 table add_out_header_10032 {
@@ -161,8 +182,10 @@ table mark_satisfied_10032 {
 header_type meta_mapinit_10032_1_t {
 	fields {
 		qid: 16;
-		ipv4_srcIP: 32;
 		ipv4_dstIP: 32;
+		ipv4_proto: 8;
+		ipv4_srcIP: 32;
+		udp_sport: 16;
 	}
 }
 
@@ -170,8 +193,10 @@ metadata meta_mapinit_10032_1_t meta_mapinit_10032_1;
 
 action do_mapinit_10032_1(){
 	modify_field(meta_mapinit_10032_1.qid, 10032);
-	modify_field(meta_mapinit_10032_1.ipv4_srcIP, ipv4.srcAddr);
 	modify_field(meta_mapinit_10032_1.ipv4_dstIP, ipv4.dstAddr);
+	modify_field(meta_mapinit_10032_1.ipv4_proto, ipv4.protocol);
+	modify_field(meta_mapinit_10032_1.ipv4_srcIP, ipv4.srcAddr);
+	modify_field(meta_mapinit_10032_1.udp_sport, udp.srcPort);
 }
 
 table mapinit_10032_1 {
@@ -195,72 +220,29 @@ table map_10032_2 {
 }
 
 
-// Map 3 of query 10032
-action do_map_10032_3(){
-}
-
-table map_10032_3 {
-	actions {
-		do_map_10032_3;
+// Filter 3 of query 10032
+table filter_10032_3 {
+	reads {
+		ipv4.protocol: exact;
 	}
-	size : 1;
-}
-
-
-// Distinct 4 of query 10032
-header_type meta_distinct_10032_4_t {
-	fields {
-		value: 32;
-		index: 12;
-	}
-}
-
-metadata meta_distinct_10032_4_t meta_distinct_10032_4;
-
-field_list hash_distinct_10032_4_fields {
-	meta_mapinit_10032_1.ipv4_dstIP;
-	meta_mapinit_10032_1.ipv4_srcIP;
-}
-
-field_list_calculation hash_distinct_10032_4 {
-	input {
-		hash_distinct_10032_4_fields;
-	}
-	algorithm: crc32;
-	output_width: 12;
-}
-
-register distinct_10032_4 {
-	width: 32;
-	instance_count: 4096;
-}
-
-action do_init_distinct_10032_4(){
-	modify_field_with_hash_based_offset(meta_distinct_10032_4.index, 0, hash_distinct_10032_4, 4096);
-	register_read(meta_distinct_10032_4.value, distinct_10032_4, meta_distinct_10032_4.index);
-	bit_or(meta_distinct_10032_4.value, meta_distinct_10032_4.value, 1);
-	register_write(distinct_10032_4, meta_distinct_10032_4.index, meta_distinct_10032_4.value);
-}
-
-table init_distinct_10032_4 {
-	actions {
-		do_init_distinct_10032_4;
-	}
-	size : 1;
-}
-
-table pass_distinct_10032_4 {
-	actions {
-		_nop;
-	}
-	size : 1;
-}
-
-table drop_distinct_10032_4 {
 	actions {
 		drop_10032;
+		_nop;
 	}
-	size : 1;
+	size : 64;
+}
+
+
+// Filter 4 of query 10032
+table filter_10032_4 {
+	reads {
+		udp.srcPort: exact;
+	}
+	actions {
+		drop_10032;
+		_nop;
+	}
+	size : 64;
 }
 
 
@@ -272,15 +254,9 @@ control ingress {
 			if (meta_app_data.drop_10032 != 1) {
 				apply(map_10032_2);
 				if (meta_app_data.drop_10032 != 1) {
-					apply(map_10032_3);
+					apply(filter_10032_3);
 					if (meta_app_data.drop_10032 != 1) {
-						apply(init_distinct_10032_4);
-						if (meta_distinct_10032_4.value <= 1) {
-							apply(pass_distinct_10032_4);
-						}
-						else {
-							apply(drop_distinct_10032_4);
-						}
+						apply(filter_10032_4);
 						if (meta_app_data.drop_10032 != 1) {
 							apply(mark_satisfied_10032);
 						}

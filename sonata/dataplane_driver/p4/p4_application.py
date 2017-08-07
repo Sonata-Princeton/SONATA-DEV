@@ -10,15 +10,18 @@ from p4_field import P4Field
 from sonata.dataplane_driver.utils import get_logger
 import logging
 
-SERVER = False
+import json
+
+with open('/home/vagrant/dev/sonata/config.json') as json_data_file:
+    data = json.load(json_data_file)
+    print(data)
+
+config = data["on_server"][data["is_on_server"]]["sonata"]
+
 ORIGINAL_PACKET = False
 
-if SERVER:
-    SENDER_PORT = 11
-    RECIEVE_PORT = 10
-else:
-    SENDER_PORT = 11
-    RECIEVE_PORT = 13
+SENDER_PORT = config["SENDER_PORT"]
+RECIEVE_PORT = config["RECIEVE_PORT"]
 
 SESSION_ID = 8001
 SPAN_PORT = 12

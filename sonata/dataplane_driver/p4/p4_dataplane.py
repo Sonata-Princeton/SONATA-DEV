@@ -9,39 +9,33 @@ from interfaces import Interfaces
 from sonata.dataplane_driver.utils import get_out, get_in
 import threading,os
 
-
-SERVER = False
-if SERVER:
-    internal_interfaces = {"ens1f0": 11, "ens1f1":10, "ens4f0": 12}
-else:
-    internal_interfaces = {"m-veth-1": 11, "m-veth-2":12, "m-veth-3": 13}
-
 class Switch(threading.Thread):
-    def __init__(self,p4_json_path, switch_path):
+    def __init__(self, p4_json_path, switch_path, internal_interfaces):
         threading.Thread.__init__(self)
         self.daemon = True
         self.switch_path = switch_path
         self.p4_json_path = p4_json_path
+        self.internal_interfaces = internal_interfaces
 
     def run(self):
         compose_interfaces = ""
-        for inter,port in internal_interfaces.iteritems():
-            new_interface = " -i %s@%s "%(port,inter)
-            compose_interfaces +=new_interface
+        for inter, port in self.internal_interfaces.iteritems():
+            new_interface = " -i %s@%s " % (port, inter)
+            compose_interfaces += new_interface
 
-        COMMAND = "sudo %s %s %s --thrift-port 22222"%(self.switch_path, self.p4_json_path, compose_interfaces)
+        COMMAND = "sudo %s %s %s --thrift-port 22222" % (self.switch_path, self.p4_json_path, compose_interfaces)
         print COMMAND
         os.system(COMMAND)
 
 
 class P4DataPlane(object):
-    def __init__(self, interfaces, switch_path, cli_path, thrift_port, bm_script):
+    def __init__(self, interfaces, switch_path, cli_path, thrift_port, bm_script, internal_interfaces):
         self.interfaces = interfaces
         self.switch_path = switch_path
         self.cli_path = cli_path
         self.thrift_port = thrift_port
         self.bm_script = bm_script
-
+        self.internal_interfaces = internal_interfaces
         # LOGGING
         log_level = logging.WARNING
         # add handler
@@ -63,7 +57,7 @@ class P4DataPlane(object):
         sleep(1)
         cmd = self.switch_path + " >/dev/null 2>&1"
         get_out(cmd)
-        self.switch = Switch(p4_json_path, self.switch_path)
+        self.switch = Switch(p4_json_path, self.switch_path, self.internal_interfaces)
         self.switch.start()
         print "\nWaiting for switch to start..."
         sleep(2)

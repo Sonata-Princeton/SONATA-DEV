@@ -193,7 +193,7 @@ class Runtime(object):
         # It receives output for each query in SP
         # It sends output of the coarser queries to the dataplane driver or
         # SM depending on where filter operation is applied (mostly DP)
-        self.op_handler_socket = self.conf['sm_conf']['op_handler_socket']
+        self.op_handler_socket = tuple(self.conf['sm_conf']['op_handler_socket'])
         self.op_handler_listener = Listener(self.op_handler_socket)
 
         start = "%.20f" % time.time()
@@ -256,7 +256,7 @@ class Runtime(object):
 
     def start_dataplane_driver(self):
         # Start the fabric managers local to each data plane element
-        dpd = DataplaneDriver(self.conf['fm_conf']['fm_socket'], self.conf['fm_conf']['log_file'])
+        dpd = DataplaneDriver(self.conf['fm_conf']['fm_socket'], self.conf["internal_interfaces"], self.conf['fm_conf']['log_file'])
         self.dpd_thread = Thread(name='dp_driver', target=dpd.start)
         self.dpd_thread.setDaemon(True)
 
@@ -306,7 +306,7 @@ class Runtime(object):
         # Send compiled query expression to streaming manager
         start = "%.20f" % time.time()
         serialized_queries = pickle.dumps(self.sp_queries)
-        conn = Client(self.conf['sm_conf']['sm_socket'])
+        conn = Client(tuple(self.conf['sm_conf']['sm_socket']))
         conn.send(serialized_queries)
         self.logger.info("runtime,sm_init," + str(start) + "," + str(time.time()))
         print "*********************************************************************"
@@ -319,7 +319,7 @@ class Runtime(object):
         start = "%.20f" % time.time()
         message = {message_type: {0: content, 1: self.target_id}}
         serialized_queries = pickle.dumps(message)
-        conn = Client(self.conf['fm_conf']['fm_socket'])
+        conn = Client(tuple(self.conf['fm_conf']['fm_socket']))
         conn.send(serialized_queries)
         self.logger.info("runtime,fm_" + message_type + "," + str(start) + ",%.20f" % time.time())
         time.sleep(1)
@@ -344,6 +344,6 @@ class Runtime(object):
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)
         # create file handler which logs messages
-        self.fh = logging.FileHandler(self.conf['log_file'])
+        self.fh = logging.FileHandler(self.conf['base_folder'] + self.__class__.__name__)
         self.fh.setLevel(logging.INFO)
         self.logger.addHandler(self.fh)

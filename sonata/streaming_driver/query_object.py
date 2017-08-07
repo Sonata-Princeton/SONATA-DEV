@@ -2,8 +2,6 @@
 #  Author:
 #  Arpit Gupta (arpitg@cs.princeton.edu)
 
-import json, time
-from multiprocessing.connection import Client
 from netaddr import *
 
 from sonata.system_config import TARGET_SP, BASIC_HEADERS

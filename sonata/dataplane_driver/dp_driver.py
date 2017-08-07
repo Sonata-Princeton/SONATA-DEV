@@ -7,32 +7,14 @@ from multiprocessing.connection import Listener
 
 from query_cleaner import get_clean_application
 
-# from openflow.openflow import OFTarget
-from p4.p4_target import P4Target
-
-SERVER = False
-P4_TYPE = 'p4'
-
-if SERVER:
-    BASEPATH = '/home/sonata/'
-    SONATA = 'SONATA-DEV'
-    DP_DRIVER_CONF = ('172.17.0.101', 6666)
-    SPARK_ADDRESS = '0.0.0.0'
-    SNIFF_INTERFACE = 'ens4f0'
-else:
-    BASEPATH = '/home/vagrant/'
-    SONATA = 'dev'
-    DP_DRIVER_CONF = ('localhost', 6666)
-    SPARK_ADDRESS = 'localhost'
-    SNIFF_INTERFACE = 'm-veth-2'
-
 
 class DataplaneDriver(object):
-    def __init__(self, dpd_socket, metrics_file="test"):
+    def __init__(self, dpd_socket, internal_interfaces, metrics_file="test"):
         self.dpd_socket = dpd_socket
 
         self.targets = dict()
         self.metrics_log_file = metrics_file
+        self.internal_interfaces = internal_interfaces
 
         # LOGGING
         log_level = logging.ERROR
@@ -54,7 +36,7 @@ class DataplaneDriver(object):
         self.metrics = logging.getLogger(__name__)
         self.metrics.setLevel(logging.INFO)
         # create file handler which logs messages
-        self.fh = logging.FileHandler(self.metrics_log_file)
+        self.fh = logging.FileHandler(self.metrics_log_file + self.__class__.__name__)
         self.fh.setLevel(logging.INFO)
         self.metrics.addHandler(self.fh)
 
@@ -62,7 +44,7 @@ class DataplaneDriver(object):
 
     def start(self):
         self.logger.debug('starting the event listener')
-        dpd_listener = Listener(self.dpd_socket)
+        dpd_listener = Listener(tuple(self.dpd_socket))
         while True:
             conn = dpd_listener.accept()
             raw_data = conn.recv()
@@ -109,7 +91,7 @@ class DataplaneDriver(object):
                 return
             em_config = config['em_conf']
             switch_config = config['switch_conf']
-            target = P4Target(em_config, switch_config)
+            target = P4Target(em_config, switch_config, self.internal_interfaces)
         elif target_type == 'p4_old':
             from p4_old.p4_target_old import P4Target
             if 'em_conf' not in config or 'switch_conf' not in config:
@@ -164,8 +146,24 @@ class DataplaneDriver(object):
 
 
 def main():
+    import json
+
+    with open('/home/vagrant/dev/sonata/config.json') as json_data_file:
+        data = json.load(json_data_file)
+        print(data)
+
+    config = data["on_server"][data["is_on_server"]]["sonata"]
+
+
+    BASEPATH = config["base_folder"]
+    SONATA = 'SONATA-DEV'
+    DP_DRIVER_CONF = config["fm_conf"]["fm_socket"]
+    SPARK_ADDRESS = config["emitter_conf"]["spark_stream_address"]
+    SNIFF_INTERFACE = config["emitter_conf"]["sniff_interface"]
+
+
     dpd = DataplaneDriver(DP_DRIVER_CONF, BASEPATH + SONATA + "/sonata/tests/macro_bench/results/dp_driver.log")
-    p4_type = P4_TYPE
+    p4_type = "p4"
     compiled_srcs = ''
 
     if p4_type == 'p4_old':

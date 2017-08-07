@@ -17,7 +17,7 @@ class Emitter(object):
         self.spark_stream_address = conf['spark_stream_address']
         self.spark_stream_port = conf['spark_stream_port']
         self.sniff_interface = conf['sniff_interface']
-        print self.sniff_interface
+
         self.listener = Listener((self.spark_stream_address, self.spark_stream_port))
         self.spark_conn = None
 
@@ -34,7 +34,7 @@ class Emitter(object):
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)
         # create file handler which logs messages
-        self.fh = logging.FileHandler(conf['log_file'])
+        self.fh = logging.FileHandler(conf['log_path'] + "emitter.log")
         self.fh.setLevel(logging.INFO)
         self.logger.addHandler(self.fh)
 
@@ -55,7 +55,7 @@ class Emitter(object):
 
     def sniff_packets(self):
         print "Interface confirming: ", self.sniff_interface
-        sniff(iface=self.sniff_interface, prn=lambda x: self.process_packet(x))
+        sniff(iface=str(self.sniff_interface), prn=lambda x: self.process_packet(x))
 
     def process_packet(self, raw_packet):
         '''

@@ -16,7 +16,7 @@ Operator = namedtuple('Operator', 'name keys')
 
 
 class P4Target(object):
-    def __init__(self, em_conf, target_conf):
+    def __init__(self, em_conf, target_conf, internal_interfaces):
         self.em_conf = em_conf
 
         # Code Compilation
@@ -24,7 +24,7 @@ class P4Target(object):
         self.JSON_P4_COMPILED = self.COMPILED_SRCS + target_conf['json_p4_compiled']
         self.P4_COMPILED = self.COMPILED_SRCS + target_conf['p4_compiled']
         self.P4C_BM_SCRIPT = target_conf['p4c_bm_script']
-
+        self.internal_interfaces = internal_interfaces
         # Initialization of Switch
         self.BMV2_PATH = target_conf['bmv2_path']
         self.BMV2_SWITCH_BASE = self.BMV2_PATH + target_conf['bmv2_switch_base']
@@ -56,7 +56,8 @@ class P4Target(object):
                                      self.SWITCH_PATH,
                                      self.CLI_PATH,
                                      self.THRIFTPORT,
-                                     self.P4C_BM_SCRIPT)
+                                     self.P4C_BM_SCRIPT,
+                                     self.internal_interfaces)
 
         # p4 app object
         self.app = None
