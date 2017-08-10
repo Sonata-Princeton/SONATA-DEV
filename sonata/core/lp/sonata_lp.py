@@ -94,16 +94,20 @@ def solve_sonata_lp():
 
         # create A variables
         A = {}
-        for gid in range(len(G)):
-            var_name = "A_" + str(gid)
-            A[gid] = m.addVar(lb=0, ub=1, vtype=GRB.BINARY, name=var_name)
 
         # Add pipeline specific variables
         pipeline_2_I = {}
         pipeline_2_O = {}
+        pipeline_2_A = {}
         for pid in Q:
             pipeline_2_O[pid] = {}
             pipeline_2_I[pid] = {}
+            pipeline_2_A[pid] = {}
+
+            # create A variables
+            for gid in range(len(G)):
+                var_name = "A_" + str(pid) + "_" + str(gid)
+                pipeline_2_A[pid][gid] = m.addVar(lb=0, ub=1, vtype=GRB.BINARY, name=var_name)
 
             # create I variables
             for qid in Q:
@@ -146,23 +150,35 @@ def solve_sonata_lp():
             I_for_P = [pipeline_2_I[pid][qid] for qid in Q]
             m.addConstr(pipeline_2_ind[pid] <= sum(I_for_P))
 
-        # satisfy the constraint, sum(A) == sum(p_ind)
-        all_a = [A[gid] for gid in range(len(G))]
-        all_p = [pipeline_2_ind[pid] for pid in Q]
-        m.addConstr(sum(all_a) == sum(all_p))
+        # # satisfy the constraint, sum(A) == sum(p_ind)
+        # all_a = [A[gid] for gid in range(len(G))]
+        # all_p = [pipeline_2_ind[pid] for pid in Q]
+        # m.addConstr(sum(all_a) == sum(all_p))
+
+        for qid in Q:
+            I_for_P = [pipeline_2_I[pid][qid] for pid in Q]
+            m.addConstr(sum(I_for_P) <= 1)
+
+        for gid in range(len(G)):
+            A_for_P = [pipeline_2_A[pid][gid] for pid in Q]
+            m.addConstr(sum(A_for_P) <= 1)
+
 
         # relate A and I variables
-        A_2_I = []
-        for gid in range(len(G)):
-            g = G[gid]
-            I_for_g = []
-            for qid in g:
-                I_for_g += [pipeline_2_I[pid][qid] for pid in Q]
-                A_2_I += I_for_g
-                m.addConstr(sum([pipeline_2_I[pid][qid] for pid in Q]) >= A[gid])
-            m.addConstr(sum(I_for_g) >= A[gid] * len(g))
+        for pid in Q:
+            for gid in range(len(G)):
+                g = G[gid]
+                for qid in g:
+                    m.addGenConstrIndicator(pipeline_2_A[pid][gid], True, pipeline_2_I[pid][qid] == 1)
 
-        # m.addConstr(sum(A_2_I) == len(Q))
+        for pid in Q:
+            for qid in Q:
+                tmp = []
+                for gid in range(len(G)):
+                    g = G[gid]
+                    if qid in g:
+                        tmp.append(pipeline_2_A[pid][gid])
+                m.addConstr(sum(tmp) == pipeline_2_I[pid][qid])
 
         # objective
         objective_expr = ([table_2_bits[tid] * tables[tid]["last"] for tid in table_2_bits.keys()] +
@@ -176,26 +192,36 @@ def solve_sonata_lp():
 
         # satisfy mirroring overhead constraint
         total_packets_expr_list = []
-        for gid in range(len(G)):
-            print(gid, gid_2_doubleD[gid], len(gid_2_doubleD[gid]))
-            total_packets_expr_list.append(A[gid] * len(gid_2_doubleD[gid]))
+        for pid in Q:
+            for gid in range(len(G)):
+                print(gid, gid_2_doubleD[gid], len(gid_2_doubleD[gid]))
+                total_packets_expr_list.append(pipeline_2_A[pid][gid] * len(gid_2_doubleD[gid]))
 
         # Add cloned packet variable
         C = m.addVar(lb=0, ub=clone_max, vtype=GRB.INTEGER, name="Clone")
         m.addConstr(C == sum(total_packets_expr_list) - len(D))
         m.addConstr(C <= clone_max)
 
-        # Add stage variables
-        table_2_stage = {}
+        table_2_stageE = {}
+        table_2_stageF = {}
         for pid in Q:
-            table_2_stage[pid] = {}
+            table_2_stageE[pid] = {}
+            table_2_stageF[pid] = {}
             for qid in Q:
-                table_2_stage[pid][qid] = {}
+                table_2_stageE[pid][qid] = {}
+                table_2_stageF[pid][qid] = {}
                 for tid in query_2_tables[qid]:
-                    var_name = "S_" + str(pid) + "_" + str(qid) + "_" + str(tid)
-                    table_2_stage[pid][qid][tid] = m.addVar(lb=0, ub=sigma_max, vtype=GRB.INTEGER, name=var_name)
-                    m.addGenConstrIndicator(pipeline_2_I[pid][qid], False, table_2_stage[pid][qid][tid] <= 0)
-                    m.addGenConstrIndicator(pipeline_2_I[pid][qid], True, table_2_stage[pid][qid][tid] >= 1)
+                    var_name = "SE_" + str(pid) + "_" + str(qid) + "_" + str(tid)
+                    table_2_stageE[pid][qid][tid] = m.addVar(lb=0, ub=sigma_max, vtype=GRB.INTEGER, name=var_name)
+                    m.addGenConstrIndicator(pipeline_2_I[pid][qid], False, table_2_stageE[pid][qid][tid] <= 0)
+                    m.addGenConstrIndicator(pipeline_2_I[pid][qid], True, table_2_stageE[pid][qid][tid] >= 1)
+
+                    var_name = "SF_" + str(pid) + "_" + str(qid) + "_" + str(tid)
+                    table_2_stageF[pid][qid][tid] = m.addVar(lb=0, ub=sigma_max, vtype=GRB.INTEGER, name=var_name)
+                    m.addGenConstrIndicator(pipeline_2_I[pid][qid], False, table_2_stageF[pid][qid][tid] <= 0)
+                    m.addGenConstrIndicator(pipeline_2_I[pid][qid], True, table_2_stageF[pid][qid][tid] >= 1)
+
+                    m.addConstr(table_2_stageF[pid][qid][tid] <= table_2_stageE[pid][qid][tid])
 
         # Apply intra-query dependencies
         for pid in Q:
@@ -204,7 +230,7 @@ def solve_sonata_lp():
                     #m.addConstr(table_2_stage[pid][qid][tid2] - 1 - table_2_stage[pid][qid][tid1] >= 0)
                     m.addGenConstrIndicator(
                         pipeline_2_I[pid][qid], True,
-                        table_2_stage[pid][qid][tid2] - table_2_stage[pid][qid][tid1] >= 1)
+                        table_2_stageF[pid][qid][tid2] - table_2_stageE[pid][qid][tid1] >= 1)
 
         # create sigma variables
         pid_2_sigma = {}
@@ -217,7 +243,7 @@ def solve_sonata_lp():
             I_for_pid = [(len(query_2_tables[qid]) * pipeline_2_I[pid][qid]) for qid in Q]
             m.addConstr(sum(I_for_pid) == pid_2_sigma[pid])
 
-        # # apply inter-query dependencies
+        # apply inter-query dependencies
         for pid in Q:
             for qid1 in Q:
                 last_tid_1 = query_2_tables[qid1][-1]
@@ -228,56 +254,68 @@ def solve_sonata_lp():
                         first_tid_2 = query_2_tables[qid2][0]
                         m.addGenConstrIndicator(
                             pipeline_2_O[pid][qid1][qid2], True,
-                            table_2_stage[pid][qid2][first_tid_2] - table_2_stage[pid][qid1][last_tid_1] >= 1)
+                            table_2_stageF[pid][qid2][first_tid_2] - table_2_stageE[pid][qid1][last_tid_1] >= 1)
 
                         m.addGenConstrIndicator(
                             pipeline_2_O[pid][qid2][qid1], True,
-                            table_2_stage[pid][qid1][first_tid_1] - table_2_stage[pid][qid2][last_tid_2] >= 1)
+                            table_2_stageF[pid][qid1][first_tid_1] - table_2_stageE[pid][qid2][last_tid_2] >= 1)
+
+        # create W variable
+        W = {}
+
+        for pid in Q:
+            W[pid] = {}
+            for qid in Q:
+                W[pid][qid] = {}
+                for tid in query_2_tables[qid]:
+                    W[pid][qid][tid] = {}
+                    for sid in range(1, 1+sigma_max):
+                        var_name = "W_"+str(pid)+"_"+str(qid)+"_"+str(tid)+"_"+str(sid)
+                        W[pid][qid][tid][sid] = m.addVar(lb=0, ub=table_2_bits[tid], vtype=GRB.INTEGER, name=var_name)
+                        m.addGenConstrIndicator(pipeline_2_I[pid][qid], False, W[pid][qid][tid][sid] == 0)
+
+        # apply assignment constraint
+        for qid in Q:
+            for tid in query_2_tables[qid]:
+                for pid in Q:
+                    tmp = [W[pid][qid][tid][sid] for sid in range(1, 1+sigma_max)]
+                    var_name = "tmp_y_"+str(qid)+"_"+str(tid)+str(pid)
+                    tmp_y = m.addVar(lb=0, ub=1, vtype=GRB.BINARY, name=var_name)
+                    m.addConstr(tmp_y >= pipeline_2_I[pid][qid]+tables[tid]["d"]-1)
+                    m.addGenConstrIndicator(tmp_y, True, sum(tmp) >= table_2_bits[tid])
+
+        # apply memory constraint
+        for sid in range(1, 1+sigma_max):
+            W_for_S = []
+            for pid in Q:
+                for qid in Q:
+                    for tid in query_2_tables[qid]:
+                        W_for_S.append(W[pid][qid][tid][sid])
+
+            m.addConstr(sum(W_for_S) <= bits_max)
+
+        # relate W and stageE and stageF variables
+        for pid in Q:
+            for qid in Q:
+                for tid in query_2_tables[qid]:
+                    for sid in range(1, 1+sigma_max):
+                        # if W[pid][qid][tid][sid] > 0 then,
+                        # table_2_stageF[pid][qid][tid] <= sid and  table_2_stageE[pid][qid][tid] >= sid
+
+                        # create a new indicator variable
+                        var_name = "fin_ind_"+str(pid)+"_"+str(qid)+"_"+str(tid)+"_"+str(sid)
+                        tmp_ind = m.addVar(lb=0, ub=1, vtype=GRB.BINARY, name=var_name)
+                        m.addGenConstrIndicator(tmp_ind, False, W[pid][qid][tid][sid] == 0)
+                        m.addGenConstrIndicator(tmp_ind, True, table_2_stageF[pid][qid][tid] <= sid)
+                        m.addGenConstrIndicator(tmp_ind, True, table_2_stageE[pid][qid][tid] >= sid)
 
 
-        # # add E & F variables
-        # qid_2_E = {}
-        # qid_2_F = {}
-        #
-        # for qid in Q:
-        #     qid_2_E[qid] = {}
-        #     qid_2_F[qid] = {}
-        #     for tid in query_2_tables[qid]:
-        #         # add E variable
-        #         var_name = "E_"+str(qid)+"_"+str(tid)
-        #         qid_2_E[qid][tid] = m.addVar(lb=1, ub=sigma_max, vtype=GRB.INTEGER, name=var_name)
-        #
-        #         # add F variable
-        #         var_name = "F_"+str(qid)+"_"+str(tid)
-        #         qid_2_F[qid][tid] = m.addVar(lb=1, ub=sigma_max, vtype=GRB.INTEGER, name=var_name)
-        #         m.addConstr(qid_2_F[qid][tid] <= qid_2_E[qid][tid])
-        #
-        # # apply intra-query dependency constraints
-        # for qid in Q:
-        #     for (tid1, tid2) in zip(query_2_tables[qid][:-1], query_2_tables[qid][1:]):
-        #         m.addConstr(1+qid_2_E[qid][tid1] <= qid_2_F[qid][tid2])
-        #
-        # # apply inter-query dependency constraints
-        # for qid1 in Q:
-        #     last_tid_1 = query_2_tables[qid1][-1]
-        #     first_tid_1 = query_2_tables[qid1][0]
-        #     for qid2 in Q:
-        #         last_tid_2 = query_2_tables[qid2][-1]
-        #         first_tid_2 = query_2_tables[qid2][0]
-        #         if qid1 != qid2:
-        #             print((qid1,last_tid_1), (qid2,first_tid_2))
-        #             print((qid2,last_tid_2), (qid1,first_tid_1))
-        #             var_name = "tmp_y_"+str(qid1)+"_"+str(qid2)
-        #             tmp_y = m.addVar(lb=0, ub=1, vtype=GRB.BINARY, name=var_name)
-        #             M = 2
-        #             m.addConstr(o_vars[qid1][qid2] <= M*tmp_y)
-        #             # m.addConstr(qid_2_E[qid1][last_tid_1] - qid_2_F[qid2][first_tid_2] + 1 <= M*(1-tmp_y))
-        #
-        #             # m.addConstr(qid_2_F[qid2][last_tid_2] - qid_2_E[qid1][first_tid_1] + 1 <= tmp_y2)
-        #             # m.addConstr(-1*qid_2_F[qid2][last_tid_2] + qid_2_E[qid1][first_tid_1] + 1 <= 1-tmp_y2)
-        #
-        # # create W variable
-        # W = {}
+
+
+
+
+
+
         # for sid in range(1,1+sigma_max):
         #     W[sid] = {}
         #     for tid in table_2_bits.keys():
@@ -285,9 +323,10 @@ def solve_sonata_lp():
         #         W[sid][tid] = m.addVar(lb=1, ub=table_2_bits[tid], vtype=GRB.INTEGER, name=var_name)
         #
         # # apply assignment constraint
-        # for tid in table_2_bits.keys():
-        #     tmp = [W[sid][tid] for sid in range(1,1+sigma_max)]
-        #     m.addConstr(sum(tmp) <= tables[tid]["d"]*table_2_bits[tid])
+        # for qid in Q:
+        #     for tid in query_2_tables[qid]:
+        #         tmp = [W[sid][tid] for sid in range(1, 1+sigma_max)]
+        #         m.addConstr(sum(tmp) >= tables[tid]["d"]*table_2_bits[tid])
         #
         # # apply memory constraint
         # for sid in range(1,1+sigma_max):
@@ -311,6 +350,31 @@ def solve_sonata_lp():
         print('Obj:', m.objVal)
         for v in m.getVars():
             print(v.varName, v.x)
+
+        out_str = "Stages"
+        for sid in range(1,sigma_max+1):
+            out_str += "|"+str(sid)
+        out_str += "\n"
+
+        for pid in Q:
+            out_str += "P"+str(pid)+"|"
+            for sid in range(1,sigma_max+1):
+                out_sid = ""
+                if pipeline_2_ind[pid].x > 0:
+                    for qid in Q:
+                        if pipeline_2_I[pid][qid].x > 0:
+                            for tid in query_2_tables[qid]:
+                                if W[pid][qid][tid][sid].x > 0:
+                                    out_sid += "(S"+str(sid)+",Q"+str(qid)+",T"+str(tid)+",B="+str(W[pid][qid][tid][sid].x)+"),"
+                    out_sid = out_sid[:-1]
+                if out_sid == "":
+                    out_sid = "XXXX"
+                out_str += out_sid+"|"
+            out_str += "\n"
+
+        print(out_str)
+
+
 
     except GurobiError:
         print('Error reported', GurobiError.message)
