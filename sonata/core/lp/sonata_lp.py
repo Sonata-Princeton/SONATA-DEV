@@ -309,42 +309,6 @@ def solve_sonata_lp():
                         m.addGenConstrIndicator(tmp_ind, True, table_2_stageF[pid][qid][tid] <= sid)
                         m.addGenConstrIndicator(tmp_ind, True, table_2_stageE[pid][qid][tid] >= sid)
 
-
-
-
-
-
-
-
-        # for sid in range(1,1+sigma_max):
-        #     W[sid] = {}
-        #     for tid in table_2_bits.keys():
-        #         var_name = "W_"+str(sid)+"_"+str(tid)
-        #         W[sid][tid] = m.addVar(lb=1, ub=table_2_bits[tid], vtype=GRB.INTEGER, name=var_name)
-        #
-        # # apply assignment constraint
-        # for qid in Q:
-        #     for tid in query_2_tables[qid]:
-        #         tmp = [W[sid][tid] for sid in range(1, 1+sigma_max)]
-        #         m.addConstr(sum(tmp) >= tables[tid]["d"]*table_2_bits[tid])
-        #
-        # # apply memory constraint
-        # for sid in range(1,1+sigma_max):
-        #     tmp = [W[sid][tid] for tid in table_2_bits.keys()]
-        #     m.addConstr(sum(tmp) <= bits_max)
-        #
-        # # apply stage constraint
-        # # create stage indicator variable SI
-        # SIs = {}
-        # sigma = m.addVar(lb=0, ub=sigma_max, vtype=GRB.INTEGER, name="sigma")
-        # for sid in range(1,1+sigma_max):
-        #     var_name = "SI_"+str(sid)
-        #     SIs[sid] = m.addVar(lb=0, ub=1, vtype=GRB.INTEGER, name=var_name)
-        #
-        # for sid in range(1,1+sigma_max):
-        #     m.addConstr(sigma >= sid*SIs[sid])
-        #     tmp = [W[sid][tid] for tid in table_2_bits.keys()]
-        #     m.addConstr(sum(tmp) >= SIs[sid])
         m.write(name + ".lp")
         m.optimize()
         print('Obj:', m.objVal)
