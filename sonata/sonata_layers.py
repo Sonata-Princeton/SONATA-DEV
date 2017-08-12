@@ -66,8 +66,6 @@ def test():
     with open('/home/vagrant/dev/sonata/fields_mapping.json') as json_data_file:
         data = json.load(json_data_file)
 
-    layers = []
-
     print data[INITIAL_LAYER][TARGET_NAME]
 
     layers = SonataLayer(INITIAL_LAYER,
