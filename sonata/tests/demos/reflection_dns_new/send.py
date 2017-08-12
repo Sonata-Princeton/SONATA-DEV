@@ -8,7 +8,7 @@ from multiprocessing.connection import Listener
 
 
 NORMAL_PACKET_COUNT = 50
-ATTACK_PACKET_COUNT = 50
+ATTACK_PACKET_COUNT = 60
 
 
 IFACE = "out-veth-1"
