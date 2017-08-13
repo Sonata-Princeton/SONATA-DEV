@@ -495,4 +495,15 @@ class P4Filter(P4Operator):
         return self.filter_mask
 
     def get_init_keys(self):
+
         return self.keys
+
+    """
+    {10032: In
+        .Filter(prev_keys=['udp.sport', 'dns.qd.ttl', 'dns.qdcount', 'ipv4.proto', 'dns.qd.qname'], filter_keys=('ipv4.proto',), filter_vals=[], func=('eq', 17) src = 0).Filter(prev_keys=['udp.sport', 'dns.qd.ttl', 'dns.qdcount', 'ipv4.proto', 'dns.qd.qname'], filter_keys=('udp.sport',), filter_vals=[], func=('eq', 53) src = 0)}
+    {10032: In
+        .Map(keys=['udp.sport', 'dns.ns.type', 'ipv4.proto', 'ipv4.srcIP', 'ipv4.dstIP'], map_keys=(u'ipv4.dstIP',), values=[], map_values=[], func=('mask', 32))
+        .Filter(prev_keys=['udp.sport', 'dns.ns.type', 'ipv4.proto', 'ipv4.srcIP', 'ipv4.dstIP'], filter_keys=('ipv4.proto',), filter_vals=[], func=('eq', 17) src = 0)
+        .Filter(prev_keys=['udp.sport', 'dns.ns.type', 'ipv4.proto', 'ipv4.srcIP', 'ipv4.dstIP'], filter_keys=('udp.sport',), filter_vals=[], func=('eq', 53) src = 0)}
+
+    """
