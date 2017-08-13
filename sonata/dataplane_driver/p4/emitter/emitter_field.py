@@ -12,7 +12,12 @@ if has_layer(dns)
         return ns.type
 """
 
-scapy_fields_supported = {'dns.ns.type': "DNS.ns.type"}
+scapy_fields_supported = {
+                            'dns.ns.type': "DNS.ns.type",
+                            'dns.qdcount': 'DNS.qdcount',
+                            'dns.qd.qname': 'DNS.qd.qname',
+                            'dns.qd.ttl': 'DNS.qd.ttl'
+                        }
 
 
 class PayloadField(object):

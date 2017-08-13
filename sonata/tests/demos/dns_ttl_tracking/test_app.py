@@ -25,7 +25,7 @@ if __name__ == '__main__':
                .filter(filter_keys=('ipv4.proto',), func=('eq', 17))
                .filter(filter_keys=('udp.sport',), func=('eq', 53))
                .filter(filter_keys=('dns.qdcount',), func=('geq', 1))
-               .map(keys=('dns.qd.qname', 'dns.qd.ttl'))#, map_values=('count',), func=('eq', 1,))
+               .map(keys=('dns.qd.qname', 'dns.qd.ttl'))s
                .distinct(keys=('dns.qd.qname', 'dns.qd.ttl'))
                .map(keys=('dns.qd.qname',), map_values=('count',), func=('eq', 1,))
                .reduce(keys=('dns.qd.qname',), func=('sum',))

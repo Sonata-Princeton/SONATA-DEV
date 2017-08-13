@@ -13,7 +13,7 @@ class Query(object):
                      'ipv4.ttl', 'tcp.ackNo', 'ipv4.srcIP', 'ipv4.version', 'ipv4.identification', 'tcp.ecn',
                      'tcp.window', 'tcp.checksum', 'tcp.dataOffset', 'ipv4.fragOffset', 'tcp.sport',
                      'tcp.urgentPtr', 'ethernet.ethType']
-    payload_headers = ['dns.ns.type']
+    payload_headers = ['dns.ns.type', 'dns.qdcount','dns.qd.qname', 'dns.qd.ttl']
     refinement_headers = ["ipv4.dstIP", "ipv4.srcIP"]
 
     def __init__(self, *args, **kwargs):

@@ -10,3 +10,6 @@ class P4Field(object):
         self.target_name = target_name
         self.sonata_name = sonata_name
         self.size = size
+
+    def __repr__(self):
+        return "P4Field(target=" + self.target_name + ", sonata=" + self.sonata_name + ", size=" + str(self.size) +")"

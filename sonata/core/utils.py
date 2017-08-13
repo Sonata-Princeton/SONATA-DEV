@@ -84,12 +84,12 @@ def copy_sonata_operators_to_dp_query(query, optr):
         query.distinct(keys=keys)
 
 
-def get_refinement_keys(query):
+def get_refinement_keys(query, refinement_keys_set):
     print query
     red_keys = set([])
     if query.left_child is not None:
-        red_keys_left = get_refinement_keys(query.left_child)
-        red_keys_right = get_refinement_keys(query.right_child)
+        red_keys_left = get_refinement_keys(query.left_child, refinement_keys_set)
+        red_keys_right = get_refinement_keys(query.right_child, refinement_keys_set)
         print "left keys", red_keys_left, query.qid
         print "right keys", red_keys_right, query.qid
         # TODO: make sure that we better handle the case when first reduce operator has both sIP and dIP as reduction keys
@@ -114,7 +114,7 @@ def get_refinement_keys(query):
                 red_keys = red_keys.intersection(set(operator.keys))
 
     print "Reduction Key Search", query.qid, red_keys
-    return red_keys
+    return red_keys.intersection(refinement_keys_set)
 
 
 def generate_composed_spark_queries(reduction_key, basic_headers, query_tree, qid_2_query, composed_queries={}):

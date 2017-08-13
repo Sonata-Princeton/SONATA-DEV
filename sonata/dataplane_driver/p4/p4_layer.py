@@ -148,6 +148,9 @@ class OutHeaders(P4Layer):
     def get_parser_code(self):
         return "extract("+self.name+");"
 
+    def __repr__(self):
+        return "OutHeaders(layer=" +self.name+ ", fields=" + str(self.fields) + ")"
+
 
 class P4RawFields(object):
     all_fields = None
