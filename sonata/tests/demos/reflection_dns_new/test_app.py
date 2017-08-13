@@ -18,7 +18,7 @@ if __name__ == '__main__':
 
     config = data["on_server"][data["is_on_server"]]["sonata"]
 
-    q1 = (PacketStream(1)
+    reflection_dns = (PacketStream(1)
           .filter(filter_keys=('ipv4.proto',), func=('eq', 17))
           .filter(filter_keys=('udp.sport',), func=('eq', 53))
           .filter(filter_keys=('dns.ns.type',), func=('eq', 46))
@@ -30,7 +30,8 @@ if __name__ == '__main__':
           .map(keys=('ipv4.dstIP',))
           )
 
-    queries = [q1]
+    queries = [reflection_dns]
+    config["final_plan"] = [(1, 32, 3, 1)]
 
     print("*********************************************************************")
     print("*                   Receiving User Queries                          *")
