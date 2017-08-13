@@ -83,7 +83,7 @@ class Runtime(object):
                 # print final_plan
 
                 final_plan = [(1, 16, 5, 1), (3, 32, 1, 2)]  # (1, 16, 5, 1),
-                final_plan = [(1, 32, 3, 1)]# (3, 32, 1, 2)]  # (1, 16, 5, 1),
+                final_plan = conf["final_plan"]# (3, 32, 1, 2)]  # (1, 16, 5, 1),
                 # final_plan = [(1, 32, 5, 1)]
                 prev_r = 0
                 prev_qid = 0

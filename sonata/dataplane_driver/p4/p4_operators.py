@@ -435,7 +435,7 @@ class P4Filter(P4Operator):
         self.filter_mask = None
         self.filter_values = None
         self.func = None
-
+        # self.out_headers = []
         self.match_action = match_action
         self.miss_action = miss_action
 

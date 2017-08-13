@@ -8,8 +8,9 @@ import sonata.streaming_driver.query_object as spark
 from partition import Partition
 from sonata.query_engine.utils import copy_operators
 
+
 def get_refined_query_id(query, ref_level):
-    return 10000*query.qid + ref_level
+    return 10000 * query.qid + ref_level
 
 
 def get_thresh(training_data, spark_query, spread, refinement_level, satisfied_sonata_spark_query, ref_levels):
@@ -88,32 +89,48 @@ class Refinement(object):
         self.query = query
         self.target = target
         self.ref_levels = range(0, GRAN_MAX, GRAN)
-        self.refinement_key = list(get_refinement_keys(self.query, refinement_keys_set))[0]
         self.qid_2_query = get_qid_2_query(self.query)
-        # print self.qid_2_query
 
-        # Add timestamp for each key
-        self.add_timestamp_key()
+        tmp_refinement_key = get_refinement_keys(self.query, refinement_keys_set)
+        if tmp_refinement_key:
+            print "***************** Went into refinement **********************"
+            self.is_refinement_enabled = True
+            self.refinement_key = list(tmp_refinement_key)[0]
 
-        # Generate refined intermediate SONATA queries
-        self.generate_refined_intermediate_sonata_queries()
+            # print self.qid_2_query
 
-    def get_refined_updated_query(self, qid, ref_level, prev_qid = 0, prev_ref_level = 0):
-        # return query with updated threshold values and map operation---masking based on refinement level
-        iter_qids = self.refined_sonata_queries[qid][ref_level].keys()
-        iter_qids.sort()
-        tmp_query = self.refined_sonata_queries[qid][ref_level][iter_qids[-1]]
-        if prev_ref_level > 0:
-            out_query = PacketStream(tmp_query.qid)
-            out_query.basic_headers = get_concise_headers(tmp_query)
-            refined_qid_src = 10000*prev_qid + prev_ref_level
-            out_query.filter(append_type=1, src=refined_qid_src, filter_keys=(self.refinement_key,),
-                                 func=('mask',prev_ref_level,))
+            # Add timestamp for each key
+            self.add_timestamp_key()
 
-            for operator in tmp_query.operators:
-                copy_operators(out_query, operator)
+            # Generate refined intermediate SONATA queries
+            self.generate_refined_intermediate_sonata_queries()
         else:
-            out_query = tmp_query
+            self.is_refinement_enabled = False
+            # refined_query_id = get_refined_query_id(GRAN_MAX)
+
+    def get_refined_updated_query(self, qid, ref_level, prev_qid=0, prev_ref_level=0):
+        # return query with updated threshold values and map operation---masking based on refinement level
+        if self.is_refinement_enabled:
+            iter_qids = self.refined_sonata_queries[qid][ref_level].keys()
+            iter_qids.sort()
+            tmp_query = self.refined_sonata_queries[qid][ref_level][iter_qids[-1]]
+            if prev_ref_level > 0:
+                out_query = PacketStream(tmp_query.qid)
+                out_query.basic_headers = get_concise_headers(tmp_query)
+                refined_qid_src = 10000 * prev_qid + prev_ref_level
+                out_query.filter(append_type=1, src=refined_qid_src, filter_keys=(self.refinement_key,),
+                                 func=('mask', prev_ref_level,))
+
+                for operator in tmp_query.operators:
+                    copy_operators(out_query, operator)
+            else:
+                out_query = tmp_query
+        else:
+            out_query = PacketStream(self.query.qid)
+            out_query.basic_headers = get_concise_headers(self.query)
+            for operator in self.query.operators:
+                copy_operators(out_query, operator)
+            # out_query = self.query
 
         return out_query
 
@@ -225,7 +242,8 @@ class Refinement(object):
                                     break
                                 else:
                                     filter_ctr += 1
-                    self.refined_sonata_queries[current_parent_qid][ref_level][curr_qid] = copy.deepcopy(curr_sonata_query)
+                    self.refined_sonata_queries[current_parent_qid][ref_level][curr_qid] = copy.deepcopy(
+                        curr_sonata_query)
 
                     if ref_level == self.ref_levels[-1]:
                         level_32_sonata_query = copy.deepcopy(curr_sonata_query)

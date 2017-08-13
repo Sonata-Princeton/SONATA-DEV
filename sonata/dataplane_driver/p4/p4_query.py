@@ -275,7 +275,7 @@ class P4Query(object):
         header_format['parse_payload'] = self.parse_payload
         header_format['payload_fields'] = self.payload_fields
         print "%%%% get_header_format %%%% :" + str(self.out_header)
-        if self.out_header:
+        if self.parse_payload:
             header_format['headers'] = self.out_header
         else:
             header_format['headers'] = None
