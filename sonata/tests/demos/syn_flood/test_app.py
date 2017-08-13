@@ -58,6 +58,9 @@ if __name__ == '__main__':
     # make qid = 4,5 - run in stream processor, enable join and sum/diff operations in SP
     # Also how to support 2*n3
     # also how multiple map_values might work here
+    # Implement two kinds of joins here
+    # Same Window Join - Spark
+    # Consecutive Window Join - DataPlane filter operation
     syn_flood_victim = (n_syn
                         .join(new_qid=4, query=n_synack)
                         .map(map_keys=('ipv4.dstIP'), map_values=('count1', 'count2'), func=('sum'))
