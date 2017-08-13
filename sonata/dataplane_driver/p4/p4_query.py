@@ -130,7 +130,7 @@ class P4Query(object):
         print "#DEBUG INIT FIELDS:", generic_operators
         all_fields = set()
         for operator in generic_operators:
-            if operator.name in {'Map', 'Reduce', 'Distinct'}:
+            if operator.name in {'Map', 'Reduce', 'Distinct', 'Filter'}:
                 print "#DEBUG INIT FIELDS:", operator.name, operator.get_init_keys()
                 all_fields = all_fields.union(set(operator.get_init_keys()))
         # No need to filter out count field
@@ -275,7 +275,7 @@ class P4Query(object):
         header_format['parse_payload'] = self.parse_payload
         header_format['payload_fields'] = self.payload_fields
         print "%%%% get_header_format %%%% :" + str(self.out_header)
-        if self.parse_payload:
+        if self.out_header:
             header_format['headers'] = self.out_header
         else:
             header_format['headers'] = None
