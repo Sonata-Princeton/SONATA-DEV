@@ -18,14 +18,14 @@ if __name__ == '__main__':
 
     config = data["on_server"][data["is_on_server"]]["sonata"]
 
-    brute_ssh = (PacketStream(4)
+    brute_ssh = (PacketStream(1)
      # .filter(filter_keys=('proto',), func=('eq', 6))
-     .map(keys=('dIP', 'sIP', 'nBytes'))
-     .distinct(keys=('dIP', 'sIP', 'nBytes'))
-     .map(keys=('dIP','nBytes'), map_values=('count',), func=('eq', 1,))
-     .reduce(keys=('dIP','nBytes'), func=('sum',))
+     .map(keys=('ipv4.dstIP', 'ipv4.srcIP', 'ipv4.totalLen'))
+     .distinct(keys=('ipv4.dstIP', 'ipv4.srcIP', 'ipv4.totalLen'))
+     .map(keys=('ipv4.dstIP','ipv4.totalLen'), map_values=('count',), func=('eq', 1,))
+     .reduce(keys=('ipv4.dstIP','ipv4.totalLen'), func=('sum',))
      .filter(filter_vals=('count',), func=('geq', '99'))
-     .map(keys=('dIP',))
+     .map(keys=('ipv4.dstIP',))
      )
 
     queries = [brute_ssh]

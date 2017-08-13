@@ -15,7 +15,7 @@ THRESHOLD = 5
 
 # TODO: get rid of this local fix. This won't be required after we fix the sonata query module
 local_fix = {'ethernet.dstMac': 'ethernet.dstMac', 'ipv4.srcIP': 'ipv4.srcIP', 'ipv4.proto': 'ipv4.proto',
-             'ethernet.srcMac': 'ethernet.srcMac', 'nBytes': 'ipv4.totalLen', 'udp.dport': 'udp.dport',
+             'ethernet.srcMac': 'ethernet.srcMac', 'ipv4.totalLen': 'ipv4.totalLen', 'udp.dport': 'udp.dport',
              'udp.sport': 'udp.sport', 'ipv4.dstIP': 'ipv4.dstIP'}
 
 # sonata_raw_fields = ['ipv4.hdrChecksum', 'tcp.dport', 'ethernet.dstMac', 'udp.len', 'tcp.ctrl',

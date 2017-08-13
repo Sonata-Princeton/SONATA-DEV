@@ -13,7 +13,6 @@ from sonata.streaming_driver.streaming_driver import StreamingDriver
 
 # from sonata.core.training.weights.training_data import TrainingData
 from sonata.core.training.utils import get_spark_context_batch, create_spark_context
-from sonata.core.utils import get_refinement_keys, get_flattened_sub_queries, get_qid_2_query
 
 from sonata.core.training.learn.learn import Learn
 from sonata.core.refinement import apply_refinement_plan, get_refined_query_id, Refinement
@@ -36,6 +35,7 @@ class Runtime(object):
 
     def __init__(self, conf, queries):
         self.conf = conf
+        self.refinement_keys = conf["refinement_keys"]
         self.queries = queries
         self.initialize_logging()
         self.target_id = 1
@@ -53,9 +53,9 @@ class Runtime(object):
             for query in self.queries:
                 target = Target()
                 assert hasattr(target, 'costly_operators')
-                refinement_object = Refinement(query, target)
+                refinement_object = Refinement(query, target, self.refinement_keys)
 
-                self.refinement_keys[query.qid] = refinement_object.refinement_key
+                # self.refinement_keys[query.qid] = refinement_object.refinement_key
                 print "*********************************************************************"
                 print "*                   Generating Query Plan                           *"
                 print "*********************************************************************\n\n"

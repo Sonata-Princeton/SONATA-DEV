@@ -84,11 +84,11 @@ class Refinement(object):
     filter_mappings = {}
     qid_2_refined_queries = {}
 
-    def __init__(self, query, target):
+    def __init__(self, query, target, refinement_keys_set):
         self.query = query
         self.target = target
         self.ref_levels = range(0, GRAN_MAX, GRAN)
-        self.refinement_key = list(get_refinement_keys(self.query))[0]
+        self.refinement_key = list(get_refinement_keys(self.query, refinement_keys_set))[0]
         self.qid_2_query = get_qid_2_query(self.query)
         # print self.qid_2_query
 
