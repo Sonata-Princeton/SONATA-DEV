@@ -317,6 +317,10 @@ class Runtime(object):
     def send_to_dp_driver(self, message_type, content):
         # Send compiled query expression to fabric manager
         start = "%.20f" % time.time()
+
+        with open('dns_reflection.pickle', 'w') as f:
+            pickle.dump(content, f)
+
         message = {message_type: {0: content, 1: self.target_id}}
         serialized_queries = pickle.dumps(message)
         conn = Client(tuple(self.conf['fm_conf']['fm_socket']))
