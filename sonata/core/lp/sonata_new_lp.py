@@ -2,28 +2,9 @@ from __future__ import print_function
 
 from gurobipy import Model, GRB, GurobiError
 
-Q = [1]
-query_2_tables = {1: [1, 2]}
 
-sigma_max = 2
-width_max = 4
-bits_max = 100
-
-# cost_matrix = {1: {(0, 8): (1000, 20, 20), (0, 16): (1000, 70, 40), (0, 32): (1000, 120, 80),
-#                    (8, 16): (500, 50, 40), (8, 32): (500, 90, 50), (16, 32): (300, 40, 20)}
-#                }
-#
-# qid_2_R = {1: [0, 8, 16, 32]}
-
-cost_matrix = {1: {(0, 32): {1: (1000, 80), 2: (80, 60)}}
-               }
-
-qid_2_R = {1: [0, 32]}
-
-
-def solve_sonata_lp():
+def solve_sonata_lp(Q, query_2_tables, cost_matrix, qid_2_R, sigma_max, width_max, bits_max):
     name = "sonata"
-    # try:
     # Create a new model
     m = Model(name)
     I = {}
@@ -66,8 +47,10 @@ def solve_sonata_lp():
             for rid_prev in qid_2_R[qid]:
                 # add f variable for previous refinement level rid_prev for table tid_new
                 if rid_prev < rid:
-                    var_name = "f_" + str(qid) + "_" + str(rid_prev) + "->" + str(rid)
+                    var_name = "f_" + str(qid) + "_" + str(rid_prev) + "_" + str(rid)
                     F[qid][rid][rid_prev] = m.addVar(lb=0, ub=1, vtype=GRB.BINARY, name=var_name)
+                    if rid_prev > 0:
+                        m.addConstr(F[qid][rid][rid_prev] <= I[qid][rid_prev])
 
             # sum of all f variables for each table is at max 1
             f_over__qr = [F[qid][rid][rid_prev] for rid_prev in F[qid][rid].keys()]
@@ -90,7 +73,6 @@ def solve_sonata_lp():
                     # add f variable for stage sid rid_prev for table tid_new
                     var_name = "s_" + str(tid_new) + "_" + str(sid)
                     S[qid][rid][tid][sid] = m.addVar(lb=0, ub=1, vtype=GRB.BINARY, name=var_name)
-                    # If S[qid][rid][tid][sid] == 1 then Sigma[qid][rid][tid] == sid
                     m.addGenConstrIndicator(S[qid][rid][tid][sid], True, Sigma[qid][rid][tid] == sid)
 
                 # a table can at most use one stage
@@ -98,7 +80,6 @@ def solve_sonata_lp():
                 m.addConstr(sum(s_over_t) >= D[qid][rid][tid])
                 m.addGenConstrIndicator(D[qid][rid][tid], True, sum(s_over_t) == 1)
                 m.addGenConstrIndicator(D[qid][rid][tid], False, sum(s_over_t) == 0)
-                # m.addConstr(sum(s_over_t) <= 1)
 
                 # add last variable for this table
                 var_name = "last_" + str(tid_new)
@@ -118,14 +99,10 @@ def solve_sonata_lp():
             for tid in query_2_tables[qid]:
                 tmp = [D[qid][rid][tid1] for tid1 in query_2_tables[qid][:ind]]
                 m.addConstr(D[qid][rid][tid] >= Last[qid][rid][tid])
-                # m.addGenConstrIndicator(Last[qid][rid][tid], True, D[qid][rid][tid] == 1)
-                # m.addGenConstrIndicator(Last[qid][rid][tid], False, D[qid][rid][tid] >= 0)
                 ind += 1
 
             for (tid1, tid2) in zip(query_2_tables[qid][:-1], query_2_tables[qid][1:]):
-                # m.addGenConstrIndicator(Last[qid][rid][tid2], True, D[qid][rid][tid1] == 1)
                 m.addConstr(D[qid][rid][tid1] >= D[qid][rid][tid2])
-                # m.addConstr(Last[qid][rid][tid1]+1 <= Last[qid][rid][tid2])
 
             # inter-query dependency
             for (tid1, tid2) in zip(query_2_tables[qid][:-1], query_2_tables[qid][1:]):
@@ -160,10 +137,11 @@ def solve_sonata_lp():
 
     # apply the pipeline width constraint
     for sid in range(1, 1 + sigma_max):
+        s_over_stage = []
         for qid in Q:
             for rid in qid_2_R[qid][1:]:
-                tmp = [S[qid][rid][tid][sid] for tid in query_2_tables[qid]]
-                m.addConstr(sum(tmp) <= width_max)
+                s_over_stage += [S[qid][rid][tid][sid] for tid in query_2_tables[qid]]
+        m.addConstr(sum(s_over_stage) <= width_max)
 
     # apply the bits per stage constraint
     BS = {}
@@ -185,6 +163,8 @@ def solve_sonata_lp():
                     All_BS[sid].append(BS[sid][qid][rid][tid])
         m.addConstr(sum(All_BS[sid]) <= bits_max)
 
+
+
     # define the objective, i.e. minimize the total number of packets to send to stream processor
     total_packets = []
     for qid in Q:
@@ -196,11 +176,46 @@ def solve_sonata_lp():
     m.write(name + ".lp")
     m.optimize()
     print('Obj:', m.objVal)
-    for v in m.getVars():
-        print(v.varName, v.x)
-        # except GurobiError:
-        #     print('Error reported', GurobiError.message)
+
+    return m
+
+
+def test_lp():
+    # Test 1:
+    Q = [1]
+    query_2_tables = {1: [1, 2]}
+
+    sigma_max = 3
+    width_max = 4
+    bits_max = 100
+
+    cost_matrix = {1: {(0, 32): {1: (1000, 110), 2: (120, 80)},
+                       (0, 16): {1: (1000, 50), 2: (50, 30)},
+                       (16, 32): {1: (500, 70), 2: (70, 50)}}
+                   }
+
+    qid_2_R = {1: [0, 16, 32]}
+    m = solve_sonata_lp(Q, query_2_tables, cost_matrix, qid_2_R, sigma_max, width_max, bits_max)
+    assert (m.objVal == 80)
+
+    # Test 2:
+    Q = [1, 2]
+    query_2_tables = {1: [1, 2], 2: [1, 2]}
+
+    sigma_max = 1
+    width_max = 1
+    bits_max = 100
+
+    cost_matrix = {1: {(0, 32): {1: (1000, 50), 2: (50, 40)}},
+                   2: {(0, 32): {1: (800, 40), 2: (40, 30)}}
+                   }
+
+    qid_2_R = {1: [0, 32], 2: [0, 32]}
+    m = solve_sonata_lp(Q, query_2_tables, cost_matrix, qid_2_R, sigma_max, width_max, bits_max)
+    # for v in m.getVars():
+    #     print(v.varName, v.x)
+    assert (m.objVal == 850)
 
 
 if __name__ == '__main__':
-    solve_sonata_lp()
+    test_lp()
