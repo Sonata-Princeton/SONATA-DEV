@@ -175,7 +175,7 @@ def solve_sonata_lp(Q, query_2_tables, cost_matrix, qid_2_R, sigma_max, width_ma
             for rid in qid_2_R[qid][1:]:
                 BS[sid][qid][rid] = {}
                 for tid in query_2_tables[qid]:
-                    var_name = "bs_" + str(sid) + "_" + str(qid)+"_"+str(rid) + "_" + str(tid)
+                    var_name = "bs_" + str(sid) + "_" + str(qid) + "_" + str(rid) + "_" + str(tid)
                     BS[sid][qid][rid][tid] = m.addVar(lb=0, ub=GRB.INFINITY, vtype=GRB.INTEGER, name=var_name)
                     b_over_r = [F[qid][rid][rid_prev] * cost_matrix[qid][(rid_prev, rid)][tid][1] for rid_prev in
                                 F[qid][rid].keys()]
@@ -233,7 +233,7 @@ def solve_sonata_lp(Q, query_2_tables, cost_matrix, qid_2_R, sigma_max, width_ma
         refinement_levels[qid] = "0"
         for rid in qid_2_R[qid][1:]:
             if I[qid][rid].x == 1:
-                refinement_levels[qid] += "-->"+str(rid)
+                refinement_levels[qid] += "-->" + str(rid)
 
             out_table.append([])
             out_table[row_id].append("Q(" + str(qid) + "," + str(rid) + ")")
@@ -297,7 +297,6 @@ def test_lp(test_id=1):
         assert (m.objVal == 850)
 
     elif test_id == 3:
-
 
         sigma_max = 2
         width_max = 2
