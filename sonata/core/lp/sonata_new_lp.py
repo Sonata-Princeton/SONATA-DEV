@@ -138,7 +138,8 @@ def solve_sonata_lp(Q, query_2_tables, cost_matrix, qid_2_R, sigma_max, width_ma
 
             n_over_qr_no_dp = []
             for rid_prev in F[qid][rid].keys():
-                n_over_qr_no_dp = [F[qid][rid][rid_prev] * cost_matrix[qid][(rid_prev, rid)][1][0] for rid_prev in
+                tid_min = min(cost_matrix[qid][(rid_prev, rid)].keys())
+                n_over_qr_no_dp = [F[qid][rid][rid_prev] * cost_matrix[qid][(rid_prev, rid)][tid_min][0] for rid_prev in
                                    F[qid][rid].keys()]
 
             var_name = "ind_" + str(qid) + str(rid)
@@ -221,6 +222,11 @@ def solve_sonata_lp(Q, query_2_tables, cost_matrix, qid_2_R, sigma_max, width_ma
     m.setParam(GRB.Param.LogToConsole, 0)
     m.optimize()
 
+    # for v in m.getVars():
+    #     print(v.varName, v.x)
+
+
+
     # Print the Output
     out_table = []
     refinement_levels = {}
@@ -234,15 +240,14 @@ def solve_sonata_lp(Q, query_2_tables, cost_matrix, qid_2_R, sigma_max, width_ma
         for rid in qid_2_R[qid][1:]:
             if I[qid][rid].x == 1:
                 refinement_levels[qid] += "-->" + str(rid)
-
             out_table.append([])
             out_table[row_id].append("Q(" + str(qid) + "," + str(rid) + ")")
             for sid in range(1, sigma_max + 1):
                 flag = 0
                 for tid in query_2_tables[qid]:
-                    if S[qid][rid][tid][sid].x == 1:
+                    if S[qid][rid][tid][sid].x > 0:
                         for rid_prev in F[qid][rid].keys():
-                            if F[qid][rid][rid_prev].x == 1:
+                            if F[qid][rid][rid_prev].x > 0:
                                 out_table[row_id].append(cost_matrix[qid][(rid_prev, rid)][tid][1])
                                 flag = 1
                 if flag == 0:
@@ -321,22 +326,22 @@ def test_lp(test_id=1):
 
         qid_2_R = {1: [0, 8, 16, 32], 2: [0, 8, 16, 32]}
 
-        # set mode to 2
+        # set mode to FILTER-ONLY
         mode = 2
         m = solve_sonata_lp(Q, query_2_tables, cost_matrix, qid_2_R, sigma_max, width_max, bits_max, mode)
         assert (m.objVal == 1900)
 
-        # set mode to 3
+        # set mode to PART-ONLY
         mode = 3
         m = solve_sonata_lp(Q, query_2_tables, cost_matrix, qid_2_R, sigma_max, width_max, bits_max, mode)
         assert (m.objVal == 1070)
 
-        # set mode to 4
+        # set mode to FIXED-REF
         mode = 4
         m = solve_sonata_lp(Q, query_2_tables, cost_matrix, qid_2_R, sigma_max, width_max, bits_max, mode)
         assert (m.objVal == 980)
 
-        # set mode to 6
+        # set mode to SONATA
         mode = 6
         m = solve_sonata_lp(Q, query_2_tables, cost_matrix, qid_2_R, sigma_max, width_max, bits_max, mode)
         assert (m.objVal == 200)
