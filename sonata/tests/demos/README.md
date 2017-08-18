@@ -8,7 +8,7 @@
 | DNS Tunneling | Yes           |               |
 | Heavy Hitter  | Yes           |               |
 | New Open Conn | Yes           |               |
-| Port Scan     | No           |               |
+| Port Scan     | Yes           |               |
 | Reflection DNS| Yes           |               |
 | Slowloris ATK | No           |               |
 | SSH Brute     | Yes           |               |

@@ -19,7 +19,7 @@ def create_normal_traffic():
     for i in range(number_of_packets):
         sIP = socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff)))
         dIP = socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff)))
-        p = Ether() / IP(dst=dIP, src=sIP) / TCP() / "SONATA NORMAL"
+        p = Ether() / IP(dst=dIP, src=sIP)/UDP()
         normal_packets.append(p)
 
     return normal_packets
@@ -27,17 +27,18 @@ def create_normal_traffic():
 
 def create_attack_traffic():
     number_of_packets = ATTACK_PACKET_COUNT
-    dIP = '99.7.186.25'
-    sIPs = []
+    sIP = '99.7.186.25'
+    dIPs = []
     attack_packets = []
 
     for i in range(number_of_packets):
-        sIPs.append(socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff))))
+        dIPs.append(socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff))))
 
-    ttl = 10
-    for sIP in sIPs:
-        ttl += 1
-        p = Ether() / IP(dst=dIP, src=sIP) / UDP(sport=53) /DNS(qr=1, aa=1, ancount=1,an=DNSRR(rrname='www.thepacketgeek.com',  ttl=ttl, rdata='192.168.1.1'))
+    dport = 0
+    for dIP in dIPs:
+        dport += 1
+        p = Ether() / IP(dst=dIP, src=sIP) / TCP(dport=dport, flags='S')
+
         attack_packets.append(p)
 
     return attack_packets

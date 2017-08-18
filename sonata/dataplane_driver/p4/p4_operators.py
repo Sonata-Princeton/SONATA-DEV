@@ -16,7 +16,7 @@ THRESHOLD = 5
 # TODO: get rid of this local fix. This won't be required after we fix the sonata query module
 local_fix = {'ethernet.dstMac': 'ethernet.dstMac', 'ipv4.srcIP': 'ipv4.srcIP', 'ipv4.proto': 'ipv4.proto',
              'ethernet.srcMac': 'ethernet.srcMac', 'ipv4.totalLen': 'ipv4.totalLen', 'udp.dport': 'udp.dport',
-             'udp.sport': 'udp.sport', 'ipv4.dstIP': 'ipv4.dstIP', 'tcp.flags': 'tcp.flags'}
+             'udp.sport': 'udp.sport', 'ipv4.dstIP': 'ipv4.dstIP', 'tcp.flags': 'tcp.flags', 'tcp.dport':'tcp.dport'}
 
 
 # sonata_raw_fields = ['ipv4.hdrChecksum', 'tcp.dport', 'ethernet.dstMac', 'udp.len', 'tcp.ctrl',
@@ -77,7 +77,7 @@ class P4Distinct(P4Operator):
     def __init__(self, qid, operator_id, meta_init_name, drop_action, nop_action, keys, p4_raw_fields):
         super(P4Distinct, self).__init__('Distinct', qid, operator_id, keys, p4_raw_fields)
 
-        self.threshold = 1
+        self.threshold = 0
         self.comp_func = '<='  # bitwise and
         self.update_func = '&'  # bitwise and
 
@@ -116,16 +116,24 @@ class P4Distinct(P4Operator):
         self.value_field_name = '%s.value' % self.metadata.get_name()
 
         # create ACTION and TABLE to compute hash and get value
-        primitives = list()
-        primitives.append(ModifyFieldWithHashBasedOffset(self.index_field_name, 0, self.hash.get_name(),
+        primitives1 = list()
+        primitives1.append(ModifyFieldWithHashBasedOffset(self.index_field_name, 0, self.hash.get_name(),
                                                          REGISTER_INSTANCE_COUNT))
-        primitives.append(RegisterRead(self.value_field_name, self.register.get_name(), self.index_field_name))
-        primitives.append(BitOr(self.value_field_name, self.value_field_name, 1))
-        primitives.append(RegisterWrite(self.register.get_name(), self.index_field_name, self.value_field_name))
-        self.action = Action('do_init_%s' % self.operator_name, primitives)
+        primitives1.append(RegisterRead(self.value_field_name, self.register.get_name(), self.index_field_name))
+
+        self.action1 = Action('do_init_%s' % self.operator_name, primitives1)
+
+        # create ACTION and TABLE to bit_or value & write back
+        primitives2 = list()
+        primitives2.append(BitOr(self.value_field_name, self.value_field_name, 1))
+        primitives2.append(RegisterWrite(self.register.get_name(), self.index_field_name, self.value_field_name))
+        self.action2 = Action('do_update_%s' % self.operator_name, primitives2)
 
         table_name = 'init_%s' % self.operator_name
-        self.init_table = Table(table_name, self.action.get_name(), [], None, 1)
+        self.init_table = Table(table_name, self.action1.get_name(), [], None, 1)
+
+        table_name = 'update_%s' % self.operator_name
+        self.update_table = Table(table_name, self.action2.get_name(), [], None, 1)
 
         # create two TABLEs that implement reduce operation: if count <= THRESHOLD, update count and drop, else let it
         # pass through
@@ -143,7 +151,9 @@ class P4Distinct(P4Operator):
         out += self.metadata.get_code()
         out += self.hash.get_code()
         out += self.register.get_code()
-        out += self.action.get_code()
+        out += self.action1.get_code()
+        out += self.action2.get_code()
+        out += self.update_table.get_code()
         out += self.init_table.get_code()
         out += self.pass_table.get_code()
         out += self.drop_table.get_code()
@@ -153,6 +163,7 @@ class P4Distinct(P4Operator):
     def get_commands(self):
         commands = list()
         commands.append(self.init_table.get_default_command())
+        commands.append(self.update_table.get_default_command())
         commands.append(self.pass_table.get_default_command())
         commands.append(self.drop_table.get_default_command())
         return commands
@@ -163,6 +174,7 @@ class P4Distinct(P4Operator):
         out += '%sapply(%s);\n' % (indent, self.init_table.get_name())
         out += '%sif (%s %s %i) {\n' % (indent, self.value_field_name, self.comp_func, self.threshold)
         out += '%s\tapply(%s);\n' % (indent, self.pass_table.get_name())
+        out += '%s\tapply(%s);\n' % (indent, self.update_table.get_name())
         out += '%s}\n' % (indent, )
         out += '%selse {\n' % (indent, )
         out += '%s\tapply(%s);\n' % (indent, self.drop_table.get_name())
