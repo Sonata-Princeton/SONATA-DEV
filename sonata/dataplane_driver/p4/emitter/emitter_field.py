@@ -14,9 +14,9 @@ if has_layer(dns)
 
 scapy_fields_supported = {
                             'dns.ns.type': "DNS.ns.type",
-                            'dns.qdcount': 'DNS.qdcount',
-                            'dns.qd.qname': 'DNS.qd.qname',
-                            'dns.qd.ttl': 'DNS.qd.ttl'
+                            'dns.ancount': 'DNS.ancount',
+                            'dns.an.rrname': 'DNS.an.rrname',
+                            'dns.an.ttl': 'DNS.an.ttl'
                         }
 
 
