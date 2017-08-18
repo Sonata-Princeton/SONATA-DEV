@@ -37,7 +37,8 @@ def create_attack_traffic():
     ttl = 10
     for sIP in sIPs:
         ttl += 1
-        p = Ether() / IP(dst=dIP, src=sIP) / UDP(sport=53) /DNS(qr=1, aa=1, ancount=1,an=DNSRR(rrname='www.thepacketgeek.com',  ttl=ttl, rdata='192.168.1.1'))
+        p = Ether() / IP(dst=dIP, src=sIP, proto=6) / TCP(sport=54, dport=65, flags=2, seq=1000)
+
         attack_packets.append(p)
 
     return attack_packets
