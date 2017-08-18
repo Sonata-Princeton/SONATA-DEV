@@ -94,14 +94,19 @@ if __name__ == '__main__':
           )
 
     # heavy hitter detection
+    # This works with training data since we need to
+    # first know how much is 99 percentile and then
+    # use that 99 percentile as threshold
     q2 = (PacketStream(2)
-          .map(keys=('dIP', 'dPort','sPort','sIP'), values=('nBytes',))
-          .reduce(keys=('dIP', 'dPort','sPort','sIP',), func=('sum',))
+          .map(keys=('dIP', 'sIP'), values=('nBytes',))
+          .reduce(keys=('dIP','sIP',), func=('sum',))
           .filter(filter_vals=('nBytes',), func=('geq', '99'))
           .map(keys=('dIP',))
           )
 
     # super spreader detection
+    # One host makes too many connections to different
+
     q3 = (PacketStream(3)
           .map(keys=('dIP', 'sIP'))
           .distinct(keys=('dIP', 'sIP'))
@@ -130,8 +135,9 @@ if __name__ == '__main__':
           .map(keys=('domain',))
           )
 
-
     # port scan
+    # One host is scanning lot of different ports
+    # this potentially happens before an attack
     q6 = (PacketStream(6)
           # .filter(filter_keys=('proto',), func=('eq', 6))
           .map(keys=('sIP', 'dPort'))
