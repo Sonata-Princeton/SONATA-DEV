@@ -90,14 +90,19 @@ class Refinement(object):
         self.target = target
         self.ref_levels = range(0, GRAN_MAX, GRAN)
         self.qid_2_query = get_qid_2_query(self.query)
-
+        self.per_query_refinement_key = {}
         tmp_refinement_key = get_refinement_keys(self.query, refinement_keys_set)
         if tmp_refinement_key:
-            print "***************** Went into refinement **********************"
+            print "***************** Went into refinement **********************" + str([key for key, value in self.qid_2_query.items()])
+
+            for key, query in self.qid_2_query.items():
+
+                tmp_refinement_key_qid = list(get_refinement_keys(query, refinement_keys_set))
+                if tmp_refinement_key_qid: self.per_query_refinement_key[key] = tmp_refinement_key_qid[0]
+                else: self.per_query_refinement_key[key] = None
+            print (self.per_query_refinement_key)
             self.is_refinement_enabled = True
             self.refinement_key = list(tmp_refinement_key)[0]
-
-            # print self.qid_2_query
 
             # Add timestamp for each key
             self.add_timestamp_key()
@@ -118,7 +123,7 @@ class Refinement(object):
                 out_query = PacketStream(tmp_query.qid)
                 out_query.basic_headers = get_concise_headers(tmp_query)
                 refined_qid_src = 10000 * prev_qid + prev_ref_level
-                out_query.filter(append_type=1, src=refined_qid_src, filter_keys=(self.refinement_key,),
+                out_query.filter(append_type=1, src=refined_qid_src, filter_keys=(self.per_query_refinement_key[qid],),
                                  func=('mask', prev_ref_level,))
 
                 for operator in tmp_query.operators:
@@ -154,7 +159,7 @@ class Refinement(object):
         for (qid, sonata_query) in self.qid_2_query.iteritems():
             if qid in self.qid_2_query:
                 refined_sonata_queries[qid] = {}
-                refinement_key = self.refinement_key
+                refinement_key = self.per_query_refinement_key[qid]
                 ref_levels = self.ref_levels
 
                 for ref_level in ref_levels[1:]:

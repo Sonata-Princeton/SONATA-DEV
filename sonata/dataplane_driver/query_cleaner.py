@@ -70,13 +70,16 @@ def get_clean_application(application):
                 new_o.prev_keys = operator.prev_keys
                 new_o.prev_values = operator.prev_values
                 new_o.func = operator.func
-                next_operator = query.operators[index + 1]
+                if index < len(query.operators)-1:
+                    next_operator = query.operators[index + 1]
 
-                # merge Reduce and following Filter if the filter is on count and uses geq as function
-                if next_operator.name == 'Filter' and 'count' in next_operator.filter_vals and next_operator.func[0] == 'geq':
-                    skip_next_filter = True
-                    filter_value = next_operator.func[1]
-                    new_o.threshold = filter_value
+                    # merge Reduce and following Filter if the filter is on count and uses geq as function
+                    if next_operator.name == 'Filter' and 'count' in next_operator.filter_vals and next_operator.func[0] == 'geq':
+                        skip_next_filter = True
+                        filter_value = next_operator.func[1]
+                        new_o.threshold = filter_value
+                    else:
+                        logger.error('reduce operator without a following, valid filter')
                 else:
                     logger.error('reduce operator without a following, valid filter')
             else:
