@@ -40,8 +40,8 @@ if __name__ == '__main__':
                    .filter(filter_vals=('count',), func=('geq', T))
                    )
 
-    queries = [ip_2_domain, domain_2_ip]
-    config["final_plan"] = [(1, 32, 2, 1)]
+    queries = [ip_2_domain]
+    config["final_plan"] = [(1, 32, 4, 1)]
     print("*********************************************************************")
     print("*                   Receiving User Queries                          *")
     print("*********************************************************************\n\n")

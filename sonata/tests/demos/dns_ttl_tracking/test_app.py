@@ -16,11 +16,7 @@ if __name__ == '__main__':
         print(data)
 
     config = data["on_server"][data["is_on_server"]]["sonata"]
-<<<<<<< HEAD
-    T = 40
-=======
     T = 1
->>>>>>> b83e2640160edda4f631dc95f71c54f1ba12c114
 
     # Normally ttl is only 1 value
     # but if it is an attack it will keep changing.
@@ -28,15 +24,6 @@ if __name__ == '__main__':
     dns_ttl = (PacketStream(1)
                .filter(filter_keys=('ipv4.proto',), func=('eq', 17))
                .filter(filter_keys=('udp.sport',), func=('eq', 53))
-<<<<<<< HEAD
-               .filter(filter_keys=('dns.qdcount',), func=('geq', 1))
-               .map(keys=('dns.qd.qname', 'dns.qd.ttl'))
-               .distinct(keys=('dns.qd.qname', 'dns.qd.ttl'))
-               .map(keys=('dns.qd.qname',), map_values=('count',), func=('eq', 1,))
-               .reduce(keys=('dns.qd.qname',), func=('sum',))
-               .filter(filter_vals=('count',), func=('geq', T))
-               .map(keys=('dns.qd.qname',))
-=======
                .filter(filter_keys=('dns.ancount',), func=('geq', 1))
                .map(keys=('dns.an.rrname', 'dns.an.ttl'))
                .distinct(keys=('dns.an.rrname', 'dns.an.ttl'))
@@ -44,7 +31,6 @@ if __name__ == '__main__':
                .reduce(keys=('dns.an.rrname',), func=('sum',))
                .filter(filter_vals=('count',), func=('geq', 40))
                .map(keys=('dns.an.rrname',))
->>>>>>> b83e2640160edda4f631dc95f71c54f1ba12c114
                )
 
     queries = [dns_ttl]

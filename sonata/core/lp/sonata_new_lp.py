@@ -245,15 +245,9 @@ def solve_sonata_lp(Q, query_2_tables, cost_matrix, qid_2_R, sigma_max, width_ma
             for sid in range(1, sigma_max + 1):
                 flag = 0
                 for tid in query_2_tables[qid]:
-<<<<<<< HEAD
                     if int(S[qid][rid][tid][sid].x) == 1:
                         for rid_prev in F[qid][rid].keys():
                             if int(F[qid][rid][rid_prev].x) == 1:
-=======
-                    if S[qid][rid][tid][sid].x > 0:
-                        for rid_prev in F[qid][rid].keys():
-                            if F[qid][rid][rid_prev].x > 0:
->>>>>>> b83e2640160edda4f631dc95f71c54f1ba12c114
                                 out_table[row_id].append(cost_matrix[qid][(rid_prev, rid)][tid][1])
                                 flag = 1
                 if flag == 0:
@@ -352,7 +346,6 @@ def test_lp(test_id=1):
         m = solve_sonata_lp(Q, query_2_tables, cost_matrix, qid_2_R, sigma_max, width_max, bits_max, mode)
         assert (m.objVal == 200)
 
-<<<<<<< HEAD
     elif test_id == 4:
 
         sigma_max = 2
@@ -401,8 +394,3 @@ def test_lp(test_id=1):
 
 if __name__ == '__main__':
     test_lp(4)
-=======
-
-if __name__ == '__main__':
-    test_lp(3)
->>>>>>> b83e2640160edda4f631dc95f71c54f1ba12c114

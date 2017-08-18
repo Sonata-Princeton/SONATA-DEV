@@ -26,7 +26,6 @@ def get_dataplane_query(query, qid, partition_plan):
         if border_operator.name == "Reduce":
             # We need to ensure that we also execute the next filter operator in the data plane
             n_operators_dp += 1
-
         for operator in query.operators[:n_operators_dp]:
             # passing the operators as-is based on discussions with Rudy
             dp_query.operators.append(operator)
