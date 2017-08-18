@@ -19,7 +19,7 @@ def create_normal_traffic():
     for i in range(number_of_packets):
         sIP = socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff)))
         dIP = socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff)))
-        p = Ether() / IP(dst=dIP, src=sIP) / TCP() / "SONATA NORMAL"
+        p = Ether() / IP(dst=dIP, src=sIP)
         normal_packets.append(p)
 
     return normal_packets
@@ -37,7 +37,7 @@ def create_attack_traffic():
     ttl = 10
     for sIP in sIPs:
         ttl += 1
-        p = Ether() / IP(dst=dIP, src=sIP, proto=6) / TCP(sport=54, dport=65, flags=2, seq=1000)
+        p = Ether() / IP(dst=dIP, src=sIP) / TCP(dport=5555, flags='S')
 
         attack_packets.append(p)
 

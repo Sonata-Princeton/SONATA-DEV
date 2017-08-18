@@ -14,14 +14,16 @@ if __name__ == '__main__':
         print(data)
 
     config = data["on_server"][data["is_on_server"]]["sonata"]
-    T = 1
+    T = 40
 
     n_syn = (PacketStream(1)
              .filter(filter_keys=('ipv4.proto',), func=('eq', 6))
              .filter(filter_keys=('tcp.flags',), func=('eq', 2))
+             # .map(keys=('ipv4.dstIP',))
              .map(keys=('ipv4.dstIP',), map_values=('count',), func=('eq', 1,))
              .reduce(keys=('ipv4.dstIP',), func=('sum',))
-             .filter(filter_vals=('ipv4.dstIP',), func=('geq', T))
+             .filter(filter_vals=('count',), func=('geq', T))
+             .map(keys=('ipv4.dstIP',))
              )
 
     queries = [n_syn]

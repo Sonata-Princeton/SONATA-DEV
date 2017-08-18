@@ -112,13 +112,24 @@ class TCP(P4Layer):
                        P4Field(self, "seqNo", "tcp.seqNo", 32),
                        P4Field(self, "ackNo", "tcp.ackNo", 32),
                        P4Field(self, "dataOffset", "tcp.dataOffset", 4),
-                       P4Field(self, "res", "tcp.res", 3),
-                       P4Field(self, "flags", "tcp.flags", 3),
-                       P4Field(self, "ecn", "tcp.ecn", 3),
-                       P4Field(self, "ctrl", "tcp.ctrl", 6),
+                       P4Field(self, "res", "tcp.res", 4),
+                       P4Field(self, "flags", "tcp.flags", 8),
+                       # P4Field(self, "ecn", "tcp.ecn", 3),
+                       # P4Field(self, "ctrl", "tcp.ctrl", 6),
                        P4Field(self, "window", "tcp.window", 16),
                        P4Field(self, "checksum", "tcp.checksum", 16),
                        P4Field(self, "urgentPtr", "tcp.urgentPtr", 16)
+
+                       # srcPort : 16;
+                       #  dstPort : 16;
+                       #  seqNo : 32;
+                       #  ackNo : 32;
+                       #  dataOffset : 4;
+                       #  res : 4;
+                       #  flags : 8;
+                       #  window : 16;
+                       #  checksum : 16;
+                       #  urgentPtr : 16;
                        ]
 
 
