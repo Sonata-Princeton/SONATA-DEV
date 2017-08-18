@@ -16,7 +16,8 @@ scapy_fields_supported = {
                             'dns.ns.type': "DNS.ns.type",
                             'dns.ancount': 'DNS.ancount',
                             'dns.an.rrname': 'DNS.an.rrname',
-                            'dns.an.ttl': 'DNS.an.ttl'
+                            'dns.an.ttl': 'DNS.an.ttl',
+                            'dns.an.rdata': 'DNS.an.rdata'
                         }
 
 
