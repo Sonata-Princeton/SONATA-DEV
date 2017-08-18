@@ -12,12 +12,15 @@ ATTACK_PACKET_COUNT = 60
 IFACE = "out-veth-1"
 
 
+<<<<<<< HEAD
 def send_packet(pkt_tuple):
     (sIP, sPort, dIP, dPort, nBytes, proto, sMac, dMac) = pkt_tuple
     p = Ether() / IP(dst=dIP, src=sIP) / TCP(dport=int(dPort), sport=int(sPort)) / "SONATA"
     sendp(p, iface=IFACE, verbose=0)
 
 
+=======
+>>>>>>> b83e2640160edda4f631dc95f71c54f1ba12c114
 def create_normal_traffic():
     number_of_packets = NORMAL_PACKET_COUNT
     normal_packets = []
@@ -26,7 +29,10 @@ def create_normal_traffic():
         sIP = socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff)))
         dIP = socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff)))
         p = Ether() / IP(dst=dIP, src=sIP) / TCP() / "SONATA NORMAL"
+<<<<<<< HEAD
         # print p.summary()
+=======
+>>>>>>> b83e2640160edda4f631dc95f71c54f1ba12c114
         normal_packets.append(p)
 
     return normal_packets
@@ -41,17 +47,25 @@ def create_attack_traffic():
     for i in range(number_of_packets):
         sIPs.append(socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff))))
 
+<<<<<<< HEAD
     for sIP in sIPs:
         p = Ether() / IP(dst=dIP, src=sIP) / UDP(sport=53) / DNS(nscount=1, ns=DNSRR(type=46))
         # print p.show()
         # print sIP, p.proto, p.sport, p.ns.type
         # print len(str(p)), "Ether(): ", len(str(Ether())), "IP: ", len(str(IP(dst=dIP, src=sIP))), \
         #     "UDP: ",len(str(UDP(sport=53))),"DNS: ", len(str(DNS(nscount=1, ns=DNSRR(type=46)))), "\n"
+=======
+    ttl = 10
+    for sIP in sIPs:
+        ttl += 1
+        p = Ether() / IP(dst=dIP, src=sIP) / UDP(sport=53) /DNS(qr=1, aa=1, ancount=1,an=DNSRR(rrname='www.thepacketgeek.com',  ttl=ttl, rdata='192.168.1.1'))
+>>>>>>> b83e2640160edda4f631dc95f71c54f1ba12c114
         attack_packets.append(p)
 
     return attack_packets
 
 
+<<<<<<< HEAD
 def compose_packet(pkt_tuple):
     random_number = random.randint(1, 10000)
     payload_string = "SONATA" + str(random_number)
@@ -97,6 +111,8 @@ class PicklablePacket:
         return pkt
 
 
+=======
+>>>>>>> b83e2640160edda4f631dc95f71c54f1ba12c114
 def send_created_traffic():
     traffic_dict = {}
     attack = True

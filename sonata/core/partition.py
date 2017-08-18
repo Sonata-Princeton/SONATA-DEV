@@ -26,7 +26,11 @@ def get_dataplane_query(query, qid, partition_plan):
         if border_operator.name == "Reduce":
             # We need to ensure that we also execute the next filter operator in the data plane
             n_operators_dp += 1
+<<<<<<< HEAD
         print "@@@@@@@@@@@@@@@@ get_dataplane_query: ", query.operators[:n_operators_dp]
+=======
+        # print "@@@@@@@@@@@@@@@@ get_dataplane_query: ", query.operators[:n_operators_dp]
+>>>>>>> b83e2640160edda4f631dc95f71c54f1ba12c114
         for operator in query.operators[:n_operators_dp]:
             # passing the operators as-is based on discussions with Rudy
             dp_query.operators.append(operator)
@@ -44,6 +48,7 @@ def get_streaming_query(query, qid, partition_plan):
     # number of operators in the data plane
     n_operators_dp = int(partition_plan)
     n_operators_sp = int(len(query.operators))-n_operators_dp
+    print "Number of Dataplane vs Streaming Operators: ", n_operators_dp,n_operators_sp
     if n_operators_sp > 0:
         # create a sp query object
         sp_query = SP_QO(qid)

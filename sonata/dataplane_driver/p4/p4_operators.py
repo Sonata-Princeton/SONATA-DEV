@@ -16,7 +16,11 @@ THRESHOLD = 5
 # TODO: get rid of this local fix. This won't be required after we fix the sonata query module
 local_fix = {'ethernet.dstMac': 'ethernet.dstMac', 'ipv4.srcIP': 'ipv4.srcIP', 'ipv4.proto': 'ipv4.proto',
              'ethernet.srcMac': 'ethernet.srcMac', 'ipv4.totalLen': 'ipv4.totalLen', 'udp.dport': 'udp.dport',
+<<<<<<< HEAD
              'udp.sport': 'udp.sport', 'ipv4.dstIP': 'ipv4.dstIP'}
+=======
+             'udp.sport': 'udp.sport', 'ipv4.dstIP': 'ipv4.dstIP', 'tcp.flags': 'tcp.flags'}
+>>>>>>> b83e2640160edda4f631dc95f71c54f1ba12c114
 
 # sonata_raw_fields = ['ipv4.hdrChecksum', 'tcp.dport', 'ethernet.dstMac', 'udp.len', 'tcp.ctrl',
 #                      'ethernet.srcMac', 'udp.sport', 'udp.dport', 'tcp.res', 'ipv4.ihl', 'ipv4.diffserv',
@@ -496,6 +500,7 @@ class P4Filter(P4Operator):
 
     def get_init_keys(self):
 
+<<<<<<< HEAD
         return self.keys
 
     """
@@ -507,3 +512,6 @@ class P4Filter(P4Operator):
         .Filter(prev_keys=['udp.sport', 'dns.ns.type', 'ipv4.proto', 'ipv4.srcIP', 'ipv4.dstIP'], filter_keys=('udp.sport',), filter_vals=[], func=('eq', 53) src = 0)}
 
     """
+=======
+        return self.keys
+>>>>>>> b83e2640160edda4f631dc95f71c54f1ba12c114

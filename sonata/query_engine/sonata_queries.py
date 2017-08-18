@@ -136,7 +136,7 @@ class PacketStream(Query):
 
         return self
 
-    def join(self, *args, **kwargs):
+    def join(self, window=None, *args, **kwargs):
         map_dict = dict(*args, **kwargs)
         left_query = map_dict['query']
         new_qid = map_dict['new_qid']

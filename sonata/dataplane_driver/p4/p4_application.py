@@ -14,7 +14,7 @@ import json
 
 with open('/home/vagrant/dev/sonata/config.json') as json_data_file:
     data = json.load(json_data_file)
-    print(data)
+    # print(data)
 
 config = data["on_server"][data["is_on_server"]]["sonata"]
 
