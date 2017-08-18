@@ -2,14 +2,14 @@
 
 | Program Name  | BMV2          | Counter Based |
 | ------------- | ------------- | ------------- |
-| Completed Flow| Yes           |               |
-| DNS Asymmetry | Yes           |               |
+| Completed Flow| No            |               |
+| DNS Asymmetry | No            |               |
 | DNS TTL Track | Yes           |               |
 | DNS Tunneling | Yes           |               |
 | Heavy Hitter  | Yes           |               |
-| New Open Conn | Yes           |               |
-| Port Scan     | Yes           |               |
+| New Open Conn | No           |               |
+| Port Scan     | No           |               |
 | Reflection DNS| Yes           |               |
-| Slowloris ATK | Yes           |               |
+| Slowloris ATK | No           |               |
 | SSH Brute     | Yes           |               |
-| SuperSpreader | Yes           |               |
+| SuperSpreader | No           |               |
