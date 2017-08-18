@@ -16,7 +16,7 @@ if __name__ == '__main__':
         print(data)
 
     config = data["on_server"][data["is_on_server"]]["sonata"]
-    T = 40
+    T = 1
 
     # Normally ttl is only 1 value
     # but if it is an attack it will keep changing.
@@ -29,7 +29,7 @@ if __name__ == '__main__':
                .distinct(keys=('dns.an.rrname', 'dns.an.ttl'))
                .map(keys=('dns.an.rrname',), map_values=('count',), func=('eq', 1,))
                .reduce(keys=('dns.an.rrname',), func=('sum',))
-               .filter(filter_vals=('count',), func=('geq', T))
+               .filter(filter_vals=('count',), func=('geq', 40))
                .map(keys=('dns.an.rrname',))
                )
 
