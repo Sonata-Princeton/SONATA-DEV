@@ -7,7 +7,7 @@
 | DNS TTL Track | Yes           |               |
 | DNS Tunneling | Yes           |               |
 | Heavy Hitter  | Yes           |               |
-| New Open Conn | No           |               |
+| New Open Conn | Yes           |               |
 | Port Scan     | No           |               |
 | Reflection DNS| Yes           |               |
 | Slowloris ATK | No           |               |
