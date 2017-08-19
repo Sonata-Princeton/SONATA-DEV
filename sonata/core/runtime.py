@@ -100,10 +100,10 @@ class Runtime(object):
                     refined_sonata_query = refinement_object.get_refined_updated_query(qry.qid, r, prev_qid, prev_r)
                     if prev_r > 0:
                         p += 1
-                    dp_query = get_dataplane_query(refined_sonata_query, refined_query_id, p)
+                    dp_query = get_dataplane_query(refined_sonata_query, refined_query_id, self.sonata_fields, p)
                     self.dp_queries[refined_query_id] = dp_query
 
-                    sp_query = get_streaming_query(refined_sonata_query, refined_query_id, p)
+                    sp_query = get_streaming_query(refined_sonata_query, refined_query_id, self.sonata_fields, p)
                     self.sp_queries[refined_query_id] = sp_query
                     prev_r = r
                     prev_qid = q
@@ -159,33 +159,29 @@ class Runtime(object):
 
     def get_sonata_layers(self):
 
-        TARGET_NAME = "bmv2"
         INITIAL_LAYER = "Ethernet"
-
+        layer_2_target = {"Ethernet": "bmv2",
+                          "TCP": "bmv2",
+                          "IPV4": "bmv2",
+                          "UDP": "bmv2",
+                          "DNS": "scapy"}
         import json
 
         with open('sonata/fields_mapping.json') as json_data_file:
             data = json.load(json_data_file)
 
         layers = SonataLayer(INITIAL_LAYER,
-                             TARGET_NAME,
                              data,
-                             fields=data[INITIAL_LAYER][TARGET_NAME]["fields"],
+                             fields=data[INITIAL_LAYER][layer_2_target[INITIAL_LAYER]]["fields"],
                              offset=0,
                              parent_layer=None,
-                             child_layers=data[INITIAL_LAYER][TARGET_NAME]["child_layers"],
-                             field_that_determines_child=None
+                             child_layers=data[INITIAL_LAYER][layer_2_target[INITIAL_LAYER]]["child_layers"],
+                             field_that_determines_child=None,
+                             is_payload=data[INITIAL_LAYER][layer_2_target[INITIAL_LAYER]]["in_payload"],
+                             layer_2_target=layer_2_target
                              )
 
-        # print layers
-        children = layers.get_all_child_layers()
-
-        print [c.name for c in children]
-
         sonataFields = SonataRawFields(layers)
-
-        print sonataFields.all_sonata_fields
-        # print rawField.all_fields
 
         return sonataFields
 

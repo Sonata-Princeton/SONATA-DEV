@@ -9,27 +9,29 @@ from sonata.core.training.utils import *
 import numpy as np
 
 
-def requires_payload_processing(query):
+def requires_payload_processing(query, sonata_fields):
     parse_payload = False
+    print "Payload Fields", sonata_fields.all_payload_fields.keys()
     for operator in query.operators[1:]:
-        if len(set(query.payload_headers).intersection(set(operator.keys))) > 0:
+        if len(set(sonata_fields.all_payload_fields.keys()).intersection(set(operator.keys))) > 0:
             parse_payload = True
 
     return parse_payload
 
 
-def get_payload_fields(query):
+def get_payload_fields(query, sonata_fields):
     payload_fields = set()
+    print "Payload Fields", sonata_fields.all_payload_fields.keys()
     for operator in query.operators[1:]:
-        payload_fields = payload_fields.union(set(query.payload_headers).intersection(set(operator.keys)))
+        payload_fields = payload_fields.union(set(sonata_fields.all_payload_fields.keys()).intersection(set(operator.keys)))
 
     return list(payload_fields)
 
 
-def filter_payload_fields_append_to_end(fields):
+def filter_payload_fields_append_to_end(fields, sonata_fields):
     payload_fields = set()
 
-    payload_fields = payload_fields.union(set(Query().payload_headers).intersection(set(fields)))
+    payload_fields = payload_fields.union(set(sonata_fields.all_payload_fields.keys()).intersection(set(fields)))
     other = [x for x in fields if x not in payload_fields]
     other.extend(list(payload_fields))
     return other
@@ -41,23 +43,23 @@ def flatten_streaming_field_names(fields):
     return flattened_fields
 
 
-def copy_sonata_operators_to_sp_query(query, optr):
+def copy_sonata_operators_to_sp_query(query, optr, sonata_fields):
     if optr.name == 'Filter':
-        query.filter(filter_keys=flatten_streaming_field_names(filter_payload_fields_append_to_end(optr.filter_keys)),
-                     filter_vals=flatten_streaming_field_names(filter_payload_fields_append_to_end(optr.filter_vals)),
+        query.filter(filter_keys=flatten_streaming_field_names(filter_payload_fields_append_to_end(optr.filter_keys, sonata_fields)),
+                     filter_vals=flatten_streaming_field_names(filter_payload_fields_append_to_end(optr.filter_vals, sonata_fields)),
                      func=optr.func)
     elif optr.name == "Map":
-        query.map(keys=flatten_streaming_field_names(filter_payload_fields_append_to_end(optr.keys)),
-                  values=flatten_streaming_field_names(filter_payload_fields_append_to_end(optr.values)),
-                  map_keys=flatten_streaming_field_names(filter_payload_fields_append_to_end(optr.map_keys)),
-                  map_values=flatten_streaming_field_names(filter_payload_fields_append_to_end(optr.map_values)),
+        query.map(keys=flatten_streaming_field_names(filter_payload_fields_append_to_end(optr.keys, sonata_fields)),
+                  values=flatten_streaming_field_names(filter_payload_fields_append_to_end(optr.values, sonata_fields)),
+                  map_keys=flatten_streaming_field_names(filter_payload_fields_append_to_end(optr.map_keys, sonata_fields)),
+                  map_values=flatten_streaming_field_names(filter_payload_fields_append_to_end(optr.map_values, sonata_fields)),
                   func=optr.func)
     elif optr.name == "Reduce":
-        query.reduce(keys=flatten_streaming_field_names(filter_payload_fields_append_to_end(optr.keys)),
+        query.reduce(keys=flatten_streaming_field_names(filter_payload_fields_append_to_end(optr.keys, sonata_fields)),
                      func=optr.func)
 
     elif optr.name == "Distinct":
-        query.distinct(keys=flatten_streaming_field_names(filter_payload_fields_append_to_end(optr.keys)))
+        query.distinct(keys=flatten_streaming_field_names(filter_payload_fields_append_to_end(optr.keys, sonata_fields)))
 
 
 def filter_payload(keys):

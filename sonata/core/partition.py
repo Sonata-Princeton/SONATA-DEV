@@ -11,11 +11,9 @@ from sonata.query_engine.utils import copy_operators
 from sonata.core.utils import requires_payload_processing, copy_sonata_operators_to_sp_query, \
     get_flattened_sub_queries, get_payload_fields, flatten_streaming_field_names, filter_payload_fields_append_to_end
 from sonata.query_engine.sonata_queries import PacketStream
-# from sonata.system_config import BASIC_HEADERS
-# from integration import sonata_2_dp_query
 
 
-def get_dataplane_query(query, qid, partition_plan):
+def get_dataplane_query(query, qid, sonata_fields, partition_plan):
     # number of operators in the data plane
     n_operators_dp = int(partition_plan)
     dp_query = None
@@ -30,8 +28,8 @@ def get_dataplane_query(query, qid, partition_plan):
             # passing the operators as-is based on discussions with Rudy
             dp_query.operators.append(operator)
             # copy_sonata_operators_to_dp_query(dp_query, operator)
-        dp_query.parse_payload = requires_payload_processing(query)
-        dp_query.payload_fields = get_payload_fields(query)
+        dp_query.parse_payload = requires_payload_processing(query, sonata_fields)
+        dp_query.payload_fields = get_payload_fields(query, sonata_fields)
         print "Payload Fields", dp_query.payload_fields
 
     return dp_query
@@ -42,7 +40,7 @@ Function also rearranges the payload fields to the end.
 """
 
 
-def get_streaming_query(query, qid, partition_plan):
+def get_streaming_query(query, qid, sonata_fields, partition_plan):
     # number of operators in the data plane
     n_operators_dp = int(partition_plan)
     n_operators_sp = int(len(query.operators)) - n_operators_dp
@@ -55,7 +53,7 @@ def get_streaming_query(query, qid, partition_plan):
             # Add 'k' field to filter out garbled message received by the stream processor
             tmp_basic_headers = list(query.operators[n_operators_dp - 1].keys) + list(
                 query.operators[n_operators_dp - 1].values)
-            basic_fields = filter_payload_fields_append_to_end(tmp_basic_headers)
+            basic_fields = filter_payload_fields_append_to_end(tmp_basic_headers, sonata_fields)
             sp_query.basic_headers = basic_fields
             sp_query.basic_headers = flatten_streaming_field_names(sp_query.basic_headers)
 
@@ -73,14 +71,14 @@ def get_streaming_query(query, qid, partition_plan):
                          values=flatten_streaming_field_names(
                              filter_payload_fields_append_to_end(dp_operator.map_values)))
         else:
-            sp_query.map(keys=flatten_streaming_field_names(filter_payload_fields_append_to_end(dp_operator.keys)),
+            sp_query.map(keys=flatten_streaming_field_names(filter_payload_fields_append_to_end(dp_operator.keys, sonata_fields)),
                          values=list())
 
         # Update the remainder operators
         for operator in query.operators[n_operators_dp:]:
-            copy_sonata_operators_to_sp_query(sp_query, operator)
+            copy_sonata_operators_to_sp_query(sp_query, operator, sonata_fields)
 
-        sp_query.parse_payload = requires_payload_processing(query)
+        sp_query.parse_payload = requires_payload_processing(query, sonata_fields)
 
         return sp_query
 

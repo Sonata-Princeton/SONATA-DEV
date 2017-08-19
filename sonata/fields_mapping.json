@@ -49,7 +49,7 @@
         { "sonata_name": "length_", "target_name": "udp.len", "size": 16 },
         { "sonata_name": "checksum", "target_name": "udp.checksum", "size": 16 }
       ],
-      "child_layers": {}
+      "child_layers": {"0": "DNS"}
     }
   },
   "Ethernet": {
