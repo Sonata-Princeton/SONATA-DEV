@@ -14,4 +14,4 @@ class SonataField(object):
         self.size = size
 
     def __repr__(self):
-        return "SonataField(s="+self.sonata_name+", t="+self.target_name+", size="+str(self.size)+")"
+        return "SonataField(layer="+str(self.layer.name)+",s="+self.sonata_name+", t="+self.target_name+", size="+str(self.size)+")"

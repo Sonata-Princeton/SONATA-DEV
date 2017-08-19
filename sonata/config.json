@@ -4,6 +4,8 @@
     "YES": {
       "sonata": {
         "refinement_keys": ["ipv4.dstIP", "ipv4.srcIP"],
+        "GRAN_MAX": 33,
+        "GRAN": 16,
         "dp": "p4",
         "sp": "spark",
         "sm_conf": {
@@ -32,6 +34,8 @@
     "NO": {
       "sonata": {
         "refinement_keys": ["ipv4.dstIP", "ipv4.srcIP"],
+        "GRAN_MAX": 33,
+        "GRAN": 16,
         "dp": "p4",
         "sp": "spark",
         "sm_conf": {

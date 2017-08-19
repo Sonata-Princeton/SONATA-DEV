@@ -11,8 +11,8 @@ from sonata.query_engine.utils import copy_operators
 from sonata.core.utils import requires_payload_processing, copy_sonata_operators_to_sp_query, \
     get_flattened_sub_queries, get_payload_fields, flatten_streaming_field_names, filter_payload_fields_append_to_end
 from sonata.query_engine.sonata_queries import PacketStream
-from sonata.system_config import BASIC_HEADERS
-from integration import sonata_2_dp_query
+# from sonata.system_config import BASIC_HEADERS
+# from integration import sonata_2_dp_query
 
 
 def get_dataplane_query(query, qid, partition_plan):
@@ -105,7 +105,7 @@ class Partition(object):
         for max_operators in partition_plans_learning:
             qid = 1000 * sonata_query.qid + max_operators
             tmp_query = (PacketStream(sonata_query.qid))
-            tmp_query.basic_headers = BASIC_HEADERS
+            # tmp_query.basic_headers = BASIC_HEADERS
             ctr = 0
             filter_ctr = 0
             prev_operator = None

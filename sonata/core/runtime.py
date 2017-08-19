@@ -8,18 +8,19 @@ import time
 from multiprocessing.connection import Client, Listener
 from threading import Thread
 
-from sonata.core.training.hypothesis.hypothesis import Hypothesis
+# from sonata.core.training.hypothesis.hypothesis import Hypothesis
 from sonata.streaming_driver.streaming_driver import StreamingDriver
 
-# from sonata.core.training.weights.training_data import TrainingData
-from sonata.core.training.utils import get_spark_context_batch, create_spark_context
+# # from sonata.core.training.weights.training_data import TrainingData
+# from sonata.core.training.utils import get_spark_context_batch, create_spark_context
 
-from sonata.core.training.learn.learn import Learn
-from sonata.core.refinement import apply_refinement_plan, get_refined_query_id, Refinement
+# from sonata.core.training.learn.learn import Learn
+from sonata.core.refinement import get_refined_query_id, Refinement
 from sonata.core.partition import get_dataplane_query, get_streaming_query
 
 from sonata.core.integration import Target
 from sonata.dataplane_driver.dp_driver import DataplaneDriver
+from sonata.sonata_layers import *
 
 
 class Runtime(object):
@@ -36,10 +37,14 @@ class Runtime(object):
     def __init__(self, conf, queries):
         self.conf = conf
         self.refinement_keys = conf["refinement_keys"]
+        self.GRAN_MAX = conf["GRAN_MAX"]
+        self.GRAN = conf["GRAN"]
         self.queries = queries
         self.initialize_logging()
         self.target_id = 1
         # self.sc = create_spark_context()
+
+        self.sonata_fields = self.get_sonata_layers()
 
         use_pickled_queries = False
         if use_pickled_queries:
@@ -53,7 +58,7 @@ class Runtime(object):
             for query in self.queries:
                 target = Target()
                 assert hasattr(target, 'costly_operators')
-                refinement_object = Refinement(query, target, self.refinement_keys)
+                refinement_object = Refinement(query, target, self.GRAN_MAX, self.GRAN, self.refinement_keys)
 
                 # self.refinement_keys[query.qid] = refinement_object.refinement_key
                 print "*********************************************************************"
@@ -83,7 +88,7 @@ class Runtime(object):
                 # print final_plan
 
                 final_plan = [(1, 16, 5, 1), (3, 32, 1, 2)]  # (1, 16, 5, 1),
-                final_plan = conf["final_plan"]# (3, 32, 1, 2)]  # (1, 16, 5, 1),
+                final_plan = conf["final_plan"]  # (3, 32, 1, 2)]  # (1, 16, 5, 1),
                 # final_plan = [(1, 32, 5, 1)]
                 prev_r = 0
                 prev_qid = 0
@@ -152,6 +157,38 @@ class Runtime(object):
         self.streaming_driver_thread.join()
         self.op_handler_thread.join()
 
+    def get_sonata_layers(self):
+
+        TARGET_NAME = "bmv2"
+        INITIAL_LAYER = "Ethernet"
+
+        import json
+
+        with open('sonata/fields_mapping.json') as json_data_file:
+            data = json.load(json_data_file)
+
+        layers = SonataLayer(INITIAL_LAYER,
+                             TARGET_NAME,
+                             data,
+                             fields=data[INITIAL_LAYER][TARGET_NAME]["fields"],
+                             offset=0,
+                             parent_layer=None,
+                             child_layers=data[INITIAL_LAYER][TARGET_NAME]["child_layers"],
+                             field_that_determines_child=None
+                             )
+
+        # print layers
+        children = layers.get_all_child_layers()
+
+        print [c.name for c in children]
+
+        sonataFields = SonataRawFields(layers)
+
+        print sonataFields.all_sonata_fields
+        # print rawField.all_fields
+
+        return sonataFields
+
     def update_query_mappings(self, refinement_object, final_plan):
         if len(final_plan) > 1:
             query1 = refinement_object.qid_2_query[final_plan[0][0]]
@@ -176,8 +213,6 @@ class Runtime(object):
             self.query_out_final[qid] = 0
         else:
             print "No mapping update required"
-
-
 
     def start_op_handler(self):
         """
@@ -218,7 +253,7 @@ class Runtime(object):
             if len(queries_received.keys()) == len(self.dp_queries.keys()):
                 updateDeltaConfig = True
 
-            print "Query Out Mappings: ",self.query_out_mappings
+            print "Query Out Mappings: ", self.query_out_mappings
             delta_config = {}
             # print "## Received output for query", src_qid, "at time", time.time() - start
             if updateDeltaConfig:
@@ -256,7 +291,8 @@ class Runtime(object):
 
     def start_dataplane_driver(self):
         # Start the fabric managers local to each data plane element
-        dpd = DataplaneDriver(self.conf['fm_conf']['fm_socket'], self.conf["internal_interfaces"], self.conf['fm_conf']['log_file'])
+        dpd = DataplaneDriver(self.conf['fm_conf']['fm_socket'], self.conf["internal_interfaces"],
+                              self.conf['fm_conf']['log_file'])
         self.dpd_thread = Thread(name='dp_driver', target=dpd.start)
         self.dpd_thread.setDaemon(True)
 

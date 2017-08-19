@@ -87,7 +87,7 @@ class SonataRawFields(object):
         fields = dict()
         for layer in self.layers:
             for fld in layer.fields:
-                fields[fld.sonata_name] = fld
+                fields[fld.target_name] = fld
         self.all_sonata_fields = fields
 
     def get_layers_for_fields(self, query_specific_fields):

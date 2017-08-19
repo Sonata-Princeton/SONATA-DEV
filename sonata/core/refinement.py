@@ -88,7 +88,7 @@ class Refinement(object):
     filter_mappings = {}
     qid_2_refined_queries = {}
 
-    def __init__(self, query, target, refinement_keys_set):
+    def __init__(self, query, target, GRAN_MAX, GRAN, refinement_keys_set):
         self.query = query
         self.target = target
         self.ref_levels = range(0, GRAN_MAX, GRAN)
@@ -191,69 +191,69 @@ class Refinement(object):
         self.filter_mappings = filter_mappings
         self.qid_2_refined_queries = qid_2_queries_refined
 
-    def update_filter(self, training_data):
-        spark_queries = {}
-        reversed_ref_levels = self.ref_levels[1:]
-        reversed_ref_levels.sort(reverse=True)
-        level_32_sonata_query = None
-        satisfied_spark_query = None
-
-        for ref_level in reversed_ref_levels:
-            for (prev_qid, curr_qid, ref_level_tmp) in self.filter_mappings:
-                if ref_level == ref_level_tmp:
-                    prev_parent_qid = prev_qid / 10000000
-                    current_parent_qid = curr_qid / 10000000
-
-                    refinement_key = self.refinement_key
-                    qids_after_this_filter = filter(lambda x: x >= curr_qid,
-                                                    self.refined_sonata_queries[current_parent_qid][ref_level].keys())
-
-                    prev_sonata_query = self.refined_sonata_queries[prev_parent_qid][ref_level][prev_qid]
-                    curr_sonata_query = self.refined_sonata_queries[current_parent_qid][ref_level][curr_qid]
-
-                    if ref_level != self.ref_levels[-1]:
-                        satisfied_sonata_query = PacketStream(level_32_sonata_query.qid)
-                        satisfied_sonata_query.basic_headers = BASIC_HEADERS
-                        for operator in level_32_sonata_query.operators:
-                            copy_operators(satisfied_sonata_query, operator)
-                        satisfied_sonata_query.map(map_keys=(refinement_key,), func=("mask", ref_level))
-
-                        satisfied_spark_query = spark.PacketStream(prev_qid)
-                        satisfied_spark_query.basic_headers = BASIC_HEADERS
-                        for operator in satisfied_sonata_query.operators:
-                            copy_sonata_operators_to_spark(satisfied_spark_query, operator)
-
-                    # Get the Spark queries corresponding to the prev and curr sonata queries
-                    if prev_qid not in spark_queries:
-                        prev_spark_query = spark.PacketStream(prev_qid)
-                        prev_spark_query.basic_headers = BASIC_HEADERS
-                        for operator in prev_sonata_query.operators:
-                            copy_sonata_operators_to_spark(prev_spark_query, operator)
-
-                        spark_queries[prev_qid] = prev_spark_query
-                    else:
-                        prev_spark_query = spark_queries[prev_qid]
-
-                    _, filter_id, spread = self.filter_mappings[(prev_qid, curr_qid, ref_level)]
-                    # thresh = -1
-
-                    thresh = get_thresh(training_data, prev_spark_query, spread, ref_level, satisfied_spark_query,
-                                        self.ref_levels)
-
-                    # Update all the following intermediate Sonata Queries
-                    for tmp_qid in qids_after_this_filter:
-                        filter_ctr = 1
-                        son_query = self.refined_sonata_queries[current_parent_qid][ref_level][tmp_qid]
-                        for operator in son_query.operators:
-                            if operator.name == 'Filter':
-                                if filter_ctr == filter_id:
-                                    operator.func = ('geq', thresh)
-                                    # print "Updated threshold for ", curr_qid, operator
-                                    break
-                                else:
-                                    filter_ctr += 1
-                    self.refined_sonata_queries[current_parent_qid][ref_level][curr_qid] = copy.deepcopy(
-                        curr_sonata_query)
-
-                    if ref_level == self.ref_levels[-1]:
-                        level_32_sonata_query = copy.deepcopy(curr_sonata_query)
+    # def update_filter(self, training_data):
+    #     spark_queries = {}
+    #     reversed_ref_levels = self.ref_levels[1:]
+    #     reversed_ref_levels.sort(reverse=True)
+    #     level_32_sonata_query = None
+    #     satisfied_spark_query = None
+    #
+    #     for ref_level in reversed_ref_levels:
+    #         for (prev_qid, curr_qid, ref_level_tmp) in self.filter_mappings:
+    #             if ref_level == ref_level_tmp:
+    #                 prev_parent_qid = prev_qid / 10000000
+    #                 current_parent_qid = curr_qid / 10000000
+    #
+    #                 refinement_key = self.refinement_key
+    #                 qids_after_this_filter = filter(lambda x: x >= curr_qid,
+    #                                                 self.refined_sonata_queries[current_parent_qid][ref_level].keys())
+    #
+    #                 prev_sonata_query = self.refined_sonata_queries[prev_parent_qid][ref_level][prev_qid]
+    #                 curr_sonata_query = self.refined_sonata_queries[current_parent_qid][ref_level][curr_qid]
+    #
+    #                 if ref_level != self.ref_levels[-1]:
+    #                     satisfied_sonata_query = PacketStream(level_32_sonata_query.qid)
+    #                     satisfied_sonata_query.basic_headers = BASIC_HEADERS
+    #                     for operator in level_32_sonata_query.operators:
+    #                         copy_operators(satisfied_sonata_query, operator)
+    #                     satisfied_sonata_query.map(map_keys=(refinement_key,), func=("mask", ref_level))
+    #
+    #                     satisfied_spark_query = spark.PacketStream(prev_qid)
+    #                     satisfied_spark_query.basic_headers = BASIC_HEADERS
+    #                     for operator in satisfied_sonata_query.operators:
+    #                         copy_sonata_operators_to_spark(satisfied_spark_query, operator)
+    #
+    #                 # Get the Spark queries corresponding to the prev and curr sonata queries
+    #                 if prev_qid not in spark_queries:
+    #                     prev_spark_query = spark.PacketStream(prev_qid)
+    #                     prev_spark_query.basic_headers = BASIC_HEADERS
+    #                     for operator in prev_sonata_query.operators:
+    #                         copy_sonata_operators_to_spark(prev_spark_query, operator)
+    #
+    #                     spark_queries[prev_qid] = prev_spark_query
+    #                 else:
+    #                     prev_spark_query = spark_queries[prev_qid]
+    #
+    #                 _, filter_id, spread = self.filter_mappings[(prev_qid, curr_qid, ref_level)]
+    #                 # thresh = -1
+    #
+    #                 thresh = get_thresh(training_data, prev_spark_query, spread, ref_level, satisfied_spark_query,
+    #                                     self.ref_levels)
+    #
+    #                 # Update all the following intermediate Sonata Queries
+    #                 for tmp_qid in qids_after_this_filter:
+    #                     filter_ctr = 1
+    #                     son_query = self.refined_sonata_queries[current_parent_qid][ref_level][tmp_qid]
+    #                     for operator in son_query.operators:
+    #                         if operator.name == 'Filter':
+    #                             if filter_ctr == filter_id:
+    #                                 operator.func = ('geq', thresh)
+    #                                 # print "Updated threshold for ", curr_qid, operator
+    #                                 break
+    #                             else:
+    #                                 filter_ctr += 1
+    #                 self.refined_sonata_queries[current_parent_qid][ref_level][curr_qid] = copy.deepcopy(
+    #                     curr_sonata_query)
+    #
+    #                 if ref_level == self.ref_levels[-1]:
+    #                     level_32_sonata_query = copy.deepcopy(curr_sonata_query)

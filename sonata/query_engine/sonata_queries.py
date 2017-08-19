@@ -11,7 +11,7 @@ from sonata.query_engine.sonata_operators.filter import Filter
 
 from sonata.query_engine.utils import *
 
-from sonata.system_config import *
+# from sonata.system_config import *
 
 pstream_qid = 1
 
@@ -22,8 +22,8 @@ class PacketStream(Query):
         self.qid = id
         self.name = 'PacketStream'
 
-        self.alpha = ALPHA
-        self.beta = BETA
+        # self.alpha = ALPHA
+        # self.beta = BETA
         self.hypothesis_graph = {}
         self.query_training_object = None
 
