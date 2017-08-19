@@ -16,7 +16,7 @@ Operator = namedtuple('Operator', 'name keys')
 
 
 class P4Target(object):
-    def __init__(self, em_conf, target_conf):
+    def __init__(self, em_conf, target_conf, internal_interfaces):
         self.em_conf = em_conf
 
         # Code Compilation
@@ -24,7 +24,7 @@ class P4Target(object):
         self.JSON_P4_COMPILED = self.COMPILED_SRCS + target_conf['json_p4_compiled']
         self.P4_COMPILED = self.COMPILED_SRCS + target_conf['p4_compiled']
         self.P4C_BM_SCRIPT = target_conf['p4c_bm_script']
-
+        self.internal_interfaces = internal_interfaces
         # Initialization of Switch
         self.BMV2_PATH = target_conf['bmv2_path']
         self.BMV2_SWITCH_BASE = self.BMV2_PATH + target_conf['bmv2_switch_base']
@@ -46,7 +46,7 @@ class P4Target(object):
         self.supported_operations = ['Map', 'Filter', 'Reduce', 'Distinct']
 
         # LOGGING
-        log_level = logging.ERROR
+        log_level = logging.INFO
         self.logger = get_logger('P4Target', 'INFO')
         self.logger.setLevel(log_level)
         self.logger.info('init')
@@ -56,19 +56,21 @@ class P4Target(object):
                                      self.SWITCH_PATH,
                                      self.CLI_PATH,
                                      self.THRIFTPORT,
-                                     self.P4C_BM_SCRIPT)
+                                     self.P4C_BM_SCRIPT,
+                                     self.internal_interfaces)
 
         # p4 app object
         self.app = None
+        print "P4 target initialized"
 
     def get_supported_operators(self):
         return self.supported_operations
 
-    def run(self, app):
+    def run(self, app, sonata_fields):
         self.logger.info('run')
         # compile app to p4
         self.logger.info('init P4 application object')
-        self.app = P4Application(app)
+        self.app = P4Application(app, sonata_fields)
 
         self.logger.info('generate p4 code and commands')
         p4_src = self.app.get_p4_code()
@@ -76,14 +78,17 @@ class P4Target(object):
 
         p4_commands = self.app.get_commands()
         commands_string = "\n".join(p4_commands)
+        self.logger.info("Commands: " + commands_string)
         write_to_file(self.P4_COMMANDS, commands_string)
 
         # compile p4 to json
         self.logger.info('compile p4 code to json')
+        # TODO: uncomment this line
         self.dataplane.compile_p4(self.P4_COMPILED, self.JSON_P4_COMPILED)
 
         # initialize dataplane and run the configuration
         self.logger.info('initialize the dataplane with the json configuration')
+        # TODO: uncomment this line
         self.dataplane.initialize(self.JSON_P4_COMPILED, self.P4_COMMANDS)
 
         # start the emitter
@@ -103,4 +108,6 @@ class P4Target(object):
         commands = self.app.get_update_commands(filter_update)
         commands_string = "\n".join(commands)
         write_to_file(self.P4_DELTA_COMMANDS, commands_string)
+        self.dataplane.send_commands(self.JSON_P4_COMPILED, self.P4_COMMANDS)
         self.dataplane.send_commands(self.JSON_P4_COMPILED, self.P4_DELTA_COMMANDS)
+

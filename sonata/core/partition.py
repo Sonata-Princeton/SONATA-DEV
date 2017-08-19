@@ -8,13 +8,12 @@
 from sonata.dataplane_driver.query_object import QueryObject as DP_QO
 from sonata.streaming_driver.query_object import PacketStream as SP_QO
 from sonata.query_engine.utils import copy_operators
-from sonata.core.utils import requires_payload_processing, copy_sonata_operators_to_sp_query, get_flattened_sub_queries
+from sonata.core.utils import requires_payload_processing, copy_sonata_operators_to_sp_query, \
+    get_flattened_sub_queries, get_payload_fields, flatten_streaming_field_names, filter_payload_fields_append_to_end
 from sonata.query_engine.sonata_queries import PacketStream
-from sonata.system_config import BASIC_HEADERS
-from integration import sonata_2_dp_query
 
 
-def get_dataplane_query(query, qid, partition_plan):
+def get_dataplane_query(query, qid, sonata_fields, partition_plan):
     # number of operators in the data plane
     n_operators_dp = int(partition_plan)
     dp_query = None
@@ -25,46 +24,61 @@ def get_dataplane_query(query, qid, partition_plan):
         if border_operator.name == "Reduce":
             # We need to ensure that we also execute the next filter operator in the data plane
             n_operators_dp += 1
-
         for operator in query.operators[:n_operators_dp]:
             # passing the operators as-is based on discussions with Rudy
             dp_query.operators.append(operator)
             # copy_sonata_operators_to_dp_query(dp_query, operator)
-        dp_query.parse_payload = requires_payload_processing(query)
+        dp_query.parse_payload = requires_payload_processing(query, sonata_fields)
+        dp_query.payload_fields = get_payload_fields(query, sonata_fields)
+        print "Payload Fields", dp_query.payload_fields
 
     return dp_query
 
 
-def get_streaming_query(query, qid, partition_plan):
+"""
+Function also rearranges the payload fields to the end.
+"""
+
+
+def get_streaming_query(query, qid, sonata_fields, partition_plan):
     # number of operators in the data plane
     n_operators_dp = int(partition_plan)
-    n_operators_sp = int(len(query.operators))-n_operators_dp
+    n_operators_sp = int(len(query.operators)) - n_operators_dp
+    print "Number of Dataplane vs Streaming Operators: ", n_operators_dp, n_operators_sp
     if n_operators_sp > 0:
         # create a sp query object
         sp_query = SP_QO(qid)
         if n_operators_dp > 0:
             # update the basic headers
             # Add 'k' field to filter out garbled message received by the stream processor
-            sp_query.basic_headers = list(query.operators[n_operators_dp-1].keys) + list(query.operators[n_operators_dp-1].values)
-            border_operator = query.operators[n_operators_dp-1]
+            tmp_basic_headers = list(query.operators[n_operators_dp - 1].keys) + list(
+                query.operators[n_operators_dp - 1].values)
+            basic_fields = filter_payload_fields_append_to_end(tmp_basic_headers, sonata_fields)
+            sp_query.basic_headers = basic_fields
+            sp_query.basic_headers = flatten_streaming_field_names(sp_query.basic_headers)
+
+            border_operator = query.operators[n_operators_dp - 1]
             if border_operator.name == "Reduce":
                 # We need to duplicate reduce operator in the data plane
                 n_operators_dp -= 1
 
-
         # Filter step is added to map incoming packet streams from multiple dataflow pipelines
         # to their respective pipelines in the stream processor
         # sp_query = sp_query.filter_init(qid=qid, keys=sp_query.basic_headers)
-        dp_operator = query.operators[n_operators_dp-1]
-        sp_query.map(keys=dp_operator.keys,
-                     values=dp_operator.map_values)
-
+        dp_operator = query.operators[n_operators_dp - 1]
+        if hasattr(dp_operator, "map_values"):
+            sp_query.map(keys=flatten_streaming_field_names(filter_payload_fields_append_to_end(dp_operator.keys, sonata_fields)),
+                         values=flatten_streaming_field_names(
+                             filter_payload_fields_append_to_end(dp_operator.map_values, sonata_fields)))
+        else:
+            sp_query.map(keys=flatten_streaming_field_names(filter_payload_fields_append_to_end(dp_operator.keys, sonata_fields)),
+                         values=list())
 
         # Update the remainder operators
         for operator in query.operators[n_operators_dp:]:
-            copy_sonata_operators_to_sp_query(sp_query, operator)
+            copy_sonata_operators_to_sp_query(sp_query, operator, sonata_fields)
 
-        sp_query.parse_payload = requires_payload_processing(query)
+        sp_query.parse_payload = requires_payload_processing(query, sonata_fields)
 
         return sp_query
 
@@ -87,9 +101,9 @@ class Partition(object):
         filter_mappings = {}
         filters_marked = {}
         for max_operators in partition_plans_learning:
-            qid = 1000*sonata_query.qid+max_operators
+            qid = 1000 * sonata_query.qid + max_operators
             tmp_query = (PacketStream(sonata_query.qid))
-            tmp_query.basic_headers = BASIC_HEADERS
+            # tmp_query.basic_headers = BASIC_HEADERS
             ctr = 0
             filter_ctr = 0
             prev_operator = None
@@ -106,7 +120,7 @@ class Partition(object):
                         if (qid, self.ref_level, filter_ctr) not in filters_marked:
                             filters_marked[(qid, self.ref_level, filter_ctr,)] = sonata_query.qid
                             filter_mappings[(prev_qid, qid, self.ref_level)] = (
-                            sonata_query.qid, filter_ctr, operator.func[1])
+                                sonata_query.qid, filter_ctr, operator.func[1])
                 else:
                     prev_operator = operator
                     copy_operators(tmp_query, operator)
@@ -117,7 +131,6 @@ class Partition(object):
                             can_increment = False
                 if can_increment:
                     ctr += 1
-
 
             intermediate_learning_queries[qid] = tmp_query
             prev_qid = qid
@@ -144,7 +157,7 @@ class Partition(object):
         ctr = 1
         for operator in dp_query.operators:
             can_increment = True
-            #print operator, partition_plans
+            # print operator, partition_plans
             if operator.name in self.target.supported_operators.keys():
                 if hasattr(operator, 'func') and len(operator.func) > 0:
                     if operator.func[0] in self.target.supported_operators[operator.name]:
@@ -193,6 +206,6 @@ class Partition(object):
 
             if can_increment:
                 ctr += 1
-            #print operator.name, partition_plans_learning
+                # print operator.name, partition_plans_learning
         partition_plans_learning.append(len(query.operators))
         return partition_plans_learning

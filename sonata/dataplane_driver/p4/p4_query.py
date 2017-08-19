@@ -3,25 +3,27 @@
 
 
 from p4_elements import Action, Header, Table
-from p4_operators import P4Distinct, P4Filter, P4Map, P4MapInit, P4Reduce
+# TODO: Fix these imports
+from p4_operators import P4Distinct, P4Filter, P4Map, P4MapInit, P4Reduce, QID_SIZE, COUNT_SIZE
 from p4_primitives import ModifyField, AddHeader
 from sonata.dataplane_driver.utils import get_logger
+from p4_field import P4Field
+from p4_layer import P4Layer
+from p4_layer import OutHeaders
 import logging
 
-HEADER_MAP = {'sIP': 'ipv4.srcAddr', 'dIP': 'ipv4.dstAddr',
-              'sPort': 'tcp.srcPort', 'dPort': 'tcp.dstPort',
-              'nBytes': 'ipv4.totalLen', 'proto': 'ipv4.protocol',
-              'sMac': 'ethernet.srcAddr', 'dMac': 'ethernet.dstAddr', 'payload': ''}
-
-HEADER_SIZE = {'sIP': 32, 'dIP': 32, 'sPort': 16, 'dPort': 16,
-               'nBytes': 16, 'proto': 16, 'sMac': 48, 'dMac': 48,
-               'qid': 16, 'count': 16}
 
 
 # Class that holds one refined query - which consists of an ordered list of operators
 class P4Query(object):
-    def __init__(self, query_id, parse_payload, generic_operators, nop_name, drop_meta_field, satisfied_meta_field,
-                 clone_meta_field):
+    all_fields = []
+    out_header = None
+    out_header_table = None
+    query_drop_action = None
+    satisfied_table = None
+
+    def __init__(self, query_id, parse_payload, payload_fields, generic_operators, nop_name, drop_meta_field,
+                 satisfied_meta_field, clone_meta_field, p4_raw_fields):
 
         # LOGGING
         log_level = logging.ERROR
@@ -31,6 +33,7 @@ class P4Query(object):
 
         self.id = query_id
         self.parse_payload = parse_payload
+        self.payload_fields = payload_fields
         self.meta_init_name = ''
 
         self.src_to_filter_operator = dict()
@@ -41,52 +44,106 @@ class P4Query(object):
         self.satisfied_meta_field = '%s_%i' % (satisfied_meta_field, self.id)
         self.clone_meta_field = clone_meta_field
 
-        # general drop action which is applied when a packet doesn't satisfy this query
+        self.p4_raw_fields = p4_raw_fields
+
         self.actions = dict()
-        self.actions['drop'] = Action('drop_%i' % self.id, (ModifyField(self.drop_meta_field, 1)))
-        self.query_drop_action = self.actions['drop'].get_name()
+
+        # general drop action which is applied when a packet doesn't satisfy this query
+        self.add_general_drop_action()
 
         # action and table to mark query as satisfied at end of query processing in ingress
+        self.mark_satisfied()
+
+        # initialize operators
+        self.get_all_fields(generic_operators)
+
+        self.operators = self.init_operators(generic_operators)
+
+        # create an out header layer
+        self.create_out_header()
+
+        # action and table to populate out_header in egress
+        self.append_out_header()
+
+    def mark_satisfied(self):
         primitives = list()
         primitives.append(ModifyField(self.satisfied_meta_field, 1))
         primitives.append(ModifyField(self.clone_meta_field, 1))
         self.actions['satisfied'] = Action('do_mark_satisfied_%i' % self.id, primitives)
         self.satisfied_table = Table('mark_satisfied_%i' % self.id, self.actions['satisfied'].get_name(), [], None, 1)
 
-        # initialize operators
-        self.operators = self.init_operators(generic_operators)
+    def add_general_drop_action(self):
+        self.actions['drop'] = Action('drop_%i' % self.id, (ModifyField(self.drop_meta_field, 1)))
+        self.query_drop_action = self.actions['drop'].get_name()
 
-        # out_header
-        fields = ['qid'] + self.operators[-1].get_out_headers()
-        self.out_header_fields = [(field, HEADER_SIZE[field]) for field in fields]
-        self.out_header = Header('out_header_%i' % self.id, self.out_header_fields)
+    def create_out_header(self):
+        out_header_name = 'out_header_%i' % self.id
 
-        # action and table to populate out_header in egress
+        # Create a new layer
+        # print "For query", self.id, "last operator", self.operators[-1], "fields",
+        # self.operators[-1].get_out_headers()
+        self.out_header = OutHeaders(out_header_name)
+        print "Last Operator", self.operators[-1], self.payload_fields+['ts', 'count']
+        sonata_field_list = filter(lambda x: x not in self.payload_fields+['ts', 'count'], self.operators[-1].get_out_headers())
+        out_header_fields = [self.p4_raw_fields.get_target_field(x) for x in sonata_field_list]
+
+        #TODO: Removed in order to get P4 syntax right
+        # Update the layer for each of these fields
+        # for fld in out_header_fields:
+        #     fld.layer = self.out_header
+        #     # because this is going out to the stream processor, thus we need name that is consistent
+        #     # among sonata targets
+        #     fld.target_name = fld.sonata_name
+
+        qid_field = P4Field(layer=self.out_header, target_name="qid", sonata_name="qid", size=QID_SIZE)
+        out_header_fields = [qid_field] + out_header_fields
+        if 'count' in self.operators[-1].get_out_headers():
+            out_header_fields.append(P4Field(layer=self.out_header, target_name="count", sonata_name="count",
+                                             size=COUNT_SIZE))
+
+        # Add fields to this out header
+        self.out_header.fields = out_header_fields
+
+    def append_out_header(self):
         primitives = list()
         primitives.append(AddHeader(self.out_header.get_name()))
-        for field_name, _ in self.out_header_fields:
-            primitives.append(ModifyField('%s.%s' % (self.out_header.get_name(), field_name),
-                                          '%s.%s' % (self.meta_init_name, field_name)))
-        self.actions['add_out_header'] = Action('do_add_out_header_%i' % self.id, primitives)
-
-        self.out_header_table = Table('add_out_header_%i' % self.id, self.actions['add_out_header'].get_name(), [],
+        for fld in self.out_header.fields:
+            primitives.append(ModifyField('%s.%s' % (self.out_header.get_name(), fld.target_name.replace(".", "_")),
+                                      '%s.%s' % (self.meta_init_name, fld.target_name.replace(".", "_"))))
+        self.actions['append_out_header'] = Action('do_add_out_header_%i' % self.id, primitives)
+        self.out_header_table = Table('add_out_header_%i' % self.id, self.actions['append_out_header'].get_name(), [],
                                       None, 1)
+
+    def get_all_fields(self, generic_operators):
+        # TODO: only select fields over which we perform any action
+        all_fields = set()
+        for operator in generic_operators:
+            if operator.name in {'Filter', 'Map', 'Reduce', 'Distinct'}:
+                all_fields = all_fields.union(set(operator.get_init_keys()))
+        # TODO remove this
+        self.all_fields = filter(lambda x: x not in self.payload_fields+['ts', 'count'], all_fields)
+
+    def get_init_fields(self, generic_operators):
+        # TODO: only select fields over which we perform any action
+        print "#DEBUG INIT FIELDS:", generic_operators
+        all_fields = set()
+        for operator in generic_operators:
+            if operator.name in {'Map', 'Reduce', 'Distinct', 'Filter'}:
+                print "#DEBUG INIT FIELDS:", operator.name, operator.get_init_keys()
+                all_fields = all_fields.union(set(operator.get_init_keys()))
+        # No need to filter out count field
+        return filter(lambda x: x not in self.payload_fields+['ts'], all_fields)
 
     def init_operators(self, generic_operators):
         p4_operators = list()
         operator_id = 1
 
-        # Add map init
-        keys = set()
-        keys.add('qid')
-        for operator in generic_operators:
-            if operator.name in {'Filter', 'Map', 'Reduce', 'Distinct'}:
-                keys = keys.union(set(operator.get_init_keys()))
-        # TODO remove this
-        keys = filter(lambda x: x != 'payload' and x != 'ts', keys)
+        map_init_keys = ['qid'] + self.get_init_fields(generic_operators)
 
-        self.logger.debug('add map_init with keys: %s' % (', '.join(keys),))
-        map_init_operator = P4MapInit(self.id, operator_id, keys)
+        print "For Query", self.id, "MapInit fields", map_init_keys
+
+        self.logger.debug('add map_init with keys: %s' % (', '.join(map_init_keys),))
+        map_init_operator = P4MapInit(self.id, operator_id, map_init_keys, self.p4_raw_fields)
         self.meta_init_name = map_init_operator.get_meta_name()
         p4_operators.append(map_init_operator)
 
@@ -95,10 +152,10 @@ class P4Query(object):
             self.logger.debug('add %s operator' % (operator.name,))
             operator_id += 1
 
-            #TODO: Confirm if this is the right way
+            # TODO: Confirm if this is the right way
             keys = filter(lambda x: x != 'payload' and x != 'ts', operator.keys)
             operator.keys = keys
-            #TODO: Confirm if this is the right way
+            # TODO: Confirm if this is the right way
 
             if operator.name == 'Filter':
                 match_action = self.nop_action
@@ -110,7 +167,7 @@ class P4Query(object):
                                            operator.func,
                                            operator.src,
                                            match_action,
-                                           miss_action)
+                                           miss_action, self.p4_raw_fields)
                 if operator.src != 0:
                     self.src_to_filter_operator[operator.src] = filter_operator
                 p4_operators.append(filter_operator)
@@ -121,7 +178,7 @@ class P4Query(object):
                                           self.meta_init_name,
                                           operator.keys,
                                           operator.map_keys,
-                                          operator.func))
+                                          operator.func, self.p4_raw_fields))
 
             elif operator.name == 'Reduce':
                 p4_operators.append(P4Reduce(self.id,
@@ -129,7 +186,7 @@ class P4Query(object):
                                              self.meta_init_name,
                                              self.query_drop_action,
                                              operator.keys,
-                                             operator.threshold))
+                                             operator.threshold, self.p4_raw_fields))
 
             elif operator.name == 'Distinct':
                 p4_operators.append(P4Distinct(self.id,
@@ -137,7 +194,7 @@ class P4Query(object):
                                                self.meta_init_name,
                                                self.query_drop_action,
                                                self.nop_action,
-                                               operator.keys,))
+                                               operator.keys, self.p4_raw_fields))
 
             else:
                 self.logger.error('tried to add an unsupported operator: %s' % operator.name)
@@ -181,7 +238,7 @@ class P4Query(object):
         out = '// query %i\n' % self.id
 
         # out header
-        out += self.out_header.get_code()
+        out += self.out_header.get_header_specification_code()
 
         # query actions (drop, mark satisfied, add out header, etc)
         for action in self.actions.values():
@@ -207,16 +264,20 @@ class P4Query(object):
 
         return commands
 
-    def get_out_header(self):
-        return self.out_header.get_name()
-
     def get_metadata_name(self):
         return self.meta_init_name
 
     def get_header_format(self):
+        # TODO: This will now change
         header_format = dict()
         header_format['parse_payload'] = self.parse_payload
-        header_format['headers'] = self.out_header_fields
+        header_format['payload_fields'] = self.payload_fields
+        print "%%%% get_header_format %%%% :" + str(self.out_header)
+        if self.out_header:
+            header_format['headers'] = self.out_header
+        else:
+            header_format['headers'] = None
+
         return header_format
 
     def get_update_commands(self, filter_id, update):

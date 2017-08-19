@@ -47,5 +47,5 @@ class Filter(Query):
             self.filter_vals = map_dict['filter_vals']
 
     def __repr__(self):
-        return '.Filter(filter_keys=' + str(self.filter_keys) +', filter_vals=' + str(self.filter_vals) + \
+        return '.Filter(prev_keys='+str(self.prev_keys)+', filter_keys=' + str(self.filter_keys) +', filter_vals=' + str(self.filter_vals) + \
                ', func=' + str(self.func) + ' src = ' + str(self.src) + ')'

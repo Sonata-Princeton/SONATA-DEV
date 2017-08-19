@@ -2,18 +2,17 @@
 #  Author:
 #  Arpit Gupta (arpitg@cs.princeton.edu)
 
-import json, time
-from multiprocessing.connection import Client
 from netaddr import *
 
-from sonata.system_config import TARGET_SP, BASIC_HEADERS
+# from sonata.system_config import TARGET_SP, BASIC_HEADERS
+TARGET_SP = "SPARK"
 
 if TARGET_SP == 'SPARK':
     from spark_queries import *
 
 
 class PacketStream(StreamingQuery):
-    basic_headers = ["qid"]+BASIC_HEADERS
+    basic_headers = ["qid"]
 
     def __init__(self, id):
         self.fields = tuple(self.basic_headers)

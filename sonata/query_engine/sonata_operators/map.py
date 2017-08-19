@@ -37,14 +37,14 @@ class Map(Query):
 
         if 'map_values' in map_dict:
             self.map_values = list(map_dict['map_values'])
-            for elem in self.map_values:
-                if elem not in self.values:
-                    self.values.append(elem)
+            # for elem in self.map_values:
+            #     if elem not in self.values:
+            #         self.values.append(elem)
 
         if "func" in map_dict:
             self.func = map_dict['func']
 
     def __repr__(self):
         return '.Map(keys=' + str(self.keys) + ', map_keys=' + str(self.map_keys) + \
-               ', values=' + str(self.values) +', map_values=' + str(self.map_values) + \
+               ', values=' + str(self.values) + ', map_values=' + str(self.map_values) + \
                ', func=' + str(self.func) + ')'

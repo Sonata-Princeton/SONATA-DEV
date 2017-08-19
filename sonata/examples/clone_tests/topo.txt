@@ -1,5 +1,0 @@
-switches 1 
-hosts 3
-h1 s1
-h2 s1
-h3 s1

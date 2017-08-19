@@ -3,6 +3,7 @@ class QueryObject(object):
         self.id = id
         self.operators = list()
         self.parse_payload = False
+        self.payload_fields = list()
 
     def __repr__(self):
         out = 'In'

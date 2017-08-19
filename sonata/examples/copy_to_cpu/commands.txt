@@ -1,8 +1,0 @@
-table_set_default copy_to_cpu do_copy_to_cpu
-table_set_default recirculate_to_ingress do_recirculate_to_ingress
-table_set_default copy_to_cpu2 do_copy_to_cpu2
-table_set_default redirect _nop
-table_set_default drop_table _drop
-table_add redirect do_cpu_encap 1 =>
-mirroring_add 250 12
-mirroring_add 251 13

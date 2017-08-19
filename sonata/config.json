@@ -1,0 +1,67 @@
+{
+  "is_on_server": "NO",
+  "on_server": {
+    "YES": {
+      "sonata": {
+        "refinement_keys": ["ipv4.dstIP", "ipv4.srcIP"],
+        "GRAN_MAX": 33,
+        "GRAN": 16,
+        "dp": "p4",
+        "sp": "spark",
+        "sm_conf": {
+          "batch_interval": 0.5,
+          "window_length": 1,
+          "sliding_interval": 1,
+          "sm_socket": ["0.0.0.0", 5555],
+          "op_handler_socket": ["localhost", 4949]
+        },
+        "emitter_conf": {
+          "spark_stream_address": "172.17.0.98",
+          "spark_stream_port": 8989,
+          "sniff_interface": "ens1f1",
+          "log_path": "/home/sonata/SONATA-DEV/sonata/examples/reflection_dns/graph/"
+        },
+        "fm_conf": {
+          "fm_socket": ["172.17.0.101", 6666],
+          "log_file": "/home/sonata/SONATA-DEV/sonata/examples/reflection_dns/graph/"
+        },
+        "base_folder": "/home/sonata/SONATA-DEV/sonata/examples/reflection_dns/graph/",
+        "internal_interfaces": {"ens1f0": 11, "ens1f1": 10, "ens4f0": 12},
+        "SENDER_PORT": 11,
+        "RECIEVE_PORT": 10
+      }
+    },
+    "NO": {
+      "sonata": {
+        "refinement_keys": ["ipv4.dstIP", "ipv4.srcIP"],
+        "GRAN_MAX": 33,
+        "GRAN": 16,
+        "dp": "p4",
+        "sp": "spark",
+        "sm_conf": {
+          "batch_interval": 0.5,
+          "window_length": 1,
+          "sliding_interval": 1,
+          "sm_socket": ["0.0.0.0", 5555],
+          "op_handler_socket": ["localhost", 4949],
+          "spark_stream_address": "localhost",
+          "spark_stream_port": 8989
+        },
+        "emitter_conf": {
+          "spark_stream_address": "localhost",
+          "spark_stream_port": 8989,
+          "sniff_interface": "out-veth-2",
+          "log_path": "/home/vagrant/dev/sonata/examples/reflection_dns/graph/"
+        },
+        "fm_conf": {
+          "fm_socket": ["localhost", 6666],
+          "log_file": "/home/vagrant/dev/sonata/examples/reflection_dns/graph/"
+        },
+        "base_folder": "/home/vagrant/dev/sonata/examples/reflection_dns/graph/",
+        "internal_interfaces": {"m-veth-1": 11, "m-veth-2": 12, "m-veth-3": 13},
+        "SENDER_PORT": 11,
+        "RECIEVE_PORT": 13
+      }
+    }
+  }
+}
