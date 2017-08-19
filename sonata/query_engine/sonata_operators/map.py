@@ -37,9 +37,9 @@ class Map(Query):
 
         if 'map_values' in map_dict:
             self.map_values = list(map_dict['map_values'])
-            for elem in self.map_values:
-                if elem not in self.values:
-                    self.values.append(elem)
+            # for elem in self.map_values:
+            #     if elem not in self.values:
+            #         self.values.append(elem)
 
         if "func" in map_dict:
             self.func = map_dict['func']
