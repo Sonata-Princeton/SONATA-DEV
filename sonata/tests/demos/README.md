@@ -12,4 +12,4 @@
 | Reflection DNS| Yes           |               |
 | Slowloris ATK | No           |               |
 | SSH Brute     | Yes           |               |
-| SuperSpreader | No           |               |
+| SuperSpreader | Yes           |               |
