@@ -8,9 +8,8 @@
         { "sonata_name": "seqNo", "target_name": "tcp.seqNo", "size": 32 },
         { "sonata_name": "ackNo", "target_name": "tcp.ackNo", "size": 32 },
         { "sonata_name": "dataOffset", "target_name": "tcp.dataOffset", "size": 4 },
-        { "sonata_name": "res", "target_name": "tcp.res", "size": 3 },
-        { "sonata_name": "ecn", "target_name": "tcp.ecn", "size": 3 },
-        { "sonata_name": "ctrl", "target_name": "tcp.ctrl", "size": 6 },
+        { "sonata_name": "res", "target_name": "tcp.res", "size": 4 },
+        { "sonata_name": "flags", "target_name": "tcp.flags", "size": 8 },
         { "sonata_name": "window", "target_name": "tcp.window", "size": 16 },
         { "sonata_name": "checksum", "target_name": "tcp.checksum", "size": 16 },
         { "sonata_name": "urgentPtr", "target_name": "tcp.urgentPtr", "size": 16 }
@@ -27,7 +26,7 @@
         { "sonata_name": "ihl", "target_name": "ipv4.ihl", "size": 4 },
         { "sonata_name": "diffserv", "target_name": "ipv4.diffserv", "size": 8 },
         { "sonata_name": "totalLen", "target_name": "ipv4.totalLen", "size": 16 },
-        { "sonata_name": "identification", "target_name": "ipv4.identification", "size": 4 },
+        { "sonata_name": "identification", "target_name": "ipv4.identification", "size": 16 },
         { "sonata_name": "flags", "target_name": "ipv4.flags", "size": 3 },
         { "sonata_name": "fragOffset", "target_name": "ipv4.fragOffset", "size": 13 },
         { "sonata_name": "ttl", "target_name": "ipv4.ttl", "size": 8 },
@@ -36,8 +35,8 @@
         { "sonata_name": "srcAddr", "target_name": "ipv4.srcIP", "size": 32 },
         { "sonata_name": "dstAddr", "target_name": "ipv4.dstIP", "size": 32 }
       ],
-      "child_layers": {"6": "tcp", "17": "udp"},
-      "field_that_determines_child": "-4"
+      "field_that_determines_child": "-4",
+      "child_layers": {"6": "tcp", "17": "udp"}
     },
     "scapy": {}
   },
@@ -55,12 +54,12 @@
   },
   "ethernet": {
     "bmv2": {
-     "in_payload": false,
-     "fields": [
-       { "sonata_name": "dstAddr", "target_name": "ethernet.dstMac", "size": 48 },
-       { "sonata_name": "srcAddr", "target_name": "ethernet.srcMac", "size": 48 },
-       { "sonata_name": "ethType", "target_name": "ethernet.ethType", "size": 16 }
-     ],
+      "in_payload": false,
+      "fields": [
+        { "sonata_name": "dstAddr", "target_name": "ethernet.dstMac", "size": 48 },
+        { "sonata_name": "srcAddr", "target_name": "ethernet.srcMac", "size": 48 },
+        { "sonata_name": "ethType", "target_name": "ethernet.ethType", "size": 16 }
+      ],
       "child_layers": { "0x0800": "ipv4"},
       "field_that_determines_child": "-1"
     }
@@ -69,51 +68,51 @@
     "scapy": {
       "in_payload": true,
       "fields": [
-        { "sonata_name": "dns.id", "target_name": "id", "size": 4 },
-        { "sonata_name": "dns.qr", "target_name": "qr", "size": 1 },
-        { "sonata_name": "dns.opcode", "target_name": "opcode", "size": 4 },
-        { "sonata_name": "dns.aa", "target_name": "aa", "size": 1 },
-        { "sonata_name": "dns.tc", "target_name": "tc", "size": 1 },
-        { "sonata_name": "dns.rd", "target_name": "rd", "size": 1 },
-        { "sonata_name": "dns.ra", "target_name": "ra", "size": 1 },
-        { "sonata_name": "dns.z", "target_name": "z", "size": 1 },
-        { "sonata_name": "dns.ad", "target_name": "ad", "size": 1 },
-        { "sonata_name": "dns.cd", "target_name": "cd", "size": 1 },
-        { "sonata_name": "dns.rcode", "target_name": "rcode", "size": 4 },
-        { "sonata_name": "dns.qdcount", "target_name": "qdcount", "size": 4 },
-        { "sonata_name": "dns.ancount", "target_name": "ancount", "size": 4 },
-        { "sonata_name": "dns.nscount", "target_name": "nscount", "size": 4 },
-        { "sonata_name": "dns.arcount", "target_name": "arcount", "size": 4 },
+        { "sonata_name": "dns.id", "target_name": "dns.id", "size": 4 },
+        { "sonata_name": "dns.qr", "target_name": "dns.qr", "size": 1 },
+        { "sonata_name": "dns.opcode", "target_name": "dns.opcode", "size": 4 },
+        { "sonata_name": "dns.aa", "target_name": "dns.aa", "size": 1 },
+        { "sonata_name": "dns.tc", "target_name": "dns.tc", "size": 1 },
+        { "sonata_name": "dns.rd", "target_name": "dns.rd", "size": 1 },
+        { "sonata_name": "dns.ra", "target_name": "dns.ra", "size": 1 },
+        { "sonata_name": "dns.z", "target_name": "dns.z", "size": 1 },
+        { "sonata_name": "dns.ad", "target_name": "dns.ad", "size": 1 },
+        { "sonata_name": "dns.cd", "target_name": "dns.cd", "size": 1 },
+        { "sonata_name": "dns.rcode", "target_name": "dns.rcode", "size": 4 },
+        { "sonata_name": "dns.qdcount", "target_name": "dns.qdcount", "size": 4 },
+        { "sonata_name": "dns.ancount", "target_name": "dns.ancount", "size": 4 },
+        { "sonata_name": "dns.nscount", "target_name": "dns.nscount", "size": 4 },
+        { "sonata_name": "dns.arcount", "target_name": "dns.arcount", "size": 4 },
 
-        { "sonata_name": "dns.qd.rrname", "target_name": "qd.rrname", "size": 64 },
-        { "sonata_name": "dns.qd.type", "target_name": "qd.type", "size": 4 },
-        { "sonata_name": "dns.qd.rclass", "target_name": "qd.rclass", "size": 4 },
-        { "sonata_name": "dns.qd.ttl", "target_name": "qd.ttl", "size": 32 },
-        { "sonata_name": "dns.qd.rdlen", "target_name": "qd.rdlen", "size": 4 },
-        { "sonata_name": "dns.qd.rdata", "target_name": "qd.rdata", "size": 4 },
-
-
-        { "sonata_name": "dns.an.rrname", "target_name": "an.rrname", "size": 64 },
-        { "sonata_name": "dns.an.type", "target_name": "an.type", "size": 4 },
-        { "sonata_name": "dns.an.rclass", "target_name": "an.rclass", "size": 4 },
-        { "sonata_name": "dns.an.ttl", "target_name": "an.ttl", "size": 32 },
-        { "sonata_name": "dns.an.rdlen", "target_name": "an.rdlen", "size": 4 },
-        { "sonata_name": "dns.an.rdata", "target_name": "an.rdata", "size": 4 },
+        { "sonata_name": "dns.qd.rrname", "target_name": "dns.qd.rrname", "size": 64 },
+        { "sonata_name": "dns.qd.type", "target_name": "dns.qd.type", "size": 4 },
+        { "sonata_name": "dns.qd.rclass", "target_name": "dns.qd.rclass", "size": 4 },
+        { "sonata_name": "dns.qd.ttl", "target_name": "dns.qd.ttl", "size": 32 },
+        { "sonata_name": "dns.qd.rdlen", "target_name": "dns.qd.rdlen", "size": 4 },
+        { "sonata_name": "dns.qd.rdata", "target_name": "dns.qd.rdata", "size": 4 },
 
 
-        { "sonata_name": "dns.ns.rrname", "target_name": "ns.rrname", "size": 64 },
-        { "sonata_name": "dns.ns.type", "target_name": "ns.type", "size": 4 },
-        { "sonata_name": "dns.ns.rclass", "target_name": "ns.rclass", "size": 4 },
-        { "sonata_name": "dns.ns.ttl", "target_name": "ns.ttl", "size": 32 },
-        { "sonata_name": "dns.ns.rdlen", "target_name": "ns.rdlen", "size": 4 },
-        { "sonata_name": "dns.ns.rdata", "target_name": "ns.rdata", "size": 4 },
+        { "sonata_name": "dns.an.rrname", "target_name": "dns.an.rrname", "size": 64 },
+        { "sonata_name": "dns.an.type", "target_name": "dns.an.type", "size": 4 },
+        { "sonata_name": "dns.an.rclass", "target_name": "dns.an.rclass", "size": 4 },
+        { "sonata_name": "dns.an.ttl", "target_name": "dns.an.ttl", "size": 32 },
+        { "sonata_name": "dns.an.rdlen", "target_name": "dns.an.rdlen", "size": 4 },
+        { "sonata_name": "dns.an.rdata", "target_name": "dns.an.rdata", "size": 4 },
 
-        { "sonata_name": "dns.ar.rrname", "target_name": "ar.rrname", "size": 64 },
-        { "sonata_name": "dns.ar.type", "target_name": "ar.type", "size": 4 },
-        { "sonata_name": "dns.ar.rclass", "target_name": "ar.rclass", "size": 4 },
-        { "sonata_name": "dns.ar.ttl", "target_name": "ar.ttl", "size": 32 },
-        { "sonata_name": "dns.ar.rdlen", "target_name": "ar.rdlen", "size": 4 },
-        { "sonata_name": "dns.ar.rdata", "target_name": "ar.rdata", "size": 4 }
+
+        { "sonata_name": "dns.ns.rrname", "target_name": "dns.ns.rrname", "size": 64 },
+        { "sonata_name": "dns.ns.type", "target_name": "dns.ns.type", "size": 4 },
+        { "sonata_name": "dns.ns.rclass", "target_name": "dns.ns.rclass", "size": 4 },
+        { "sonata_name": "dns.ns.ttl", "target_name": "dns.ns.ttl", "size": 32 },
+        { "sonata_name": "dns.ns.rdlen", "target_name": "dns.ns.rdlen", "size": 4 },
+        { "sonata_name": "dns.ns.rdata", "target_name": "dns.ns.rdata", "size": 4 },
+
+        { "sonata_name": "dns.ar.rrname", "target_name": "dns.ar.rrname", "size": 64 },
+        { "sonata_name": "dns.ar.type", "target_name": "dns.ar.type", "size": 4 },
+        { "sonata_name": "dns.ar.rclass", "target_name": "dns.ar.rclass", "size": 4 },
+        { "sonata_name": "dns.ar.ttl", "target_name": "dns.ar.ttl", "size": 32 },
+        { "sonata_name": "dns.ar.rdlen", "target_name": "dns.ar.rdlen", "size": 4 },
+        { "sonata_name": "dns.ar.rdata", "target_name": "dns.ar.rdata", "size": 4 }
       ],
       "child_layers": {}
     }

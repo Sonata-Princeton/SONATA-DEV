@@ -78,66 +78,6 @@ class P4Layer(object):
         return out
 
 
-class Ethernet(P4Layer):
-    def __init__(self, parent_layer=None):
-        # type: (object) -> object
-        P4Layer.__init__(self, "ethernet")
-        self.parent_layer = parent_layer
-        self.fields = [P4Field(self, "dstAddr", "ethernet.dstMac", 48),
-                       P4Field(self, "srcAddr", "ethernet.srcMac", 48),
-                       P4Field(self, "etherType", "ethernet.ethType", 16)]
-        self.field_that_determines_child = self.fields[-1]
-        self.child_layers = {"0x0800": IPV4(self)}
-
-
-class IPV4(P4Layer):
-    def __init__(self, parent_layer=None):
-        P4Layer.__init__(self, "ipv4")
-        self.parent_layer = parent_layer
-        self.fields = [P4Field(self, "version", "ipv4.version", 4),
-                       P4Field(self, "ihl", "ipv4.ihl", 4),
-                       P4Field(self, "diffserv", "ipv4.diffserv", 8),
-                       P4Field(self, "totalLen", "ipv4.totalLen", 16),
-                       P4Field(self, "identification", "ipv4.identification", 16),
-                       P4Field(self, "flags", "ipv4.flags", 3),
-                       P4Field(self, "fragOffset", "ipv4.fragOffset", 13),
-                       P4Field(self, "ttl", "ipv4.ttl", 8),
-                       P4Field(self, "protocol", "ipv4.proto", 8),
-                       P4Field(self, "hdrChecksum", "ipv4.hdrChecksum", 16),
-                       P4Field(self, "srcAddr", "ipv4.srcIP", 32),
-                       P4Field(self, "dstAddr", "ipv4.dstIP", 32)
-                       ]
-        self.field_that_determines_child = self.fields[-4]  # protocol determines the next layer to parse
-        self.child_layers = {6: TCP(self), 17: UDP(self)}
-
-
-class TCP(P4Layer):
-    def __init__(self, parent_layer=None):
-        P4Layer.__init__(self, "tcp")
-        self.parent_layer = parent_layer
-        self.fields = [P4Field(self, "srcPort", "tcp.sport", 16),
-                       P4Field(self, "dstPort", "tcp.dport", 16),
-                       P4Field(self, "seqNo", "tcp.seqNo", 32),
-                       P4Field(self, "ackNo", "tcp.ackNo", 32),
-                       P4Field(self, "dataOffset", "tcp.dataOffset", 4),
-                       P4Field(self, "res", "tcp.res", 4),
-                       P4Field(self, "flags", "tcp.flags", 8),
-                       P4Field(self, "window", "tcp.window", 16),
-                       P4Field(self, "checksum", "tcp.checksum", 16),
-                       P4Field(self, "urgentPtr", "tcp.urgentPtr", 16)
-                       ]
-
-
-class UDP(P4Layer):
-    def __init__(self, parent_layer=None):
-        P4Layer.__init__(self, "udp")
-        self.parent_layer = parent_layer
-        self.fields = [P4Field(self, "srcPort", "udp.sport", 16),
-                       P4Field(self, "dstPort", "udp.dport", 16),
-                       P4Field(self, "length_", "udp.len", 16),
-                       P4Field(self, "checksum", "udp.checksum", 16)]
-
-
 class OutHeaders(P4Layer):
     def __init__(self, name="", fields=[], parent_layer=None, child_layer=None):
         P4Layer.__init__(self, name)

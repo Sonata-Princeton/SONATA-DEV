@@ -22,7 +22,7 @@ if __name__ == '__main__':
     # but if it is an attack it will keep changing.
 
     dns_ttl = (PacketStream(1)
-               .filter(filter_keys=('ipv4.proto',), func=('eq', 17))
+               .filter(filter_keys=('ipv4.protocol',), func=('eq', 17))
                .filter(filter_keys=('udp.sport',), func=('eq', 53))
                .filter(filter_keys=('dns.ancount',), func=('geq', 1))
                .map(keys=('dns.an.rrname', 'dns.an.ttl'))

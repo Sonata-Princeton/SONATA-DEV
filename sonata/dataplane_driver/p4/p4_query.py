@@ -4,7 +4,7 @@
 
 from p4_elements import Action, Header, Table
 # TODO: Fix these imports
-from p4_operators import P4Distinct, P4Filter, P4Map, P4MapInit, P4Reduce, local_fix, QID_SIZE, COUNT_SIZE
+from p4_operators import P4Distinct, P4Filter, P4Map, P4MapInit, P4Reduce, QID_SIZE, COUNT_SIZE
 from p4_primitives import ModifyField, AddHeader
 from sonata.dataplane_driver.utils import get_logger
 from p4_field import P4Field
@@ -85,9 +85,7 @@ class P4Query(object):
         self.out_header = OutHeaders(out_header_name)
         print "Last Operator", self.operators[-1], self.payload_fields+['ts', 'count']
         sonata_field_list = filter(lambda x: x not in self.payload_fields+['ts', 'count'], self.operators[-1].get_out_headers())
-        # print [(x, local_fix[x], self.p4_raw_fields.get_target_field(local_fix[x]).target_name) for x in
-        #        sonata_field_list]
-        out_header_fields = [self.p4_raw_fields.get_target_field(local_fix[x]) for x in sonata_field_list]
+        out_header_fields = [self.p4_raw_fields.get_target_field(x) for x in sonata_field_list]
 
         #TODO: Removed in order to get P4 syntax right
         # Update the layer for each of these fields

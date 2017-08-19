@@ -4,7 +4,7 @@
 
 from p4_elements import Action, MetaData, MirrorSession, FieldList, Table, Header
 from p4_primitives import NoOp, CloneIngressPktToEgress, AddHeader, ModifyField
-from p4_query import P4Query, local_fix
+from p4_query import P4Query
 from p4_layer import P4Layer, OutHeaders, get_p4_layer#, P4RawFields, Ethernet
 from p4_field import P4Field
 from sonata.dataplane_driver.utils import get_logger
@@ -194,7 +194,7 @@ class P4Application(object):
 
         # TODO: get rid of this local fix. This won't be required after we fix the sonata query module
         # Start local fix
-        raw_fields = [local_fix[x] for x in raw_fields]
+        raw_fields = [x for x in raw_fields]
         # End local fix
 
         raw_layers = self.p4_raw_fields.get_layers_for_fields(raw_fields)

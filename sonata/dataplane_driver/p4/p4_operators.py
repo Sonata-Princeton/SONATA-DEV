@@ -13,18 +13,6 @@ REGISTER_INSTANCE_COUNT = 2**REGISTER_NUM_INDEX_BITS
 TABLE_SIZE = 64
 THRESHOLD = 5
 
-# TODO: get rid of this local fix. This won't be required after we fix the sonata query module
-local_fix = {'ethernet.dstMac': 'ethernet.dstMac', 'ipv4.srcIP': 'ipv4.srcIP', 'ipv4.proto': 'ipv4.proto',
-             'ethernet.srcMac': 'ethernet.srcMac', 'ipv4.totalLen': 'ipv4.totalLen', 'udp.dport': 'udp.dport',
-             'udp.sport': 'udp.sport', 'ipv4.dstIP': 'ipv4.dstIP', 'tcp.flags': 'tcp.flags', 'tcp.dport':'tcp.dport'}
-
-
-# sonata_raw_fields = ['ipv4.hdrChecksum', 'tcp.dport', 'ethernet.dstMac', 'udp.len', 'tcp.ctrl',
-#                      'ethernet.srcMac', 'udp.sport', 'udp.dport', 'tcp.res', 'ipv4.ihl', 'ipv4.diffserv',
-#                      'ipv4.totalLen', 'ipv4.dstIP', 'ipv4.flags', 'ipv4.proto', 'udp.checksum', 'tcp.seqNo',
-#                      'ipv4.ttl', 'tcp.ackNo', 'ipv4.srcIP', 'ipv4.version', 'ipv4.identification', 'tcp.ecn',
-#                      'tcp.window', 'tcp.checksum', 'tcp.dataOffset', 'ipv4.fragOffset', 'tcp.sport',
-#                      'tcp.urgentPtr', 'ethernet.ethType']
 
 # TODO: figure out a cleaner way of getting rid of these magical numbers
 HEADER_MASK_SIZE = {'ipv4.srcIP': 8, 'ipv4.dstIP': 8, 'udp.sport': 4, 'udp.dport': 4,
@@ -53,9 +41,7 @@ class P4Operator(object):
 
     def create_operator_specific_fields(self):
         for key in self.keys:
-            if key in local_fix:
-                sonata_field = local_fix[key]
-                self.operator_specific_fields[sonata_field] = self.p4_raw_fields.get_target_field(sonata_field)
+            if key not in ['qid','count']: self.operator_specific_fields[key] = self.p4_raw_fields.get_target_field(key)
 
     def get_out_headers(self):
         return self.out_headers
@@ -91,15 +77,14 @@ class P4Distinct(P4Operator):
         # Add map init
         hash_init_fields = list()
         for fld in self.keys:
-            if fld in local_fix:
-                hash_init_fields.append(self.p4_raw_fields.get_target_field(local_fix[fld]))
-            elif fld == 'qid':
+            if fld == 'qid':
                 hash_init_fields.append(P4Field(layer=None, target_name="qid", sonata_name="qid",
                                                size=QID_SIZE))
             elif fld == 'count':
                 hash_init_fields.append(P4Field(layer=None, target_name="count", sonata_name="count",
                                                size=COUNT_SIZE))
-
+            else:
+                hash_init_fields.append(self.p4_raw_fields.get_target_field(fld))
         # create HASH for access to register
         hash_fields = list()
         for field in hash_init_fields:
@@ -205,15 +190,14 @@ class P4Reduce(P4Operator):
         # Add map init
         hash_init_fields = list()
         for fld in self.keys:
-            if fld in local_fix:
-                hash_init_fields.append(self.p4_raw_fields.get_target_field(local_fix[fld]))
-            elif fld == 'qid':
+            if fld == 'qid':
                 hash_init_fields.append(P4Field(layer=None, target_name="qid", sonata_name="qid",
                                                 size=QID_SIZE))
             elif fld == 'count':
                 hash_init_fields.append(P4Field(layer=None, target_name="count", sonata_name="count",
                                                 size=COUNT_SIZE))
-
+            else:
+                hash_init_fields.append(self.p4_raw_fields.get_target_field(fld))
         # create HASH for access to register
         hash_fields = list()
         for field in hash_init_fields:
@@ -310,15 +294,14 @@ class P4MapInit(P4Operator):
         # Add map init
         map_init_fields = list()
         for fld in self.keys:
-            if fld in local_fix:
-                map_init_fields.append(self.p4_raw_fields.get_target_field(local_fix[fld]))
-            elif fld == 'qid':
+            if fld == 'qid':
                 map_init_fields.append(P4Field(layer=None, target_name="qid", sonata_name="qid",
                                                size=QID_SIZE))
             elif fld == 'count':
                 map_init_fields.append(P4Field(layer=None, target_name="count", sonata_name="count",
                                                size=COUNT_SIZE))
-
+            else:
+                map_init_fields.append(self.p4_raw_fields.get_target_field(fld))
         # create METADATA object to store data for all keys
         meta_fields = list()
         for fld in map_init_fields:
@@ -388,15 +371,14 @@ class P4Map(P4Operator):
         # Add map init
         map_fields = list()
         for fld in self.map_keys:
-            if fld in local_fix:
-                map_fields.append(self.p4_raw_fields.get_target_field(local_fix[fld]))
-            elif fld == 'qid':
+            if fld == 'qid':
                 map_fields.append(P4Field(layer=None, target_name="qid", sonata_name="qid",
                                                size=QID_SIZE))
             elif fld == 'count':
                 map_fields.append(P4Field(layer=None, target_name="count", sonata_name="count",
                                                size=COUNT_SIZE))
-
+            else:
+                map_fields.append(self.p4_raw_fields.get_target_field(fld))
         # create ACTION using the function
         primitives = list()
         if len(func) > 0:
@@ -467,13 +449,13 @@ class P4Filter(P4Operator):
 
         reads_fields = list()
         for filter_key in self.filter_keys:
-            sonata_name = local_fix[filter_key]
+            print "Filter key: ", filter_key, self.func
+            print self.operator_specific_fields
+
             if self.func == 'mask':
-                reads_fields.append((self.operator_specific_fields[sonata_name].layer.name + "." +
-                                     self.operator_specific_fields[sonata_name].target_name, 'lpm'))
+                reads_fields.append((filter_key, 'lpm'))
             else:
-                reads_fields.append((self.operator_specific_fields[sonata_name].layer.name + "." +
-                                     self.operator_specific_fields[sonata_name].target_name, 'exact'))
+                reads_fields.append((filter_key, 'exact'))
         print "Debug P4Filter", self.operator_name, miss_action, (match_action, ), reads_fields, TABLE_SIZE
         self.table = Table(self.operator_name, miss_action, (match_action, ), reads_fields, TABLE_SIZE)
 
