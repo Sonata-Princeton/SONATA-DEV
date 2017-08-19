@@ -67,9 +67,9 @@ def get_streaming_query(query, qid, sonata_fields, partition_plan):
         # sp_query = sp_query.filter_init(qid=qid, keys=sp_query.basic_headers)
         dp_operator = query.operators[n_operators_dp - 1]
         if hasattr(dp_operator, "map_values"):
-            sp_query.map(keys=flatten_streaming_field_names(filter_payload_fields_append_to_end(dp_operator.keys)),
+            sp_query.map(keys=flatten_streaming_field_names(filter_payload_fields_append_to_end(dp_operator.keys, sonata_fields)),
                          values=flatten_streaming_field_names(
-                             filter_payload_fields_append_to_end(dp_operator.map_values)))
+                             filter_payload_fields_append_to_end(dp_operator.map_values, sonata_fields)))
         else:
             sp_query.map(keys=flatten_streaming_field_names(filter_payload_fields_append_to_end(dp_operator.keys, sonata_fields)),
                          values=list())

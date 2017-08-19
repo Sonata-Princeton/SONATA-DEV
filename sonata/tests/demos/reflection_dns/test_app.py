@@ -18,7 +18,7 @@ if __name__ == '__main__':
     config = data["on_server"][data["is_on_server"]]["sonata"]
 
     reflection_dns = (PacketStream(1)
-                      .filter(filter_keys=('ipv4.proto',), func=('eq', 17))
+                      .filter(filter_keys=('ipv4.protocol',), func=('eq', 17))
                       .filter(filter_keys=('udp.sport',), func=('eq', 53))
                       .filter(filter_keys=('dns.ns.type',), func=('eq', 46))
                       .map(keys=('ipv4.dstIP', 'ipv4.srcIP'))

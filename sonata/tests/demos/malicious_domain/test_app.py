@@ -42,8 +42,8 @@ if __name__ == '__main__':
                    .map(keys=('dns.an.rrname',))
                    )
 
-    queries = [domain_2_ip]
-    config["final_plan"] = [(2, 32, 2, 1)]
+    queries = [ip_2_domain]
+    config["final_plan"] = [(1, 32, 2, 1)]
     print("*********************************************************************")
     print("*                   Receiving User Queries                          *")
     print("*********************************************************************\n\n")

@@ -158,7 +158,6 @@ class PacketStream(Query):
                     if k not in ["count"]:
                         unique_keys[k] = 0
 
-        # print "Concise Query: ", self.qid, unique_keys.keys()
         concise_query = PacketStream()
         concise_query.basic_headers = unique_keys.keys()
         for operator in self.operators:
@@ -175,6 +174,8 @@ class PacketStream(Query):
     def get_prev_values(self):
         if len(self.operators) > 0:
             prev_values = self.operators[-1].values
+            if self.operators[-1].name == 'Map':
+                prev_values = list(set(self.operators[-1].map_values))
         else:
             prev_values = ()
         return prev_values
@@ -194,7 +195,6 @@ class PacketStream(Query):
 
     def generate_query_in_mapping(self, fp, query_2_final_plan, query_in_mapping={}, query_input=[], is_right=False):
         query_id = self.qid
-        # print "Exploring", query_id, "input", query_input
         prev_ref_level = 0
         last_level = 0
 

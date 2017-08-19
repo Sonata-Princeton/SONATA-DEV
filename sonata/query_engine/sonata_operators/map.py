@@ -46,5 +46,5 @@ class Map(Query):
 
     def __repr__(self):
         return '.Map(keys=' + str(self.keys) + ', map_keys=' + str(self.map_keys) + \
-               ', values=' + str(self.values) +', map_values=' + str(self.map_values) + \
+               ', values=' + str(self.values) + ', map_values=' + str(self.map_values) + \
                ', func=' + str(self.func) + ')'

@@ -17,9 +17,8 @@ if __name__ == '__main__':
     T = 40
 
     n_syn = (PacketStream(1)
-             .filter(filter_keys=('ipv4.proto',), func=('eq', 6))
+             .filter(filter_keys=('ipv4.protocol',), func=('eq', 6))
              .filter(filter_keys=('tcp.flags',), func=('eq', 2))
-             # .map(keys=('ipv4.dstIP',))
              .map(keys=('ipv4.dstIP',), map_values=('count',), func=('eq', 1,))
              .reduce(keys=('ipv4.dstIP',), func=('sum',))
              .filter(filter_vals=('count',), func=('geq', T))

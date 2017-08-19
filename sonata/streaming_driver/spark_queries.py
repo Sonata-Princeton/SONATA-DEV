@@ -74,8 +74,6 @@ class Map(StreamingQuery):
             self.func = map_dict['func']
 
     def __repr__(self):
-        #print "Map Keys: ",self.prev_keys, self.prev_values, self.keys, self.values
-        #print self.map_keys, self.map_values
         expr = '.map(lambda (('
         expr += ','.join([str(elem) for elem in self.prev_keys])
         expr += ')'
@@ -116,7 +114,6 @@ class Map(StreamingQuery):
         return expr
 
     def compile(self):
-        #print "Map Keys: ",str(self.prev_keys), str(self.prev_values),str(self.keys), str(self.values)
         expr = '.map(lambda (('
         expr += ','.join([str(elem) for elem in self.prev_keys])
         expr += ')'
