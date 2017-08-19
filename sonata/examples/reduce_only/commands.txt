@@ -1,7 +1,0 @@
-table_set_default copy_to_cpu do_copy_to_cpu
-table_set_default redirect0 do_cpu_encap_val
-table_set_default redirect1 do_cpu_encap_one
-table_set_default start do_hashes
-table_set_default update_counts update_regs
-table_set_default skip1 _drop
-mirroring_add 250 12

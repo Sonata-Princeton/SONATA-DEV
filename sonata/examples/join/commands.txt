@@ -1,9 +1,0 @@
-table_set_default forward _drop
-table_add forward set_default_nhop 10.0.0.1 => 1 00:00:00:00:00:01
-table_add forward set_default_nhop 10.0.0.2 => 2 00:00:00:00:00:02
-table_add forward set_default_nhop 10.0.0.3 => 3 00:00:00:00:00:03
-table_set_default compute_hash compute_hash
-table_set_default insert_in_filters _nop
-table_add insert_in_filters filter_insert 9999 =>
-table_set_default report_join report_join_to_controller
-mirroring_add 111 3
