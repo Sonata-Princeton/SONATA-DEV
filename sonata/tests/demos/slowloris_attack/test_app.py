@@ -23,7 +23,6 @@ if __name__ == '__main__':
     # By making so many connections they are occupying
     # your ports and disabling you from making more connections with
     # other hosts
-
     dns_ttl = (PacketStream(1)
                .filter(filter_keys=('ipv4.proto',), func=('eq', 17))
                .filter(filter_keys=('udp.sport',), func=('eq', 53))

@@ -113,7 +113,7 @@ class Emitter(object):
                 output_tuple = ['k']+[str(qid)]+output_tuple
                 send_tuple = ",".join([str(x) for x in output_tuple])
                 self.logger.debug(send_tuple)
-                print send_tuple
+                # print send_tuple
                 self.send_data(send_tuple + "\n")
                 self.logger.info("emitter,"+ str(qid) + ","+str(start)+",%.20f"%time.time())
 
