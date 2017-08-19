@@ -110,8 +110,8 @@ class P4Query(object):
         primitives = list()
         primitives.append(AddHeader(self.out_header.get_name()))
         for fld in self.out_header.fields:
-            primitives.append(ModifyField('%s.%s' % (self.out_header.get_name(), fld.sonata_name.replace(".", "_")),
-                                      '%s.%s' % (self.meta_init_name, fld.sonata_name.replace(".", "_"))))
+            primitives.append(ModifyField('%s.%s' % (self.out_header.get_name(), fld.target_name.replace(".", "_")),
+                                      '%s.%s' % (self.meta_init_name, fld.target_name.replace(".", "_"))))
         self.actions['append_out_header'] = Action('do_add_out_header_%i' % self.id, primitives)
         self.out_header_table = Table('add_out_header_%i' % self.id, self.actions['append_out_header'].get_name(), [],
                                       None, 1)

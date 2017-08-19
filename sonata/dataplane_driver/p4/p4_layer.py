@@ -4,6 +4,12 @@
 from p4_field import P4Field
 
 
+def get_p4_layer(layer):
+    p4_layer = P4Layer(layer.name, layer.fields, layer.offset, layer.parent_layer,
+                       layer.child_layers, layer.field_that_determines_child)
+
+    return p4_layer
+
 class P4Layer(object):
     field_that_determines_child = None
 
@@ -28,7 +34,8 @@ class P4Layer(object):
     def get_header_specification_code(self):
         out = "header_type " + self.name + "_t {\n\tfields {\n"
         for fld in self.fields:
-            out += "\t\t" + fld.target_name + " : " + str(fld.size) + ";\n"
+            field_name = fld.target_name.split(".")[1]
+            out += "\t\t" + field_name + " : " + str(fld.size) + ";\n"
         out += "\t}\n}\n\n"
         out += 'header %s_t %s;\n\n' % (self.name, self.name)
         return out
@@ -36,8 +43,9 @@ class P4Layer(object):
     def get_parser_code(self, all_layers):
         out = "parser parse_" + self.name + " {\n\textract(" + self.name + ");\n"
         if self.field_that_determines_child is not None:
-            fld_to_check = self.field_that_determines_child
-            out += "\treturn select(latest." + fld_to_check.target_name + ") {\n"
+            fld_to_check = self.fields[int(self.field_that_determines_child)]
+            sub_field = fld_to_check.target_name.split(".")[1]
+            out += "\treturn select(latest." + sub_field + ") {\n"
             for k, v in self.child_layers.iteritems():
                 if v.name in [l.name for l in all_layers]:
                     out += "\t\t" + str(k) + " : parse_" + v.name + ";\n"
@@ -114,22 +122,9 @@ class TCP(P4Layer):
                        P4Field(self, "dataOffset", "tcp.dataOffset", 4),
                        P4Field(self, "res", "tcp.res", 4),
                        P4Field(self, "flags", "tcp.flags", 8),
-                       # P4Field(self, "ecn", "tcp.ecn", 3),
-                       # P4Field(self, "ctrl", "tcp.ctrl", 6),
                        P4Field(self, "window", "tcp.window", 16),
                        P4Field(self, "checksum", "tcp.checksum", 16),
                        P4Field(self, "urgentPtr", "tcp.urgentPtr", 16)
-
-                       # srcPort : 16;
-                       #  dstPort : 16;
-                       #  seqNo : 32;
-                       #  ackNo : 32;
-                       #  dataOffset : 4;
-                       #  res : 4;
-                       #  flags : 8;
-                       #  window : 16;
-                       #  checksum : 16;
-                       #  urgentPtr : 16;
                        ]
 
 
@@ -152,7 +147,7 @@ class OutHeaders(P4Layer):
     def get_header_specification_code(self):
         out = "header_type " + self.name + "_t {\n\tfields {\n"
         for fld in self.fields:
-            out += "\t\t" + fld.sonata_name.replace(".", "_") + " : " + str(fld.size) + ";\n"
+            out += "\t\t" + fld.target_name.replace(".", "_") + " : " + str(fld.size) + ";\n"
         out += "\t}\n}\n"
         out += 'header %s_t %s;\n\n' % (self.name, self.name)
         return out

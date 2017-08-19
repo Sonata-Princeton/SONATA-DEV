@@ -66,11 +66,11 @@ class P4Target(object):
     def get_supported_operators(self):
         return self.supported_operations
 
-    def run(self, app):
+    def run(self, app, sonata_fields):
         self.logger.info('run')
         # compile app to p4
         self.logger.info('init P4 application object')
-        self.app = P4Application(app)
+        self.app = P4Application(app, sonata_fields)
 
         self.logger.info('generate p4 code and commands')
         p4_src = self.app.get_p4_code()

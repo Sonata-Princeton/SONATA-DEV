@@ -30,13 +30,17 @@ class SonataLayer(object):
         self.fields = fields_tmp
         if child_layers:
             for key, layer_name in child_layers.items():
+
+                field_that_determines_child_tmp = None
+                if "field_that_determines_child" in conf[layer_name][layer_2_target[layer_name]]: field_that_determines_child_tmp = conf[layer_name][layer_2_target[layer_name]]["field_that_determines_child"]
+
                 child_layers_tmp[key] = SonataLayer(layer_name,
                                                     conf,
                                                     fields=conf[layer_name][layer_2_target[layer_name]]["fields"],
-                                                    offset=key,
+                                                    offset=0,
                                                     parent_layer=self,
                                                     child_layers=conf[layer_name][layer_2_target[layer_name]]["child_layers"],
-                                                    field_that_determines_child=None,
+                                                    field_that_determines_child=field_that_determines_child_tmp,
                                                     is_payload=conf[layer_name][layer_2_target[layer_name]]["in_payload"],
                                                     layer_2_target=self.layer_2_target)
 

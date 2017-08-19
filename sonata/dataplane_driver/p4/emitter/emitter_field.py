@@ -69,6 +69,8 @@ class Field(object):
         return self.target_name
 
     def extract_field(self, packet_as_string):
+        # print self.sonata_name, self.target_name
+        # print self.offset, self.offset, self.ctr
         return str(self.unpack_struct.unpack(packet_as_string[self.offset:self.offset + self.ctr])[0])
 
     def get_updated_offset(self):

@@ -107,7 +107,7 @@ class P4Distinct(P4Operator):
                 self.logger.error('found a / in the key')
                 raise NotImplementedError
             else:
-                hash_fields.append('%s.%s' % (meta_init_name, field.sonata_name.replace(".", "_")))
+                hash_fields.append('%s.%s' % (meta_init_name, field.target_name.replace(".", "_")))
         self.hash = HashFields(self.operator_name, hash_fields, 'crc32', REGISTER_NUM_INDEX_BITS)
 
         # name of metadata field where the index of the count within the register is stored
@@ -221,7 +221,7 @@ class P4Reduce(P4Operator):
                 self.logger.error('found a / in the key')
                 raise NotImplementedError
             else:
-                hash_fields.append('%s.%s' % (meta_init_name, field.sonata_name.replace(".", "_")))
+                hash_fields.append('%s.%s' % (meta_init_name, field.target_name.replace(".", "_")))
         self.hash = HashFields(self.operator_name, hash_fields, 'crc32', REGISTER_NUM_INDEX_BITS)
 
         # name of metadata field where the index of the count within the register is stored
@@ -322,7 +322,7 @@ class P4MapInit(P4Operator):
         # create METADATA object to store data for all keys
         meta_fields = list()
         for fld in map_init_fields:
-            meta_fields.append((fld.sonata_name.replace(".", "_"), fld.size))
+            meta_fields.append((fld.target_name.replace(".", "_"), fld.size))
 
         self.metadata = MetaData(self.operator_name, meta_fields)
 
@@ -331,7 +331,7 @@ class P4MapInit(P4Operator):
         for fld in map_init_fields:
             sonata_name = fld.sonata_name
             target_name = fld.target_name
-            meta_field_name = '%s.%s' % (self.metadata.get_name(), sonata_name.replace(".", "_"))
+            meta_field_name = '%s.%s' % (self.metadata.get_name(), target_name.replace(".", "_"))
 
             if sonata_name == 'qid':
                 # Assign query id to this field
@@ -340,7 +340,7 @@ class P4MapInit(P4Operator):
                 primitives.append(ModifyField(meta_field_name, 0))
             else:
                 # Read data from raw header fields and assign them to these meta fields
-                primitives.append(ModifyField(meta_field_name, fld.layer.name+"."+target_name))
+                primitives.append(ModifyField(meta_field_name, target_name))
 
         self.action = Action('do_%s' % self.operator_name, primitives)
 
@@ -405,8 +405,8 @@ class P4Map(P4Operator):
                 for field in map_fields:
                     # print self.__repr__(), self.map_keys
                     mask_size = (func[1]/4)
-                    mask = '0x' + ('f' * mask_size) + ('0' * (HEADER_MASK_SIZE[field.sonata_name] - mask_size))
-                    field_name = '%s.%s' % (self.meta_init_name, field.sonata_name.replace(".", "_"))
+                    mask = '0x' + ('f' * mask_size) + ('0' * (HEADER_MASK_SIZE[field.target_name] - mask_size))
+                    field_name = '%s.%s' % (self.meta_init_name, field.target_name.replace(".", "_"))
                     primitives.append(BitAnd(field_name, field_name, mask))
 
         self.action = Action('do_%s' % self.operator_name, primitives)

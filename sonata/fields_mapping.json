@@ -1,5 +1,5 @@
 {
-  "TCP": {
+  "tcp": {
     "bmv2": {
       "in_payload": false,
       "fields": [
@@ -19,7 +19,7 @@
     },
     "scapy": {}
   },
-  "IPV4": {
+  "ipv4": {
     "bmv2": {
       "in_payload": false,
       "fields": [
@@ -36,11 +36,12 @@
         { "sonata_name": "srcAddr", "target_name": "ipv4.srcIP", "size": 32 },
         { "sonata_name": "dstAddr", "target_name": "ipv4.dstIP", "size": 32 }
       ],
-      "child_layers": {"6": "TCP", "17": "UDP"}
+      "child_layers": {"6": "tcp", "17": "udp"},
+      "field_that_determines_child": "-4"
     },
     "scapy": {}
   },
-  "UDP":{
+  "udp":{
     "bmv2": {
       "in_payload": false,
       "fields": [
@@ -52,7 +53,7 @@
       "child_layers": {"0": "DNS"}
     }
   },
-  "Ethernet": {
+  "ethernet": {
     "bmv2": {
      "in_payload": false,
      "fields": [
@@ -60,7 +61,8 @@
        { "sonata_name": "srcAddr", "target_name": "ethernet.srcMac", "size": 48 },
        { "sonata_name": "ethType", "target_name": "ethernet.ethType", "size": 16 }
      ],
-      "child_layers": { "0x0800": "IPV4"}
+      "child_layers": { "0x0800": "ipv4"},
+      "field_that_determines_child": "-1"
     }
   },
   "DNS": {

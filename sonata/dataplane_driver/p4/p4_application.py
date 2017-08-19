@@ -5,7 +5,7 @@
 from p4_elements import Action, MetaData, MirrorSession, FieldList, Table, Header
 from p4_primitives import NoOp, CloneIngressPktToEgress, AddHeader, ModifyField
 from p4_query import P4Query, local_fix
-from p4_layer import P4Layer, OutHeaders, P4RawFields, Ethernet
+from p4_layer import P4Layer, OutHeaders, get_p4_layer#, P4RawFields, Ethernet
 from p4_field import P4Field
 from sonata.dataplane_driver.utils import get_logger
 import logging
@@ -28,7 +28,7 @@ SPAN_PORT = 12
 
 
 class P4Application(object):
-    def __init__(self, app):
+    def __init__(self, app, sonata_fields):
         # LOGGING
         log_level = logging.DEBUG
         self.logger = get_logger('P4Application', 'INFO')
@@ -36,8 +36,11 @@ class P4Application(object):
         self.logger.info('init')
 
         # Define the root layer for raw packet
-        self.root_layer = Ethernet()
-        self.p4_raw_fields = P4RawFields(self.root_layer)
+        # self.root_layer = Ethernet()
+        # self.p4_raw_fields = P4RawFields(self.root_layer)
+
+        self.root_layer = "ethernet"
+        self.p4_raw_fields = sonata_fields
 
         # define the application metadata
         self.drop_meta_field = 'drop'
@@ -168,7 +171,7 @@ class P4Application(object):
         out += 'parser start {\n'
         out += '\treturn select(current(0, 64)) {\n'
         out += '\t\t0 : parse_out_header;\n'
-        out += '\t\tdefault: parse_'+self.root_layer.name+';\n'
+        out += '\t\tdefault: parse_'+self.root_layer+';\n'
         out += '\t}\n'
         out += '}\n\n'
         return out
@@ -177,8 +180,9 @@ class P4Application(object):
         raw_layers = self.get_raw_layers()
         out = ""
         for layer in raw_layers:
-            out += layer.get_header_specification_code()
-            out += layer.get_parser_code(raw_layers)
+            p4_layer = get_p4_layer(layer)
+            out += p4_layer.get_header_specification_code()
+            out += p4_layer.get_parser_code(raw_layers)
 
         return out
 

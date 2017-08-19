@@ -80,7 +80,7 @@ class Emitter(object):
 
                 if out_headers is not None:
                     for fld in out_headers.fields[1:]:
-                        fld_name = fld.sonata_name
+                        fld_name = fld.target_name
                         fld_size = fld.size
                         if 'IP' in fld_name:
                             fld = IPField(fld_name, fld_name, offset)

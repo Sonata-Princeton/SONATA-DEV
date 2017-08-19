@@ -146,7 +146,7 @@ class Runtime(object):
         # time.sleep(10)
         self.initialize_handlers()
         time.sleep(2)
-        self.send_to_dp_driver('init', self.dp_queries)
+        self.send_to_dp_driver('init', self.sonata_fields ,self.dp_queries)
         print "*********************************************************************"
         print "*                   Updating Dataplane Driver                       *"
         print "*********************************************************************\n\n"
@@ -159,24 +159,26 @@ class Runtime(object):
 
     def get_sonata_layers(self):
 
-        INITIAL_LAYER = "Ethernet"
-        layer_2_target = {"Ethernet": "bmv2",
-                          "TCP": "bmv2",
-                          "IPV4": "bmv2",
-                          "UDP": "bmv2",
+        INITIAL_LAYER = "ethernet"
+        layer_2_target = {"ethernet": "bmv2",
+                          "tcp": "bmv2",
+                          "ipv4": "bmv2",
+                          "udp": "bmv2",
                           "DNS": "scapy"}
         import json
 
         with open('sonata/fields_mapping.json') as json_data_file:
             data = json.load(json_data_file)
 
+        field_that_determines_child = None
+        if "field_that_determines_child" in data[INITIAL_LAYER][layer_2_target[INITIAL_LAYER]]: field_that_determines_child = data[INITIAL_LAYER][layer_2_target[INITIAL_LAYER]]["field_that_determines_child"]
         layers = SonataLayer(INITIAL_LAYER,
                              data,
                              fields=data[INITIAL_LAYER][layer_2_target[INITIAL_LAYER]]["fields"],
-                             offset=0,
+                             offset=data[INITIAL_LAYER][layer_2_target[INITIAL_LAYER]],
                              parent_layer=None,
                              child_layers=data[INITIAL_LAYER][layer_2_target[INITIAL_LAYER]]["child_layers"],
-                             field_that_determines_child=None,
+                             field_that_determines_child=field_that_determines_child,
                              is_payload=data[INITIAL_LAYER][layer_2_target[INITIAL_LAYER]]["in_payload"],
                              layer_2_target=layer_2_target
                              )
@@ -346,14 +348,14 @@ class Runtime(object):
         print "*********************************************************************\n\n"
         time.sleep(3)
 
-    def send_to_dp_driver(self, message_type, content):
+    def send_to_dp_driver(self, message_type, sonata_fields, content):
         # Send compiled query expression to fabric manager
         start = "%.20f" % time.time()
 
         with open('dns_reflection.pickle', 'w') as f:
             pickle.dump(content, f)
 
-        message = {message_type: {0: content, 1: self.target_id}}
+        message = {message_type: {0: content, 1: self.target_id, 2: sonata_fields}}
         serialized_queries = pickle.dumps(message)
         conn = Client(tuple(self.conf['fm_conf']['fm_socket']))
         conn.send(serialized_queries)
