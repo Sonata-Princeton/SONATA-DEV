@@ -78,7 +78,7 @@ class Emitter(object):
                 if self.queries[qid]['registers']:
                     for register in self.queries[qid]['registers']:
                         self.process_register_values(register)
-            time.sleep(10)
+            time.sleep(1)
         return 0
 
     def send_data(self, data):
@@ -116,6 +116,7 @@ class Emitter(object):
         for indexLoc in store.keys():
             if str(indexLoc) in output.keys():
                 out = store[indexLoc]['tuple'] + ","+output[str(indexLoc)] + "\n"
+                print out
                 self.send_data(out)
 
                 ids.append(store[indexLoc]['id'])
