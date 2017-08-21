@@ -51,7 +51,17 @@
           "spark_stream_address": "localhost",
           "spark_stream_port": 8989,
           "sniff_interface": "out-veth-2",
-          "log_path": "/home/vagrant/dev/sonata/examples/reflection_dns/graph/"
+          "log_path": "/home/vagrant/dev/sonata/examples/reflection_dns/graph/",
+          "BMV2_CLI": "~/bmv2/tools/runtime_CLI.py",
+          "thrift_port": 22222,
+          "db": {
+            "user": "root",
+            "password": "root",
+            "host": "127.0.0.1",
+            "database": "sonata",
+            "raise_on_warnings": true,
+            "use_pure": true
+          }
         },
         "fm_conf": {
           "fm_socket": ["localhost", 6666],

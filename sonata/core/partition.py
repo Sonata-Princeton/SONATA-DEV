@@ -24,7 +24,7 @@ def get_dataplane_query(query, qid, sonata_fields, partition_plan):
         if border_operator.name == "Reduce":
             # We need to ensure that we also execute the next filter operator in the data plane
             # TODO: Disabled this for register read operation
-            # n_operators_dp += 1
+            n_operators_dp += 1
             dp_query.read_register = True
 
 

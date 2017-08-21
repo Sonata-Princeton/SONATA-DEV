@@ -38,19 +38,22 @@ class Emitter(object):
                                format='>H', offset=0)
 
         config = {
-            'user': 'root',
-            'password': 'root',
-            'host': '127.0.0.1',
-            'database': 'sonata',
-            'raise_on_warnings': True,
-            'use_pure': False,
+            'user': conf['db']['user'],
+            'password': conf['db']['password'],
+            'host': conf['db']['host'],
+            'database': conf['db']['database'],
+            'raise_on_warnings': conf['db']['raise_on_warnings'],
+            'use_pure': conf['db']['use_pure']
         }
 
         self.cnx = mysql.connector.connect(**config)
 
-
         self.reader_thread = Thread(name='reader_thread', target=self.start_reader)
         self.reader_thread.start()
+
+        self.bmv2_cli = conf['BMV2_CLI']
+        self.thrift_port = conf['thrift_port']
+
         print self.queries
         # create a logger for the object
         self.logger = logging.getLogger(__name__)
@@ -96,7 +99,7 @@ class Emitter(object):
             f.flush()
             f.close()
         cursor.close()
-        success, out = get_out("~/bmv2/tools/runtime_CLI.py --thrift-port 22222 < /home/vagrant/dev/CLI_commands.txt | grep -o -e \"$1.*[1-9][0-9]*$\"")
+        success, out = get_out(self.bmv2_cli + " --thrift-port " + str(self.thrift_port) + " < /home/vagrant/dev/CLI_commands.txt | grep -o -e \"$1.*[1-9][0-9]*$\"")
         # print store
         # print success, out
         output = {}
@@ -110,9 +113,10 @@ class Emitter(object):
                 f.flush()
                 f.close()
 
-            success3, out3 = get_out("~/bmv2/tools/runtime_CLI.py --thrift-port 22222 < /home/vagrant/dev/CLI_write_commands.txt")
+            success3, out3 = get_out(self.bmv2_cli + " --thrift-port " + str(self.thrift_port) + " < /home/vagrant/dev/CLI_write_commands.txt")
             print "Write Register: " + str(success3) + " "
         ids = []
+
         for indexLoc in store.keys():
             if str(indexLoc) in output.keys():
                 out = store[indexLoc]['tuple'] + ","+output[str(indexLoc)] + "\n"
