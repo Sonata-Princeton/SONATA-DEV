@@ -47,7 +47,7 @@ class Emitter(object):
         }
 
         self.cnx = mysql.connector.connect(**config)
-        self.cursor = self.cnx.cursor()
+
 
         self.reader_thread = Thread(name='reader_thread', target=self.start_reader)
         self.reader_thread.start()
@@ -74,54 +74,78 @@ class Emitter(object):
 
     def start_reader(self):
         while True:
-            cursor = self.cnx.cursor()
-            query = "SELECT id, qid, tuple, indexLoc FROM indexStore"
-            cursor.execute(query)
-            store = {}
-            with open("CLI_commands.txt", 'w') as f:
-                for (id, qid, tuple, indexLoc) in cursor:
-                    # print "From Database: ", id, qid, tuple,indexLoc
-                    store[indexLoc] = tuple
-                    f.write("register_read reduce_10032_6 " + str(indexLoc) + "\n")
-                f.flush()
-                f.close()
-            cursor.close()
-            success, out = get_out("~/bmv2/tools/runtime_CLI.py --thrift-port 22222 < /home/vagrant/dev/CLI_commands.txt | grep -o -e \"$1.*[1-9][0-9]*$\"")
-
-            output = {}
-            if success:
-                for line in out.split('\n'):
-                    if line:
-                        m = re.search('.*\[(.*)\]\=  (.*)', line)
-                        output[m.group(1)] = m.group(2)
-
-            print output
-
-            for indexLoc in store.keys():
-                if str(indexLoc) in output.keys():
-                    out = store[indexLoc] + ","+output[str(indexLoc)] + "\n"
-                    # print out
-                    self.send_data(out)
+            for qid in self.queries.keys():
+                if self.queries[qid]['registers']:
+                    for register in self.queries[qid]['registers']:
+                        self.process_register_values(register)
             time.sleep(10)
         return 0
 
     def send_data(self, data):
         self.spark_conn.send_bytes(data)
 
+    def process_register_values(self, register):
+        cursor = self.cnx.cursor()
+        query = "SELECT id, qid, tuple, indexLoc FROM indexStore"
+        cursor.execute(query)
+        store = {}
+        with open("CLI_commands.txt", 'w') as f:
+            for (id, qid, tuple, indexLoc) in cursor:
+                store[indexLoc] = {'tuple': tuple, 'id': id }
+                f.write("register_read "+register+" " + str(indexLoc) + "\n")
+            f.flush()
+            f.close()
+        cursor.close()
+        success, out = get_out("~/bmv2/tools/runtime_CLI.py --thrift-port 22222 < /home/vagrant/dev/CLI_commands.txt | grep -o -e \"$1.*[1-9][0-9]*$\"")
+        # print store
+        # print success, out
+        output = {}
+        if success:
+            with open("CLI_write_commands.txt", 'w') as f:
+                for line in out.split('\n'):
+                    if line:
+                        m = re.search('.*\[(.*)\]\=  (.*)', line)
+                        output[m.group(1)] = m.group(2)
+                        f.write("register_write "+register+" " + str(m.group(1)) + " 0\n")
+                f.flush()
+                f.close()
+
+            success3, out3 = get_out("~/bmv2/tools/runtime_CLI.py --thrift-port 22222 < /home/vagrant/dev/CLI_write_commands.txt")
+            print "Write Register: " + str(success3) + " "
+        ids = []
+        for indexLoc in store.keys():
+            if str(indexLoc) in output.keys():
+                out = store[indexLoc]['tuple'] + ","+output[str(indexLoc)] + "\n"
+                self.send_data(out)
+
+                ids.append(store[indexLoc]['id'])
+
+        if ids:
+            ids_str = ",".join([str(id) for id in ids])
+            delete_indexes = ("DELETE FROM indexStore WHERE id in ("+ids_str+")")
+            cursor = self.cnx.cursor()
+            cursor.execute(delete_indexes)
+            self.cnx.commit()
+            cursor.close()
+
+        print ids
+
     def store_tuple_to_db(self, tuple):
 
         tuples = tuple.split(",")
         index = tuples[-1]
         qid = tuples[1]
-
+        cursor = self.cnx.cursor()
         add_index = ("INSERT INTO indexStore "
                      "(qid, tuple, indexLoc) "
                      "VALUES (%s, %s, %s)")
         newTuple = ",".join(tuples[:-1])
         data_index = (int(qid), newTuple, int(index))
         # INSERT INTO DB
-        self.cursor.execute(add_index, data_index)
+        cursor.execute(add_index, data_index)
         self.cnx.commit()
+        cursor.close()
+
         # print "store_tuple_to_db"
 
     def sniff_packets(self):

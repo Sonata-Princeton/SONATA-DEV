@@ -33,6 +33,7 @@ class P4Query(object):
         self.parse_payload = parse_payload
         self.payload_fields = payload_fields
         self.read_register = read_register
+        self.registers_to_read = []
         self.meta_init_name = ''
         print '$$$$$$$$$$$$$ vals: ' + str(self.parse_payload) + ":" + str(self.read_register)
 
@@ -91,6 +92,10 @@ class P4Query(object):
         if 'index' in self.operators[-1].get_out_headers():
             out_header_fields.append(P4Field(layer=self.out_header, target_name="index", sonata_name="index",
                                              size=INDEX_SIZE))
+
+        for operator in self.operators:
+            if operator.name == 'Reduce':
+                self.registers_to_read.append(operator.register.name)
 
         # Add fields to this out header
         self.out_header.fields = out_header_fields
@@ -268,6 +273,7 @@ class P4Query(object):
         header_format['parse_payload'] = self.parse_payload
         header_format['payload_fields'] = self.payload_fields
         header_format['reads_register'] = self.read_register
+        header_format['registers'] = self.registers_to_read
         print "%%%% get_header_format %%%% :" + str(self.out_header)
         if self.out_header:
             header_format['headers'] = self.out_header
