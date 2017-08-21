@@ -37,7 +37,7 @@ class CMSketch(object):
         self.keys = map_dict['keys']
         self.out_headers = tuple(['qid']+list(self.keys))
         
-        self.hash_alg = 'crc32'
+        self.hash_alg = 'crc16'
         self.hash_output_width = 32
         self.qid_width = header_size['qid']
         self.val_width = 96

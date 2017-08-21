@@ -23,13 +23,19 @@ def get_dataplane_query(query, qid, sonata_fields, partition_plan):
         border_operator = query.operators[n_operators_dp - 1]
         if border_operator.name == "Reduce":
             # We need to ensure that we also execute the next filter operator in the data plane
-            n_operators_dp += 1
+            # TODO: Disabled this for register read operation
+            # n_operators_dp += 1
+            dp_query.read_register = True
+
+
         for operator in query.operators[:n_operators_dp]:
             # passing the operators as-is based on discussions with Rudy
             dp_query.operators.append(operator)
-            # copy_sonata_operators_to_dp_query(dp_query, operator)
+
         dp_query.parse_payload = requires_payload_processing(query, sonata_fields)
         dp_query.payload_fields = get_payload_fields(query, sonata_fields)
+
+        print "Getting dataplane query: Register Read: " + str(dp_query.read_register)
         print "Payload Fields", dp_query.payload_fields
 
     return dp_query

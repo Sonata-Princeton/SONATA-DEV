@@ -146,7 +146,7 @@ class Runtime(object):
         # time.sleep(10)
         self.initialize_handlers()
         time.sleep(2)
-        self.send_to_dp_driver('init', self.sonata_fields ,self.dp_queries)
+        self.send_to_dp_driver('init', self.sonata_fields, self.dp_queries)
         print "*********************************************************************"
         print "*                   Updating Dataplane Driver                       *"
         print "*********************************************************************\n\n"

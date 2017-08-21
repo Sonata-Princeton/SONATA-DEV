@@ -13,16 +13,16 @@ import json
 if __name__ == '__main__':
     with open('/home/vagrant/dev/sonata/config.json') as json_data_file:
         data = json.load(json_data_file)
-        print(data)
 
     config = data["on_server"][data["is_on_server"]]["sonata"]
     T = 1
 
     n_syn = (PacketStream(1)
-             .filter(filter_keys=('ipv4.proto',), func=('eq', 6))
+             .filter(filter_keys=('ipv4.protocol',), func=('eq', 6))
              .filter(filter_keys=('tcp.flags',), func=('eq', 2))
              .map(keys=('ipv4.dstIP',), map_values=('count',), func=('eq', 1,))
              .reduce(keys=('ipv4.dstIP',), func=('sum',))
+             .map(keys=('ipv4.dstIP',))
              )
 
     # Confirm the fin flag number here
@@ -31,18 +31,21 @@ if __name__ == '__main__':
              .filter(filter_keys=('tcp.flags',), func=('eq', 1))
              .map(keys=('ipv4.srcIP',), map_values=('count',), func=('eq', 1,))
              .reduce(keys=('ipv4.srcIP',), func=('sum',))
+             .map(keys=('ipv4.srcIP',))
              )
 
-    T = 1
-    q3 = (n_syn.join(n_fin)
-          .map(keys=('ipv4.dstIP', 'ipv4.srcIP',), map_values=('count1', 'count2',),
-               func=('diff',))  # make output diff called 'diff3'
-          .filter(filter_vals=('diff3',), func=('geq', T))
-          .map(keys=('ipv4.dstIP'))
-          )
+    # TODO: Commented for testing
+    # TODO: put index in header field
+    # T = 1
+    # q3 = (n_syn.join(n_fin)
+    #       .map(keys=('ipv4.dstIP', 'ipv4.srcIP',), map_values=('count1', 'count2',),
+    #            func=('diff',))  # make output diff called 'diff3'
+    #       .filter(filter_vals=('diff3',), func=('geq', T))
+    #       .map(keys=('ipv4.dstIP'))
+    #       )
 
-    queries = [q3]
-    config["final_plan"] = [(1, 32, 2, 1)]
+    queries = [n_syn]
+    config["final_plan"] = [(1, 32, 5, 1)]
     print("*********************************************************************")
     print("*                   Receiving User Queries                          *")
     print("*********************************************************************\n\n")

@@ -4,6 +4,7 @@ class QueryObject(object):
         self.operators = list()
         self.parse_payload = False
         self.payload_fields = list()
+        self.read_register = False
 
     def __repr__(self):
         out = 'In'

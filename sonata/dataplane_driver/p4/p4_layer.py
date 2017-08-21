@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # Author: Arpit Gupta (arpitg@cs.princeton.edu)
 
-from p4_field import P4Field
+# from p4_field import P4Field
 
 
 def get_p4_layer(layer):
@@ -9,6 +9,7 @@ def get_p4_layer(layer):
                        layer.child_layers, layer.field_that_determines_child)
 
     return p4_layer
+
 
 class P4Layer(object):
     field_that_determines_child = None
