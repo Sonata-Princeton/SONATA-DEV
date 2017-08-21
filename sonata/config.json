@@ -54,6 +54,9 @@
           "log_path": "/home/vagrant/dev/sonata/examples/reflection_dns/graph/",
           "BMV2_CLI": "~/bmv2/tools/runtime_CLI.py",
           "thrift_port": 22222,
+          "read_timeout": 1,
+          "read_file": "/home/vagrant/dev/CLI_commands.txt",
+          "write_file": "/home/vagrant/dev/CLI_write_commands.txt",
           "db": {
             "user": "root",
             "password": "root",

@@ -1,9 +1,7 @@
 from scapy.all import *
-import struct
 from multiprocessing.connection import Listener
 import time
 import logging
-from datetime import datetime
 from emitter_field import Field, IPField, MacField, PayloadField
 from scapy.config import conf
 import mysql.connector
@@ -32,29 +30,24 @@ class Emitter(object):
         #       - key: parse_payload, value: boolean
         #       - key: headers, values: list of tuples with (field name, field size)
 
-
         self.queries = queries
         self.qid_field = Field(target_name='qid', sonata_name='qid', size=QID_SIZE,
                                format='>H', offset=0)
 
-        config = {
-            'user': conf['db']['user'],
-            'password': conf['db']['password'],
-            'host': conf['db']['host'],
-            'database': conf['db']['database'],
-            'raise_on_warnings': conf['db']['raise_on_warnings'],
-            'use_pure': conf['db']['use_pure']
-        }
-
-        self.cnx = mysql.connector.connect(**config)
+        self.cnx = mysql.connector.connect(**conf['db'])
 
         self.reader_thread = Thread(name='reader_thread', target=self.start_reader)
         self.reader_thread.start()
 
+        self.read_file = conf['read_file']
+        self.write_file = conf['write_file']
+
         self.bmv2_cli = conf['BMV2_CLI']
         self.thrift_port = conf['thrift_port']
+        self.emitter_read_timeout = conf['read_timeout']
 
         print self.queries
+
         # create a logger for the object
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)
@@ -81,8 +74,8 @@ class Emitter(object):
                 if self.queries[qid]['registers']:
                     for register in self.queries[qid]['registers']:
                         self.process_register_values(register)
-            time.sleep(1)
-        return 0
+            time.sleep(self.emitter_read_timeout)
+
 
     def send_data(self, data):
         self.spark_conn.send_bytes(data)
@@ -92,19 +85,19 @@ class Emitter(object):
         query = "SELECT id, qid, tuple, indexLoc FROM indexStore"
         cursor.execute(query)
         store = {}
-        with open("CLI_commands.txt", 'w') as f:
+        with open(self.read_file, 'w') as f:
             for (id, qid, tuple, indexLoc) in cursor:
                 store[indexLoc] = {'tuple': tuple, 'id': id }
                 f.write("register_read "+register+" " + str(indexLoc) + "\n")
             f.flush()
             f.close()
         cursor.close()
-        success, out = get_out(self.bmv2_cli + " --thrift-port " + str(self.thrift_port) + " < /home/vagrant/dev/CLI_commands.txt | grep -o -e \"$1.*[1-9][0-9]*$\"")
+        success, out = get_out(self.bmv2_cli + " --thrift-port " + str(self.thrift_port) + " < " + self.read_file + " | grep -o -e \"$1.*[1-9][0-9]*$\"")
         # print store
         # print success, out
         output = {}
         if success:
-            with open("CLI_write_commands.txt", 'w') as f:
+            with open(self.write_file, 'w') as f:
                 for line in out.split('\n'):
                     if line:
                         m = re.search('.*\[(.*)\]\=  (.*)', line)
@@ -113,7 +106,7 @@ class Emitter(object):
                 f.flush()
                 f.close()
 
-            success3, out3 = get_out(self.bmv2_cli + " --thrift-port " + str(self.thrift_port) + " < /home/vagrant/dev/CLI_write_commands.txt")
+            success3, out3 = get_out(self.bmv2_cli + " --thrift-port " + str(self.thrift_port) + " < " + self.write_file)
             print "Write Register: " + str(success3) + " "
         ids = []
 
