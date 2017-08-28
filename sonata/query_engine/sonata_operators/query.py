@@ -15,7 +15,7 @@ class Query(object):
                      'tcp.urgentPtr', 'ethernet.ethType']
 
     # payload_headers = ['dns.ns.type', 'dns.ancount','dns.an.rrname', 'dns.an.ttl','dns.an.rdata']
-    # refinement_headers = ["ipv4.dstIP", "ipv4.srcIP"]
+    refinement_headers = ["ipv4.dstIP", "ipv4.srcIP"]
 
     def __init__(self, *args, **kwargs):
         self.fields = []

@@ -4,14 +4,13 @@
 
 from p4_elements import Action, Header, Table
 # TODO: Fix these imports
-from p4_operators import P4Distinct, P4Filter, P4Map, P4MapInit, P4Reduce, QID_SIZE, COUNT_SIZE
+from p4_operators import P4Distinct, P4Filter, P4Map, P4MapInit, P4Reduce, QID_SIZE, COUNT_SIZE,INDEX_SIZE
 from p4_primitives import ModifyField, AddHeader
 from sonata.dataplane_driver.utils import get_logger
 from p4_field import P4Field
 from p4_layer import P4Layer
 from p4_layer import OutHeaders
 import logging
-
 
 
 # Class that holds one refined query - which consists of an ordered list of operators
@@ -22,7 +21,7 @@ class P4Query(object):
     query_drop_action = None
     satisfied_table = None
 
-    def __init__(self, query_id, parse_payload, payload_fields, generic_operators, nop_name, drop_meta_field,
+    def __init__(self, query_id, parse_payload, payload_fields, read_register, generic_operators, nop_name, drop_meta_field,
                  satisfied_meta_field, clone_meta_field, p4_raw_fields):
 
         # LOGGING
@@ -30,11 +29,13 @@ class P4Query(object):
         self.logger = get_logger('P4Query - %i' % query_id, 'INFO')
         self.logger.setLevel(log_level)
         self.logger.info('init')
-
         self.id = query_id
         self.parse_payload = parse_payload
         self.payload_fields = payload_fields
+        self.read_register = read_register
+        self.registers_to_read = []
         self.meta_init_name = ''
+        print '$$$$$$$$$$$$$ vals: ' + str(self.parse_payload) + ":" + str(self.read_register)
 
         self.src_to_filter_operator = dict()
 
@@ -78,28 +79,23 @@ class P4Query(object):
 
     def create_out_header(self):
         out_header_name = 'out_header_%i' % self.id
-
-        # Create a new layer
-        # print "For query", self.id, "last operator", self.operators[-1], "fields",
-        # self.operators[-1].get_out_headers()
         self.out_header = OutHeaders(out_header_name)
         print "Last Operator", self.operators[-1], self.payload_fields+['ts', 'count']
-        sonata_field_list = filter(lambda x: x not in self.payload_fields+['ts', 'count'], self.operators[-1].get_out_headers())
+        sonata_field_list = filter(lambda x: x not in self.payload_fields+['ts', 'count', 'index'], self.operators[-1].get_out_headers())
         out_header_fields = [self.p4_raw_fields.get_target_field(x) for x in sonata_field_list]
-
-        #TODO: Removed in order to get P4 syntax right
-        # Update the layer for each of these fields
-        # for fld in out_header_fields:
-        #     fld.layer = self.out_header
-        #     # because this is going out to the stream processor, thus we need name that is consistent
-        #     # among sonata targets
-        #     fld.target_name = fld.sonata_name
 
         qid_field = P4Field(layer=self.out_header, target_name="qid", sonata_name="qid", size=QID_SIZE)
         out_header_fields = [qid_field] + out_header_fields
         if 'count' in self.operators[-1].get_out_headers():
             out_header_fields.append(P4Field(layer=self.out_header, target_name="count", sonata_name="count",
                                              size=COUNT_SIZE))
+        if 'index' in self.operators[-1].get_out_headers():
+            out_header_fields.append(P4Field(layer=self.out_header, target_name="index", sonata_name="index",
+                                             size=INDEX_SIZE))
+
+        for operator in self.operators:
+            if operator.name == 'Reduce':
+                self.registers_to_read.append(operator.register.name)
 
         # Add fields to this out header
         self.out_header.fields = out_header_fields
@@ -139,6 +135,8 @@ class P4Query(object):
         operator_id = 1
 
         map_init_keys = ['qid'] + self.get_init_fields(generic_operators)
+
+        if self.read_register: map_init_keys += ['index']
 
         print "For Query", self.id, "MapInit fields", map_init_keys
 
@@ -186,7 +184,9 @@ class P4Query(object):
                                              self.meta_init_name,
                                              self.query_drop_action,
                                              operator.keys,
-                                             operator.threshold, self.p4_raw_fields))
+                                             operator.threshold,
+                                             self.read_register,
+                                             self.p4_raw_fields))
 
             elif operator.name == 'Distinct':
                 p4_operators.append(P4Distinct(self.id,
@@ -272,6 +272,8 @@ class P4Query(object):
         header_format = dict()
         header_format['parse_payload'] = self.parse_payload
         header_format['payload_fields'] = self.payload_fields
+        header_format['reads_register'] = self.read_register
+        header_format['registers'] = self.registers_to_read
         print "%%%% get_header_format %%%% :" + str(self.out_header)
         if self.out_header:
             header_format['headers'] = self.out_header

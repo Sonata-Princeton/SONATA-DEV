@@ -106,10 +106,12 @@ class P4Application(object):
             self.logger.debug('create query pipeline for qid: %i' % (query_id))
             parse_payload = app[query_id].parse_payload
             payload_fields = app[query_id].payload_fields
+            read_register = app[query_id].read_register
             operators = app[query_id].operators
             query = P4Query(query_id,
                             parse_payload,
                             payload_fields,
+                            read_register,
                             operators,
                             nop_name,
                             '%s.%s' % (meta_name, self.drop_meta_field),

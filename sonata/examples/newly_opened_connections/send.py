@@ -34,9 +34,7 @@ def create_attack_traffic():
     for i in range(number_of_packets):
         sIPs.append(socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff))))
 
-    ttl = 10
     for sIP in sIPs:
-        ttl += 1
         p = Ether() / IP(dst=dIP, src=sIP) / TCP(dport=5555, flags='S')
 
         attack_packets.append(p)

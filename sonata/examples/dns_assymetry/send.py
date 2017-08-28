@@ -31,13 +31,23 @@ def create_attack_traffic():
     sIPs = []
     attack_packets = []
 
-    for i in range(number_of_packets):
+    for i in range(number_of_packets/2):
         sIPs.append(socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff))))
 
-    ttl = 10
-    for sIP in sIPs:
-        ttl += 1
-        p = Ether() / IP(dst=dIP, src=sIP) / UDP(sport=53) /DNS(qr=1, aa=1, ancount=1,an=DNSRR(rrname='www.thepacketgeek.com',  ttl=ttl, rdata='192.168.1.1'))
+    sport = 53
+    dport = 43
+    dummy_IP = '99.7.186.26'
+    for i in range(number_of_packets):
+        # sIP = socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff)))
+        p = Ether() / IP(dst='99.7.186.25', src=dummy_IP) / UDP(sport=sport, dport=dport) / "SONATA NORMAL"
+        print p.summary()
+        attack_packets.append(p)
+
+
+    for i in range(number_of_packets/20):
+        # dIP = socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff)))
+        p = Ether() / IP(dst=dummy_IP, src='99.7.186.25') / UDP(sport=dport, dport=sport) / "SONATA NORMAL"
+        print p.summary()
         attack_packets.append(p)
 
     return attack_packets

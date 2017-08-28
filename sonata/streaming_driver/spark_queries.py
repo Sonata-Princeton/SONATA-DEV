@@ -347,6 +347,7 @@ class Filter(StreamingQuery):
 
 class Join(object):
     name = 'Join'
+
     def __init__(self, *args, **kwargs):
         map_dict = dict(*args, **kwargs)
         self.keys = []

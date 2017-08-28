@@ -1,14 +1,17 @@
 from scapy.all import *
-import struct
 from multiprocessing.connection import Listener
 import time
 import logging
-from datetime import datetime
 from emitter_field import Field, IPField, MacField, PayloadField
 from scapy.config import conf
+import mysql.connector
+from threading import Thread
+from sonata.dataplane_driver.utils import get_out
+import re
 
 QID_SIZE = 16
 BYTE_SIZE = 8
+
 
 class Emitter(object):
     def __init__(self, conf, queries):
@@ -20,16 +23,31 @@ class Emitter(object):
 
         self.listener = Listener((self.spark_stream_address, self.spark_stream_port))
         self.spark_conn = None
-
+        self.db_conf = conf['db']
         # queries has the following format
         # queries = dict with qid as key
         # -> per qid we have again a dict with the following key, values:
         #       - key: parse_payload, value: boolean
         #       - key: headers, values: list of tuples with (field name, field size)
+
         self.queries = queries
         self.qid_field = Field(target_name='qid', sonata_name='qid', size=QID_SIZE,
                                format='>H', offset=0)
-        print self.queries
+
+        self.cnx = mysql.connector.connect(**self.db_conf)
+
+        self.read_file = conf['read_file']
+        self.write_file = conf['write_file']
+
+        self.bmv2_cli = conf['BMV2_CLI']
+        self.thrift_port = conf['thrift_port']
+        self.emitter_read_timeout = conf['read_timeout']
+
+        print self.queries, self.emitter_read_timeout
+
+        self.reader_thread = Thread(name='reader_thread', target=self.start_reader)
+        self.reader_thread.start()
+
         # create a logger for the object
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)
@@ -40,7 +58,7 @@ class Emitter(object):
 
     def start(self):
         while True:
-            # print "Waiting for socket"
+            print "Waiting for socket"
             self.spark_conn = self.listener.accept()
 
             print "*********************************************************************"
@@ -50,8 +68,89 @@ class Emitter(object):
             print "Now start sniffing the packets from switch"
             self.sniff_packets()
 
+    def start_reader(self):
+        while True:
+            for qid in self.queries.keys():
+                if self.queries[qid]['registers']:
+                    for register in self.queries[qid]['registers']:
+                        self.process_register_values(register)
+                print "woke up", qid
+            time.sleep(self.emitter_read_timeout)
+
     def send_data(self, data):
         self.spark_conn.send_bytes(data)
+
+    def process_register_values(self, register):
+        cnx = mysql.connector.connect(**self.db_conf)
+        cursor = cnx.cursor(buffered=True)
+        query = "SELECT id, qid, tuple, indexLoc FROM indexStore"
+        cursor.execute(query)
+        store = {}
+        with open(self.read_file, 'w') as f:
+            for (id, qid, tuple, indexLoc) in cursor:
+                store[indexLoc] = {'tuple': tuple, 'id': id }
+                f.write("register_read "+register+" " + str(indexLoc) + "\n")
+            f.flush()
+            f.close()
+        cursor.close()
+        cnx.close()
+        success, out = get_out(self.bmv2_cli + " --thrift-port " + str(self.thrift_port) + " < " + self.read_file + " | grep -o -e \"$1.*[1-9][0-9]*$\"")
+        # print store
+        # print success, out
+        output = {}
+        if success:
+            with open(self.write_file, 'w') as f:
+                for line in out.split('\n'):
+                    if line:
+                        m = re.search('.*\[(.*)\]\=\s+(.*)', line)
+                        output[m.group(1)] = m.group(2)
+                        f.write("register_write "+register+" " + str(m.group(1)) + " 0\n")
+                f.flush()
+                f.close()
+
+            success3, out3 = get_out(self.bmv2_cli + " --thrift-port " + str(self.thrift_port) + " < " + self.write_file)
+            print "Write Register: " + str(success3) + " "
+        ids = []
+
+        for indexLoc in store.keys():
+            if str(indexLoc) in output.keys():
+                out = store[indexLoc]['tuple'] + ","+output[str(indexLoc)] + "\n"
+                print out
+                self.send_data(out)
+
+                ids.append(store[indexLoc]['id'])
+
+        if ids:
+            ids_str = ",".join([str(id) for id in ids])
+            delete_indexes = ("DELETE FROM indexStore WHERE id in ("+ids_str+")")
+            cnx = mysql.connector.connect(**self.db_conf)
+            cursor = cnx.cursor(buffered=True)
+            cursor.execute(delete_indexes)
+            cnx.commit()
+            cursor.close()
+            cnx.close()
+
+        # print ids
+
+    def store_tuple_to_db(self, tuple):
+
+        tuples = tuple.split(",")
+        index = tuples[-1]
+        qid = tuples[1]
+
+        cnx = mysql.connector.connect(**self.db_conf)
+        cursor = cnx.cursor(buffered=True)
+        add_index = ("INSERT INTO indexStore "
+                     "(qid, tuple, indexLoc) "
+                     "VALUES (%s, %s, %s)")
+        newTuple = ",".join(tuples[:-1])
+        data_index = (int(qid), newTuple, int(index))
+        # INSERT INTO DB
+        cursor.execute(add_index, data_index)
+        cnx.commit()
+        cursor.close()
+        cnx.close()
+        # print "store_tuple_to_db"
 
     def sniff_packets(self):
         print "Interface confirming: ", self.sniff_interface
@@ -72,7 +171,7 @@ class Emitter(object):
         output_tuple = []
 
         while True:
-            start = "%.20f" %time.time()
+            start = "%.20f" % time.time()
             if int(qid) in [int(x) for x in self.queries.keys()] and int(qid) != 0:
                 query = self.queries[qid]
                 out_headers = query['headers']
@@ -110,12 +209,17 @@ class Emitter(object):
                         extracted_value = payload_field.extract_field(new_raw_packet)
                         output_tuple.append(extracted_value)
 
-                output_tuple = ['k']+[str(qid)]+output_tuple
+                output_tuple = ['k'] + [str(qid)] + output_tuple
                 send_tuple = ",".join([str(x) for x in output_tuple])
                 self.logger.debug(send_tuple)
-                # print send_tuple
-                self.send_data(send_tuple + "\n")
-                self.logger.info("emitter,"+ str(qid) + ","+str(start)+",%.20f"%time.time())
+
+                if query['reads_register']:
+                    print send_tuple
+                    self.store_tuple_to_db(send_tuple)
+                else:
+                    if qid == 10032: print send_tuple
+                    self.send_data(send_tuple + "\n")
+                self.logger.info("emitter," + str(qid) + "," + str(start) + ",%.20f" % time.time())
 
                 self.qid_field.offset = offset
                 # Read first two bits for the next out header layer
@@ -130,6 +234,7 @@ class Emitter(object):
                     break
             else:
                 break
+
 
 if __name__ == '__main__':
     emitter_conf = {'spark_stream_address': 'localhost',

@@ -16,7 +16,7 @@ class Reduce(Query):
         self.keys = ()
         self.values = ()
         self.func = ()
-        self.threshold = -1
+        self.threshold = 1
 
         if 'prev_keys' in map_dict:
             self.prev_keys = map_dict['prev_keys']

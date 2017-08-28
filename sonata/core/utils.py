@@ -11,7 +11,6 @@ import numpy as np
 
 def requires_payload_processing(query, sonata_fields):
     parse_payload = False
-    print "Payload Fields", sonata_fields.all_payload_fields.keys()
     for operator in query.operators[1:]:
         if len(set(sonata_fields.all_payload_fields.keys()).intersection(set(operator.keys))) > 0:
             parse_payload = True
@@ -21,7 +20,6 @@ def requires_payload_processing(query, sonata_fields):
 
 def get_payload_fields(query, sonata_fields):
     payload_fields = set()
-    print "Payload Fields", sonata_fields.all_payload_fields.keys()
     for operator in query.operators[1:]:
         payload_fields = payload_fields.union(set(sonata_fields.all_payload_fields.keys()).intersection(set(operator.keys)))
 
@@ -87,37 +85,43 @@ def copy_sonata_operators_to_dp_query(query, optr):
 
 
 def get_refinement_keys(query, refinement_keys_set):
-    print query
+    # print "Top Query", query
+    per_query_refinement = {}
+
     red_keys = set([])
     if query.left_child is not None:
-        red_keys_left = get_refinement_keys(query.left_child, refinement_keys_set)
-        red_keys_right = get_refinement_keys(query.right_child, refinement_keys_set)
+        # print "left keys", query.left_child.qid
+        # print "right keys",query.right_child.qid
+        red_keys_left, _ = get_refinement_keys(query.left_child, refinement_keys_set)
         print "left keys", red_keys_left, query.qid
+        red_keys_right, _ = get_refinement_keys(query.right_child, refinement_keys_set)
         print "right keys", red_keys_right, query.qid
-        # TODO: make sure that we better handle the case when first reduce operator has both sIP and dIP as reduction keys
-        if len(red_keys_right) > 0:
-            red_keys = set(red_keys_left).intersection(red_keys_right)
-        else:
-            red_keys = set(red_keys_left)
+
+        per_query_refinement[query.left_child.qid] = red_keys_left
+        per_query_refinement[query.right_child.qid] = red_keys_right
+
+        red_keys = set(red_keys_left)
 
         for operator in query.operators:
             if operator.name in ['Distinct', 'Reduce']:
                 red_keys = red_keys.intersection(set(operator.keys))
                 print query.qid, operator.name, red_keys
 
-        red_keys = red_keys.intersection(query.refinement_headers)
+        per_query_refinement[query.qid] = red_keys
+        red_keys = red_keys.intersection(refinement_keys_set)
 
     else:
         # print "Reached leaf node", query.qid
         red_keys = set(query.basic_headers)
         for operator in query.operators:
             # Extract reduction keys from first reduce/distinct operator
+            # print operator.name, operator.keys, red_keys
             if operator.name in ['Distinct', 'Reduce']:
                 red_keys = red_keys.intersection(set(operator.keys))
 
-    print "Reduction Key Search", query.qid, red_keys
-    return red_keys.intersection(refinement_keys_set)
-
+    red_keys = red_keys.intersection(refinement_keys_set)
+    # print "Reduction Key Search", query.qid, red_keys
+    return red_keys, per_query_refinement
 
 def generate_composed_spark_queries(reduction_key, basic_headers, query_tree, qid_2_query, composed_queries={}):
     # print query_tree

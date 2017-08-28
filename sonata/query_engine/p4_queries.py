@@ -98,7 +98,7 @@ class Register(object):
     def add_field_list_calculation(self):
         out = 'field_list_calculation '+self.operator_name+'_fields_hash {\n\t'
         out += 'input {\n\t\t'+self.field_list_name+';\n\t}\n\t'
-        out += 'algorithm : crc32;\n\toutput_width : '+str(self.width)+';\n}\n\n'
+        out += 'algorithm : crc16;\n\toutput_width : '+str(self.width)+';\n}\n\n'
         return out
 
     def add_register(self):
