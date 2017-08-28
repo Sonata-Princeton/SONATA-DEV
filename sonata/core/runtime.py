@@ -146,10 +146,13 @@ class Runtime(object):
         # time.sleep(10)
         self.initialize_handlers()
         time.sleep(2)
-        self.send_to_dp_driver('init', self.sonata_fields, self.dp_queries)
+        self.send_init_to_dp_driver('init', self.sonata_fields, self.dp_queries)
         print "*********************************************************************"
         print "*                   Updating Dataplane Driver                       *"
         print "*********************************************************************\n\n"
+
+
+        # TODO:
         if self.sp_queries:
             self.send_to_sm()
 
@@ -348,7 +351,7 @@ class Runtime(object):
         print "*********************************************************************\n\n"
         time.sleep(3)
 
-    def send_to_dp_driver(self, message_type, sonata_fields, content):
+    def send_init_to_dp_driver(self, message_type, sonata_fields, content):
         # Send compiled query expression to fabric manager
         start = "%.20f" % time.time()
 
@@ -356,6 +359,25 @@ class Runtime(object):
             pickle.dump(content, f)
 
         message = {message_type: {0: content, 1: self.target_id, 2: sonata_fields}}
+        serialized_queries = pickle.dumps(message)
+        conn = Client(tuple(self.conf['fm_conf']['fm_socket']))
+        conn.send(serialized_queries)
+        self.logger.info("runtime,fm_" + message_type + "," + str(start) + ",%.20f" % time.time())
+        time.sleep(1)
+        conn.close()
+        print "*********************************************************************"
+        print "*                   Updating Dataplane Driver                       *"
+        print "*********************************************************************\n\n"
+        return ''
+
+    def send_to_dp_driver(self, message_type, content):
+        # Send compiled query expression to fabric manager
+        start = "%.20f" % time.time()
+
+        with open('dns_reflection.pickle', 'w') as f:
+            pickle.dump(content, f)
+
+        message = {message_type: {0: content, 1: self.target_id}}
         serialized_queries = pickle.dumps(message)
         conn = Client(tuple(self.conf['fm_conf']['fm_socket']))
         conn.send(serialized_queries)

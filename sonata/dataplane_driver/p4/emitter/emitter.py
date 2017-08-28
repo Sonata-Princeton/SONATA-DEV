@@ -23,7 +23,7 @@ class Emitter(object):
 
         self.listener = Listener((self.spark_stream_address, self.spark_stream_port))
         self.spark_conn = None
-
+        self.db_conf = conf['db']
         # queries has the following format
         # queries = dict with qid as key
         # -> per qid we have again a dict with the following key, values:
@@ -34,10 +34,7 @@ class Emitter(object):
         self.qid_field = Field(target_name='qid', sonata_name='qid', size=QID_SIZE,
                                format='>H', offset=0)
 
-        self.cnx = mysql.connector.connect(**conf['db'])
-
-        self.reader_thread = Thread(name='reader_thread', target=self.start_reader)
-        self.reader_thread.start()
+        self.cnx = mysql.connector.connect(**self.db_conf)
 
         self.read_file = conf['read_file']
         self.write_file = conf['write_file']
@@ -46,7 +43,10 @@ class Emitter(object):
         self.thrift_port = conf['thrift_port']
         self.emitter_read_timeout = conf['read_timeout']
 
-        print self.queries
+        print self.queries, self.emitter_read_timeout
+
+        self.reader_thread = Thread(name='reader_thread', target=self.start_reader)
+        self.reader_thread.start()
 
         # create a logger for the object
         self.logger = logging.getLogger(__name__)
@@ -58,7 +58,7 @@ class Emitter(object):
 
     def start(self):
         while True:
-            # print "Waiting for socket"
+            print "Waiting for socket"
             self.spark_conn = self.listener.accept()
 
             print "*********************************************************************"
@@ -74,14 +74,15 @@ class Emitter(object):
                 if self.queries[qid]['registers']:
                     for register in self.queries[qid]['registers']:
                         self.process_register_values(register)
+                print "woke up", qid
             time.sleep(self.emitter_read_timeout)
-
 
     def send_data(self, data):
         self.spark_conn.send_bytes(data)
 
     def process_register_values(self, register):
-        cursor = self.cnx.cursor()
+        cnx = mysql.connector.connect(**self.db_conf)
+        cursor = cnx.cursor(buffered=True)
         query = "SELECT id, qid, tuple, indexLoc FROM indexStore"
         cursor.execute(query)
         store = {}
@@ -92,6 +93,7 @@ class Emitter(object):
             f.flush()
             f.close()
         cursor.close()
+        cnx.close()
         success, out = get_out(self.bmv2_cli + " --thrift-port " + str(self.thrift_port) + " < " + self.read_file + " | grep -o -e \"$1.*[1-9][0-9]*$\"")
         # print store
         # print success, out
@@ -100,7 +102,7 @@ class Emitter(object):
             with open(self.write_file, 'w') as f:
                 for line in out.split('\n'):
                     if line:
-                        m = re.search('.*\[(.*)\]\=  (.*)', line)
+                        m = re.search('.*\[(.*)\]\=\s+(.*)', line)
                         output[m.group(1)] = m.group(2)
                         f.write("register_write "+register+" " + str(m.group(1)) + " 0\n")
                 f.flush()
@@ -121,19 +123,23 @@ class Emitter(object):
         if ids:
             ids_str = ",".join([str(id) for id in ids])
             delete_indexes = ("DELETE FROM indexStore WHERE id in ("+ids_str+")")
-            cursor = self.cnx.cursor()
+            cnx = mysql.connector.connect(**self.db_conf)
+            cursor = cnx.cursor(buffered=True)
             cursor.execute(delete_indexes)
-            self.cnx.commit()
+            cnx.commit()
             cursor.close()
+            cnx.close()
 
-        print ids
+        # print ids
 
     def store_tuple_to_db(self, tuple):
 
         tuples = tuple.split(",")
         index = tuples[-1]
         qid = tuples[1]
-        cursor = self.cnx.cursor()
+
+        cnx = mysql.connector.connect(**self.db_conf)
+        cursor = cnx.cursor(buffered=True)
         add_index = ("INSERT INTO indexStore "
                      "(qid, tuple, indexLoc) "
                      "VALUES (%s, %s, %s)")
@@ -141,9 +147,9 @@ class Emitter(object):
         data_index = (int(qid), newTuple, int(index))
         # INSERT INTO DB
         cursor.execute(add_index, data_index)
-        self.cnx.commit()
+        cnx.commit()
         cursor.close()
-
+        cnx.close()
         # print "store_tuple_to_db"
 
     def sniff_packets(self):
@@ -208,9 +214,10 @@ class Emitter(object):
                 self.logger.debug(send_tuple)
 
                 if query['reads_register']:
-                    # print send_tuple
+                    print send_tuple
                     self.store_tuple_to_db(send_tuple)
                 else:
+                    if qid == 10032: print send_tuple
                     self.send_data(send_tuple + "\n")
                 self.logger.info("emitter," + str(qid) + "," + str(start) + ",%.20f" % time.time())
 

@@ -27,7 +27,6 @@ def get_dataplane_query(query, qid, sonata_fields, partition_plan):
             n_operators_dp += 1
             dp_query.read_register = True
 
-
         for operator in query.operators[:n_operators_dp]:
             # passing the operators as-is based on discussions with Rudy
             dp_query.operators.append(operator)

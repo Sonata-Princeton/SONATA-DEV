@@ -35,13 +35,13 @@
       "sonata": {
         "refinement_keys": ["ipv4.dstIP", "ipv4.srcIP"],
         "GRAN_MAX": 33,
-        "GRAN": 16,
+        "GRAN": 8,
         "dp": "p4",
         "sp": "spark",
         "sm_conf": {
-          "batch_interval": 0.5,
-          "window_length": 1,
-          "sliding_interval": 1,
+          "batch_interval": 2,
+          "window_length": 2,
+          "sliding_interval": 2,
           "sm_socket": ["0.0.0.0", 5555],
           "op_handler_socket": ["localhost", 4949],
           "spark_stream_address": "localhost",
@@ -59,7 +59,7 @@
           "write_file": "/home/vagrant/dev/CLI_write_commands.txt",
           "db": {
             "user": "root",
-            "password": "root",
+            "password": "",
             "host": "127.0.0.1",
             "database": "sonata",
             "raise_on_warnings": true,

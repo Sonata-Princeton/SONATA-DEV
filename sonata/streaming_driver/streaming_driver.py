@@ -44,24 +44,50 @@ class StreamingDriver(object):
     def start(self):
         lines = self.ssc.socketTextStream(self.spark_stream_address, self.spark_stream_port)
         pktstream = (lines.map(lambda line: processLogLine(line)))
-
+        print (self.window_length, self.sliding_interval)
         self.process_pktstream(pktstream)
         self.ssc.start()
         self.ssc.awaitTermination()
 
     def process_pktstream(self, pktstream):
+        print("pktstream")
+
+        spark_queries = {}
 
         conn = self.sm_listener.accept()
         raw_data = conn.recv()
         queries = pickle.loads(raw_data)
-        spark_queries = {}
 
         for queryId in queries:
             query = queries[queryId]
-            query_str = "pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd.filter(lambda p : (p[1]==str('"+str(queryId)+"'))).map(lambda p : (p[2:]))." + query.compile() + ")).foreachRDD(lambda rdd: send_reduction_keys(rdd, " + str(self.op_handler_socket)+ "," + str(self.start_time)+",\'"+ str(queryId)+"\'))"
+            query_str = "pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd.filter(lambda p : (p[1]==str('"+str(queryId)+"'))).map(lambda p : (p[2:]))." + query.compile() + ")).foreachRDD(lambda rdd:send_reduction_keys(rdd, " + str(self.op_handler_socket)+ "," + str(self.start_time)+",\'"+ str(queryId)+"\'))"
             print(query_str)
             spark_queries[queryId] = eval(query_str)
 
+        # pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd.filter(lambda p : (p[1]== '10032')).map(lambda p : (p[2:]))).collect())
+
+        # spark_queries['20032'] = pktstream.window(
+        #     self.window_length, self.sliding_interval) \
+        #     .transform(lambda rdd: (rdd
+        #                             .filter(lambda p: (p[1] == str('20032')))
+        #                             .map(lambda p: (p[2:]))
+        #                             .map(lambda ((ipv4_srcIP, udp_dport, count)): ((ipv4_srcIP, udp_dport), (count)))
+        #                             .reduceByKey(lambda x,y: x+y))
+        #                )
+        #
+        # spark_queries['10032'] = pktstream.window(self.window_length, self.sliding_interval)\
+        #     .transform(lambda rdd: (rdd
+        #                             .filter(lambda p: (p[1] == str('10032')))
+        #                             .map(lambda p: (p[2:]))
+        #                             .map(lambda ((ipv4_dstIP, udp_sport, count)): ((ipv4_dstIP, udp_sport), (count)))
+        #                             .reduceByKey(lambda x,y: x+y))
+        #                )
+        #
+        # spark_queries['10032'].join(spark_queries['20032'])\
+        #     .map(lambda s: (s[0], float(s[1][0])-float(s[1][1]))).foreachRDD(lambda rdd: print("Join " + str(rdd.take(5))))
+            # .filter(lambda s: s[1] > 1)\
+            # .map(lambda s: s[0][0])\
+            # .foreachRDD(lambda rdd: print("Join " + str(rdd.take(5))))
 
 if __name__ == "__main__":
     with open('/home/vagrant/dev/sonata/config.json') as json_data_file:

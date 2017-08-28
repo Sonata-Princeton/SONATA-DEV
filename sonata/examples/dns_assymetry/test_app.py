@@ -15,37 +15,36 @@ if __name__ == '__main__':
         data = json.load(json_data_file)
 
     config = data["on_server"][data["is_on_server"]]["sonata"]
-    T = 1
+    T = 40
 
-    n_syn = (PacketStream(1)
-             .filter(filter_keys=('ipv4.protocol',), func=('eq', 6))
-             .filter(filter_keys=('tcp.flags',), func=('eq', 2))
-             .map(keys=('ipv4.dstIP',), map_values=('count',), func=('eq', 1,))
-             .reduce(keys=('ipv4.dstIP',), func=('sum',))
-             .map(keys=('ipv4.dstIP',))
-             )
+    n_resp = (PacketStream(1)
+              .filter(filter_keys=('ipv4.protocol',), func=('eq', 17))
+              .map(keys=('ipv4.dstIP', 'udp.sport'), map_values=('count',), func=('eq', 1,))
+              .reduce(keys=('ipv4.dstIP', 'udp.sport'), func=('sum',))
+              .filter(filter_vals=('count',), func=('geq', T))
+              )
 
     # Confirm the fin flag number here
-    n_fin = (PacketStream(2)
-             .filter(filter_keys=('ipv4.proto',), func=('eq', 6))
-             .filter(filter_keys=('tcp.flags',), func=('eq', 1))
-             .map(keys=('ipv4.srcIP',), map_values=('count',), func=('eq', 1,))
-             .reduce(keys=('ipv4.srcIP',), func=('sum',))
-             .map(keys=('ipv4.srcIP',))
+    n_req = (PacketStream(2)
+             .filter(filter_keys=('ipv4.protocol',), func=('eq', 17))
+             .map(keys=('ipv4.srcIP', 'udp.dport'), map_values=('count',), func=('eq', 1,))
+             .reduce(keys=('ipv4.srcIP', 'udp.dport'), func=('sum',))
+             # .filter(filter_vals=('count',), func=('geq', T))
              )
 
     # TODO: Commented for testing
     # TODO: put index in header field
     # T = 1
-    # q3 = (n_syn.join(n_fin)
-    #       .map(keys=('ipv4.dstIP', 'ipv4.srcIP',), map_values=('count1', 'count2',),
-    #            func=('diff',))  # make output diff called 'diff3'
-    #       .filter(filter_vals=('diff3',), func=('geq', T))
-    #       .map(keys=('ipv4.dstIP'))
-    #       )
+    q3 = (n_resp
+          .join(query=n_req, new_qid=3)
+          .map(keys=('ipv4.dstIP', 'ipv4.srcIP',), map_values=('count1', 'count2',),
+               func=('diff',))  # make output diff called 'diff3'
+          .filter(filter_vals=('diff3',), func=('geq', T))
+          .map(keys=('ipv4.dstIP'))
+          )
 
-    queries = [n_syn]
-    config["final_plan"] = [(1, 32, 5, 1)]
+    queries = [q3]
+    config["final_plan"] = [(1, 32, 4, 1), (2, 32, 3, 1)]
     print("*********************************************************************")
     print("*                   Receiving User Queries                          *")
     print("*********************************************************************\n\n")
