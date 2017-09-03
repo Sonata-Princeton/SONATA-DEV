@@ -7,10 +7,10 @@ class Query(object):
     """
     Abstract Query Class
     """
-    basic_headers = ['ipv4.hdrChecksum', 'tcp.dport', 'ethernet.dstMac', 'udp.len', 'tcp.ctrl',
+    basic_headers = ['ipv4.hdrChecksum', 'tcp.dport', 'ethernet.dstMac', 'udp.len',
                      'ethernet.srcMac', 'udp.sport', 'udp.dport', 'tcp.res', 'ipv4.ihl', 'ipv4.diffserv',
-                     'ipv4.totalLen', 'ipv4.dstIP', 'ipv4.flags', 'ipv4.proto', 'udp.checksum', 'tcp.seqNo',
-                     'ipv4.ttl', 'tcp.ackNo', 'ipv4.srcIP', 'ipv4.version', 'ipv4.identification', 'tcp.ecn',
+                     'ipv4.totalLen', 'ipv4.dstIP', 'ipv4.flags', 'ipv4.protocol', 'udp.checksum', 'tcp.seqNo',
+                     'ipv4.ttl', 'tcp.ackNo', 'ipv4.srcIP', 'ipv4.version', 'ipv4.identification',
                      'tcp.window', 'tcp.checksum', 'tcp.dataOffset', 'ipv4.fragOffset', 'tcp.sport',
                      'tcp.urgentPtr', 'ethernet.ethType']
 

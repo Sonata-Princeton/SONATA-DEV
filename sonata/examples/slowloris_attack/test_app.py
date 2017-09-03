@@ -15,27 +15,32 @@ if __name__ == '__main__':
         data = json.load(json_data_file)
 
     config = data["on_server"][data["is_on_server"]]["sonata"]
-    T = 1
 
-    # Host will make lots of connections with you
-    # Send small amount of data to you
-    # By making so many connections they are occupying
-    # your ports and disabling you from making more connections with
-    # other hosts
-    dns_ttl = (PacketStream(1)
-               .filter(filter_keys=('ipv4.proto',), func=('eq', 17))
-               .filter(filter_keys=('udp.sport',), func=('eq', 53))
-               .filter(filter_keys=('dns.ancount',), func=('geq', 1))
-               .map(keys=('dns.an.rrname', 'dns.an.ttl'))
-               .distinct(keys=('dns.an.rrname', 'dns.an.ttl'))
-               .map(keys=('dns.an.rrname',), map_values=('count',), func=('eq', 1,))
-               .reduce(keys=('dns.an.rrname',), func=('sum',))
-               .filter(filter_vals=('count',), func=('geq', 40))
-               .map(keys=('dns.an.rrname',))
+    T1 = 10
+    T2 = 10
+    n_conns = (PacketStream(121)
+               .filter(filter_keys=('ipv4.protocol',), func=('eq', 6))
+               .map(keys=('ipv4.dstIP', 'ipv4.srcIP', 'tcp.sport',))
+               .distinct(keys=('ipv4.dstIP', 'ipv4.srcIP', 'tcp.sport',))
+               .map(keys=('ipv4.dstIP',), map_values=('count',), func=('eq', 1,))
+               .reduce(keys=('ipv4.dstIP',), func=('sum',))
+               .filter(filter_vals=('count',), func=('geq', T1))
                )
 
-    queries = [dns_ttl]
-    config["final_plan"] = [(1, 32, 2, 1)]
+    n_bytes = (PacketStream(122)
+               .filter(filter_keys=('ipv4.protocol',), func=('eq', 6))
+               .map(keys=('ipv4.dstIP', 'ipv4.totalLen',))
+               .map(keys=('ipv4.dstIP',), map_values=('ipv4.totalLen',))
+               .reduce(keys=('ipv4.dstIP',), func=('sum',))
+               )
+
+    slowloris = (n_bytes.join(window='Same', new_qid=123, query=n_conns)
+                 .map(map_values=('count2',), func=('div',))
+                 .filter(filter_keys=('count2',), func=('geq', T2))
+                 )
+
+    queries = [slowloris]
+    config["final_plan"] = [(121, 32, 4, 1), (122, 32, 5, 1)]  # (123, 32, 2, 1)
     print("*********************************************************************")
     print("*                   Receiving User Queries                          *")
     print("*********************************************************************\n\n")

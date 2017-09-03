@@ -38,7 +38,7 @@ class P4Query(object):
         self.filter_payload_str = filter_payload_str
         self.registers_to_read = []
         self.meta_init_name = ''
-        print '$$$$$$$$$$$$$ vals: ' + str(self.parse_payload) + ":" + str(self.read_register)
+        # print '$$$$$$$$$$$$$ vals: ' + str(self.parse_payload) + ":" + str(self.read_register)
 
         self.src_to_filter_operator = dict()
 
@@ -187,6 +187,7 @@ class P4Query(object):
                                              self.meta_init_name,
                                              self.query_drop_action,
                                              operator.keys,
+                                             operator.values,
                                              operator.threshold,
                                              self.read_register,
                                              self.p4_raw_fields))

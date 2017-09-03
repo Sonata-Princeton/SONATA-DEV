@@ -54,7 +54,7 @@ Function also rearranges the payload fields to the end.
 def get_streaming_query(query, qid, sonata_fields, partition_plan):
     # number of operators in the data plane
     n_operators_dp = int(partition_plan)
-    n_operators_sp = int(len(query.operators)) - n_operators_dp
+    n_operators_sp = int(len(query.operators)) - (n_operators_dp-1)
     print "Number of Dataplane vs Streaming Operators: ", n_operators_dp, n_operators_sp
     if n_operators_sp > 0:
         # create a sp query object

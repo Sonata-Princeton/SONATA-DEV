@@ -56,7 +56,6 @@ class DataplaneDriver(object):
                     application = message[key][0]
                     target_id = message[key][1]
                     sonata_fields = message[key][2]
-                    # print "application", application
                     self.configure(application, target_id, sonata_fields)
                     # self.metrics.info("init" + ","+ str(len(application)) +"," + start +",%.20f" % time.time())
                 elif key == 'delta':
@@ -127,7 +126,6 @@ class DataplaneDriver(object):
         return 999
 
     def configure(self, application, target_id, sonata_fields):
-        print application
         # TODO integrate query cleaner
         clean_application = get_clean_application(application)
         print "Cleaned: ", clean_application

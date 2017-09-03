@@ -172,7 +172,7 @@ class P4Distinct(P4Operator):
 
 
 class P4Reduce(P4Operator):
-    def __init__(self, qid, operator_id, meta_init_name, drop_action, keys, threshold, read_register, p4_raw_fields):
+    def __init__(self, qid, operator_id, meta_init_name, drop_action, keys, values, threshold, read_register, p4_raw_fields):
         super(P4Reduce, self).__init__('Reduce', qid, operator_id, keys, p4_raw_fields)
 
         if threshold == '-1':
@@ -193,6 +193,8 @@ class P4Reduce(P4Operator):
 
         # create REGISTER to keep track of counts
         self.register = Register(self.operator_name, REGISTER_WIDTH, REGISTER_INSTANCE_COUNT)
+
+        self.values = values
 
         # Add map init
         hash_init_fields = list()
@@ -228,7 +230,13 @@ class P4Reduce(P4Operator):
         primitives.append(ModifyFieldWithHashBasedOffset(self.index_field_name, 0, self.hash.get_name(),
                                                          REGISTER_INSTANCE_COUNT))
         primitives.append(RegisterRead(self.value_field_name, self.register.get_name(), self.index_field_name))
-        primitives.append(ModifyField(self.value_field_name, '%s + %i' % (self.value_field_name, 1)))
+
+        if self.values[0] == 'count':
+            primitives.append(ModifyField(self.value_field_name, '%s + %i' % (self.value_field_name, 1)))
+        else:
+            target_fld = self.p4_raw_fields.get_target_field(self.values[0])
+            primitives.append(ModifyField(self.value_field_name, '%s + %s' % (self.value_field_name, '%s.%s' % (meta_init_name, target_fld.target_name.replace(".", "_")))))
+
         primitives.append(RegisterWrite(self.register.get_name(), self.index_field_name, self.value_field_name))
         self.init_action = Action('do_init_%s' % self.operator_name, primitives)
         table_name = 'init_%s' % self.operator_name

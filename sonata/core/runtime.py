@@ -21,7 +21,8 @@ from sonata.core.partition import get_dataplane_query, get_streaming_query
 from sonata.core.integration import Target
 from sonata.dataplane_driver.dp_driver import DataplaneDriver
 from sonata.sonata_layers import *
-
+from sonata.streaming_driver.query_object import PacketStream as SP_QO
+from sonata.core.utils import copy_sonata_operators_to_sp_query, flatten_streaming_field_names
 
 class Runtime(object):
     dp_queries = {}
@@ -137,6 +138,10 @@ class Runtime(object):
             with open('pickled_queries.pickle', 'w') as f:
                 pickle.dump({0: self.dp_queries, 1: self.sp_queries}, f)
 
+        has_join, sp_join_query, join_queries = self.query_has_join_in_same_window(query, self.sonata_fields)
+
+        if has_join:
+            self.sp_queries[query.qid] = sp_join_query
         print "Dataplane Queries", self.dp_queries
         print "\n\n"
         print "Streaming Queries", self.sp_queries
@@ -152,11 +157,37 @@ class Runtime(object):
 
         # TODO:
         if self.sp_queries:
-            self.send_to_sm()
+            self.send_to_sm(join_queries)
 
         # self.dp_driver_thread.join()
         self.streaming_driver_thread.join()
         self.op_handler_thread.join()
+
+    def query_has_join_in_same_window(self, query, sonata_fields):
+        if query.left_child is not None and query.window == 'Same':
+            right_query_operator = query.right_child.operators[-1]
+            left_query_operator = query.left_child.operators[-1]
+
+            join_values = right_query_operator.values + left_query_operator.values
+            query.operators[0].keys = right_query_operator.keys
+            sp_query = SP_QO(query.qid)
+            sp_query.has_join = True
+            sp_query.join_same_window(keys=(flatten_streaming_field_names(right_query_operator.keys)),
+                                      values=tuple(flatten_streaming_field_names(join_values)),
+                                      left_qid=(query.right_child.qid*10000+32),
+                                      right_qid=(query.left_child.qid*10000+32))
+
+            for operator in query.operators:
+                copy_sonata_operators_to_sp_query(sp_query, operator, sonata_fields)
+
+            print sp_query
+
+            join_queries = [query.right_child.qid*10000+32, query.left_child.qid*10000+32]
+
+            return True, sp_query, join_queries
+        else:
+            return False, None, []
+
 
     def get_sonata_layers(self):
 
@@ -338,10 +369,10 @@ class Runtime(object):
             query_expressions.append(query.compile_sp())
         return query_expressions
 
-    def send_to_sm(self):
+    def send_to_sm(self, join_queries):
         # Send compiled query expression to streaming manager
         start = "%.20f" % time.time()
-        serialized_queries = pickle.dumps(self.sp_queries)
+        serialized_queries = pickle.dumps({'queries': self.sp_queries, 'join_queries': join_queries})
         conn = Client(tuple(self.conf['sm_conf']['sm_socket']))
         conn.send(serialized_queries)
         self.logger.info("runtime,sm_init," + str(start) + "," + str(time.time()))
