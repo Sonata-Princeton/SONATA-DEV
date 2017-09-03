@@ -108,7 +108,7 @@ class Runtime(object):
                     prev_r = r
                     prev_qid = q
 
-                print self.dp_queries, self.sp_queries
+                # print self.dp_queries, self.sp_queries
 
                 self.update_query_mappings(refinement_object, final_plan)
 
@@ -167,7 +167,8 @@ class Runtime(object):
                           "tcp": "bmv2",
                           "ipv4": "bmv2",
                           "udp": "bmv2",
-                          "DNS": "scapy"}
+                          "DNS": "scapy",
+                          "payload": "scapy"}
         import json
 
         with open('sonata/fields_mapping.json') as json_data_file:
@@ -269,7 +270,7 @@ class Runtime(object):
                                 # print out_qid, src_qid
                                 delta_config[(out_qid, src_qid)] = table_match_entries
                                 # reset these state variables
-                # print "delta config: ", delta_config
+                print "delta config: ", delta_config
                 updateDeltaConfig = False
                 if delta_config != {}: self.logger.info(
                     "runtime,create_delta_config," + str(start) + ",%.20f" % time.time())

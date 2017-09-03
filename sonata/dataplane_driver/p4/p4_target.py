@@ -102,7 +102,7 @@ class P4Target(object):
     def update(self, filter_update):
         self.logger.info('update')
         # Reset the data plane registers/tables before pushing the new delta config
-        # self.dataplane.reset_switch_state()
+        self.dataplane.reset_switch_state()
 
         # Get the commands to add new filter flow rules
         commands = self.app.get_update_commands(filter_update)

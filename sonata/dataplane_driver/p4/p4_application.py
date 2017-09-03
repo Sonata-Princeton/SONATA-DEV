@@ -107,11 +107,15 @@ class P4Application(object):
             parse_payload = app[query_id].parse_payload
             payload_fields = app[query_id].payload_fields
             read_register = app[query_id].read_register
+            filter_payload = app[query_id].filter_payload
+            filter_payload_str = app[query_id].filter_payload_str
             operators = app[query_id].operators
             query = P4Query(query_id,
                             parse_payload,
                             payload_fields,
                             read_register,
+                            filter_payload,
+                            filter_payload_str,
                             operators,
                             nop_name,
                             '%s.%s' % (meta_name, self.drop_meta_field),

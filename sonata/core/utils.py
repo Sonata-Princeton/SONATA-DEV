@@ -18,6 +18,18 @@ def requires_payload_processing(query, sonata_fields):
     return parse_payload
 
 
+def filtering_in_payload(query):
+    filter_payload = False
+    filter_payload_str = ''
+
+    for operator in query.operators:
+        if operator.name == 'Filter':
+            if len(set(['payload',]).intersection(set(operator.filter_vals))) > 0:
+                filter_payload = True
+                filter_payload_str = operator.func[1]
+
+    return filter_payload, filter_payload_str
+
 def get_payload_fields(query, sonata_fields):
     payload_fields = set()
     for operator in query.operators[1:]:

@@ -125,33 +125,36 @@ class SonataRawFields(object):
         return self.all_sonata_fields[sonata_field_name]
 
 def test():
-    TARGET_NAME = "bmv2"
-    INITIAL_LAYER = "Ethernet"
+    INITIAL_LAYER = "ethernet"
+    layer_2_target = {"ethernet": "bmv2",
+                      "tcp": "bmv2",
+                      "ipv4": "bmv2",
+                      "udp": "bmv2",
+                      "DNS": "scapy",
+                      "payload": "scapy"}
 
     import json
 
-    with open('/home/vagrant/dev/sonata/fields_mapping.json') as json_data_file:
+    with open('sonata/fields_mapping.json') as json_data_file:
         data = json.load(json_data_file)
 
+    field_that_determines_child = None
+    if "field_that_determines_child" in data[INITIAL_LAYER][layer_2_target[INITIAL_LAYER]]: field_that_determines_child = data[INITIAL_LAYER][layer_2_target[INITIAL_LAYER]]["field_that_determines_child"]
     layers = SonataLayer(INITIAL_LAYER,
                          data,
-                         fields=data[INITIAL_LAYER][TARGET_NAME]["fields"],
-                         offset=0,
+                         fields=data[INITIAL_LAYER][layer_2_target[INITIAL_LAYER]]["fields"],
+                         offset=data[INITIAL_LAYER][layer_2_target[INITIAL_LAYER]],
                          parent_layer=None,
-                         child_layers=data[INITIAL_LAYER][TARGET_NAME]["child_layers"],
-                         field_that_determines_child=None,
-                         is_payload = data[INITIAL_LAYER][TARGET_NAME]["in_payload"],
+                         child_layers=data[INITIAL_LAYER][layer_2_target[INITIAL_LAYER]]["child_layers"],
+                         field_that_determines_child=field_that_determines_child,
+                         is_payload=data[INITIAL_LAYER][layer_2_target[INITIAL_LAYER]]["in_payload"],
+                         layer_2_target=layer_2_target
                          )
 
-    # print layers
-    children = layers.get_all_child_layers()
+    sonataFields = SonataRawFields(layers)
 
-    print [c.name for c in children]
-
-    rawField = SonataRawFields(layers)
-
-    print rawField.all_sonata_fields
-    print rawField.all_fields
+    print sonataFields.all_sonata_fields
+    print sonataFields.all_fields
 
 
 if __name__ == '__main__':

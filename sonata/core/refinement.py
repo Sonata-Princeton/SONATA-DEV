@@ -129,6 +129,7 @@ class Refinement(object):
                 out_query.basic_headers = get_concise_headers(tmp_query)
                 refined_qid_src = 10000 * prev_qid + prev_ref_level
 
+                print
                 out_query.filter(append_type=1, src=refined_qid_src, filter_keys=(self.per_query_refinement_key[qid],),
                                  func=('mask', prev_ref_level,))
 

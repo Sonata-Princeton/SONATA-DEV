@@ -74,7 +74,7 @@ class Emitter(object):
                 if self.queries[qid]['registers']:
                     for register in self.queries[qid]['registers']:
                         self.process_register_values(register)
-                print "woke up", qid
+                # print "woke up", qid
             time.sleep(self.emitter_read_timeout)
 
     def send_data(self, data):
@@ -109,13 +109,13 @@ class Emitter(object):
                 f.close()
 
             success3, out3 = get_out(self.bmv2_cli + " --thrift-port " + str(self.thrift_port) + " < " + self.write_file)
-            print "Write Register: " + str(success3) + " "
+            # print "Write Register: " + str(success3) + " "
         ids = []
 
         for indexLoc in store.keys():
             if str(indexLoc) in output.keys():
                 out = store[indexLoc]['tuple'] + ","+output[str(indexLoc)] + "\n"
-                print out
+                # print out
                 self.send_data(out)
 
                 ids.append(store[indexLoc]['id'])
@@ -161,6 +161,9 @@ class Emitter(object):
         callback function executed for each capture packet
         '''
         p_str = str(raw_packet)
+        # print raw_packet.summary()
+        # if raw_packet.haslayer(Raw):
+        #     print str(raw_packet.getlayer(Raw).load)
         offset = 0
         # Read first two bits to extract query id (first field for all out headers is qid)
         self.qid_field.offset = offset
@@ -198,12 +201,12 @@ class Emitter(object):
                         field_value = fld.extract_field(p_str)
                         output_tuple.append(field_value)
 
-                conf.l3types.register_num2layer(3, Ether)
-                ctr += 4
-                new_raw_packet = conf.l3types[3](p_str[ctr:])
+                payload_fields = query['payload_fields']
+                if query['parse_payload'] and payload_fields != ['payload']:
+                    conf.l3types.register_num2layer(3, Ether)
+                    ctr += 4
+                    new_raw_packet = conf.l3types[3](p_str[ctr:])
 
-                if query['parse_payload']:
-                    payload_fields = query['payload_fields']
                     for fld in payload_fields:
                         payload_field = PayloadField(fld)
                         extracted_value = payload_field.extract_field(new_raw_packet)
@@ -211,21 +214,32 @@ class Emitter(object):
 
                 output_tuple = ['k'] + [str(qid)] + output_tuple
                 send_tuple = ",".join([str(x) for x in output_tuple])
+
+                if query['filter_payload']:
+                    output_payload = '0'
+                    if raw_packet.haslayer(Raw):
+                        payload = str(raw_packet.getlayer(Raw).load)
+                        if query['filter_payload_str'] in payload:
+                            output_payload = query['filter_payload_str']
+
+                if query['filter_payload']:
+                    send_tuple += "," + output_payload
                 self.logger.debug(send_tuple)
 
                 if query['reads_register']:
                     print send_tuple
                     self.store_tuple_to_db(send_tuple)
                 else:
-                    if qid == 10032: print send_tuple
+                    # if qid == 30032: print send_tuple
                     self.send_data(send_tuple + "\n")
                 self.logger.info("emitter," + str(qid) + "," + str(start) + ",%.20f" % time.time())
 
                 self.qid_field.offset = offset
                 # Read first two bits for the next out header layer
-                qid = self.qid_field.extract_field(p_str)
+                qid = int(self.qid_field.extract_field(p_str))
                 ctr += self.qid_field.ctr
-                if qid in self.queries.keys() and qid != 0:
+                # print "Next", qid
+                if int(qid) in [int(x) for x in self.queries.keys()] and int(qid) != 0:
                     # we need to parse another layer for this packet
                     offset = self.qid_field.get_updated_offset()
                     continue

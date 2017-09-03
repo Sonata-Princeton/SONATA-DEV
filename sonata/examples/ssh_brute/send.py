@@ -7,7 +7,7 @@ import pickle
 from multiprocessing.connection import Listener
 
 NORMAL_PACKET_COUNT = 50
-ATTACK_PACKET_COUNT = 60
+ATTACK_PACKET_COUNT = 80
 
 IFACE = "out-veth-1"
 
@@ -19,7 +19,7 @@ def create_normal_traffic():
     for i in range(number_of_packets):
         sIP = socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff)))
         dIP = socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff)))
-        p = Ether() / IP(dst=dIP, src=sIP)/UDP()
+        p = Ether() / IP(dst=dIP, src=sIP) / TCP() / "blah"
         normal_packets.append(p)
 
     return normal_packets
@@ -34,10 +34,9 @@ def create_attack_traffic():
     for i in range(number_of_packets):
         sIPs.append(socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff))))
 
-    dport = 0
     for sIP in sIPs:
-        dport += 1
-        p = Ether() / IP(dst=dIP, src=sIP) / TCP(dport=dport, flags='S')
+        p = Ether() / IP(dst=dIP, src=sIP, len=100) / TCP() / "zorro"
+        # print p.summary()
         attack_packets.append(p)
 
     return attack_packets
@@ -48,7 +47,7 @@ def send_created_traffic():
     attack = True
 
     total_duration = 30
-    attack_duration = 10
+    attack_duration = 20
     attack_start_time = 5
 
     for i in range(0, total_duration):
