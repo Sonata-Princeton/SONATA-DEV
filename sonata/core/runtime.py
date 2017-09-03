@@ -108,8 +108,6 @@ class Runtime(object):
                     prev_r = r
                     prev_qid = q
 
-                # print self.dp_queries, self.sp_queries
-
                 self.update_query_mappings(refinement_object, final_plan)
 
                 # final_plan = [(16, 5, 1), (32, 1, 1)]
