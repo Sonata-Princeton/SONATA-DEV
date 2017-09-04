@@ -232,9 +232,11 @@ class P4Reduce(P4Operator):
         primitives.append(RegisterRead(self.value_field_name, self.register.get_name(), self.index_field_name))
 
         if self.values[0] == 'count':
+            self.threshold = '1'
             primitives.append(ModifyField(self.value_field_name, '%s + %i' % (self.value_field_name, 1)))
         else:
             target_fld = self.p4_raw_fields.get_target_field(self.values[0])
+            self.threshold = '%s.%s' % (meta_init_name, target_fld.target_name.replace(".", "_"))
             primitives.append(ModifyField(self.value_field_name, '%s + %s' % (self.value_field_name, '%s.%s' % (meta_init_name, target_fld.target_name.replace(".", "_")))))
 
         primitives.append(RegisterWrite(self.register.get_name(), self.index_field_name, self.value_field_name))
@@ -299,12 +301,12 @@ class P4Reduce(P4Operator):
         indent = '\t' * indent_level
         out = ''
         out += '%sapply(%s);\n' % (indent, self.init_table.get_name())
-        out += '%sif (%s == %i) {\n' % (indent, self.value_field_name, self.threshold)
+        out += '%sif (%s == %s) {\n' % (indent, self.value_field_name, self.threshold)
         out += '%s\tapply(%s);\n' % (indent, self.first_pass_table.get_name())
         out += '%s}\n' % (indent,)
 
         if not self.read_register:
-            out += '%selse if (%s > %i) {\n' % (indent, self.value_field_name, self.threshold)
+            out += '%selse if (%s > %s) {\n' % (indent, self.value_field_name, self.threshold)
             out += '%s\tapply(%s);\n' % (indent, self.pass_table.get_name())
             out += '%s}\n' % (indent,)
 

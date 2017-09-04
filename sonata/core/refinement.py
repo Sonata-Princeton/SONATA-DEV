@@ -118,7 +118,7 @@ class Refinement(object):
             self.is_refinement_enabled = False
             # refined_query_id = get_refined_query_id(GRAN_MAX)
 
-    def get_refined_updated_query(self, qid, ref_level, prev_qid=0, prev_ref_level=0):
+    def get_refined_updated_query(self, qid, ref_level, prev_qid=0, prev_ref_level=0, has_join=False):
         # return query with updated threshold values and map operation---masking based on refinement level
         if self.is_refinement_enabled:
             iter_qids = self.refined_sonata_queries[qid][ref_level].keys()
@@ -129,8 +129,15 @@ class Refinement(object):
                 out_query.basic_headers = get_concise_headers(tmp_query)
                 refined_qid_src = 10000 * prev_qid + prev_ref_level
 
-                out_query.filter(append_type=1, src=refined_qid_src, filter_keys=(self.per_query_refinement_key[qid],),
-                                 func=('mask', prev_ref_level,))
+                print (not has_join), prev_qid, prev_ref_level, qid, ref_level
+                if not has_join:
+
+                    out_query.filter(append_type=1, src=refined_qid_src, filter_keys=(self.per_query_refinement_key[qid], ),
+                                     func=('mask', prev_ref_level,))
+                else:
+                    if prev_qid == qid:
+                        out_query.filter(append_type=1, src=refined_qid_src, filter_keys=(self.per_query_refinement_key[qid], ),
+                                         func=('mask', prev_ref_level,))
 
                 for operator in tmp_query.operators:
                     copy_operators(out_query, operator)

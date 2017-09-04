@@ -73,17 +73,17 @@ class Emitter(object):
             for qid in self.queries.keys():
                 if self.queries[qid]['registers']:
                     for register in self.queries[qid]['registers']:
-                        self.process_register_values(register)
-                # print "woke up", qid
+                        self.process_register_values(qid, register)
+                print "woke up", qid
             time.sleep(self.emitter_read_timeout)
 
     def send_data(self, data):
         self.spark_conn.send_bytes(data)
 
-    def process_register_values(self, register):
+    def process_register_values(self, read_qid, register):
         cnx = mysql.connector.connect(**self.db_conf)
         cursor = cnx.cursor(buffered=True)
-        query = "SELECT id, qid, tuple, indexLoc FROM indexStore"
+        query = "SELECT id, qid, tuple, indexLoc FROM indexStore where qid = %d"%(read_qid)
         cursor.execute(query)
         store = {}
         with open(self.read_file, 'w') as f:
@@ -95,8 +95,7 @@ class Emitter(object):
         cursor.close()
         cnx.close()
         success, out = get_out(self.bmv2_cli + " --thrift-port " + str(self.thrift_port) + " < " + self.read_file + " | grep -o -e \"$1.*[1-9][0-9]*$\"")
-        # print store
-        # print success, out
+
         output = {}
         if success:
             with open(self.write_file, 'w') as f:
@@ -161,7 +160,7 @@ class Emitter(object):
         callback function executed for each capture packet
         '''
         p_str = str(raw_packet)
-        # print raw_packet.summary()
+        # hexdump(raw_packet)
         # if raw_packet.haslayer(Raw):
         #     print str(raw_packet.getlayer(Raw).load)
         offset = 0
@@ -171,7 +170,6 @@ class Emitter(object):
         offset = self.qid_field.get_updated_offset()
         ctr = 0
         ctr += self.qid_field.ctr
-        output_tuple = []
 
         while True:
             start = "%.20f" % time.time()
@@ -179,7 +177,6 @@ class Emitter(object):
                 query = self.queries[qid]
                 out_headers = query['headers']
                 output_tuple = list()
-
                 if out_headers is not None:
                     for fld in out_headers.fields[1:]:
                         fld_name = fld.target_name
@@ -225,23 +222,24 @@ class Emitter(object):
                 if query['filter_payload']:
                     send_tuple += "," + output_payload
                 self.logger.debug(send_tuple)
-
                 if query['reads_register']:
-                    print send_tuple
+                    # print "storing" + send_tuple
                     self.store_tuple_to_db(send_tuple)
                 else:
                     # if qid == 30032: print send_tuple
+                    # print send_tuple
                     self.send_data(send_tuple + "\n")
                 self.logger.info("emitter," + str(qid) + "," + str(start) + ",%.20f" % time.time())
 
                 self.qid_field.offset = offset
                 # Read first two bits for the next out header layer
-                qid = int(self.qid_field.extract_field(p_str))
-                ctr += self.qid_field.ctr
-                # print "Next", qid
+                next_qid = self.qid_field.extract_field(p_str)
+
+                qid = int(next_qid)
                 if int(qid) in [int(x) for x in self.queries.keys()] and int(qid) != 0:
                     # we need to parse another layer for this packet
                     offset = self.qid_field.get_updated_offset()
+                    ctr += self.qid_field.ctr
                     continue
                 else:
                     # we have extracted all layers for this packet now
