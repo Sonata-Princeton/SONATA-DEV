@@ -22,6 +22,7 @@ class PacketStream(StreamingQuery):
         self.operators = []
         self.expr = 'In'
         self.qid = id
+        self.has_join = False
 
     def __repr__(self):
         out = 'In\n'
@@ -77,5 +78,10 @@ class PacketStream(StreamingQuery):
 
     def join(self, *args, **kwargs):
         operator = Join(prev_keys=self.get_prev_keys(), prev_values=self.get_prev_values(), *args, **kwargs)
+        self.operators.append(operator)
+        return self
+
+    def join_same_window(self, *args, **kwargs):
+        operator = JoinSameWindow(*args, **kwargs)
         self.operators.append(operator)
         return self

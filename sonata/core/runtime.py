@@ -21,6 +21,8 @@ from sonata.core.partition import get_dataplane_query, get_streaming_query
 from sonata.core.integration import Target
 from sonata.dataplane_driver.dp_driver import DataplaneDriver
 from sonata.sonata_layers import *
+from sonata.streaming_driver.query_object import PacketStream as SP_QO
+from sonata.core.utils import copy_sonata_operators_to_sp_query, flatten_streaming_field_names
 
 
 class Runtime(object):
@@ -53,53 +55,37 @@ class Runtime(object):
                 self.dp_queries = pickled_queries[0]
                 self.sp_queries = pickled_queries[1]
         else:
-            # (self.timestamps, self.training_data) = get_spark_context_batch(self.sc)
             # Learn the query plan
             for query in self.queries:
                 target = Target()
                 assert hasattr(target, 'costly_operators')
                 refinement_object = Refinement(query, target, self.GRAN_MAX, self.GRAN, self.refinement_keys)
 
-                # self.refinement_keys[query.qid] = refinement_object.refinement_key
                 print "*********************************************************************"
                 print "*                   Generating Query Plan                           *"
                 print "*********************************************************************\n\n"
-                # fname = "plan_" + str(query.qid) + ".pickle"
-                # usePickledPlan = True
-                # if usePickledPlan:
-                #     with open(fname, 'r') as f:
-                #         self.query_plans[query.qid] = pickle.load(f)
-                # else:
-                #     # update the threshold for the refined queries
-                #     refinement_object.update_filter(self.training_data)
-                #     # Generate hypothesis graph for each query
-                #     # query, sc, training_data, timestamps, refinement_object
-                #     hypothesis = Hypothesis(query, self.sc, self.training_data, self.timestamps,
-                #                             refinement_object, target)
-                #
-                #     # Learn the query plan using the hypothesis graphs
-                #     learn = Learn(hypothesis)
-                #     self.query_plans[query.qid] = [x.state for x in learn.final_plan.path]
-                #     with open(fname, 'w') as f:
-                #         pickle.dump(self.query_plans[query.qid], f)
-                #
-                # # Generate queries for the data plane and stream processor after learning the final plan
-                # final_plan = self.query_plans[query.qid][1:-1]
-                # print final_plan
 
-                final_plan = [(1, 16, 5, 1), (3, 32, 1, 2)]  # (1, 16, 5, 1),
                 final_plan = conf["final_plan"]  # (3, 32, 1, 2)]  # (1, 16, 5, 1),
                 # final_plan = [(1, 32, 5, 1)]
                 prev_r = 0
                 prev_qid = 0
 
+                has_join, sp_join_query, join_queries = self.query_has_join_in_same_window(query, self.sonata_fields)
+
                 for (q, r, p, l) in final_plan:
                     qry = refinement_object.qid_2_query[q]
                     refined_query_id = get_refined_query_id(qry, r)
 
-                    refined_sonata_query = refinement_object.get_refined_updated_query(qry.qid, r, prev_qid, prev_r)
-                    if prev_r > 0:
-                        p += 1
+                    refined_sonata_query = refinement_object.get_refined_updated_query(qry.qid, r, prev_qid, prev_r, has_join)
+
+                    if not has_join:
+                        if prev_r > 0:
+                            p += 1
+                    else:
+                        if prev_qid == qry.qid:
+                            p += 1
+                    # if prev_r > 0 and prev_qid != qry.qid and not has_join:
+                    #     p += 1
                     dp_query = get_dataplane_query(refined_sonata_query, refined_query_id, self.sonata_fields, p)
                     self.dp_queries[refined_query_id] = dp_query
 
@@ -108,37 +94,15 @@ class Runtime(object):
                     prev_r = r
                     prev_qid = q
 
-                print self.dp_queries, self.sp_queries
-
                 self.update_query_mappings(refinement_object, final_plan)
 
-                # final_plan = [(16, 5, 1), (32, 1, 1)]
-
-                # print "# of iteration levels", len(final_plan)
-                # prev_r = 0
-                # for (r, p, l) in final_plan:
-                #     # Get the query id
-                #     refined_query_id = get_refined_query_id(query, r)
-                #
-                #     # Generate query for this refinement level
-                #     refined_sonata_query = refinement_object.get_refined_updated_query(r, prev_r)
-                #
-                #     if prev_r > 0:
-                #         p += 1
-                #
-                #     # Apply the partitioning plan for this refinement level
-                #     dp_query = get_dataplane_query(refined_sonata_query, refined_query_id, p)
-                #     self.dp_queries[refined_query_id] = dp_query
-                #
-                #     # Generate input and output mappings
-                #     sp_query = get_streaming_query(refined_sonata_query, refined_query_id, p)
-                #     self.sp_queries[refined_query_id] = sp_query
-                #
-                #     prev_r = r
-            # sc.stop()
             with open('pickled_queries.pickle', 'w') as f:
                 pickle.dump({0: self.dp_queries, 1: self.sp_queries}, f)
 
+
+
+        if has_join:
+            self.sp_queries[query.qid] = sp_join_query
         print "Dataplane Queries", self.dp_queries
         print "\n\n"
         print "Streaming Queries", self.sp_queries
@@ -154,11 +118,36 @@ class Runtime(object):
 
         # TODO:
         if self.sp_queries:
-            self.send_to_sm()
+            self.send_to_sm(join_queries)
 
         # self.dp_driver_thread.join()
         self.streaming_driver_thread.join()
         self.op_handler_thread.join()
+
+    def query_has_join_in_same_window(self, query, sonata_fields):
+        if query.left_child is not None and query.window == 'Same':
+            right_query_operator = query.right_child.operators[-1]
+            left_query_operator = query.left_child.operators[-1]
+
+            join_values = right_query_operator.values + left_query_operator.values
+            query.operators[0].keys = right_query_operator.keys
+            sp_query = SP_QO(query.qid)
+            sp_query.has_join = True
+            sp_query.join_same_window(keys=(flatten_streaming_field_names(right_query_operator.keys)),
+                                      values=tuple(flatten_streaming_field_names(join_values)),
+                                      left_qid=(query.right_child.qid*10000+32),
+                                      right_qid=(query.left_child.qid*10000+32))
+
+            for operator in query.operators:
+                copy_sonata_operators_to_sp_query(sp_query, operator, sonata_fields)
+
+            print sp_query
+
+            join_queries = [query.right_child.qid*10000+32, query.left_child.qid*10000+32]
+
+            return True, sp_query, join_queries
+        else:
+            return False, None, []
 
     def get_sonata_layers(self):
 
@@ -167,7 +156,8 @@ class Runtime(object):
                           "tcp": "bmv2",
                           "ipv4": "bmv2",
                           "udp": "bmv2",
-                          "DNS": "scapy"}
+                          "DNS": "scapy",
+                          "payload": "scapy"}
         import json
 
         with open('sonata/fields_mapping.json') as json_data_file:
@@ -269,7 +259,7 @@ class Runtime(object):
                                 # print out_qid, src_qid
                                 delta_config[(out_qid, src_qid)] = table_match_entries
                                 # reset these state variables
-                # print "delta config: ", delta_config
+                print "delta config: ", delta_config
                 updateDeltaConfig = False
                 if delta_config != {}: self.logger.info(
                     "runtime,create_delta_config," + str(start) + ",%.20f" % time.time())
@@ -339,10 +329,10 @@ class Runtime(object):
             query_expressions.append(query.compile_sp())
         return query_expressions
 
-    def send_to_sm(self):
+    def send_to_sm(self, join_queries):
         # Send compiled query expression to streaming manager
         start = "%.20f" % time.time()
-        serialized_queries = pickle.dumps(self.sp_queries)
+        serialized_queries = pickle.dumps({'queries': self.sp_queries, 'join_queries': join_queries})
         conn = Client(tuple(self.conf['sm_conf']['sm_socket']))
         conn.send(serialized_queries)
         self.logger.info("runtime,sm_init," + str(start) + "," + str(time.time()))

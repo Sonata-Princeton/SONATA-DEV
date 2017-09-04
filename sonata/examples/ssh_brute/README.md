@@ -42,7 +42,7 @@ $ cd ~/dev
 2. Run the following command to clean up any stored results and any previously running processes and laucnhes the test app.
 
 ```bash
-$ sudo sh cleanup.sh && sudo $SPARK_HOME/bin/spark-submit sonata/tests/demos/reflection_dns_new/test_app.py
+$  sudo sh cleanup.sh && sudo $SPARK_HOME/bin/spark-submit sonata/examples/ssh_brute/test_app.py
 ```
 You can modify the queries by editing the file: `sonata/tests/demos/reflection_dns/test_app.py`
 
@@ -50,7 +50,7 @@ You can modify the queries by editing the file: `sonata/tests/demos/reflection_d
 
 ```bash
 $ cd ~/dev	
-$ sudo python sonata/tests/demos/reflection_dns_new/send.py
+$ sudo python sonata/examples/ssh_brute/send.py
 ```
 
 ## Visualization

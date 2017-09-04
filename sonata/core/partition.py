@@ -9,7 +9,8 @@ from sonata.dataplane_driver.query_object import QueryObject as DP_QO
 from sonata.streaming_driver.query_object import PacketStream as SP_QO
 from sonata.query_engine.utils import copy_operators
 from sonata.core.utils import requires_payload_processing, copy_sonata_operators_to_sp_query, \
-    get_flattened_sub_queries, get_payload_fields, flatten_streaming_field_names, filter_payload_fields_append_to_end
+    get_flattened_sub_queries, get_payload_fields, flatten_streaming_field_names, filter_payload_fields_append_to_end,\
+    filtering_in_payload
 from sonata.query_engine.sonata_queries import PacketStream
 
 
@@ -27,9 +28,14 @@ def get_dataplane_query(query, qid, sonata_fields, partition_plan):
             n_operators_dp += 1
             dp_query.read_register = True
 
+        dp_query.filter_payload, dp_query.filter_payload_str = filtering_in_payload(query)
+
         for operator in query.operators[:n_operators_dp]:
             # passing the operators as-is based on discussions with Rudy
-            dp_query.operators.append(operator)
+            if operator.name != 'Filter':
+                dp_query.operators.append(operator)
+            elif not (len(set(['payload',]).intersection(set(operator.filter_vals))) > 0):
+                dp_query.operators.append(operator)
 
         dp_query.parse_payload = requires_payload_processing(query, sonata_fields)
         dp_query.payload_fields = get_payload_fields(query, sonata_fields)
@@ -48,7 +54,7 @@ Function also rearranges the payload fields to the end.
 def get_streaming_query(query, qid, sonata_fields, partition_plan):
     # number of operators in the data plane
     n_operators_dp = int(partition_plan)
-    n_operators_sp = int(len(query.operators)) - n_operators_dp
+    n_operators_sp = int(len(query.operators)) - (n_operators_dp-1)
     print "Number of Dataplane vs Streaming Operators: ", n_operators_dp, n_operators_sp
     if n_operators_sp > 0:
         # create a sp query object

@@ -20,6 +20,8 @@ def get_clean_application(application):
         new_qo.parse_payload = query.parse_payload
         new_qo.payload_fields = query.payload_fields
         new_qo.read_register = query.read_register
+        new_qo.filter_payload = query.filter_payload
+        new_qo.filter_payload_str = query.filter_payload_str
 
         skip_next_filter = False
         for index, operator in enumerate(query.operators):

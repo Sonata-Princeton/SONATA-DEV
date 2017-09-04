@@ -21,7 +21,8 @@ class P4Query(object):
     query_drop_action = None
     satisfied_table = None
 
-    def __init__(self, query_id, parse_payload, payload_fields, read_register, generic_operators, nop_name, drop_meta_field,
+    def __init__(self, query_id, parse_payload, payload_fields, read_register, filter_payload,
+                 filter_payload_str, generic_operators, nop_name, drop_meta_field,
                  satisfied_meta_field, clone_meta_field, p4_raw_fields):
 
         # LOGGING
@@ -33,9 +34,11 @@ class P4Query(object):
         self.parse_payload = parse_payload
         self.payload_fields = payload_fields
         self.read_register = read_register
+        self.filter_payload = filter_payload
+        self.filter_payload_str = filter_payload_str
         self.registers_to_read = []
         self.meta_init_name = ''
-        print '$$$$$$$$$$$$$ vals: ' + str(self.parse_payload) + ":" + str(self.read_register)
+        # print '$$$$$$$$$$$$$ vals: ' + str(self.parse_payload) + ":" + str(self.read_register)
 
         self.src_to_filter_operator = dict()
 
@@ -105,7 +108,7 @@ class P4Query(object):
         primitives.append(AddHeader(self.out_header.get_name()))
         for fld in self.out_header.fields:
             primitives.append(ModifyField('%s.%s' % (self.out_header.get_name(), fld.target_name.replace(".", "_")),
-                                      '%s.%s' % (self.meta_init_name, fld.target_name.replace(".", "_"))))
+                                          '%s.%s' % (self.meta_init_name, fld.target_name.replace(".", "_"))))
         self.actions['append_out_header'] = Action('do_add_out_header_%i' % self.id, primitives)
         self.out_header_table = Table('add_out_header_%i' % self.id, self.actions['append_out_header'].get_name(), [],
                                       None, 1)
@@ -184,6 +187,7 @@ class P4Query(object):
                                              self.meta_init_name,
                                              self.query_drop_action,
                                              operator.keys,
+                                             operator.values,
                                              operator.threshold,
                                              self.read_register,
                                              self.p4_raw_fields))
@@ -273,6 +277,8 @@ class P4Query(object):
         header_format['parse_payload'] = self.parse_payload
         header_format['payload_fields'] = self.payload_fields
         header_format['reads_register'] = self.read_register
+        header_format['filter_payload'] = self.filter_payload
+        header_format['filter_payload_str'] = self.filter_payload_str
         header_format['registers'] = self.registers_to_read
         print "%%%% get_header_format %%%% :" + str(self.out_header)
         if self.out_header:

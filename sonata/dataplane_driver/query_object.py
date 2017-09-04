@@ -3,6 +3,8 @@ class QueryObject(object):
         self.id = id
         self.operators = list()
         self.parse_payload = False
+        self.filter_payload = False
+        self.filter_payload_str = ''
         self.payload_fields = list()
         self.read_register = False
 

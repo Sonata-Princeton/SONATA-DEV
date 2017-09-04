@@ -29,6 +29,9 @@ class PacketStream(Query):
 
         self.fields = tuple(self.basic_headers)
         self.keys = tuple(self.basic_headers)
+
+        # self.fields = ()
+        # self.keys = ()
         self.values = ()
         self.fields = self.keys + self.values
         self.training_data_fname = training_data_fname
@@ -143,6 +146,7 @@ class PacketStream(Query):
         new_query = PacketStream(new_qid)
         new_query.right_child = self
         new_query.left_child = left_query
+        new_query.window = window
 
         return new_query
 
@@ -168,6 +172,7 @@ class PacketStream(Query):
         if len(self.operators) > 0:
             prev_keys = self.operators[-1].keys
         else:
+            # prev_keys = ()
             prev_keys = self.basic_headers
         return prev_keys
 

@@ -97,8 +97,12 @@ class Map(StreamingQuery):
         if len(self.values) > 0 and len(self.func) > 0:
             expr += ',('
             for elem in self.map_values:
+                # expr += elem +','
                 if self.func[0] == 'eq':
                     expr += str(self.func[1])+','
+                elif self.func[0] == 'div':
+                    expr += '/'.join([str(elem) for elem in self.prev_values])
+                    expr += ','
                 else:
                     # TODO generalize for more mapping functions
                     pass
@@ -140,6 +144,11 @@ class Map(StreamingQuery):
             for elem in self.map_values:
                 if self.func[0] == 'eq':
                     expr += str(self.func[1])+','
+                elif self.func[0] == 'div':
+                    assert len(self.prev_values) == 2
+                    expr += 'float(str('+self.prev_values[0]+'))' + '/' + 'float(str('+self.prev_values[1]+'))'
+                    # expr += '/'.join([str(elem) for elem in self.prev_values])
+                    expr += ','
                 else:
                     # TODO generalize for more mapping functions
                     pass
@@ -393,4 +402,47 @@ class Join(object):
             out = '.map(lambda ('+','.join([str(elem) for elem in self.prev_keys])+'): (('+','.join([str(elem) for elem in self.join_key]) + '),('+','.join([str(elem) for elem in self.prev_keys])+')))'
             out += '.join('+self.in_stream+self.join_query.compile()+'.map(lambda s: (s,1)))'
             out += '.map(lambda s: s[1][0])'
+        return out
+
+
+class JoinSameWindow(object):
+    name = 'Join'
+
+    def __init__(self, *args, **kwargs):
+        map_dict = dict(*args, **kwargs)
+        self.keys = []
+        self.values = []
+
+        self.left_qid = ''
+        self.right_qid = ''
+        self.expr = ''
+        self.in_stream = ''
+
+        if 'keys' in map_dict:
+            self.keys = map_dict['keys']
+        if 'values' in map_dict:
+            self.values = map_dict['values']
+
+        if 'left_qid' in map_dict:
+            self.left_qid = map_dict['left_qid']
+        if 'right_qid' in map_dict:
+            self.right_qid = map_dict['right_qid']
+
+        if 'q' in map_dict:
+            self.join_query = map_dict['q']
+
+        if 'join_key' in map_dict:
+            self.join_key = map_dict['join_key']
+
+        if 'in_stream' in map_dict:
+            self.in_stream = map_dict['in_stream']
+
+    def __repr__(self):
+        out = "spark_queries['" + str(self.left_qid) + "']"+".join("+"spark_queries['" + str(self.right_qid) + "']"+")"
+        return out
+
+    def compile(self):
+        out = ''
+        # if len(self.join_query.compile()) > 0:
+        out = " spark_queries[" + str(self.left_qid) + "]"+".join("+"spark_queries[" + str(self.right_qid) + "]"+")"
         return out

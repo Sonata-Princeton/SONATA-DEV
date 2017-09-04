@@ -1,10 +1,5 @@
 from scapy.all import *
-import os
-import sys
-import glob
-import math, time
-import pickle
-from multiprocessing.connection import Listener
+import time
 
 NORMAL_PACKET_COUNT = 50
 ATTACK_PACKET_COUNT = 60
@@ -19,7 +14,7 @@ def create_normal_traffic():
     for i in range(number_of_packets):
         sIP = socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff)))
         dIP = socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff)))
-        p = Ether() / IP(dst=dIP, src=sIP) / TCP() / "SONATA NORMAL"
+        p = Ether() / IP(dst=dIP, src=sIP) / "SONATA NORMAL"
         normal_packets.append(p)
 
     return normal_packets
@@ -34,10 +29,13 @@ def create_attack_traffic():
     for i in range(number_of_packets):
         sIPs.append(socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff))))
 
-    ttl = 10
+    sport = 50
+    dport = 70
     for sIP in sIPs:
-        ttl += 1
-        p = Ether() / IP(dst=dIP, src=sIP) / UDP(sport=53) /DNS(qr=1, aa=1, ancount=1,an=DNSRR(rrname='www.thepacketgeek.com',  ttl=ttl, rdata='192.168.1.1'))
+        sport += 10
+        dport += 10
+        p = Ether() / IP(dst=dIP, src=sIP, len=100) / TCP(sport=sport, dport=dport) / "SONATA"
+        # print p.summary()
         attack_packets.append(p)
 
     return attack_packets

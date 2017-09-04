@@ -28,13 +28,18 @@ if __name__ == '__main__':
                  )
 
     dorros_payload = (PacketStream(2)
-                      .map(keys=('ipv4.dstIP', 'ipv4.srcIP', 'ipv4.totalLen'))
+                      .map(keys=('ipv4.dstIP', 'payload'))
                       )
 
-    dorros_attack = (brute_ssh.join)
+    dorros_attack = (dorros_payload.join(new_qid=3, query=brute_ssh)
+                     .filter(filter_vals=('payload',), func=('eq', 'zorro'))
+                     .map(keys=('ipv4.dstIP', 'payload',), map_values=('count',), func=('eq', 1))
+                     .reduce(keys=('ipv4.dstIP', 'payload',), func=('sum',))
+                     .map(keys=('ipv4.dstIP',))
+                     )
 
-    queries = [brute_ssh]
-    config["final_plan"] = [(1, 8, 3, 1), (1, 32, 3, 1)]
+    queries = [dorros_attack]
+    config["final_plan"] = [(1, 8, 3, 1), (1, 32, 3, 1), (3, 32, 2, 1)]
     print("*********************************************************************")
     print("*                   Receiving User Queries                          *")
     print("*********************************************************************\n\n")
