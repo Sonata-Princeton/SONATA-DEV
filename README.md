@@ -6,4 +6,4 @@
 
 ### Example Applications
 
-See: https://github.com/Sonata-Princeton/SONATA-DEV/tree/nanog_demo/sonata/examples for details
+See: https://github.com/Sonata-Princeton/SONATA-DEV/tree/master/sonata/examples for details
