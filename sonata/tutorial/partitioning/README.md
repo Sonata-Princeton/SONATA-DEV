@@ -1,4 +1,4 @@
-## Query Partitioning
+## Compiling Dataflow Queries for PISA Targets
 
 Let us consider the query:
 ```python
@@ -242,81 +242,34 @@ Q = (PacketStream(qid)
 
 #### Configuring the Match-Action Pipeline
 Use the following guidelines to update the P4 code in `part3.p4` file for this query.
-* Create an `out_header` with fields: `qid`, `ipv4.dstIP`, and `count`.
+* Create an `out_header` with fields: `qid`, `ipv4.dstIP`, `index`, and `count`. 
+Can you reason why we add the `index` field to this header? Hint: see how receiver reports the
+final aggregated value for each tuple. 
 * Add a metadata with fields:  `clone`, `index`, and `count`. 
 * Add a register for the `reduce` operation. Configure its `width` and `instance_count` attributes
-* Add a table to check whether the packet's `TCP SYN` flag is set to one. 
-Make sure the packets without the set `TCP SYN` flag are not dropped.
-* Update the `commands.txt` to add commands specifying the default action for new tables.
+for this register. 
+* Add `field_list` and define the `field_list_calculation` function to compute the 
+register index for the reduce operation. 
+* Add a table that: 
+  * Computes the register index and stores in `meta.index` field, 
+  * Reads the register value for this index into `meta.value` field, 
+  * Increments the `meta.value` field value by one, and 
+  * Writes the updated value back to the register. 
+* Update the ingress pipeline such that: 
+    * Applies the `filter` operator over each packet, 
+    * Applies the `reduce` operator for only packets with `tcp.flags==2`, and 
+    * Clones only the first packet for each destination IP address.
+* Update the `commands.txt` to add commands specifying the default action for the new tables.
 
-```
-// Reduce 7 of query 10032
-header_type meta_reduce_10032_7_t {
-	fields {
-		value: 32;
-		index: 16;
-	}
-}
-
-metadata meta_reduce_10032_7_t meta_reduce_10032_7;
-
-field_list hash_reduce_10032_7_fields {
-	meta_mapinit_10032_1.ipv4_dstIP;
-}
-
-field_list_calculation hash_reduce_10032_7 {
-	input {
-		hash_reduce_10032_7_fields;
-	}
-	algorithm: crc16;
-	output_width: 16;
-}
-
-register reduce_10032_7 {
-	width: 32;
-	instance_count: 65536;
-}
-
-action do_init_reduce_10032_7(){
-	modify_field_with_hash_based_offset(meta_reduce_10032_7.index, 0, hash_reduce_10032_7, 65536);
-	register_read(meta_reduce_10032_7.value, reduce_10032_7, meta_reduce_10032_7.index);
-	modify_field(meta_reduce_10032_7.value, meta_reduce_10032_7.value + 1);
-	register_write(reduce_10032_7, meta_reduce_10032_7.index, meta_reduce_10032_7.value);
-}
-
-action set_count_reduce_10032_7(){
-	modify_field(meta_mapinit_10032_1.index, meta_reduce_10032_7.index);
-}
-
-table init_reduce_10032_7 {
-	actions {
-		do_init_reduce_10032_7;
-	}
-	size : 1;
-}
-
-table first_pass_reduce_10032_7 {
-	actions {
-		set_count_reduce_10032_7;
-	}
-	size : 1;
-}
-
-table drop_reduce_10032_7 {
-	actions {
-		drop_10032;
-	}
-	size : 1;
-}
-```
+How different will be the code executing `distinct` operator in the data plane?
 
 #### Testing the Configured Pipeline
-Follow the same steps as described for part 1 for testing the configured match-action pipeline. 
+Follow the same steps as described for the part 1 for testing the configured match-action pipeline. 
 The only difference is that now `send.py` and `receive.py` will take `3` as the argument and 
 the output file's name will be `receiver_3.log`. Report the number of tuples (lines) in this 
 log file. 
 
-### Part 4: Execute all operators in the data plane
+### Part 4: Execute all dataflow operators in the data plane
 In this part, we will consider query partitioning where all the dataflow operators for this query 
 are executed in the the data plane. 
 ```python
@@ -334,19 +287,14 @@ Q = (PacketStream(qid)
 ```
 
 #### Configuring the Match-Action Pipeline
-Use the following guidelines to update the P4 code in `part2.p4` file for this query.
-* Only the fields, `qid` and `ipv4.dstIP` should be added t the `out_header`. Can you 
-reason why there is no need to report the field `tcp.flags` now?
-* Add a metadata with field `clone`. The packet is cloned only when this field is set to one.
-* Add a table to check whether the packet's TCP SYN flag is set to one. 
-Make sure the packets without the set TCP SYN flag are not dropped.
-* Update the `commands.txt` to add commands specifying the default action for the new 
-filter table.
+Use the following guidelines to update the P4 code in `part4.p4` file for this query. Compared
+to `part3.p4`, the only change required is: 
+* Update the ingress pipeline such that only packets with `meta.count==Th` are cloned. 
 
 #### Testing the Configured Pipeline
 Follow the same steps as described for part 1 for testing the configured match-action pipeline. 
-The only difference is that now `send.py` and `receive.py` will take `3` as the argument and 
-the output file's name will be `receiver_3.log`. Report the number of tuples (lines) in this 
+The only difference is that now `send.py` and `receive.py` will take `4` as the argument and 
+the output file's name will be `receiver_4.log`. Report the number of tuples (lines) in this 
 log file. 
 
 Notes:
