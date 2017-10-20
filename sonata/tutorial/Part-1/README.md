@@ -15,8 +15,8 @@ Q = (PacketStream(qid)
 ```
 This query operates over packet fields, `tcp.flags` and `ipv4.dstIP`.
 
-### Part 1: Execute all dataflow operators in user-space
-We will first consider the case where all the data flow operators are executed in 
+### Plan 1: Execute all dataflow operators in user-space
+We will first consider the partitioning plan where all the data flow operators are executed in 
 the user space. Thus, the query that needs to be executed in the data plane is shown 
 below:
 ```python
@@ -24,7 +24,7 @@ below:
 Q = PacketStream(qid)
 ```
 
-We have provided the P4 code (`part1.p4`) that:
+We have provided the P4 code (`plan1.p4`) that:
 * Extracts Fields `tcp.flags` and `ipv4.dstIP` from the packet.
 * Clones the original packet and add a new header with fields: `qid`, `tcp.flags` 
 and `ipv4.dstIP`; to the packet.
@@ -34,7 +34,7 @@ Hint: see how packets are parsed by `receive.py`
 
 
 #### Configuring the Match-Action Pipeline
-We will describe how `part1.p4` executes these operations in the data plane. 
+We will describe how `plan1.p4` executes these operations in the data plane. 
 
 * It first specifies the `out_header` added to the cloned packet. 
 It also specifies the number of bits required for each field.
@@ -176,7 +176,7 @@ $ sudo sh cleanup.sh
 
 * Compile the P4 program
 ```bash
-$ $P4C_BM_SCRIPT p4src/part1.p4 --json reduce.json
+$ $P4C_BM_SCRIPT p4src/plan1.p4 --json reduce.json
 ```
 
 * Start the switch
@@ -197,8 +197,8 @@ $ python send.py
 You will see the resulting output tuples in `receiver_1.log` file. Report the number of 
 tuples (lines) in this log file.
 
-### Part 2: Execute Filter operator in the data plane
-In this part, we will consider query partitioning where `filter` operator is executed in the 
+### Plan 2: Execute Filter operator in the data plane
+We will now consider query partitioning plan where `filter` operator is executed in the 
 the data plane itself. 
 ```python
 # Threshold
@@ -207,7 +207,7 @@ Q = (PacketStream(qid)
 ```
 
 #### Configuring the Match-Action Pipeline
-Use the following guidelines to update the P4 code in `part2.p4` file for this query.
+Use the following guidelines to update the P4 code in `plan2.p4` file for this query.
 * Only the fields, `qid` and `ipv4.dstIP` should be added t the `out_header`. Can you 
 reason why there is no need to report the field `tcp.flags` now?
 * Add a metadata with field `clone`. The packet is cloned only when this field is set to one.
@@ -218,13 +218,13 @@ Make sure the packets with `tcp.flags!=2` are not dropped.
 filter table.
 
 #### Testing the Configured Pipeline
-Follow the same steps as described for part 1 for testing the configured match-action pipeline. 
+Follow the same steps as described for plan 1 for testing the configured match-action pipeline. 
 The only difference is that now `receive.py` will take `2` as the argument and 
 the output file's name will be `receiver_1.log`. Report the number of tuples (lines) in this 
 log file. 
 
-### Part 3: Execute Reduce operator in the data plane
-In this part, we will consider query partitioning where `reduce` operator is also executed 
+### Plan 3: Execute Reduce operator in the data plane
+We will consider query partitioning plan where `reduce` operator is also executed 
 in the the data plane. 
 ```python
 # Threshold
@@ -240,7 +240,7 @@ Q = (PacketStream(qid)
 ```
 
 #### Configuring the Match-Action Pipeline
-Use the following guidelines to update the P4 code in `part3.p4` file for this query.
+Use the following guidelines to update the P4 code in `plan3.p4` file for this query.
 * Create an `out_header` with fields: `qid`, `ipv4.dstIP`, `index`, and `count`. 
 Can you reason why we add the `index` field to this header? Hint: see how receiver reports the
 final aggregated value for each tuple. 
@@ -263,13 +263,13 @@ register index for the reduce operation.
 How different will be the code executing `distinct` operator in the data plane?
 
 #### Testing the Configured Pipeline
-Follow the same steps as described for the part 1 for testing the configured match-action pipeline. 
+Follow the same steps as described for the plan 1 for testing the configured match-action pipeline. 
 The only difference is that now `receive.py` will take `3` as the argument and 
 the output file's name will be `receiver_3.log`. Report the number of tuples (lines) in this 
 log file. 
 
-### Part 4: Execute all dataflow operators in the data plane
-In this part, we will consider query partitioning where all the dataflow operators for this query 
+### Plan 4: Execute all dataflow operators in the data plane
+We will consider query partitioning plan where all the dataflow operators for this query 
 are executed in the the data plane. 
 ```python
 # Threshold
@@ -286,12 +286,12 @@ Q = (PacketStream(qid)
 ```
 
 #### Configuring the Match-Action Pipeline
-Use the following guidelines to update the P4 code in `part4.p4` file for this query. Compared
-to `part3.p4`, the only change required is: 
+Use the following guidelines to update the P4 code in `plan4.p4` file for this query. Compared
+to `plan3.p4`, the only change required is: 
 * Update the ingress pipeline such that only packets with `meta.count==Th` are cloned. 
 
 #### Testing the Configured Pipeline
-Follow the same steps as described for part 1 for testing the configured match-action pipeline. 
+Follow the same steps as described for plan 1 for testing the configured match-action pipeline. 
 The only difference is that now `receive.py` will take `4` as the argument and 
 the output file's name will be `receiver_4.log`. Report the number of tuples (lines) in this 
 log file. 
