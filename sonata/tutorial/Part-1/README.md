@@ -20,7 +20,6 @@ We will first consider the partitioning plan where all the data flow operators a
 the user space. Thus, the query that needs to be executed in the data plane is shown 
 below:
 ```python
-# Threshold
 Q = PacketStream(qid)
 ```
 
@@ -73,7 +72,7 @@ parser parse_out_header {
 Here, the table `report_packet` is applied in the ingress to clone the packet and table 
 `add_out_header` is applied at the egress to add `out_header` to the cloned packet. 
 The metadata field `standard_metadata.instance_type` is used to differentiate between the 
-original and the cloned packets at ingress. 
+original and the cloned packets at the egress. 
 ```
 control ingress {
 	apply(report_packet);
@@ -122,9 +121,9 @@ action do_add_out_header(){
 
 * P4 program only configures the match-action pipeline for the PISA target. 
 The programmer can configure these pipelines using the target-specific CLI. 
-For this program, we need to send commands to configure the default behavior of each table. 
-The file `commands.txt` has the following commands. These commands are sent to the
-switch at initialization. 
+For this program, we need to send commands to configure the default behavior 
+of each table. The file `commands.txt` has the following commands. These commands 
+are sent to the switch at initialization. 
  ```
  table_set_default report_packet do_report_packet
  table_set_default add_final_header do_add_final_header
