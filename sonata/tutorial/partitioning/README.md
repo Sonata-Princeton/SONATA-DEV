@@ -139,11 +139,11 @@ For this experiment, we use the topology shown below:
 ```
    +--------------------------------------------------------+
    |                                                        |
-   |                       m-veth-2+--+out-veth-2--+Emitter |
+   |                       m-veth-2+--+out-veth-2--+Receiver|
    |                            +                           |
    |                            |                           |
    |                     +------+-----+                     |
-   |                     |     12     |
+   |                     |     12     |                     |
    |                     |            |                     |
    | m-veth-1+----------+11    S1   13+-----------+m-veth-3 |
    |     +               |            |               +     |
@@ -160,7 +160,7 @@ For this experiment, we use the topology shown below:
    |     |                                            |     |
    |     |                                            |     |
    |     +                                            +     |
-   |  send.py            Vagrant VM              Bit Bucket |
+   |  send.py            Vagrant VM           Original Pkts |
    |                                                        |
    +--------------------------------------------------------+
 ```
@@ -191,7 +191,7 @@ $ python receive.py 1
 
 * Start the sender script
 ```bash
-$ python send.py 1
+$ python send.py
 ```
 
 You will see the resulting output tuples in `receiver_1.log` file. Report the number of 
@@ -200,7 +200,6 @@ tuples (lines) in this log file.
 ### Part 2: Execute Filter operator in the data plane
 In this part, we will consider query partitioning where `filter` operator is executed in the 
 the data plane itself. 
-
 ```python
 # Threshold
 Q = (PacketStream(qid)
@@ -220,7 +219,7 @@ filter table.
 
 #### Testing the Configured Pipeline
 Follow the same steps as described for part 1 for testing the configured match-action pipeline. 
-The only difference is that now `send.py` and `receive.py` will take `2` as the argument and 
+The only difference is that now `receive.py` will take `2` as the argument and 
 the output file's name will be `receiver_1.log`. Report the number of tuples (lines) in this 
 log file. 
 
@@ -265,7 +264,7 @@ How different will be the code executing `distinct` operator in the data plane?
 
 #### Testing the Configured Pipeline
 Follow the same steps as described for the part 1 for testing the configured match-action pipeline. 
-The only difference is that now `send.py` and `receive.py` will take `3` as the argument and 
+The only difference is that now `receive.py` will take `3` as the argument and 
 the output file's name will be `receiver_3.log`. Report the number of tuples (lines) in this 
 log file. 
 
@@ -293,7 +292,7 @@ to `part3.p4`, the only change required is:
 
 #### Testing the Configured Pipeline
 Follow the same steps as described for part 1 for testing the configured match-action pipeline. 
-The only difference is that now `send.py` and `receive.py` will take `4` as the argument and 
+The only difference is that now `receive.py` will take `4` as the argument and 
 the output file's name will be `receiver_4.log`. Report the number of tuples (lines) in this 
 log file. 
 
