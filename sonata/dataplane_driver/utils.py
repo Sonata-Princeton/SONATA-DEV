@@ -11,8 +11,7 @@ def get_out(args):
             return True, out
         except CalledProcessError as e:
             t.seek(0)
-            print "ERROR: " + str(args) + str(e.returncode) + ',' + t.read()
-            # raise RuntimeError
+            # print "ERROR: " + str(args) + str(e.returncode) + ',' + t.read()
             return False, t.read()
 
 
@@ -26,12 +25,9 @@ def get_in(args, input_data):
         try:
             t.write(input_data)
             out = check_output(args, stdin=t, shell=False)
-            # print "SUCCESS: " + str(args) + ",0 ," + str(out)
             return True, out
         except CalledProcessError as e:
             t.seek(0)
-            # print "ERROR: " + str(args) + str(e.returncode) + ',' + t.read()
-            # raise RuntimeError
 
             return False, t.read()
 
@@ -39,11 +35,11 @@ def get_in(args, input_data):
 def get_logger(name, loglevel):
     # LOGGING
     if loglevel == 'INFO':
-        log_level = logging.INFO
+        log_level = logging.DEBUG
     elif loglevel == 'DEBUG':
         log_level = logging.DEBUG
     else:
-        log_level = logging.INFO
+        log_level = logging.DEBUG
 
     # add handler
     logger = logging.getLogger(name)

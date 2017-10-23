@@ -43,8 +43,6 @@ class Emitter(object):
         self.thrift_port = conf['thrift_port']
         self.emitter_read_timeout = conf['read_timeout']
 
-        print self.queries, self.emitter_read_timeout
-
         self.reader_thread = Thread(name='reader_thread', target=self.start_reader)
         self.reader_thread.start()
 
@@ -74,7 +72,7 @@ class Emitter(object):
                 if self.queries[qid]['registers']:
                     for register in self.queries[qid]['registers']:
                         self.process_register_values(qid, register)
-                print "woke up", qid
+
             time.sleep(self.emitter_read_timeout)
 
     def send_data(self, data):
@@ -108,14 +106,13 @@ class Emitter(object):
                 f.close()
 
             success3, out3 = get_out(self.bmv2_cli + " --thrift-port " + str(self.thrift_port) + " < " + self.write_file)
-            # print "Write Register: " + str(success3) + " "
         ids = []
 
         for indexLoc in store.keys():
             if str(indexLoc) in output.keys():
-                out = store[indexLoc]['tuple'] + ","+output[str(indexLoc)] + "\n"
-                # print out
-                self.send_data(out)
+                out = store[indexLoc]['tuple'] + ","+output[str(indexLoc)]
+                self.logger.info(out)
+                self.send_data(out + "\n")
 
                 ids.append(store[indexLoc]['id'])
 
@@ -221,15 +218,12 @@ class Emitter(object):
 
                 if query['filter_payload']:
                     send_tuple += "," + output_payload
-                self.logger.debug(send_tuple)
+
                 if query['reads_register']:
-                    # print "storing" + send_tuple
                     self.store_tuple_to_db(send_tuple)
                 else:
-                    # if qid == 30032: print send_tuple
-                    # print send_tuple
+                    self.logger.info(send_tuple)
                     self.send_data(send_tuple + "\n")
-                self.logger.info("emitter," + str(qid) + "," + str(start) + ",%.20f" % time.time())
 
                 self.qid_field.offset = offset
                 # Read first two bits for the next out header layer

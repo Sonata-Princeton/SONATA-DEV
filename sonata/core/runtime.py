@@ -23,6 +23,7 @@ from sonata.dataplane_driver.dp_driver import DataplaneDriver
 from sonata.sonata_layers import *
 from sonata.streaming_driver.query_object import PacketStream as SP_QO
 from sonata.core.utils import copy_sonata_operators_to_sp_query, flatten_streaming_field_names
+from sonata.core.utils import generated_source_path
 
 
 class Runtime(object):
@@ -36,7 +37,7 @@ class Runtime(object):
     op_handler_socket = None
     op_handler_listener = None
 
-    def __init__(self, conf, queries):
+    def __init__(self, conf, queries, app_path):
         self.conf = conf
         self.refinement_keys = conf["refinement_keys"]
         self.GRAN_MAX = conf["GRAN_MAX"]
@@ -44,7 +45,8 @@ class Runtime(object):
         self.queries = queries
         self.initialize_logging()
         self.target_id = 1
-        # self.sc = create_spark_context()
+        self.app_path = generated_source_path(app_path, "/generated_src/")
+        self.log_path = generated_source_path(app_path, "/logs/")
 
         self.sonata_fields = self.get_sonata_layers()
 
@@ -65,12 +67,13 @@ class Runtime(object):
                 print "*                   Generating Query Plan                           *"
                 print "*********************************************************************\n\n"
 
-                final_plan = conf["final_plan"]  # (3, 32, 1, 2)]  # (1, 16, 5, 1),
-                # final_plan = [(1, 32, 5, 1)]
+                final_plan = conf["final_plan"]
+                # Account for an additional map (masking) operation for iterative refinement
+                final_plan = [(q,r,p+1,l) for (q,r,p,l) in final_plan]
+
                 prev_r = 0
                 prev_qid = 0
-
-                has_join, sp_join_query, join_queries = self.query_has_join_in_same_window(query, self.sonata_fields)
+                has_join, sp_queries, join_queries = self.query_has_join_in_same_window(query, self.sonata_fields, final_plan)
 
                 for (q, r, p, l) in final_plan:
                     qry = refinement_object.qid_2_query[q]
@@ -84,8 +87,6 @@ class Runtime(object):
                     else:
                         if prev_qid == qry.qid:
                             p += 1
-                    # if prev_r > 0 and prev_qid != qry.qid and not has_join:
-                    #     p += 1
                     dp_query = get_dataplane_query(refined_sonata_query, refined_query_id, self.sonata_fields, p)
                     self.dp_queries[refined_query_id] = dp_query
 
@@ -94,7 +95,9 @@ class Runtime(object):
                     prev_r = r
                     prev_qid = q
 
-                self.update_query_mappings(refinement_object, final_plan)
+
+                if not has_join:
+                    self.update_query_mappings(refinement_object, final_plan, has_join)
 
             with open('pickled_queries.pickle', 'w') as f:
                 pickle.dump({0: self.dp_queries, 1: self.sp_queries}, f)
@@ -102,7 +105,9 @@ class Runtime(object):
 
 
         if has_join:
-            self.sp_queries[query.qid] = sp_join_query
+            for sp_query in sp_queries:
+                self.sp_queries[sp_query.qid] = sp_query
+
         print "Dataplane Queries", self.dp_queries
         print "\n\n"
         print "Streaming Queries", self.sp_queries
@@ -124,28 +129,67 @@ class Runtime(object):
         self.streaming_driver_thread.join()
         self.op_handler_thread.join()
 
-    def query_has_join_in_same_window(self, query, sonata_fields):
+    def query_has_join_in_same_window(self, query, sonata_fields, final_plan):
         if query.left_child is not None and query.window == 'Same':
             right_query_operator = query.right_child.operators[-1]
             left_query_operator = query.left_child.operators[-1]
 
-            join_values = right_query_operator.values + left_query_operator.values
+            ref_levels = list(set([r for (q, r, p, l) in final_plan if q == query.left_child.qid or q == query.right_child.qid]))
+
+            join_values = [val + '_right' for val in right_query_operator.values] + [val + '_left' for val in left_query_operator.values]
             query.operators[0].keys = right_query_operator.keys
-            sp_query = SP_QO(query.qid)
+            sp_queries = []
+            join_queries = []
+
+            ref_levels = sorted(ref_levels)
+
+            for (curr_ref_level, next_ref_level) in zip(ref_levels, ref_levels[1:]):
+                sp_query_id = get_refined_query_id(query, curr_ref_level)
+                sp_query = SP_QO(sp_query_id)
+                sp_query.has_join = True
+                sp_query.ref_level = curr_ref_level
+                sp_query.join_same_window(keys=(flatten_streaming_field_names(right_query_operator.keys)),
+                                          values=tuple(flatten_streaming_field_names(join_values)),
+                                          left_qid=(query.right_child.qid*10000+curr_ref_level),
+                                          right_qid=(query.left_child.qid*10000+curr_ref_level))
+
+                for operator in query.operators:
+                    copy_sonata_operators_to_sp_query(sp_query, operator, sonata_fields)
+
+                if curr_ref_level < 32:
+                    sp_query.map(keys=flatten_streaming_field_names(right_query_operator.keys)
+                                 )
+
+                sp_queries.append(sp_query)
+                join_queries.append(query.right_child.qid*10000+curr_ref_level)
+                join_queries.append(query.left_child.qid*10000+curr_ref_level)
+
+                self.query_out_mappings[sp_query.qid] = [query.right_child.qid*10000+next_ref_level, query.left_child.qid*10000+next_ref_level]
+
+
+            curr_ref_level = ref_levels[-1]
+            sp_query_id = get_refined_query_id(query, curr_ref_level)
+            sp_query = SP_QO(sp_query_id)
             sp_query.has_join = True
+            sp_query.ref_level = curr_ref_level
             sp_query.join_same_window(keys=(flatten_streaming_field_names(right_query_operator.keys)),
                                       values=tuple(flatten_streaming_field_names(join_values)),
-                                      left_qid=(query.right_child.qid*10000+32),
-                                      right_qid=(query.left_child.qid*10000+32))
+                                      left_qid=(query.right_child.qid*10000+curr_ref_level),
+                                      right_qid=(query.left_child.qid*10000+curr_ref_level))
 
             for operator in query.operators:
                 copy_sonata_operators_to_sp_query(sp_query, operator, sonata_fields)
 
-            print sp_query
+            if curr_ref_level < 32:
+                sp_query.map(keys=flatten_streaming_field_names(right_query_operator.keys)
+                             )
 
-            join_queries = [query.right_child.qid*10000+32, query.left_child.qid*10000+32]
+            sp_queries.append(sp_query)
+            join_queries.append(query.right_child.qid*10000+curr_ref_level)
+            join_queries.append(query.left_child.qid*10000+curr_ref_level)
 
-            return True, sp_query, join_queries
+
+            return True, sp_queries, join_queries
         else:
             return False, None, []
 
@@ -180,9 +224,10 @@ class Runtime(object):
 
         return sonataFields
 
-    def update_query_mappings(self, refinement_object, final_plan):
+    def update_query_mappings(self, refinement_object, final_plan, has_join):
         if len(final_plan) > 1:
             query1 = refinement_object.qid_2_query[final_plan[0][0]]
+
             for ((q1, r1, p1, l1), (q2, r2, p2, l2)) in zip(final_plan, final_plan[1:]):
                 query1 = refinement_object.qid_2_query[q1]
                 query2 = refinement_object.qid_2_query[q2]
@@ -197,8 +242,7 @@ class Runtime(object):
                     self.query_out_mappings[qid1] = []
                 self.query_out_mappings[qid1].append(qid2)
 
-                # Update the queries whose o/p needs to be displayed to the network operators
-            # print final_plan
+                    # Update the queries whose o/p needs to be displayed to the network operators
             r = final_plan[-1][0]
             qid = get_refined_query_id(query1, r)
             self.query_out_final[qid] = 0
@@ -226,27 +270,24 @@ class Runtime(object):
 
         queries_received = {}
         updateDeltaConfig = False
+
         while True:
-            # print "Ready to receive data from SM ***************************"
             conn = self.op_handler_listener.accept()
-            # Expected (qid,[])
             op_data = conn.recv_bytes()
             op_data = op_data.strip('\n')
-            # print "$$$$ OP Handler received:" + str(op_data)
             received_data = op_data.split(",")
             src_qid = int(received_data[1])
             if received_data[2:] != ['']:
-                table_match_entries = received_data[2:]
+                table_match_entries = list(set(received_data[2:]))
                 queries_received[src_qid] = table_match_entries
             else:
                 queries_received[src_qid] = []
-            print "DP Queries: ", str(len(self.dp_queries.keys())), " Received keys:", str(len(queries_received.keys()))
-            if len(queries_received.keys()) == len(self.dp_queries.keys()):
+
+            if len(queries_received.keys()) >= len(self.query_out_mappings.keys()):
                 updateDeltaConfig = True
 
-            print "Query Out Mappings: ", self.query_out_mappings
             delta_config = {}
-            # print "## Received output for query", src_qid, "at time", time.time() - start
+
             if updateDeltaConfig:
                 start = "%.20f" % time.time()
                 for src_qid in queries_received:
@@ -256,10 +297,15 @@ class Runtime(object):
                             out_queries = self.query_out_mappings[src_qid]
                             for out_qid in out_queries:
                                 # find the queries that take the output of this query as input
-                                # print out_qid, src_qid
                                 delta_config[(out_qid, src_qid)] = table_match_entries
                                 # reset these state variables
-                print "delta config: ", delta_config
+                    else:
+                        if queries_received[src_qid]:
+                            with open(self.log_path + "/final_output", 'w') as f:
+                                f.write(str("\n".join(queries_received[src_qid])))
+
+                        print "Final Output for " + str(src_qid) + ": " + str(queries_received)
+
                 updateDeltaConfig = False
                 if delta_config != {}: self.logger.info(
                     "runtime,create_delta_config," + str(start) + ",%.20f" % time.time())
@@ -281,6 +327,7 @@ class Runtime(object):
         return 0
 
     def start_dataplane_driver(self):
+
         # Start the fabric managers local to each data plane element
         dpd = DataplaneDriver(self.conf['fm_conf']['fm_socket'], self.conf["internal_interfaces"],
                               self.conf['fm_conf']['log_file'])
@@ -288,11 +335,11 @@ class Runtime(object):
         self.dpd_thread.setDaemon(True)
 
         p4_type = 'p4'
-
+        self.conf['emitter_conf']["log_path"] = self.log_path
         config = {
             'em_conf': self.conf['emitter_conf'],
             'switch_conf': {
-                'compiled_srcs': '/home/vagrant/dev/sonata/dataplane_driver/' + p4_type + '/compiled_srcs/',
+                'compiled_srcs': self.app_path,
                 'json_p4_compiled': 'compiled.json',
                 'p4_compiled': 'compiled.p4',
                 'p4c_bm_script': '/home/vagrant/p4c-bmv2/p4c_bm/__main__.py',
@@ -307,12 +354,6 @@ class Runtime(object):
         }
         dpd.add_target(p4_type, self.target_id, config)
         self.dpd_thread.start()
-
-        # fm = DPDriverConfig(self.conf['fm_conf'], self.conf['emitter_conf'])
-        # fm.start()
-        # while True:
-        #     time.sleep(5)
-        # return 0
 
     def start_streaming_driver(self):
         # Start streaming managers local to each stream processor
@@ -332,6 +373,15 @@ class Runtime(object):
     def send_to_sm(self, join_queries):
         # Send compiled query expression to streaming manager
         start = "%.20f" % time.time()
+        with open(self.app_path + 'spark.py', 'w') as f:
+            f.write("spark_queries = {}\n\n")
+            for qid in self.sp_queries:
+                compiled_spark = str(self.sp_queries[qid])
+                if 'join' not in compiled_spark:
+                    f.write("spark_queries["+str(qid)+"] = " + compiled_spark + "\n\n")
+                else:
+                    f.write(compiled_spark[4:] + "\n\n")
+
         serialized_queries = pickle.dumps({'queries': self.sp_queries, 'join_queries': join_queries})
         conn = Client(tuple(self.conf['sm_conf']['sm_socket']))
         conn.send(serialized_queries)
@@ -389,11 +439,11 @@ class Runtime(object):
         time.sleep(1)
 
     def initialize_logging(self):
-        # print "######Setup Logger##########",self.conf['log_file']
+
         # create a logger for the object
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.INFO)
+        self.logger.setLevel(logging.DEBUG)
         # create file handler which logs messages
         self.fh = logging.FileHandler(self.conf['base_folder'] + self.__class__.__name__)
-        self.fh.setLevel(logging.INFO)
+        self.fh.setLevel(logging.DEBUG)
         self.logger.addHandler(self.fh)

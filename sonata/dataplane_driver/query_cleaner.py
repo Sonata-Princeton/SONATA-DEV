@@ -13,7 +13,7 @@ from utils import get_logger
 
 def get_clean_application(application):
     # LOGGING
-    logger = get_logger('CleanApplication', 'INFO')
+    logger = get_logger('CleanApplication', 'DEBUG')
     new_app = dict()
     for query_id, query in application.iteritems():
         new_qo = QueryObject(query_id)
@@ -78,7 +78,7 @@ def get_clean_application(application):
                     next_operator = query.operators[index + 1]
 
                     # merge Reduce and following Filter if the filter is on count and uses geq as function
-                    if next_operator.name == 'Filter' and 'count' in next_operator.filter_vals and next_operator.func[0] == 'geq':
+                    if next_operator.name == 'Filter' and next_operator.func[0] == 'geq':
                         skip_next_filter = True
                         filter_value = next_operator.func[1]
                         new_o.threshold = filter_value

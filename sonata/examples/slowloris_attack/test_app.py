@@ -37,13 +37,16 @@ if __name__ == '__main__':
     slowloris = (n_bytes.join(window='Same', new_qid=3, query=n_conns)
                  .map(map_values=('count2',), func=('div',))
                  .filter(filter_keys=('count2',), func=('geq', T2))
+                 .map(keys=('ipv4.dstIP',))
                  )
 
     queries = [slowloris]
-    # queries = [n_conns]
-    config["final_plan"] = [(1, 32, 4, 1), (2, 32, 5, 1)]  # (123, 32, 2, 1)
-    config["final_plan"] = [(1, 32, 6, 1), (2, 32, 5, 1)]  #(1, 8, 3, 1), (1, 32, 3, 1)#, (122, 32, 5, 1)]  # (123, 32, 2, 1)
+    config["final_plan"] = [(1, 32, 5, 1), (2, 32, 4, 1)]
     print("*********************************************************************")
     print("*                   Receiving User Queries                          *")
     print("*********************************************************************\n\n")
-    runtime = Runtime(config, queries)
+
+    runtime = Runtime(config,
+                  queries,
+                  os.path.dirname(os.path.realpath(__file__))
+                  )

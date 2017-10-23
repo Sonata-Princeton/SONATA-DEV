@@ -31,7 +31,7 @@ class P4Application(object):
     def __init__(self, app, sonata_fields):
         # LOGGING
         log_level = logging.DEBUG
-        self.logger = get_logger('P4Application', 'INFO')
+        self.logger = get_logger('P4Application', 'DEBUG')
         self.logger.setLevel(log_level)
         self.logger.info('init')
 
@@ -312,12 +312,6 @@ table forward {
 
         return commands
 
-    # def get_header_format(self):
-    #     header_format = dict()
-    #     header_format['parse_payload'] = self.parse_payload
-    #     header_format['headers'] = self.out_header_fields
-    #     return header_format
-
     def get_header_formats(self):
         # This needs updates as we now change the logic of packet parsing at the emitter
         header_formats = dict()
@@ -327,6 +321,7 @@ table forward {
 
     def get_update_commands(self, filter_update):
         commands = list()
+
         for qid, filter_id in filter_update:
             commands.extend(self.queries[qid].get_update_commands(filter_id, filter_update[(qid, filter_id)]))
         return commands

@@ -162,6 +162,7 @@ class Map(StreamingQuery):
             expr += ')'
         expr += '))'
 
+        
         #print "Map Query", expr
 
         return expr
@@ -210,6 +211,7 @@ class Reduce(StreamingQuery):
         #print "Reduce Keys: ",str(self.prev_keys), str(self.prev_values),str(self.keys), str(self.values)
         if self.func[0] == 'sum':
             expr += '.reduceByKey(lambda x,y: x+y)'
+        
         return expr
 
 
@@ -244,6 +246,7 @@ class Distinct(StreamingQuery):
 
     def compile(self):
         expr = '.distinct()'
+        
         return expr
 
 
@@ -261,6 +264,7 @@ class FilterInit(StreamingQuery):
 
     def compile(self):
         expr = '.filter(lambda p : (p[1]==str('+str(self.qid)+')))'
+        
         return expr
 
 
@@ -342,14 +346,14 @@ class Filter(StreamingQuery):
                 self.filter_expr += 'float(' + str(fld) + ')' + '<=' + str(self.func[1]) + '&&'
         self.filter_expr = self.filter_expr[:-2]
         self.filter_expr += ')'
-        #print "Filter Keys: " + str(self.values)
-        # .filter(keys=('dIP',), func=('geq', '3'))
+
         expr = '.filter(lambda ('
         expr += '('+','.join([str(elem) for elem in self.keys])+')'
         if len(self.values) > 0:
             expr += ',('+','.join([str(elem) for elem in self.values])+')'
         expr += ')'
         expr += ': ('+self.filter_expr+'))'
+        
         self.expr = expr
         return expr
 
@@ -394,11 +398,9 @@ class Join(object):
         return out
 
     def compile(self):
-        #print "Filter Keys: " + str(self.values)
-        # .filter(keys=('dIP',), func=('geq', '3'))
         out = ''
         if len(self.join_query.compile()) > 0:
-            #print "## EXPR", self.join_query.compile(),"#\n", len(self.join_query.compile())
+
             out = '.map(lambda ('+','.join([str(elem) for elem in self.prev_keys])+'): (('+','.join([str(elem) for elem in self.join_key]) + '),('+','.join([str(elem) for elem in self.prev_keys])+')))'
             out += '.join('+self.in_stream+self.join_query.compile()+'.map(lambda s: (s,1)))'
             out += '.map(lambda s: s[1][0])'
@@ -438,7 +440,7 @@ class JoinSameWindow(object):
             self.in_stream = map_dict['in_stream']
 
     def __repr__(self):
-        out = "spark_queries['" + str(self.left_qid) + "']"+".join("+"spark_queries['" + str(self.right_qid) + "']"+")"
+        out = " spark_queries['" + str(self.left_qid) + "']"+".join("+"spark_queries['" + str(self.right_qid) + "']"+")"
         return out
 
     def compile(self):

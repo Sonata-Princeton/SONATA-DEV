@@ -6,7 +6,7 @@
 
 from sonata.query_engine.sonata_queries import *
 from sonata.core.runtime import Runtime
-import json
+import json, os
 
 if __name__ == '__main__':
     with open('/home/vagrant/dev/sonata/config.json') as json_data_file:
@@ -30,4 +30,7 @@ if __name__ == '__main__':
     print("*********************************************************************")
     print("*                   Receiving User Queries                          *")
     print("*********************************************************************\n\n")
-    runtime = Runtime(config, queries)
+    runtime = Runtime(config,
+                  queries,
+                  os.path.dirname(os.path.realpath(__file__))
+                  )

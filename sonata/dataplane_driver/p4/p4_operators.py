@@ -232,11 +232,11 @@ class P4Reduce(P4Operator):
         primitives.append(RegisterRead(self.value_field_name, self.register.get_name(), self.index_field_name))
 
         if self.values[0] == 'count':
-            self.threshold = '1'
+            # self.threshold = '1'
             primitives.append(ModifyField(self.value_field_name, '%s + %i' % (self.value_field_name, 1)))
         else:
             target_fld = self.p4_raw_fields.get_target_field(self.values[0])
-            self.threshold = '%s.%s' % (meta_init_name, target_fld.target_name.replace(".", "_"))
+            # self.threshold = '%s.%s' % (meta_init_name, target_fld.target_name.replace(".", "_"))
             primitives.append(ModifyField(self.value_field_name, '%s + %s' % (self.value_field_name, '%s.%s' % (meta_init_name, target_fld.target_name.replace(".", "_")))))
 
         primitives.append(RegisterWrite(self.register.get_name(), self.index_field_name, self.value_field_name))
@@ -316,7 +316,8 @@ class P4Reduce(P4Operator):
         return out
 
     def get_init_keys(self):
-        return self.keys + ['count']
+
+        return self.keys + self.values
 
 
 class P4MapInit(P4Operator):
@@ -486,14 +487,11 @@ class P4Filter(P4Operator):
 
         reads_fields = list()
         for filter_key in self.filter_keys:
-            print "Filter key: ", filter_key, self.func
-            print self.operator_specific_fields
-
             if self.func == 'mask':
                 reads_fields.append((filter_key, 'lpm'))
             else:
                 reads_fields.append((filter_key, 'exact'))
-        print "Debug P4Filter", self.operator_name, miss_action, (match_action,), reads_fields, TABLE_SIZE
+
         self.table = Table(self.operator_name, miss_action, (match_action,), reads_fields, TABLE_SIZE)
 
     def __repr__(self):

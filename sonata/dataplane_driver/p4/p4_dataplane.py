@@ -24,7 +24,6 @@ class Switch(threading.Thread):
             compose_interfaces += new_interface
 
         COMMAND = "sudo %s %s %s --thrift-port 22222" % (self.switch_path, self.p4_json_path, compose_interfaces)
-        print COMMAND
         os.system(COMMAND)
 
 
@@ -37,7 +36,7 @@ class P4DataPlane(object):
         self.bm_script = bm_script
         self.internal_interfaces = internal_interfaces
         # LOGGING
-        log_level = logging.WARNING
+        log_level = logging.DEBUG
         # add handler
         self.logger = logging.getLogger('P4DataPlane')
         self.logger.setLevel(log_level)
@@ -59,9 +58,9 @@ class P4DataPlane(object):
         get_out(cmd)
         self.switch = Switch(p4_json_path, self.switch_path, self.internal_interfaces)
         self.switch.start()
-        print "\nWaiting for switch to start..."
+
         sleep(2)
-        print "Sending commands..."
+
         self.send_commands(p4_json_path, p4_commands_path)
 
         sleep(1)
@@ -80,7 +79,7 @@ class P4DataPlane(object):
     def send_commands(self, p4_json_path, command_path):
         self.logger.info('send commands')
         cmd = [self.cli_path, p4_json_path, str(self.thrift_port)]
-        print cmd
+
         with open(command_path, "r") as f:
             try:
                 output = subprocess.check_output(cmd, stdin=f)

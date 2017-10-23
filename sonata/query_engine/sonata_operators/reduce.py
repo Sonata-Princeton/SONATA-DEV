@@ -31,7 +31,7 @@ class Reduce(Query):
             self.func = map_dict['func']
 
     def get_init_keys(self):
-        return self.keys + ('count', )
+        return tuple(list(self.keys) + list(self.values))
 
     def __repr__(self):
         return '.Reduce( keys=(' + ','.join([x for x in self.keys])+ '), values=(' + ','.join([x for x in self.values])+ \

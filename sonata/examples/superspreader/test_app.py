@@ -30,8 +30,11 @@ if __name__ == '__main__':
           )
 
     queries = [super_spreader]
-    config["final_plan"] = [(1, 32, 3, 1)]
+    config["final_plan"] = [(1, 32, 5, 1)]
     print("*********************************************************************")
     print("*                   Receiving User Queries                          *")
     print("*********************************************************************\n\n")
-    runtime = Runtime(config, queries)
+    runtime = Runtime(config,
+                      queries,
+                      os.path.dirname(os.path.realpath(__file__))
+                      )

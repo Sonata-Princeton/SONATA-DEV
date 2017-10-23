@@ -24,7 +24,7 @@ Q = PacketStream(qid)
 ```
 
 We have provided the P4 code (`plan1.p4`) that:
-* Extracts Fields `tcp.flags` and `ipv4.dstIP` from the packet.
+* Extracts fields `tcp.flags` and `ipv4.dstIP` from the packet.
 * Clones the original packet and add a new header with fields: `qid`, `tcp.flags` 
 and `ipv4.dstIP`; to the packet.
  
@@ -93,6 +93,7 @@ control egress {
 
 ```
 field_list report_packet_fields {
+    standard_metadata;
 }
 
 action do_report_packet(){
@@ -126,7 +127,7 @@ of each table. The file `commands.txt` has the following commands. These command
 are sent to the switch at initialization. 
  ```
  table_set_default report_packet do_report_packet
- table_set_default add_final_header do_add_final_header
+ table_set_default add_out_header do_add_out_header
  mirroring_add 8001 12
  ```
 
@@ -164,37 +165,51 @@ For this experiment, we use the topology shown below:
    +--------------------------------------------------------+
 ```
 
-* SSH into the vagrant vm (`vagrant ssh`)
+
+Open three terminals
+
+##### Terminal 1: Start Software Switch
+
+SSH into the vagrant vm (`vagrant ssh`)
+```bash
+$ cd ~/dev/sonata/tutorial
+```
+
+Compile the P4 program to `plan.json`
+```bash
+$ source env.sh
+$ $P4C_BM_SCRIPT Part-1/plan1/plan1.p4 --json Part-1/plan1/plan.json
+```
+
+Start the switch
+```bash
+$ sudo sh utils/run_switch.sh Part-1/plan1 
+```
+
+##### Terminal 2: Receiver
+Start the receiver script
 ```bash
 $ cd ~/dev
+$ sudo python sonata/tutorial/Part-1/receive.py
 ```
-* Run the following command to clean up any stored results and any previously running processes.
+
+##### Terminal 3: Sender
+Start the sender script
 ```bash
+$ cd ~/dev
+$ sudo python sonata/tutorial/Part-1/send.py
+```
+
+You will see the resulting output tuples in `receiver.log` file. Report the number of 
+tuples (lines) in this log file.
+
+##### Cleanup
+Run the following command to clean up any stored results and any previously running processes.
+```bash
+$ cd ~/dev
 $ sudo sh cleanup.sh 
 ```
 
-* Compile the P4 program
-```bash
-$ $P4C_BM_SCRIPT p4src/plan1.p4 --json reduce.json
-```
-
-* Start the switch
-```bash
-$ sudo sh start.sh 
-```
-
-* Start the receiver script
-```bash
-$ python receive.py 1
-```
-
-* Start the sender script
-```bash
-$ python send.py
-```
-
-You will see the resulting output tuples in `receiver_1.log` file. Report the number of 
-tuples (lines) in this log file.
 
 ### Plan 2: Execute Filter operator in the data plane
 We will now consider query partitioning plan where `filter` operator is executed in the 
@@ -207,14 +222,14 @@ Q = (PacketStream(qid)
 
 #### Configuring the Match-Action Pipeline
 Use the following guidelines to update the P4 code in `plan2.p4` file for this query.
-* Only the fields, `qid` and `ipv4.dstIP` should be added t the `out_header`. Can you 
+* Only the fields, `qid` and `ipv4.dstIP` should be added to the `out_header`. Can you 
 reason why there is no need to report the field `tcp.flags` now?
 * Add a metadata with field `clone`. The packet is cloned only when this field is set to one.
 * Add a table to check whether the packet's `TCP SYN` flag is set to one, i.e. `tcp.flags==2`. 
 Make sure the packets with `tcp.flags!=2` are not dropped.
 * Update the ingress pipeline to make sure that only packets with `clone` field set to one are cloned.
-* Update the `commands.txt` to add commands specifying the default action for the new 
-filter table.
+* Update the `commands.txt` to specify the default action for the new filter table. 
+Also, add a command to specify the action when  `tcp.flags==2`.
 
 #### Testing the Configured Pipeline
 Follow the same steps as described for plan 1 for testing the configured match-action pipeline. 
@@ -240,12 +255,13 @@ Q = (PacketStream(qid)
 
 #### Configuring the Match-Action Pipeline
 Use the following guidelines to update the P4 code in `plan3.p4` file for this query.
-* Create an `out_header` with fields: `qid`, `ipv4.dstIP`, `index`, and `count`. 
+* Create an `out_header` with fields: `qid`, `ipv4.dstIP`, `index`, and `value`. 
 Can you reason why we add the `index` field to this header? Hint: see how receiver reports the
 final aggregated value for each tuple. 
-* Add a metadata with fields:  `clone`, `index`, and `count`. 
-* Add a register for the `reduce` operation. Configure its `width` and `instance_count` attributes
-for this register. 
+* Add a metadata for the query with field `clone`. Add another metadata specific to
+ the reduce operator with fields: `value` (32 bits) and `index` (16 bits). 
+* Add a register for the `reduce` operation. Configure its `width` 
+(same as the value field) and `instance_count` (=65,536) attributes for this register. 
 * Add `field_list` and define the `field_list_calculation` function to compute the 
 register index for the reduce operation. 
 * Add a table that: 

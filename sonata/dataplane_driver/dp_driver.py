@@ -34,10 +34,10 @@ class DataplaneDriver(object):
     def initialize_metrics_logger(self):
         # create a logger for the object
         self.metrics = logging.getLogger(__name__)
-        self.metrics.setLevel(logging.INFO)
+        self.metrics.setLevel(logging.DEBUG)
         # create file handler which logs messages
         self.fh = logging.FileHandler(self.metrics_log_file + self.__class__.__name__)
-        self.fh.setLevel(logging.INFO)
+        self.fh.setLevel(logging.DEBUG)
         self.metrics.addHandler(self.fh)
 
         # self.metrics.info('init')
@@ -128,7 +128,7 @@ class DataplaneDriver(object):
     def configure(self, application, target_id, sonata_fields):
         # TODO integrate query cleaner
         clean_application = get_clean_application(application)
-        print "Cleaned: ", clean_application
+        # print "Cleaned: ", clean_application
         target = self.get_target(target_id)
         target.run(clean_application, sonata_fields)
 
@@ -149,7 +149,7 @@ def main():
 
     with open('/home/vagrant/dev/sonata/config.json') as json_data_file:
         data = json.load(json_data_file)
-        print(data)
+        # print(data)
 
     config = data["on_server"][data["is_on_server"]]["sonata"]
 

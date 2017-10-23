@@ -9,9 +9,9 @@
         "dp": "p4",
         "sp": "spark",
         "sm_conf": {
-          "batch_interval": 0.5,
-          "window_length": 1,
-          "sliding_interval": 1,
+          "batch_interval": 2,
+          "window_length": 4,
+          "sliding_interval": 4,
           "sm_socket": ["0.0.0.0", 5555],
           "op_handler_socket": ["localhost", 4949]
         },
@@ -39,9 +39,9 @@
         "dp": "p4",
         "sp": "spark",
         "sm_conf": {
-          "batch_interval": 0.5,
-          "window_length": 1,
-          "sliding_interval": 1,
+          "batch_interval": 2,
+          "window_length": 4,
+          "sliding_interval": 4,
           "sm_socket": ["0.0.0.0", 5555],
           "op_handler_socket": ["localhost", 4949],
           "spark_stream_address": "localhost",

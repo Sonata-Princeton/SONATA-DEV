@@ -19,7 +19,7 @@ from sonata.query_engine.sonata_operators.reduce import *
 class CleanIt(object):
     def __init__(self, pickled_file):
         # LOGGING
-        log_level = logging.INFO
+        log_level = logging.DEBUG
         # add handler
         self.logger = logging.getLogger('DPDTest')
         self.logger.setLevel(log_level)
@@ -108,5 +108,3 @@ if __name__ == "__main__":
     parsed_args = parser.parse_args()
 
     tester = CleanIt(parsed_args.pickled_file)
-
-    print '# Yay, done!!!'

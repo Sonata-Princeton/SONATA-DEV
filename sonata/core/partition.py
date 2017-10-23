@@ -27,6 +27,12 @@ def get_dataplane_query(query, qid, sonata_fields, partition_plan):
             # TODO: Disabled this for register read operation
             n_operators_dp += 1
             dp_query.read_register = True
+        elif border_operator.name == "Filter":
+            if n_operators_dp >2:
+                operator_before_border = query.operators[n_operators_dp - 2]
+                if operator_before_border.name == "Reduce":
+                    dp_query.read_register = True
+
 
         dp_query.filter_payload, dp_query.filter_payload_str = filtering_in_payload(query)
 
@@ -40,9 +46,6 @@ def get_dataplane_query(query, qid, sonata_fields, partition_plan):
         dp_query.parse_payload = requires_payload_processing(query, sonata_fields)
         dp_query.payload_fields = get_payload_fields(query, sonata_fields)
 
-        print "Getting dataplane query: Register Read: " + str(dp_query.read_register)
-        print "Payload Fields", dp_query.payload_fields
-
     return dp_query
 
 
@@ -55,7 +58,7 @@ def get_streaming_query(query, qid, sonata_fields, partition_plan):
     # number of operators in the data plane
     n_operators_dp = int(partition_plan)
     n_operators_sp = int(len(query.operators)) - (n_operators_dp-1)
-    print "Number of Dataplane vs Streaming Operators: ", n_operators_dp, n_operators_sp
+
     if n_operators_sp > 0:
         # create a sp query object
         sp_query = SP_QO(qid)
@@ -75,7 +78,6 @@ def get_streaming_query(query, qid, sonata_fields, partition_plan):
 
         # Filter step is added to map incoming packet streams from multiple dataflow pipelines
         # to their respective pipelines in the stream processor
-        # sp_query = sp_query.filter_init(qid=qid, keys=sp_query.basic_headers)
         dp_operator = query.operators[n_operators_dp - 1]
         if hasattr(dp_operator, "map_values"):
             sp_query.map(keys=flatten_streaming_field_names(filter_payload_fields_append_to_end(dp_operator.keys, sonata_fields)),
@@ -155,7 +157,7 @@ class Partition(object):
             n_operators = len(q.operators)
             partitioning_plans = self.get_partition_plans(q)
             # TODO: get rid of this hardcoding
-            # partitioning_plans = ['00', '01', '11']
+
             query_2_plans[q.qid] = partitioning_plans
         print "Partitioning Plans", query_2_plans
 
@@ -168,7 +170,7 @@ class Partition(object):
         ctr = 1
         for operator in dp_query.operators:
             can_increment = True
-            # print operator, partition_plans
+
             if operator.name in self.target.supported_operators.keys():
                 if hasattr(operator, 'func') and len(operator.func) > 0:
                     if operator.func[0] in self.target.supported_operators[operator.name]:

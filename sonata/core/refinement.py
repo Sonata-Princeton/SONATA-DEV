@@ -98,16 +98,13 @@ class Refinement(object):
         tmp_refinement_key, per_query_refinement = get_refinement_keys(self.query, refinement_keys_set)
 
         if tmp_refinement_key or per_query_refinement:
-            print "***************** Went into refinement **********************" + str([key for key, value in self.qid_2_query.items()])
-
             for key, query in self.qid_2_query.items():
                 tmp_refinement_key_qid,_ = get_refinement_keys(query, refinement_keys_set)
-                print tmp_refinement_key_qid
+
                 if tmp_refinement_key_qid: self.per_query_refinement_key[key] = list(tmp_refinement_key_qid)[0]
                 else: self.per_query_refinement_key[key] = None
-            print (self.per_query_refinement_key)
+
             self.is_refinement_enabled = True
-            # self.refinement_key = list(tmp_refinement_key)[0]
 
             # Add timestamp for each key
             self.add_timestamp_key()
