@@ -1,15 +1,19 @@
 ## Sonata Assignment
+I’ll first provide an overview of  Sonata where I’ll talk about its architecture 
+and how it simplifies expressing a range of telemetry queries for the network 
+operators. I’ll also talk about how Sonata uses programmable data-plane and 
+streaming targets to scale query execution. 
 
 ### Background
-We provide a brief background to Sonata. We describe its architecture
-and how Sonata makes it easier for the network operators to express range 
-of telemetry queries and uses programmable data-plane and streaming targets 
-to scale their execution.
+We will first provide an overview of Sonata where we will describe its
+architecture and how simplifies it expressing a range of telemetry queries 
+for the network operators. We will also describe how Sonata uses programmable 
+data-plane and streaming targets to scale query execution. 
 
 ### Part-1: Compiling Dataflow Queries for PISA Targets
-In this part, we will understand how one can execute simple dataflow
-queries in the data plane itself. 
+In this part, we will learn how to execute simple dataflow queries with PISA targets
+using P4.
 
 ### Part-2: Expressing Dataflow Queries for Telemetry Applications
-In this part, we will understand how one can use Sonata to express
-dataflow queries to express range of telemetry applications. 
+In this part, we will learn how to use Sonata's query interface to express
+a range of telemetry applications. 
