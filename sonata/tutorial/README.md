@@ -1,4 +1,4 @@
-## Sonata Assignment
+## Sonata Tutorial
 
 ### Background
 We will first provide an overview of Sonata where we will describe its
