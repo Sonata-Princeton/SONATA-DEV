@@ -9,8 +9,8 @@ little data to answer a detailed question.
 
 [Image](images/architecture.eps?raw=true)
 Sonata is a streaming telemetry system that makes use of programmable data 
-plane and scalable streaming processor for scalability. The above figure shows Sonata's 
-design: It allows operators to directly express 
+plane and scalable stream processor for scalability. The above figure shows 
+Sonata's design: It allows operators to directly express 
 queries in a high-level declarative language without worrying about how and 
 where the query gets executed. Under the hood, it partitions each query into
 a portion that runs on the switch and another that runs on the streaming
@@ -29,6 +29,8 @@ It allows network operators to apply intuitive dataflow operators over
 arbitrary combinations of packet fields. 
 
 ### Packet Fields
+You can find the list of packet fields for Sonata queries 
+[here](https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/fields_mapping.json)
 
 ### Dataflow Operators
 
@@ -139,4 +141,4 @@ window-by-window, for a fixed-size window duration). Dynamic refinement reduces
 the load on the stream processor at the cost of additional delays of possibly 
 multiple time windows to identify the traffic that satisfies the queries.
 
-To learn more about Sonata:
+Please refer to the paper for more details. 

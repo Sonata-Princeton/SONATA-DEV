@@ -98,6 +98,5 @@ tuple reported to the stream processor and `final_output` records the final outp
 of the query.
 
 ### Troubleshooting
-* Check the grammar for Sonata queries [here]().
 * List of packet fields for Sonata queries are listed [here](https://github.com/Sonata-Princeton/SONATA-DEV/blob/ma´ster/sonata/fields_mapping.json).
 * Make sure you load the app before sending the traffic.
