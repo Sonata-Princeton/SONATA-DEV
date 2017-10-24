@@ -13,9 +13,10 @@ to get started.
 
 
 ### Part-1: Compiling Dataflow Queries for PISA Targets
-In this part, we will learn how to execute simple dataflow queries with PISA targets
-using P4.
+In this [part](https://github.com/Sonata-Princeton/SONATA-DEV/tree/tutorial/sonata/tutorial/Part-1), 
+we will learn how to execute simple dataflow queries with PISA targets using P4.
 
-### Part-2: Expressing Dataflow Queries for Telemetry Applications
-In this part, we will learn how to use Sonata's query interface to express
-a range of telemetry applications. 
+### Part-2: Expressing Queries for Telemetry Applications
+In this [part](https://github.com/Sonata-Princeton/SONATA-DEV/tree/tutorial/sonata/tutorial/Part-2), 
+we will learn how to use Sonata's query interface to express queries for a range of telemetry 
+applications. 

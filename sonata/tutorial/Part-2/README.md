@@ -1,4 +1,4 @@
-## Expressing Dataflow Queries for Telemetry Applications 
+## Expressing Queries for Telemetry Applications 
 
 In this part, we will cover how:
 * One can use Sonata to run the `newly-opened-tcp-connection` application. 
