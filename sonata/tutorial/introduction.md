@@ -45,9 +45,9 @@ arbitrary combinations of packet fields.
 ### Example Queries
 
 #### Newly Opened TCP Connections
-To detect a large number of newly opened TCP connections, Query~\ref{tcp-conn}
+To detect a large number of newly opened TCP connections,
 first applies a `filter` operation over the entire packet stream to
-select TCP packets with just the `SYN` flag set. It then counts the
+filter TCP packets with just the `SYN` flag set. It then counts the
 number of packets observed for each host and reports the hosts
 for which this count exceeds threshold `Th` in an epoch.
 ```python
@@ -138,3 +138,5 @@ determines how to progressively zero in on traffic over time (i.e.,
 window-by-window, for a fixed-size window duration). Dynamic refinement reduces 
 the load on the stream processor at the cost of additional delays of possibly 
 multiple time windows to identify the traffic that satisfies the queries.
+
+To learn more about Sonata:

@@ -123,7 +123,7 @@ action do_add_out_header(){
 * P4 program only configures the match-action pipeline for the PISA target. 
 The programmer can configure these pipelines using the target-specific CLI. 
 For this program, we need to send commands to configure the default behavior 
-of each table. The file `commands.txt` has the following commands. These commands 
+of each table and specify the mirroring port. The file `commands.txt` has the following commands. These commands 
 are sent to the switch at initialization. 
  ```
  table_set_default report_packet do_report_packet
@@ -135,17 +135,14 @@ are sent to the switch at initialization.
 After configuring the match-action pipeline in the data plane to clone every packet and send it
 over a span port, we will now test this pipeline. 
 
-For this experiment, we use the topology shown below:
+For this part, we use the topology shown below:
 ```
    +--------------------------------------------------------+
    |                                                        |
-   |                       m-veth-2+--+out-veth-2--+Receiver|
-   |                            +                           |
-   |                            |                           |
-   |                     +------+-----+                     |
-   |                     |     12     |                     |
+   |                     +------------+                     |
    |                     |            |                     |
-   | m-veth-1+----------+11    S1   13+-----------+m-veth-3 |
+   |                     |            |                     |
+   | m-veth-1+----------+11    S1   12+-----------+m-veth-2 |
    |     +               |            |               +     |
    |     |               +------------+               |     |
    |     |                   Switch                   |     |
@@ -155,12 +152,12 @@ For this experiment, we use the topology shown below:
    |     |                                            |     |
    |     |                                            |     |
    |     +                                            +     |
-   | out-veth-1                                  out-veth-3 |
+   | out-veth-1                                  out-veth-2 |
    |     +                                            +     |
    |     |                                            |     |
    |     |                                            |     |
    |     +                                            +     |
-   |  send.py            Vagrant VM           Original Pkts |
+   |  send.py            Vagrant VM                Receiver |
    |                                                        |
    +--------------------------------------------------------+
 ```
@@ -216,15 +213,15 @@ We will now consider query partitioning plan where `filter` operator is executed
 the data plane itself. 
 ```python
 # Threshold
-Q = (PacketStream(qid)
+Q = (PacketStream(qid=2)
     .filter(filter_keys=('tcp.flags',), func=('eq', 2)))
 ```
 
 #### Configuring the Match-Action Pipeline
 Use the following guidelines to update the P4 code in `plan2.p4` file for this query.
-* Only the fields, `qid` and `ipv4.dstIP` should be added to the `out_header`. Can you 
+* Only the fields, `qid` and `ipv4.dstIP` should be added to the `out_header`. Set the `qid` in `out_header` to `2`. Can you 
 reason why there is no need to report the field `tcp.flags` now?
-* Add a metadata with field `clone`. The packet is cloned only when this field is set to one.
+* Add a metadata `meta_app_data` with field `clone`. The packet is cloned only when this field is set to one.
 * Add a table to check whether the packet's `TCP SYN` flag is set to one, i.e. `tcp.flags==2`. 
 Make sure the packets with `tcp.flags!=2` are not dropped.
 * Update the ingress pipeline to make sure that only packets with `clone` field set to one are cloned.
@@ -232,10 +229,9 @@ Make sure the packets with `tcp.flags!=2` are not dropped.
 Also, add a command to specify the action when  `tcp.flags==2`.
 
 #### Testing the Configured Pipeline
-Follow the same steps as described for plan 1 for testing the configured match-action pipeline. 
-The only difference is that now `receive.py` will take `2` as the argument and 
-the output file's name will be `receiver_1.log`. Report the number of tuples (lines) in this 
-log file. 
+Follow the same steps as described for plan 1 for testing the 
+configured match-action pipeline. Report the number of tuples (lines) 
+in the log file. 
 
 ### Plan 3: Execute Reduce operator in the data plane
 We will consider query partitioning plan where `reduce` operator is also executed 
@@ -246,7 +242,7 @@ Th = 10
 # query ID
 qid = 1
 
-Q = (PacketStream(qid)
+Q = (PacketStream(qid=3)
      .filter(filter_keys=('tcp.flags',), func=('eq', 2))
      .map(keys=('ipv4.dstIP',), map_values=('count',), func=('eq', 1,))
      .reduce(keys=('ipv4.dstIP',), func=('sum',))
@@ -255,19 +251,19 @@ Q = (PacketStream(qid)
 
 #### Configuring the Match-Action Pipeline
 Use the following guidelines to update the P4 code in `plan3.p4` file for this query.
-* Create an `out_header` with fields: `qid`, `ipv4.dstIP`, `index`, and `value`. 
+* Create an `out_header` with fields: `qid`, `ipv4.dstIP`, `index`, and `value`. Set the `qid` in `out_header` to `3`. 
 Can you reason why we add the `index` field to this header? Hint: see how receiver reports the
 final aggregated value for each tuple. 
-* Add a metadata for the query with field `clone`. Add another metadata specific to
+* Add a metadata `meta_app_data` for the query with field `clone`. Add another metadata `meta_reduce` specific to
  the reduce operator with fields: `value` (32 bits) and `index` (16 bits). 
 * Add a register for the `reduce` operation. Configure its `width` 
 (same as the value field) and `instance_count` (=65,536) attributes for this register. 
 * Add `field_list` and define the `field_list_calculation` function to compute the 
 register index for the reduce operation. 
 * Add a table that: 
-  * Computes the register index and stores in `meta.index` field, 
-  * Reads the register value for this index into `meta.value` field, 
-  * Increments the `meta.value` field value by one, and 
+  * Computes the register index and stores in `meta_reduce.index` field, 
+  * Reads the register value for this index into `meta_reduce.value` field, 
+  * Increments the `meta_reduce.value` field value by one, and 
   * Writes the updated value back to the register. 
 * Update the ingress pipeline such that: 
     * Applies the `filter` operator over each packet, 
@@ -279,9 +275,7 @@ How different will be the code executing `distinct` operator in the data plane?
 
 #### Testing the Configured Pipeline
 Follow the same steps as described for the plan 1 for testing the configured match-action pipeline. 
-The only difference is that now `receive.py` will take `3` as the argument and 
-the output file's name will be `receiver_3.log`. Report the number of tuples (lines) in this 
-log file. 
+Report the number of tuples (lines) in the log file. 
 
 ### Plan 4: Execute all dataflow operators in the data plane
 We will consider query partitioning plan where all the dataflow operators for this query 
@@ -292,7 +286,7 @@ Th = 10
 # query ID
 qid = 1
 
-Q = (PacketStream(qid)
+Q = (PacketStream(qid=4)
      .filter(filter_keys=('tcp.flags',), func=('eq', 2))
      .map(keys=('ipv4.dstIP',), map_values=('count',), func=('eq', 1,))
      .reduce(keys=('ipv4.dstIP',), func=('sum',))
@@ -303,15 +297,16 @@ Q = (PacketStream(qid)
 #### Configuring the Match-Action Pipeline
 Use the following guidelines to update the P4 code in `plan4.p4` file for this query. Compared
 to `plan3.p4`, the only change required is: 
-* Update the ingress pipeline such that only packets with `meta.count==Th` are cloned. 
+* Set the `qid` in `out_header` to `4`
+* Update the ingress pipeline such that only packets with `meta_reduce.value==Th` are cloned. 
 
 #### Testing the Configured Pipeline
 Follow the same steps as described for plan 1 for testing the configured match-action pipeline. 
-The only difference is that now `receive.py` will take `4` as the argument and 
-the output file's name will be `receiver_4.log`. Report the number of tuples (lines) in this 
-log file. 
+Report the number of tuples (lines) in the log file. 
 
 Notes:
 * Please refer to the [P4 language specification](https://p4lang.github.io/p4-spec/p4-14/v1.0.4/tex/p4.pdf) for more details on the P4 language itself.
 * Please refer to the [fields_mapping](https://github.com/Sonata-Princeton/SONATA-DEV/blob/ma´ster/sonata/fields_mapping.json) file to understand how the field names for the sonata queries map to target-specific field names.
-* ...
+* The receiver identifies packets for different plans using
+  the `qid` field. Thus, make sure you set the qid as instructed for
+  each plan.

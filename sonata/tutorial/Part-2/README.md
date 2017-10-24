@@ -71,9 +71,9 @@ $ sudo python sonata/examples/newly_opened_connections/send.py
 #### Expressing the Query
 We will now describe a simple query one can express with Sonata to detect presence of
 IoT devices. 
-* Identify hosts that send **more** than `Th1` DNS queries.
-* Identify hosts that receive DNS response for **less** than `Th2` unique resolved 
-IP addresses. 
+* Identify hosts that receive **more** than `Th1` number of DNS responses.
+* Identify hosts for which the number of unique resolved IP addresses (`dns.an.rdata`)
+ is **less** than `Th2`.
 
 #### Testing
 To test your query, follow the steps below:
@@ -99,5 +99,5 @@ of the query.
 
 ### Troubleshooting
 * Check the grammar for Sonata queries [here]().
-* List of packet fields for Sonata queries are listed [here]().
+* List of packet fields for Sonata queries are listed [here](https://github.com/Sonata-Princeton/SONATA-DEV/blob/ma´ster/sonata/fields_mapping.json).
 * Make sure you load the app before sending the traffic.

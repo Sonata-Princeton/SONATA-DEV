@@ -1,8 +1,4 @@
 ## Sonata Assignment
-I’ll first provide an overview of  Sonata where I’ll talk about its architecture 
-and how it simplifies expressing a range of telemetry queries for the network 
-operators. I’ll also talk about how Sonata uses programmable data-plane and 
-streaming targets to scale query execution. 
 
 ### Background
 We will first provide an overview of Sonata where we will describe its
