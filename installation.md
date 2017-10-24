@@ -27,6 +27,11 @@ Change the directory to ```Sonata```:
 $ cd SONATA-DEV
 ```
 
+Checkout the `runtime` branch:
+```bash
+$ git checkout tutorial
+```
+
 Now run the vagrant up command. This will read the Vagrantfile from the current directory and provision the VM accordingly:
 ```bash
 $ vagrant up

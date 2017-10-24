@@ -9,8 +9,8 @@ little data to answer a detailed question.
 
 [Image](images/architecture.eps?raw=true)
 Sonata is a streaming telemetry system that makes use of programmable data 
-plane and scalable streaming processor for scalability.  
-The above figure shows Sonata's design: It allows operators to directly express 
+plane and scalable streaming processor for scalability. The above figure shows Sonata's 
+design: It allows operators to directly express 
 queries in a high-level declarative language without worrying about how and 
 where the query gets executed. Under the hood, it partitions each query into
 a portion that runs on the switch and another that runs on the streaming

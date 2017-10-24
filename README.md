@@ -1,9 +1,7 @@
-# SONATA: Query-Driven Streaming Network Telemetry
+## SONATA: Query-Driven Streaming Network Telemetry
 
-### Introduction
+#### [Installation](https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/installation.md)
 
-### Installation
+#### [Introduction](https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/tutorial/introduction.md)
 
-### Example Applications
-
-See: https://github.com/Sonata-Princeton/SONATA-DEV/tree/master/sonata/examples for details
+#### [Example Applications](https://github.com/Sonata-Princeton/SONATA-DEV/tree/master/sonata/examples)
