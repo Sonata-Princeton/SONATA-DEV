@@ -4,10 +4,10 @@ In this part, we will learn how to express and test the:
 * Query for the `newly-opened-tcp-connection` application. 
 * Query for detecting IoT devices in the network. 
 
-### Section 1: Detecting Newly Opened TCP Connections
+### Detecting Newly Opened TCP Connections
 In part 1, we described how Sonata compiles different partitioning plans for this
 query in the data plane. We ignored how the remainder dataflow operations are 
-performed over the packet tuples in the user space. We will now describe to 
+performed over the packet tuples in the user space. We will now describe how to 
 use Sonata for expressing the query for such an application and how to run 
 end-to-end tests for these queries. 
 
@@ -61,12 +61,19 @@ $ cd ~/dev
 $ sudo python sonata/examples/newly_opened_connections/send.py
 ```
 
-### Section 2: Detecting IoT Devices
+### Detecting IoT Devices
 
 #### Background
-* What are IoT devices?
-* Why do we want to detect their presence in the network?
-* How can we detect these devices?
+The DNS fingerprint for IoT devices is different from other 
+Internet-connected such as laptops, servers, and mobile devices etc.
+Most IoT devices query limited number of unique domains. For example,
+a `Nest` thermostat mostly sends DNS queries for the domain `nest.com`.
+To identify IoT devices, one can write queries to determine total
+number of DNS responses received by a host and total number of unique
+domains (also identifiable by the resolved IP address in the DNS 
+response message). It can report hosts that receive more than `Th1`
+total responses but for which the number of unique resolved IP addresses
+is less than `Th2`.
 
 #### Expressing the Query
 We will now describe a simple query one can express with Sonata to detect presence of
