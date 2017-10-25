@@ -139,7 +139,6 @@ are sent to the switch at initialization.
 
 #### Notes
 * For P4 language questions, please refer to the [P4 language specification](https://p4lang.github.io/p4-spec/p4-14/v1.0.4/tex/p4.pdf) for more details.
-* Please refer to the [fields_mapping](https://github.com/Sonata-Princeton/SONATA-DEV/blob/ma´ster/sonata/fields_mapping.json) file to understand how the field names for the sonata queries map to target-specific field names.
 * The receiver identifies packets for different plans using
   the `qid` field. Make sure you set the qid as instructed for
   each plan.

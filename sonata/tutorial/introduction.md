@@ -28,10 +28,6 @@ Sonata offers three key contributions:
 It allows network operators to apply intuitive dataflow operators over 
 arbitrary combinations of packet fields. 
 
-### Packet Fields
-You can find the list of packet fields for Sonata queries 
-[here](https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/fields_mapping.json)
-
 ### Dataflow Operators
 
 | Operator| Description|
