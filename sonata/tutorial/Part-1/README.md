@@ -16,7 +16,7 @@ Q = (PacketStream(qid)
 This query operates over packet fields, `tcp.flags` and `ipv4.dstIP`.
 
 ### Plan 1: Execute all dataflow operators in user-space
-We will first consider the partitioning plan where all the data flow operators are executed in
+We will first consider the partitioning plan where all the dataflow operators are executed in
 user space. Thus, the portion of the query that needs to be executed in the data plane is shown below:
 ```python
 Q = PacketStream(qid)
@@ -234,7 +234,7 @@ Filter operators are quite simple, stateless operators. Filter operators
 apply a predicate to a tuple and return only those tuples that satisfy
 the predicate.  We can implement this operator in the data plane as a match-action table in P4.
 The predicate becomes the match condition, and the action yields or suppresses the tuple
-for further processing in the data flow query.  In a P4 program, one can `drop` a packet to suppress further
+for further processing in the dataflow query.  In a P4 program, one can `drop` a packet to suppress further
 processing or `nop` to yield the tuple to the next table in the pipeline.
 
 #### Configuring the Match-Action Pipeline
@@ -300,23 +300,21 @@ register index for the reduce operation.
     * Clone only the first packet for each destination IP address.
 * Update the `commands.txt` to add commands specifying the default action for the new tables.
 
-##### Question 3: How would you implement a `distinct` operator in the data plane?
+#### Testing the Configured Pipeline
+Follow the same steps from plan 1 (replacing references to `plan1` with `plan3`) to test the configured match-action pipeline.
+
+
+##### Question 4: How many tuples were reported this time?  Why (or not) are the results different?
+If you did not run `cleanup.sh` after completing `plan2`, your log may contain too many entries.
+
+##### Question 5: How would you implement a `distinct` operator in the data plane?
 Hint: Distinct is a special case of a reduce operator.
 
 
-#### Testing the Configured Pipeline
-Follow the same steps as described for the plan 1 for testing the configured match-action pipeline.
-Report the number of tuples (lines) in the log file.
-
 ### Plan 4: Execute all dataflow operators in the data plane
-We will consider query partitioning plan where all the dataflow operators for this query
+We now consider a query partitioning plan where all the dataflow operators for this query
 are executed in the the data plane.
 ```python
-# Threshold
-Th = 10
-# query ID
-qid = 1
-
 Q = (PacketStream(qid=4)
      .filter(filter_keys=('tcp.flags',), func=('eq', 2))
      .map(keys=('ipv4.dstIP',), map_values=('count',), func=('eq', 1,))
@@ -325,6 +323,12 @@ Q = (PacketStream(qid=4)
      )
 ```
 
+#### Filtering on a Threshold => P4 Control Flow
+In `P4 14`, conditional logic may only be expressed in the control flow between tables.  Therefore, we must evaluate
+filter predicates with a threshold in the control flow.  As an implementation decision, we choose to report a packet only
+once in a time window: on the first packet that meets or exceeds a given threshold.  `receiver.py` will retrieve updated 
+values at the end of the time window.
+
 #### Configuring the Match-Action Pipeline
 Use the following guidelines to update the P4 code in `plan4.p4` file for this query. Compared
 to `plan3.p4`, the only change required is:
@@ -332,5 +336,7 @@ to `plan3.p4`, the only change required is:
 * Update the ingress pipeline such that only packets with `meta_reduce.value==Th` are cloned.
 
 #### Testing the Configured Pipeline
-Follow the same steps as described for plan 1 for testing the configured match-action pipeline.
-Report the number of tuples (lines) in the log file.
+Follow the same steps from plan 1 (replacing references to `plan1` with `plan4`) to test the configured match-action pipeline.
+
+##### Question 6: How many tuples were reported this time?  Why (or not) are the results different?
+If you did not run `cleanup.sh` after completing `plan3`, your log may contain too many entries.
