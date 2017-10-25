@@ -22,6 +22,11 @@ user space. Thus, the portion of the query that needs to be executed in the data
 Q = PacketStream(qid)
 ```
 
+Abstractly, the `PacketStream` represents all packets that the data plane might process.  When a specific
+`qid` is applied as `PacketStream(qid)`, the stream is reduced to only the tuple fields that need to
+be processed in user-space.  For this above, query, we can reduce the entire packet stream to
+tuples containing only the `tcp.flags` and `ipv4.dstIP` fields required by the query.
+
 We have provided P4 code (`plan1.p4`) that:
 * Extracts fields `tcp.flags` and `ipv4.dstIP` from the packet.
 * Clones the original packet and adds a new header with fields: `qid`, `tcp.flags`
@@ -29,7 +34,6 @@ and `ipv4.dstIP` to the packet.
 
 ##### Question 1: Why do you think the field `qid` is added to the out header?
 Hint: see how packets are parsed by `receive.py`
-
 
 #### Configuring the Match-Action Pipeline
 We will describe how `plan1.p4` executes these operations in the data plane.
@@ -133,6 +137,13 @@ are sent to the switch at initialization.
  mirroring_add 8001 12
 ```
 
+#### Notes
+* For P4 language questions, please refer to the [P4 language specification](https://p4lang.github.io/p4-spec/p4-14/v1.0.4/tex/p4.pdf) for more details.
+* Please refer to the [fields_mapping](https://github.com/Sonata-Princeton/SONATA-DEV/blob/ma´ster/sonata/fields_mapping.json) file to understand how the field names for the sonata queries map to target-specific field names.
+* The receiver identifies packets for different plans using
+  the `qid` field. Make sure you set the qid as instructed for
+  each plan.
+
 #### Testing the Configured Pipeline
 After configuring the match-action pipeline to clone every packet and send it
 over a span port, we will now test this program.
@@ -142,7 +153,6 @@ For this part, we use the topology shown below:
    +--------------------------------------------------------+
    |                                                        |
    |                     +------------+                     |
-   |                     |            |                     |
    |                     |            |                     |
    | m-veth-1+----------+11    S1   12+-----------+m-veth-2 |
    |     +               |            |               +     |
@@ -219,33 +229,36 @@ now needs only to report packet tuples that satisfy the filter predicate below.
 Q = (PacketStream(qid=2)
     .filter(filter_keys=('tcp.flags',), func=('eq', 2)))
 ```
+#### Filter Operator => P4 Table
+Filter operators are quite simple, stateless operators. Filter operators
+apply a predicate to a tuple and return only those tuples that satisfy
+the predicate.  We can implement this operator in the data plane as a match-action table in P4.
+The predicate becomes the match condition, and the action yields or suppresses the tuple
+for further processing in the data flow query.  In a P4 program, one can `drop` a packet to suppress further
+processing or `nop` to yield the tuple to the next table in the pipeline.
 
 #### Configuring the Match-Action Pipeline
 Use the following guidelines to update the P4 code in `plan2.p4` file for this query.
 * Only the fields, `qid` and `ipv4.dstIP` should be added to the `out_header`. Set the `qid` in `out_header` to `2`. Can you
 reason why there is no need to report the field `tcp.flags` now?
-* Add a metadata `meta_app_data` with field `clone`. The packet is cloned only when this field is set to one.
+* Add a metadata `meta_app_data` with field `yield`. The packet is cloned only when this field is set to one.
 * Add a table to check whether the packet's `TCP SYN` flag is set to one, i.e. `tcp.flags==2`.
 Make sure the packets with `tcp.flags!=2` are not dropped.
-* Update the ingress pipeline to make sure that only packets with `clone` field set to one are cloned.
+* Update the ingress pipeline to make sure that only packets with `yield` field set to one are cloned.
 * Update the `commands.txt` to specify the default action for the new filter table.
 Also, add a command to specify the action when  `tcp.flags==2`.
 
 #### Testing the Configured Pipeline
-Follow the same steps from plan 1 to test the configured match-action pipeline.
+Follow the same steps from plan 1 (replacing references to `plan1` with `plan2`) to test the configured match-action pipeline.
 
 ##### Question 3: How many tuples were reported this time?  Why (or not) are the results different?
-If you did not run `cleanup.sh` after completing Part 1, your log may contain too many entries.
+If you did not run `cleanup.sh` after completing `plan1`, your log may contain too many entries.
 
 ### Plan 3: Execute Reduce operator in the data plane
-We will consider query partitioning plan where `reduce` operator is also executed
+We will consider a query partitioning plan where `reduce` operators are also executed
 in the the data plane.
-```python
-# Threshold
-Th = 10
-# query ID
-qid = 1
 
+```python
 Q = (PacketStream(qid=3)
      .filter(filter_keys=('tcp.flags',), func=('eq', 2))
      .map(keys=('ipv4.dstIP',), map_values=('count',), func=('eq', 1,))
@@ -253,29 +266,43 @@ Q = (PacketStream(qid=3)
      )
 ```
 
+#### Reduce Operator => P4 Register and Table
+Reduce operators are more complicated to implement in a P4 program.  P4 supports
+stateful operations across packets through the register primitive.  Each register is
+a hash table with configurable width and height (`instance_count`). To support a reduce
+operation in the data plane, we can compute an index into the hash table, store the value
+as metadata, perform the function applied, and then update the hash table with the result.
+These actions can be performed in a match-action table.
+
+Since reduce operators return aggregated values, this aggregation must occur with respect to time.
+Sonata reports aggregated results with respect to a time window (`W`).  At the end of a window, `receiver.py`
+must retrieve the aggregated values from the registers in the data plane.  For each window, only one packet
+per index need be reported to `receiver.py` in order for it to retrieve all of the aggregated values at the end of
+the window.
+
 #### Configuring the Match-Action Pipeline
 Use the following guidelines to update the P4 code in `plan3.p4` file for this query.
-* Create an `out_header` with fields: `qid`, `ipv4.dstIP`, `index`, and `value`. Set the `qid` in `out_header` to `3`.
-Can you reason why we add the `index` field to this header? Hint: see how receiver reports the
-final aggregated value for each tuple.
-* Add a metadata `meta_app_data` for the query with field `clone`. Add another metadata `meta_reduce` specific to
+* Create an `out_header` with fields: `qid`, `ipv4.dstIP`, `index`. Set the `qid` in `out_header` to `3`.
+* Add a metadata `meta_app_data` for the query with field `yield`. Add another metadata `meta_reduce` specific to
  the reduce operator with fields: `value` (32 bits) and `index` (16 bits).
 * Add a register for the `reduce` operation. Configure its `width`
-(same as the value field) and `instance_count` (=65,536) attributes for this register.
-* Add `field_list` and define the `field_list_calculation` function to compute the
+(same as the value field) and `instance_count` (=65,536) attributes.
+* Add a `field_list` and define the `field_list_calculation` function to compute the
 register index for the reduce operation.
 * Add a table that:
   * Computes the register index and stores in `meta_reduce.index` field,
   * Reads the register value for this index into `meta_reduce.value` field,
   * Increments the `meta_reduce.value` field value by one, and
   * Writes the updated value back to the register.
-* Update the ingress pipeline such that:
-    * Applies the `filter` operator over each packet,
-    * Applies the `reduce` operator for only packets with `tcp.flags==2`, and
-    * Clones only the first packet for each destination IP address.
+* Update the ingress pipeline to:
+    * Apply the `filter` operator over each packet,
+    * Apply the `reduce` operator for only packets with `tcp.flags==2`, and
+    * Clone only the first packet for each destination IP address.
 * Update the `commands.txt` to add commands specifying the default action for the new tables.
 
-How different will be the code executing `distinct` operator in the data plane?
+##### Question 3: How would you implement a `distinct` operator in the data plane?
+Hint: Distinct is a special case of a reduce operator.
+
 
 #### Testing the Configured Pipeline
 Follow the same steps as described for the plan 1 for testing the configured match-action pipeline.
@@ -307,10 +334,3 @@ to `plan3.p4`, the only change required is:
 #### Testing the Configured Pipeline
 Follow the same steps as described for plan 1 for testing the configured match-action pipeline.
 Report the number of tuples (lines) in the log file.
-
-Notes:
-* Please refer to the [P4 language specification](https://p4lang.github.io/p4-spec/p4-14/v1.0.4/tex/p4.pdf) for more details on the P4 language itself.
-* Please refer to the [fields_mapping](https://github.com/Sonata-Princeton/SONATA-DEV/blob/ma´ster/sonata/fields_mapping.json) file to understand how the field names for the sonata queries map to target-specific field names.
-* The receiver identifies packets for different plans using
-  the `qid` field. Thus, make sure you set the qid as instructed for
-  each plan.
