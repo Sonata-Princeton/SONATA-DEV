@@ -1,8 +1,8 @@
 ## Expressing Queries for Telemetry Applications 
 
-In this part, we will cover how:
-* One can use Sonata to run the `newly-opened-tcp-connection` application. 
-* One can use Sonata for detecting IoT devices in the network. 
+In this part, we will learn how to express and test the:
+* Query for the `newly-opened-tcp-connection` application. 
+* Query for detecting IoT devices in the network. 
 
 ### Section 1: Detecting Newly Opened TCP Connections
 In part 1, we described how Sonata compiles different partitioning plans for this
@@ -78,20 +78,20 @@ IoT devices.
 #### Testing
 To test your query, follow the steps below:
 * Do cleanup
-```bash
+````bash
 $ sudo sh cleanup.sh
-```
+````
 
 * Load the new application
-```bash
+````bash
 $ sudo $SPARK_HOME/bin/spark-submit sonata/tutorial/Part-2/sonata_app.py
-```
+````
 
 * Use a separate terminal to send the traffic
-```bash
+````bash
 $ cd ~/dev	
 $ sudo python sonata/tutorial/Part-2/send.py
-```
+````
  
 Check the log files here: `sonata/tutorial/Part-2/logs`. `emitter.log` records the 
 tuple reported to the stream processor and `final_output` records the final output 
