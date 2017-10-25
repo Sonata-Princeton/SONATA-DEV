@@ -177,7 +177,7 @@ control ingress {
     if(...)
     {
         apply(init_reduce_1);
-        // Clone only the first packet for each destination IP address
+        // Report only a single packet for each key (destination IP address)
         if (...) {
             apply(report_packet);
         }

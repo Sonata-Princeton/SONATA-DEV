@@ -98,11 +98,7 @@ table report_packet {
 }
 
 header_type out_header_t {
-	fields {
-		qid : 16;
-		ipv4_dstIP : 32;
-		index: 16;
-	}
+	// Add code here
 }
 header out_header_t out_header;
 
@@ -118,23 +114,21 @@ table add_out_header {
 }
 
 header_type meta_app_data_t {
-	fields {
-		clone: 1;
-	}
+	// Add code here
 }
 
 metadata meta_app_data_t meta_app_data;
 
-action do_clone(){
-	modify_field(meta_app_data.clone, 1);
+action set_yield(){
+	// Add code here
 }
 
 table filter_1 {
 	reads {
-		tcp.flags: exact;
+		// Add code here
 	}
 	actions {
-		do_clone;
+		set_yield;
 		_nop;
 	}
 	size : 64;
@@ -163,7 +157,11 @@ register reduce_1 {
 }
 
 action do_init_reduce_1(){
-	// Add code here
+    // Update the functions below
+	modify_field_with_hash_based_offset(...);
+	register_read(...);
+	modify_field(...);
+	register_write(...);
 }
 
 table init_reduce_1 {
@@ -174,7 +172,17 @@ table init_reduce_1 {
 }
 
 control ingress {
-    // Add code here
+    apply(filter_1);
+        // Apply reduce operation only if yield ==1
+        if(...)
+        {
+            apply(init_reduce_1);
+            // Report only a single packet for each key (destination IP address)
+            // for which the count exceeds the threshold
+            if (...) {
+                apply(report_packet);
+            }
+        }
 }
 
 control egress {
