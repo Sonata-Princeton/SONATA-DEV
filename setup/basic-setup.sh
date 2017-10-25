@@ -22,7 +22,8 @@ sudo pip install --upgrade scipy
 sudo -H pip install -r ~/dev/setup/pip-basic-requires
 
 sudo apt-get install -y ssh git emacs sshfs graphviz feh Protobuf
-sudo apt-get install -y libstring-crc32-perl mysql-connector==2.1.4
+sudo apt-get install -y libstring-crc32-perl
+sudo -H pip install mysql-connector==2.1.4
 
 echo 'Defaults    env_keep += "PYTHONPATH"' | sudo tee --append /etc/sudoers
 echo 'PATH=$PATH:~/iSDX/bin' >> ~/.profile
