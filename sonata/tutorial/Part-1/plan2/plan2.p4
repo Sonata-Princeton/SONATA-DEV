@@ -97,7 +97,9 @@ table report_packet {
 }
 
 header_type out_header_t {
-	// Add code here
+	fields {
+		// Add code here
+	}
 }
 header out_header_t out_header;
 
@@ -110,12 +112,14 @@ table add_out_header {
 }
 
 header_type meta_app_data_t {
-	// Add code here
+	fields {
+		// Add code here
+	}
 }
 
 metadata meta_app_data_t meta_app_data;
 
-action do_clone(){
+action set_yield(){
 	// Add code here
 }
 
@@ -124,7 +128,7 @@ table filter_1 {
 		// Add code here
 	}
 	actions {
-		do_clone;
+		set_yield;
 		_nop;
 	}
 	size : 64;
