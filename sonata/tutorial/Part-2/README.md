@@ -112,4 +112,19 @@ of the query.
 
 ### Troubleshooting
 * Make sure you load the app before sending the traffic.
-* If your application crashes, be sure to run `cleanup.sh` immediately after the crash.
+* If your application crashes, be sure to run `cleanup.sh` immediately 
+after the crash.
+* In case you see a `mysql-connector` not found error, follow the steps below to fix this problem:
+    * Install the missing package:
+    ```bash
+    $ sudo -H pip install mysql-connector==2.1.4
+    ```
+    * Create a `sonata` database:
+    ```bash
+    $ sudo mysql -e "create database sonata;"
+    ```
+    * Add a table:
+    ```bash
+    $ sudo mysql -e "CREATE TABLE indexStore( id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, qid INT(6),  tuple VARCHAR(200), indexLoc INT(6) );"
+    ```
+    
