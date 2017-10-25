@@ -119,7 +119,7 @@ header_type meta_app_data_t {
 
 metadata meta_app_data_t meta_app_data;
 
-action do_clone(){
+action set_yield(){
 	// Add code here
 }
 
@@ -128,7 +128,7 @@ table filter_1 {
 		// Add code here
 	}
 	actions {
-		do_clone;
+		set_yield;
 		_nop;
 	}
 	size : 64;
@@ -173,7 +173,7 @@ table init_reduce_1 {
 
 control ingress {
     apply(filter_1);
-    // Apply reduce operation only if clone ==1
+    // Apply reduce operation only if yield ==1
     if(...)
     {
         apply(init_reduce_1);
