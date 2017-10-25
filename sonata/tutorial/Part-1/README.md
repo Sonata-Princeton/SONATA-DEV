@@ -27,7 +27,7 @@ We have provided P4 code (`plan1.p4`) that:
 * Clones the original packet and adds a new header with fields: `qid`, `tcp.flags`
 and `ipv4.dstIP` to the packet.
 
-###### Question: Why do you think the field `qid` is added to the out header?
+##### Question 1: Why do you think the field `qid` is added to the out header?
 Hint: see how packets are parsed by `receive.py`
 
 
@@ -199,8 +199,8 @@ $ cd ~/dev
 $ sudo python sonata/tutorial/Part-1/send.py
 ```
 
-You will see the resulting output tuples in `~/dev/sonata/tutorial/Part-1/receiver.log` file. Report the number of
-tuples (lines) in this log file.
+##### Question 2: How many tuples (lines) were reported from the data plane?
+You can find the resulting output tuples in `~/dev/sonata/tutorial/Part-1/receiver.log` file.
 
 ##### Cleanup
 Run the following command to clean up any stored results and any previously running processes.
@@ -211,8 +211,9 @@ $ sudo sh cleanup.sh
 
 
 ### Plan 2: Execute Filter operator in the data plane
-We will now consider query partitioning plan where `filter` operator is executed in the
-the data plane itself.
+We will now consider a query partitioning plan where `filter` operators are now executed in the
+the data plane itself.  Rather than reporting all of the packet tuples from the network, the switch
+now needs only to report packet tuples that satisfy the filter predicate below.
 ```python
 # Threshold
 Q = (PacketStream(qid=2)
@@ -231,9 +232,10 @@ Make sure the packets with `tcp.flags!=2` are not dropped.
 Also, add a command to specify the action when  `tcp.flags==2`.
 
 #### Testing the Configured Pipeline
-Follow the same steps as described for plan 1 for testing the
-configured match-action pipeline. Report the number of tuples (lines)
-in the log file.
+Follow the same steps from plan 1 to test the configured match-action pipeline.
+
+##### Question 3: How many tuples were reported this time?  Why (or not) are the results different?
+If you did not run `cleanup.sh` after completing Part 1, your log may contain too many entries.
 
 ### Plan 3: Execute Reduce operator in the data plane
 We will consider query partitioning plan where `reduce` operator is also executed
