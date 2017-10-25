@@ -1,10 +1,10 @@
 ## Sonata Tutorial
 
 ### Background
-We will first provide an overview of Sonata where we will describe its
-architecture and how simplifies it expressing a range of telemetry queries 
-for the network operators. We will also describe how Sonata uses programmable 
-data-plane and streaming targets to scale query execution. 
+[Here](https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/tutorial/introduction.md), 
+we will first provide an overview of Sonata describing its architecture and how simplifies it 
+expressing a range of telemetry queries for the network operators. We will also describe how 
+Sonata uses programmable data-plane and streaming targets to scale query execution. 
 
 ### Installation
 Follow the instructions 
