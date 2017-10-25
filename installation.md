@@ -27,7 +27,7 @@ Change the directory to ```Sonata```:
 $ cd SONATA-DEV
 ```
 
-Checkout the `runtime` branch:
+Checkout the `tutorial` branch:
 ```bash
 $ git checkout tutorial
 ```
