@@ -4,9 +4,7 @@ Let us consider the query:
 ```python
 # Threshold
 Th = 10
-# query ID
-qid = 1
-Q = (PacketStream(qid)
+Q = (PacketStream(qid=1)
      .filter(filter_keys=('tcp.flags',), func=('eq', 2))
      .map(keys=('ipv4.dstIP',), map_values=('count',), func=('eq', 1,))
      .reduce(keys=('ipv4.dstIP',), func=('sum',))
@@ -15,22 +13,38 @@ Q = (PacketStream(qid)
 ```
 This query operates over packet fields, `tcp.flags` and `ipv4.dstIP`.
 
+As we discussed 
+[earlier](https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/tutorial/introduction.md#overview),
+Sonata partitions each query into a portion that runs on the switch (i.e., in data 
+plane) and another that runs on the streaming analytics platform (i.e., in 
+user-space). We will now consider four different plans for partitioning 
+this query. For each plan, we will write the P4 code to process the
+packet stream in the data plane itself and analyse the number of tuples
+sent to the streaming platform for further processing. 
+
 ### Plan 1: Execute all dataflow operators in user-space
-We will first consider the partitioning plan where all the dataflow operators are executed in
-user space. Thus, the portion of the query that needs to be executed in the data plane is shown below:
+We will first consider the partitioning plan where all the dataflow operators 
+are executed in user space. Thus, the portion of the query that needs to be 
+executed in the data plane is shown below:
 ```python
 Q = PacketStream(qid)
 ```
 
-Abstractly, the `PacketStream` represents all packets that the data plane might process.  When a specific
-`qid` is applied as `PacketStream(qid)`, the stream is reduced to only the tuple fields that need to
-be processed in user-space.  For this above, query, we can reduce the entire packet stream to
-tuples containing only the `tcp.flags` and `ipv4.dstIP` fields required by the query.
+`PacketStream(qid)` represents stream of packet tuples with all fields 
+required for the query with `qid=1`. For the example above, the query
+requires processing packet fields `tcp.flags` and `ipv4.dstIP`. Thus,
+if the partitioning plan is to execute all the dataflow operators in 
+the user-space, then the packet processing pipeline in the data plane
+must extract the fields: `tcp.flags` and `ipv4.dstIP` from each incoming
+packet, clone each packet, and add a query-specific header with these
+fields to the cloned packet. Note that cloning of the original packet
+is required such that the default forwarding behavior of the switch
+is unaffected by the telemetry queries.  
 
-We have provided P4 code (`plan1.p4`) that:
+For this plan we have provided P4 code (`plan1.p4`) that:
 * Extracts fields `tcp.flags` and `ipv4.dstIP` from the packet.
-* Clones the original packet and adds a new header with fields: `qid`, `tcp.flags`
-and `ipv4.dstIP` to the packet.
+* Clones the original packet and adds a new header with fields: 
+`qid`, `tcp.flags` and `ipv4.dstIP` to the packet.
 
 ##### Question 1: Why do you think the field `qid` is added to the out header?
 Hint: see how packets are parsed by `receive.py`
@@ -38,7 +52,8 @@ Hint: see how packets are parsed by `receive.py`
 #### Configuring the Match-Action Pipeline
 We will describe how `plan1.p4` executes these operations in the data plane.
 
-* It first specifies the format of `out_header_t` headers; `out_header` is an instance of header type `out_header_t` .  
+* It first specifies the format of `out_header_t` headers; `out_header` is 
+an instance of header type `out_header_t`.  
 
 ```
 header_type out_header_t {
@@ -53,9 +68,10 @@ header out_header_t out_header;
 
 
 * It also needs to define how packet headers are parsed.
-Here, as we add the `out_header` at the top, thus the parser state function needs to
-extract it before parsing the ethernet header. The parser also needs to extract the
-`tcp.flags` and `ipv4.dstIP` fields from the packet (not shown here).
+Here, as we add the `out_header` at the top, thus the parser state function 
+needs to extract it before parsing the ethernet header. The parser also needs 
+to extract the `tcp.flags` and `ipv4.dstIP` fields from the packet (not shown 
+here).
 
 ```
 parser start {
@@ -71,10 +87,11 @@ parser parse_out_header {
 }
 ```
 
-* The P4 program needs to specify the order in which different tables should be applied.
-Here, the table `report_packet` is applied to each packet on ingress to clone the packet.
-In the egress pipeline, and table `add_out_header` adds an `out_header` only to the cloned packets.
-The metadata field `standard_metadata.instance_type` is used to differentiate between the
+* The P4 program needs to specify the order in which different tables should 
+be applied. Here, the table `report_packet` is applied to each packet on 
+ingress to clone the packet. In the egress pipeline, table `add_out_header` 
+adds an `out_header` only to the cloned packets. The metadata field 
+`standard_metadata.instance_type` is used to differentiate between the 
 original and the cloned packets in the egress pipeline.
 
 ```
@@ -93,7 +110,8 @@ control egress {
 }
 ```
 
-* Every incoming packet is cloned using the `clone_ingress_pkt_to_egress` primitive.
+* Every incoming packet is cloned using the `clone_ingress_pkt_to_egress` 
+primitive.
 
 ```
 field_list report_packet_fields {
@@ -112,8 +130,8 @@ table report_packet {
 }
 ```
 
-* After cloning, the `out_header` is added to the packet and the fields are updated using
-the `modify_field` primitive.
+* After cloning, the `out_header` is added to the packet and the fields are 
+updated using the `modify_field` primitive.
 
 ```
 action do_add_out_header(){
@@ -125,17 +143,21 @@ action do_add_out_header(){
 
 ```
 
-* A P4 program only specifies the match-action pipeline for a PISA target.  Separately, the
-programmer must specify actual values to match on and specific actions to take using a target-specific CLI or other interface.
-For this program, we need to send commands to configure the default behavior
-of each table and to specify the mirroring port. The file `commands.txt` contains the following commands. These commands
-are sent to the switch at initialization.
+* A P4 program only specifies the match-action pipeline for a PISA target. 
+Separately, the programmer must specify actual values to match on and specific 
+actions to take using a target-specific command line interface (CLI) or other 
+interface. For this program, we need to send commands to configure the default 
+behavior of each table and to specify the mirroring port. The file 
+`commands.txt` contains the following commands. These commands are sent to 
+the switch at initialization.
 
 ```
  table_set_default report_packet do_report_packet
  table_set_default add_out_header do_add_out_header
  mirroring_add 8001 12
 ```
+
+Here, `12` is the port id for the span port as shown in the figure above. 
 
 #### Notes
 * For P4 language questions, please refer to the [P4 language specification](https://p4lang.github.io/p4-spec/p4-14/v1.0.4/tex/p4.pdf) for more details.
