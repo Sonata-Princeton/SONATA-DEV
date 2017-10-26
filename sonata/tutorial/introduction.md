@@ -7,7 +7,6 @@ they separate data collection (e.g., packet capture or flow monitoring) from
 analysis, producing either too much data to answer a general question, or too
 little data to answer a detailed question. 
 
-[Image](images/architecture.eps?raw=true)
 Sonata is a streaming telemetry system that makes use of programmable data 
 plane and scalable stream processor for scalability. It allows operators to 
 directly express queries in a high-level declarative language without worrying 
@@ -27,6 +26,10 @@ Sonata offers three key contributions:
 It allows network operators to apply intuitive dataflow operators over 
 arbitrary combinations of packet fields. 
 
+### Packet Fields
+You can find the set of supported packet fields for expressing Sonata queries
+[here](https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/fields_mapping.json). 
+
 ### Dataflow Operators
 
 | Operator| Description|
@@ -43,12 +46,14 @@ arbitrary combinations of packet fields.
 
 #### Newly Opened TCP Connections
 To detect a large number of newly opened TCP connections,
-first applies a `filter` operation over the entire packet stream to
+first applies a `filter` operation over the entire packet stream 
+identified by query id `1` to
 filter TCP packets with just the `SYN` flag set. It then counts the
 number of packets observed for each host and reports the hosts
-for which this count exceeds threshold `Th` in an epoch.
+for which this count exceeds threshold `Th` in an epoch configured 
+[here](https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/config.json#L42-L44).
 ```python
-n_syn = (PacketStream(1)
+n_syn = (PacketStream(qid=1)
          .filter(filter_keys=('tcp.flags',), func=('eq', 2))
          .map(keys=('ipv4.dstIP',), map_values=('count',), func=('eq', 1,))
          .reduce(keys=('ipv4.dstIP',), func=('sum',))
@@ -56,16 +61,21 @@ n_syn = (PacketStream(1)
          )
 ```
 
+Note: `tcp.flags` is a an eight bit field. Binary representation for 
+`tcp.flags` field for SYN packets is `00000010`, i.e. its decimal value
+ is `2` Similarly, `FIN` packets will have `tcp.flags=1`, `ACK` packets 
+ will have `tcp.flags=16` and so on. 
+
 #### Slowloris Attacks
-The application to detect a slowloris attack has two sub-queries: One
-counts the number of unique connections by applying a `distinct` followed 
-by a `reduce` operation. It only reports hosts for which the number of 
-connections exceeds threshold `Th1`. The other counts the total bytes
-transferred for each host. It then joins these sub-queries to compute 
-the average transmission rate per connection and reports hosts with an 
-average rate below a threshold `Th2`.
+The application to detect a slowloris attack has two sub-queries
+with query ids `1` and `2` respectively. One counts the number of unique 
+connections by applying a `distinct` followed by a `reduce` operation. 
+It only reports hosts for which the number of connections exceeds threshold 
+`Th1`. The other counts the total bytes transferred for each host. It then 
+joins these sub-queries to compute the average transmission rate per 
+connection and reports hosts with an average rate below a threshold `Th2`.
 ```python
-n_conns = (PacketStream(1)
+n_conns = (PacketStream(qid=1)
            .filter(filter_keys=('ipv4.protocol',), func=('eq', 6))
            .map(keys=('ipv4.dstIP', 'ipv4.srcIP', 'tcp.sport',))
            .distinct(keys=('ipv4.dstIP', 'ipv4.srcIP', 'tcp.sport',))
@@ -74,7 +84,7 @@ n_conns = (PacketStream(1)
            .filter(filter_vals=('count',), func=('geq', Th1))
            )
 
-n_bytes = (PacketStream(2)
+n_bytes = (PacketStream(qid=2)
            .filter(filter_keys=('ipv4.protocol',), func=('eq', 6))
            .map(keys=('ipv4.dstIP', 'ipv4.totalLen',))
            .map(keys=('ipv4.dstIP',), map_values=('ipv4.totalLen',))
@@ -87,45 +97,14 @@ slowloris = (n_conns.join(window='Same', new_qid=3, query=n_bytes)
              )
 ```
 
-#### Zorro Attacks
-This application also has two sub-queries.
-The first part identifies the hosts that receive more than `Th1`
-similar-sized telnet packets. It then joins the output of the first 
-sub-query with the other over rolling window interval and reports 
-hosts that receive more than `Th2` packets with the keyword `zorro` 
-in the payload.
-```python
-brute_telnet = (PacketStream(1)
-             .filter(filter_keys=('proto',), func=('eq', 6))
-             .map(keys=('ipv4.dstIP', 'ipv4.srcIP', 'ipv4.totalLen'))
-             .distinct(keys=('ipv4.dstIP', 'ipv4.srcIP', 'ipv4.totalLen'))
-             .map(keys=('ipv4.dstIP', 'ipv4.totalLen'))
-             .map(keys=('ipv4.dstIP', 'ipv4.totalLen'), map_values=('count',), func=('eq', 1,))
-             .reduce(keys=('ipv4.dstIP', 'ipv4.totalLen'), func=('sum',))
-             .filter(filter_vals=('count',), func=('geq', Th1))
-             .map(keys=('ipv4.dstIP',))
-             )
-
-payload = (PacketStream(2)
-          .map(keys=('ipv4.dstIP', 'payload'))
-          )
-
-zorro_attack = (payload.join(new_qid=3, query=brute_telnet)
-                 .filter(filter_vals=('payload',), func=('eq', 'zorro'))
-                 .map(keys=('ipv4.dstIP', 'payload',), map_values=('count',), func=('eq', 1))
-                 .reduce(keys=('ipv4.dstIP', 'payload',), func=('sum',))
-                 .map(keys=('ipv4.dstIP',))
-                 )
-```
-
 ## Query Partitioning
 Reducing the workload on the stream processor requires
 determining how to partition input queries between the data-plane and the
 streaming  targets.  Sonata's query planner models the decision problem as 
-an integer linear program (ILP), which it solves using historical packet traces 
-to minimize the load at the stream processor for a set of queries subject to 
-the constraints of PISA data-plane targets (e.g., the amount of register memory 
-in the switch).
+an integer linear program (ILP), which it solves using historical packet 
+traces to minimize the load at the stream processor for a set of queries 
+subject to the constraints of PISA data-plane targets (e.g., the amount of 
+register memory in the switch).
 
 ## Dynamic Refinement
 Data-plane targets should not waste limited resources, such as memory, on 
@@ -136,4 +115,5 @@ window-by-window, for a fixed-size window duration). Dynamic refinement reduces
 the load on the stream processor at the cost of additional delays of possibly 
 multiple time windows to identify the traffic that satisfies the queries.
 
-Please refer to the paper for more details. 
+For more details, please reach out to [Arpit Gupta](arpitg@cs.princeton.edu) 
+to get a copy of the Sonata paper. 

@@ -3,8 +3,8 @@
     "bmv2": {
       "in_payload": false,
       "fields": [
-        { "sonata_name": "tcp.srcPort", "target_name": "tcp.sport", "size": 16 },
-        { "sonata_name": "tcp.dstPort", "target_name": "tcp.dport", "size": 16 },
+        { "sonata_name": "tcp.sport", "target_name": "tcp.sport", "size": 16 },
+        { "sonata_name": "tcp.dport", "target_name": "tcp.dport", "size": 16 },
         { "sonata_name": "tcp.seqNo", "target_name": "tcp.seqNo", "size": 32 },
         { "sonata_name": "tcp.ackNo", "target_name": "tcp.ackNo", "size": 32 },
         { "sonata_name": "tcp.dataOffset", "target_name": "tcp.dataOffset", "size": 4 },
