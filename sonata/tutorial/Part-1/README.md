@@ -211,6 +211,17 @@ $ source scripts/env.sh
 $ $P4C_BM_SCRIPT Part-1/plan1/plan1.p4 --json Part-1/plan1/plan.json
 ```
 
+You should see the following messages after compiling the P4 program:
+```
+parsing successful
+semantic checking successful
+Header type standard_metadata_t not byte-aligned, adding padding
+Generating json output to /home/vagrant/dev/sonata/tutorial/Part-1/plan1/plan.json
+```
+
+Always make sure that the compilation  message shows `parsing` and 
+`semantic checking` successful. 
+
 Start the switch
 ```bash
 $ sudo sh scripts/run_switch.sh Part-1/plan1
@@ -357,7 +368,8 @@ to `plan3.p4`, the only change required is:
 * Update the ingress pipeline such that only packets with `meta_reduce.value==Th` are cloned.
 
 #### Testing the Configured Pipeline
-Follow the same steps from plan 1 (replacing references to `plan1` with `plan4`) to test the configured match-action pipeline.
+Follow the same steps from plan 1 (replacing references to 
+`plan1` with `plan4`) to test the configured match-action pipeline.
 
 ##### Question 6: How many tuples were reported this time?  Why (or not) are the results different?
 If you did not run `cleanup.sh` after completing `plan3`, your log may contain too many entries.
