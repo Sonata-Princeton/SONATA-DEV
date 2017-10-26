@@ -40,6 +40,7 @@ $ sudo sh cleanup.sh
    and execute the first `5` dataflow operators in the data plane; for now, we can ignore the last field in the plan.
 
 ```bash
+$ export SPARK_HOME=/home/vagrant/spark/
 $ sudo $SPARK_HOME/bin/spark-submit sonata/examples/newly_opened_connections/test_app.py
 ```
 

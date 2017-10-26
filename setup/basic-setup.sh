@@ -31,7 +31,7 @@ echo 'export PYTHONPATH=$PYTHONPATH:/home/vagrant/dev' >> ~/.profile
 echo 'export PYTHONPATH=$PYTHONPATH:/home/vagrant/bmv2/mininet' >> ~/.profile
 echo 'export SPARK_HOME=/home/vagrant/spark/' >> ~/.profile
 sudo mysql -e "create database sonata;"
-sudo mysql -e "CREATE TABLE indexStore( id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, qid INT(6),  tuple VARCHAR(200), indexLoc INT(6) );"
+sudo mysql -e "use sonata; CREATE TABLE indexStore( id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, qid INT(6),  tuple VARCHAR(200), indexLoc INT(6) );"
 
 mkdir ~/.vim
 
