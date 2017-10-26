@@ -77,10 +77,6 @@ parser parse_out_header {
 	return parse_ethernet;
 }
 
-action _nop(){
-	no_op();
-}
-
 field_list report_packet_fields {
     standard_metadata;
 }
