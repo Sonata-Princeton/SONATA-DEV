@@ -30,7 +30,7 @@ if __name__ == '__main__':
           )
 
     queries = [super_spreader]
-    config["final_plan"] = [(1, 32, 5, 1)]
+    config["final_plan"] = [(1, 32, 5)]
     print("*********************************************************************")
     print("*                   Receiving User Queries                          *")
     print("*********************************************************************\n\n")

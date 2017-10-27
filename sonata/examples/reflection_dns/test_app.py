@@ -29,7 +29,7 @@ if __name__ == '__main__':
                       )
 
     queries = [reflection_dns]
-    config["final_plan"] = [(1, 32, 3, 1)]
+    config["final_plan"] = [(1, 32, 3)]
 
     print("*********************************************************************")
     print("*                   Receiving User Queries                          *")
