@@ -22,7 +22,7 @@ if __name__ == '__main__':
                .filter(filter_keys=('ipv4.protocol',), func=('eq', 6))
                .map(keys=('ipv4.dstIP', 'ipv4.srcIP', 'tcp.sport',))
                .distinct(keys=('ipv4.dstIP', 'ipv4.srcIP', 'tcp.sport',))
-               .map(keys=('ipv4.dstIP',), map_values=('count',), func=('eq', 1,))
+               .map(keys=('ipv4.dstIP',), map_values=('count',), func=('set', 1,))
                .reduce(keys=('ipv4.dstIP',), func=('sum',))
                .filter(filter_vals=('count',), func=('geq', T1))
                )

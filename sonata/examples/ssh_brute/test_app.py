@@ -21,7 +21,7 @@ if __name__ == '__main__':
                  .map(keys=('ipv4.dstIP', 'ipv4.srcIP', 'ipv4.totalLen'))
                  .distinct(keys=('ipv4.dstIP', 'ipv4.srcIP', 'ipv4.totalLen'))
                  .map(keys=('ipv4.dstIP', 'ipv4.totalLen'))
-                 .map(keys=('ipv4.dstIP', 'ipv4.totalLen'), map_values=('count',), func=('eq', 1,))
+                 .map(keys=('ipv4.dstIP', 'ipv4.totalLen'), map_values=('count',), func=('set', 1,))
                  .reduce(keys=('ipv4.dstIP', 'ipv4.totalLen'), func=('sum',))
                  .filter(filter_vals=('count',), func=('geq', 40))
                  .map(keys=('ipv4.dstIP',))

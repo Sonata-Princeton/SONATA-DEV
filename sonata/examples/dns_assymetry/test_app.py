@@ -19,7 +19,7 @@ if __name__ == '__main__':
 
     n_resp = (PacketStream(1)
               .filter(filter_keys=('ipv4.protocol',), func=('eq', 17))
-              .map(keys=('ipv4.dstIP', 'udp.sport'), map_values=('count',), func=('eq', 1,))
+              .map(keys=('ipv4.dstIP', 'udp.sport'), map_values=('count',), func=('set', 1,))
               .reduce(keys=('ipv4.dstIP', 'udp.sport'), func=('sum',))
               .filter(filter_vals=('count',), func=('geq', T))
               )
@@ -27,7 +27,7 @@ if __name__ == '__main__':
     # Confirm the fin flag number here
     n_req = (PacketStream(2)
              .filter(filter_keys=('ipv4.protocol',), func=('eq', 17))
-             .map(keys=('ipv4.srcIP', 'udp.dport'), map_values=('count',), func=('eq', 1,))
+             .map(keys=('ipv4.srcIP', 'udp.dport'), map_values=('count',), func=('set', 1,))
              .reduce(keys=('ipv4.srcIP', 'udp.dport'), func=('sum',))
              # .filter(filter_vals=('count',), func=('geq', T))
              )

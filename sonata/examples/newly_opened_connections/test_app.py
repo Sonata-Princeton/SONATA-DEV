@@ -17,7 +17,7 @@ if __name__ == '__main__':
 
     n_syn = (PacketStream(1)
              .filter(filter_keys=('tcp.flags',), func=('eq', 2))
-             .map(keys=('ipv4.dstIP',), map_values=('count',), func=('eq', 1,))
+             .map(keys=('ipv4.dstIP',), map_values=('count',), func=('set', 1,))
              .reduce(keys=('ipv4.dstIP',), func=('sum',))
              .filter(filter_vals=('count',), func=('geq', T))
              .map(keys=('ipv4.dstIP',))
@@ -29,7 +29,4 @@ if __name__ == '__main__':
     print("*********************************************************************")
     print("*                   Receiving User Queries                          *")
     print("*********************************************************************\n\n")
-    runtime = Runtime(config,
-                  queries,
-                  os.path.dirname(os.path.realpath(__file__))
-                  )
+    runtime = Runtime(config, queries, os.path.dirname(os.path.realpath(__file__)))

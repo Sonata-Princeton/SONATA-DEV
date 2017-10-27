@@ -20,7 +20,7 @@ if __name__ == '__main__':
     n_syn = (PacketStream(1)
              .filter(filter_keys=('ipv4.protocol',), func=('eq', 6))
              .filter(filter_keys=('tcp.flags',), func=('eq', 2))
-             .map(keys=('ipv4.dstIP',), map_values=('count',), func=('eq', 1,))
+             .map(keys=('ipv4.dstIP',), map_values=('count',), func=('set', 1,))
              .reduce(keys=('ipv4.dstIP',), func=('sum',))
              )
 
@@ -28,7 +28,7 @@ if __name__ == '__main__':
     n_fin = (PacketStream(2)
              .filter(filter_keys=('ipv4.protocol',), func=('eq', 6))
              .filter(filter_keys=('tcp.flags',), func=('eq', 1))
-             .map(keys=('ipv4.srcIP',), map_values=('count',), func=('eq', 1,))
+             .map(keys=('ipv4.srcIP',), map_values=('count',), func=('set', 1,))
              .reduce(keys=('ipv4.srcIP',), func=('sum',))
              )
 

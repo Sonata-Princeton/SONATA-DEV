@@ -98,7 +98,7 @@ class Map(StreamingQuery):
             expr += ',('
             for elem in self.map_values:
                 # expr += elem +','
-                if self.func[0] == 'eq':
+                if self.func[0] in ['eq', 'set']:
                     expr += str(self.func[1])+','
                 elif self.func[0] == 'div':
                     expr += '/'.join([str(elem) for elem in self.prev_values])

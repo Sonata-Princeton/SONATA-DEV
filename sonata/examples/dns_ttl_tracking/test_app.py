@@ -26,7 +26,7 @@ if __name__ == '__main__':
                .filter(filter_keys=('dns.ancount',), func=('geq', 1))
                .map(keys=('dns.an.rrname', 'dns.an.ttl'))
                .distinct(keys=('dns.an.rrname', 'dns.an.ttl'))
-               .map(keys=('dns.an.rrname',), map_values=('count',), func=('eq', 1,))
+               .map(keys=('dns.an.rrname',), map_values=('count',), func=('set', 1,))
                .reduce(keys=('dns.an.rrname',), func=('sum',))
                .filter(filter_vals=('count',), func=('geq', 40))
                .map(keys=('dns.an.rrname',))

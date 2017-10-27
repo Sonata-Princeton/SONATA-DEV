@@ -103,7 +103,7 @@ if __name__ == '__main__':
     q1 = (PacketStream(1)
           .map(keys=('dIP', 'sIP'))
           .distinct(keys=('dIP', 'sIP'))
-          .map(keys=('dIP',), map_values=('count',), func=('eq', 1,))
+          .map(keys=('dIP',), map_values=('count',), func=('set', 1,))
           .reduce(keys=('dIP',), func=('sum',))
           .filter(filter_vals=('count',), func=('geq', 1))
           .map(keys=('dIP',))
