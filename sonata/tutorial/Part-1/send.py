@@ -16,6 +16,12 @@ def create_normal_traffic():
     number_of_packets = NORMAL_PACKET_COUNT
     normal_packets = []
 
+    for i in range(5):
+        sIP = socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff)))
+        dIP = socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff)))
+        p = Ether() / IP(dst=dIP, src=sIP) / TCP(flags='S')
+        normal_packets.append(p)
+
     for i in range(number_of_packets):
         sIP = socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff)))
         dIP = socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff)))
