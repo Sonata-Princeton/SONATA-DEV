@@ -13,11 +13,11 @@ import json
 
 
 def send_reduction_keys(rdd, op_handler_socket, start_time, qid='0'):
-    list_rdd = rdd.collect()
-    reduction_str = ",".join([r for r in list_rdd])
+    list_rdd = list(set(rdd.collect()))
+    reduction_str = ",".join([str(r) for r in list_rdd])
     reduction_socket = Client(tuple(op_handler_socket))
     reduction_socket.send_bytes("k," + qid + "," + reduction_str + "\n")
-    print("StreamProcessor sending: ", qid, list_rdd, reduction_str, " at time", time.time() - start_time)
+    # print("StreamProcessor sending: ", qid, list_rdd, " at time", time.time() - start_time)
 
 
 def processLogLine(flow):

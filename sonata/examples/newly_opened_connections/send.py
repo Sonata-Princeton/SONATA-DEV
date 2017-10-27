@@ -22,6 +22,12 @@ def create_normal_traffic():
         p = Ether() / IP(dst=dIP, src=sIP)
         normal_packets.append(p)
 
+    for i in range(ATTACK_PACKET_COUNT-NORMAL_PACKET_COUNT):
+        sIP = socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff)))
+        dIP = socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff)))
+        p = Ether() / IP(dst=dIP, src=sIP)/ TCP(flags='S')
+        normal_packets.append(p)
+
     return normal_packets
 
 
@@ -35,7 +41,7 @@ def create_attack_traffic():
         sIPs.append(socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff))))
 
     for sIP in sIPs:
-        p = Ether() / IP(dst=dIP, src=sIP) / TCP(dport=5555, flags='S')
+        p = Ether() / IP(dst=dIP, src=sIP) / TCP(flags='S')
 
         attack_packets.append(p)
 
@@ -47,8 +53,8 @@ def send_created_traffic():
     attack = True
 
     total_duration = 30
-    attack_duration = 10
-    attack_start_time = 5
+    attack_duration = 25
+    attack_start_time = 1
 
     for i in range(0, total_duration):
         traffic_dict[i] = []

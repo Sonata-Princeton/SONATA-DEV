@@ -99,7 +99,7 @@ class P4Target(object):
             em_thread.start()
 
     def update(self, filter_update):
-        self.logger.info('update')
+        # self.logger.info('update')
         # Reset the data plane registers/tables before pushing the new delta config
         self.dataplane.reset_switch_state()
 

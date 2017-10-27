@@ -26,6 +26,9 @@ from sonata.core.utils import copy_sonata_operators_to_sp_query, flatten_streami
 from sonata.core.utils import generated_source_path
 
 
+
+
+
 class Runtime(object):
     dp_queries = {}
     sp_queries = {}
@@ -69,13 +72,13 @@ class Runtime(object):
 
                 final_plan = conf["final_plan"]
                 # Account for an additional map (masking) operation for iterative refinement
-                final_plan = [(q,r,p+1,l) for (q,r,p,l) in final_plan]
+                final_plan = [(q,r,p+1) for (q,r,p) in final_plan]
 
                 prev_r = 0
                 prev_qid = 0
                 has_join, sp_queries, join_queries = self.query_has_join_in_same_window(query, self.sonata_fields, final_plan)
 
-                for (q, r, p, l) in final_plan:
+                for (q, r, p) in final_plan:
                     qry = refinement_object.qid_2_query[q]
                     refined_query_id = get_refined_query_id(qry, r)
 
@@ -228,7 +231,7 @@ class Runtime(object):
         if len(final_plan) > 1:
             query1 = refinement_object.qid_2_query[final_plan[0][0]]
 
-            for ((q1, r1, p1, l1), (q2, r2, p2, l2)) in zip(final_plan, final_plan[1:]):
+            for ((q1, r1, p1), (q2, r2, p2)) in zip(final_plan, final_plan[1:]):
                 query1 = refinement_object.qid_2_query[q1]
                 query2 = refinement_object.qid_2_query[q2]
 
@@ -304,7 +307,8 @@ class Runtime(object):
                             with open(self.log_path + "/final_output", 'w') as f:
                                 f.write(str("\n".join(queries_received[src_qid])))
 
-                        print "Final Output for " + str(src_qid) + ": " + str(queries_received)
+                        if len(queries_received[src_qid]) > 0:
+                            print "Final Output for " + str(src_qid) + ": " + str(queries_received[src_qid])
 
                 updateDeltaConfig = False
                 if delta_config != {}: self.logger.info(
@@ -318,10 +322,10 @@ class Runtime(object):
                 for qid_key in delta_config.keys():
                     IP = delta_config[qid_key]
 
-                print "*********************************************************************"
-                print "*                   IP " + IP[0] + " satisfies coarser query            *"
-                print "*                   Reconfiguring Data Plane                        *"
-                print "*********************************************************************\n\n"
+                # print "*********************************************************************"
+                # print "*                   IP " + IP[0] + " satisfies coarser query            *"
+                # print "*                   Reconfiguring Data Plane                        *"
+                # print "*********************************************************************\n\n"
 
                 self.send_to_dp_driver("delta", delta_config)
         return 0
@@ -392,7 +396,7 @@ class Runtime(object):
         time.sleep(3)
 
     def send_init_to_dp_driver(self, message_type, sonata_fields, content):
-        # Send compiled query expression to fabric manager
+        # Send compiled query expression to data plane driver
         start = "%.20f" % time.time()
 
         with open('dns_reflection.pickle', 'w') as f:
@@ -411,9 +415,10 @@ class Runtime(object):
         return ''
 
     def send_to_dp_driver(self, message_type, content):
-        # Send compiled query expression to fabric manager
+        # Send compiled query expression to data plane driver
         start = "%.20f" % time.time()
 
+        # TODO: remove hardcoding
         with open('dns_reflection.pickle', 'w') as f:
             pickle.dump(content, f)
 
@@ -421,12 +426,12 @@ class Runtime(object):
         serialized_queries = pickle.dumps(message)
         conn = Client(tuple(self.conf['fm_conf']['fm_socket']))
         conn.send(serialized_queries)
-        self.logger.info("runtime,fm_" + message_type + "," + str(start) + ",%.20f" % time.time())
+        # self.logger.info("runtime,fm_" + message_type + "," + str(start) + ",%.20f" % time.time())
         time.sleep(1)
         conn.close()
-        print "*********************************************************************"
-        print "*                   Updating Dataplane Driver                       *"
-        print "*********************************************************************\n\n"
+        # print "*********************************************************************"
+        # print "*                   Updating Dataplane Driver                       *"
+        # print "*********************************************************************\n\n"
         return ''
 
     def initialize_handlers(self):
@@ -439,7 +444,6 @@ class Runtime(object):
         time.sleep(1)
 
     def initialize_logging(self):
-
         # create a logger for the object
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)

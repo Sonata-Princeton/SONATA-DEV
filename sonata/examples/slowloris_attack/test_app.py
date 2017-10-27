@@ -41,6 +41,7 @@ if __name__ == '__main__':
                  )
 
     queries = [slowloris]
+    config["final_plan"] = [(1, 24, 5, 1), (1, 32, 5, 1), (2, 24, 4, 1), (2, 32, 4, 1)]
     config["final_plan"] = [(1, 32, 5, 1), (2, 32, 4, 1)]
     print("*********************************************************************")
     print("*                   Receiving User Queries                          *")

@@ -72,12 +72,12 @@ class P4DataPlane(object):
             inter.setup()
 
     def reset_switch_state(self):
-        self.logger.info('reset switch state')
+        # self.logger.info('reset switch state')
         cmd = "echo \'reset_state\' | " + self.cli_path + " --thrift-port "+str(self.thrift_port)
         get_out(cmd)
 
     def send_commands(self, p4_json_path, command_path):
-        self.logger.info('send commands')
+        # self.logger.info('send commands')
         cmd = [self.cli_path, p4_json_path, str(self.thrift_port)]
 
         with open(command_path, "r") as f:

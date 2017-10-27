@@ -6,10 +6,12 @@ import math, time
 import pickle
 from multiprocessing.connection import Listener
 
-NORMAL_PACKET_COUNT = 50
-ATTACK_PACKET_COUNT = 20
+NORMAL_PACKET_COUNT = 15
+ATTACK_PACKET_COUNT = 15
 
 IFACE = "out-veth-1"
+
+resolverIP = socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff)))
 
 
 def create_normal_traffic():
@@ -17,23 +19,23 @@ def create_normal_traffic():
     normal_packets = []
 
     for i in range(number_of_packets):
-        sIP = socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff)))
+        sIP = resolverIP
         dIP = socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff)))
         rdata = socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff)))
-        p = Ether() / IP(dst=dIP, src=sIP) / UDP(sport=53) /DNS(qr=1, aa=1, ancount=1,an=DNSRR(rrname='www.xyz.com', rdata=rdata))
+        p = Ether() / IP(dst=dIP, src=sIP) / UDP(sport=53) /DNS(qr=1, aa=1, ancount=1,an=DNSRR(rdata=rdata))
         normal_packets.append(p)
 
     return normal_packets
 
 
-def create_attack_traffic():
+def create_iot_traffic():
     number_of_packets = ATTACK_PACKET_COUNT
     dIP = '99.7.186.25'
     sIPs = []
     attack_packets = []
 
     for i in range(number_of_packets):
-        sIPs.append(socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff))))
+        sIPs.append(resolverIP)
 
     for sIP in sIPs:
         p = Ether() / IP(dst=dIP, src=sIP) / UDP(sport=53) /DNS(qr=1, aa=1, ancount=1,an=DNSRR(rrname='www.iot-device.com', rdata='192.168.1.1'))
@@ -47,14 +49,14 @@ def send_created_traffic():
     attack = True
 
     total_duration = 30
-    attack_duration = 10
+    attack_duration = 15
     attack_start_time = 5
 
     for i in range(0, total_duration):
         traffic_dict[i] = []
         traffic_dict[i].extend(create_normal_traffic())
         if i >= attack_start_time and i < attack_start_time + attack_duration:
-            traffic_dict[i].extend(create_attack_traffic())
+            traffic_dict[i].extend(create_iot_traffic())
 
     print "******************** Sending Normal Traffic *************************"
     for i in range(0, total_duration):
@@ -62,7 +64,7 @@ def send_created_traffic():
         start = time.time()
         if i >= attack_start_time and i < attack_start_time + attack_duration and attack:
             attack = False
-            print "******************** Sending Attack Traffic *************************"
+            print "******************** Sending IoT Traffic *************************"
         if i == attack_start_time + attack_duration:
             attack = False
 
