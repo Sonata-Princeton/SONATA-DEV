@@ -137,7 +137,7 @@ class Runtime(object):
             right_query_operator = query.right_child.operators[-1]
             left_query_operator = query.left_child.operators[-1]
 
-            ref_levels = list(set([r for (q, r, p, l) in final_plan if q == query.left_child.qid or q == query.right_child.qid]))
+            ref_levels = list(set([r for (q, r, p) in final_plan if q == query.left_child.qid or q == query.right_child.qid]))
 
             join_values = [val + '_right' for val in right_query_operator.values] + [val + '_left' for val in left_query_operator.values]
             query.operators[0].keys = right_query_operator.keys

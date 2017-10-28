@@ -79,8 +79,10 @@ def get_streaming_query(query, qid, sonata_fields, partition_plan):
         # Filter step is added to map incoming packet streams from multiple dataflow pipelines
         # to their respective pipelines in the stream processor
         dp_operator = query.operators[n_operators_dp - 1]
+        print "Split Operator", dp_operator
         if hasattr(dp_operator, "map_values"):
-            sp_query.map(keys=flatten_streaming_field_names(filter_payload_fields_append_to_end(dp_operator.keys, sonata_fields)),
+            sp_query.map(keys=flatten_streaming_field_names(
+                filter_payload_fields_append_to_end(list(dp_operator.keys), sonata_fields)),
                      values=flatten_streaming_field_names(
                          filter_payload_fields_append_to_end(dp_operator.map_values, sonata_fields)))
 
@@ -90,6 +92,7 @@ def get_streaming_query(query, qid, sonata_fields, partition_plan):
 
         # Update the remainder operators
         for operator in query.operators[n_operators_dp:]:
+            print "Adding", operator
             copy_sonata_operators_to_sp_query(sp_query, operator, sonata_fields)
 
         sp_query.parse_payload = requires_payload_processing(query, sonata_fields)

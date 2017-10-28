@@ -1,4 +1,4 @@
-## Sonata Tutorial
+## Sonata Tutorials
 
 ### Installation
 Follow the instructions 
@@ -11,11 +11,12 @@ we will first provide an overview of Sonata describing its architecture and how 
 expressing a range of telemetry queries for the network operators. We will also describe how 
 Sonata uses programmable data-plane and streaming targets to scale query execution. 
 
-### Part-1: Compiling Dataflow Queries for PISA Targets
-In this [part](https://github.com/Sonata-Princeton/SONATA-DEV/tree/tutorial/sonata/tutorial/Part-1), 
-we will learn how to execute simple dataflow queries with PISA targets using P4.
-
-### Part-2: Expressing Queries for Telemetry Applications
+### Tutorial-1: Expressing Queries for Telemetry Applications
 In this [part](https://github.com/Sonata-Princeton/SONATA-DEV/tree/tutorial/sonata/tutorial/Part-2), 
 we will learn how to use Sonata's query interface to express queries for a range of telemetry 
 applications. 
+
+### Tutorial-2: Compiling Dataflow Queries for PISA Targets
+In this [part](https://github.com/Sonata-Princeton/SONATA-DEV/tree/tutorial/sonata/tutorial/Part-1), 
+we will learn how to execute simple dataflow queries with PISA targets using P4.
+
