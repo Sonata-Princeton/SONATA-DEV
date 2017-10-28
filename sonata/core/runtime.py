@@ -76,14 +76,14 @@ class Runtime(object):
 
                 prev_r = 0
                 prev_qid = 0
-                has_join, sp_queries, join_queries = self.query_has_join_in_same_window(query, self.sonata_fields, final_plan)
+                has_join, final_qid, sp_queries, join_queries = self.query_has_join_in_same_window(query, self.sonata_fields, final_plan)
 
                 for (q, r, p) in final_plan:
                     qry = refinement_object.qid_2_query[q]
                     refined_query_id = get_refined_query_id(qry, r)
 
-                    refined_sonata_query = refinement_object.get_refined_updated_query(qry.qid, r, prev_qid, prev_r, has_join)
-
+                    refined_sonata_query = refinement_object.get_refined_updated_query(qry.qid, r, prev_qid, prev_r, has_join, final_qid)
+                    print "Refined Query: ", refined_sonata_query
                     if not has_join:
                         if prev_r > 0:
                             p += 1
@@ -146,6 +146,8 @@ class Runtime(object):
 
             ref_levels = sorted(ref_levels)
 
+            final_query_id = None
+
             for (curr_ref_level, next_ref_level) in zip(ref_levels, ref_levels[1:]):
                 sp_query_id = get_refined_query_id(query, curr_ref_level)
                 sp_query = SP_QO(sp_query_id)
@@ -168,7 +170,7 @@ class Runtime(object):
                 join_queries.append(query.left_child.qid*10000+curr_ref_level)
 
                 self.query_out_mappings[sp_query.qid] = [query.right_child.qid*10000+next_ref_level, query.left_child.qid*10000+next_ref_level]
-
+                final_query_id = query.qid
 
             curr_ref_level = ref_levels[-1]
             sp_query_id = get_refined_query_id(query, curr_ref_level)
@@ -192,9 +194,9 @@ class Runtime(object):
             join_queries.append(query.left_child.qid*10000+curr_ref_level)
 
 
-            return True, sp_queries, join_queries
+            return True, final_query_id, sp_queries, join_queries
         else:
-            return False, None, []
+            return False, None, None, []
 
     def get_sonata_layers(self):
 
@@ -277,6 +279,7 @@ class Runtime(object):
         while True:
             conn = self.op_handler_listener.accept()
             op_data = conn.recv_bytes()
+            print op_data
             op_data = op_data.strip('\n')
             received_data = op_data.split(",")
             src_qid = int(received_data[1])
@@ -290,7 +293,7 @@ class Runtime(object):
                 updateDeltaConfig = True
 
             delta_config = {}
-
+            print queries_received, self.query_out_mappings
             if updateDeltaConfig:
                 start = "%.20f" % time.time()
                 for src_qid in queries_received:
@@ -326,7 +329,7 @@ class Runtime(object):
                 # print "*                   IP " + IP[0] + " satisfies coarser query            *"
                 # print "*                   Reconfiguring Data Plane                        *"
                 # print "*********************************************************************\n\n"
-
+                print "Sending delta commands: ", delta_config
                 self.send_to_dp_driver("delta", delta_config)
         return 0
 

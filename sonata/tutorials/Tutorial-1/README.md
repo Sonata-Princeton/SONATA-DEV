@@ -1,10 +1,10 @@
-## Expressing Queries for Telemetry Applications 
+# Expressing Queries for Telemetry Applications 
 
 In this part, we will learn how to express and test queries that detect:
 * Newly-opened tcp connections. 
 * IoT devices in the network. 
 
-### Detecting Newly Opened TCP Connections
+## Detecting Newly Opened TCP Connections
 In part 1, we described how Sonata compiles different partitioning plans for this
 query to the data plane. We ignored how the remaining dataflow operations were 
 performed over the reported packet tuples in user-space. We will now describe how Sonata supports these
@@ -46,10 +46,11 @@ $ export SPARK_HOME=/home/vagrant/spark/
 $ sudo $SPARK_HOME/bin/spark-submit sonata/examples/newly_opened_connections/test_app.py
 ```
 
-* This file loads the newly-opened tcp connection query to the
-runtime. The runtime then uses the configured query plan to partition and refine the 
-input query and send the partitioned queries to respective target drivers. For this
-assignment, we use [P4-BMV2 behavioral switch](https://github.com/p4lang/behavioral-model) 
+* This file loads the newly-opened tcp connection query to the runtime. 
+The runtime then uses the configured query plan to partition and refine the 
+input query and send the partitioned queries to respective target drivers. 
+For this assignment, 
+we use [P4-BMV2 behavioral switch](https://github.com/p4lang/behavioral-model) 
 as the data plane target and 
 [Apache Spark Streaming](https://spark.apache.org/streaming/) 
 as the streaming target. 
@@ -66,9 +67,9 @@ $ sudo python sonata/examples/newly_opened_connections/send.py
 ```
 
 #### Evaluating Results
-Look at the file `~/dev/sonata/examples/newly_opened_connetions/logs/emitter.log` to see 
-the tuples reported to the stream processor.
-
+Look at the file 
+`~/dev/sonata/examples/newly_opened_connetions/logs/emitter.log` 
+to see the tuples reported to the stream processor.
 
 ### Detecting IoT Devices
 
@@ -115,9 +116,9 @@ tuple reported to the stream processor and `final_output` records the final outp
 of the query.
 
 ### Troubleshooting
-* Make sure you load the app before sending the traffic.
-* If your application crashes, be sure to run `cleanup.sh` immediately 
-after the crash.
+* Before sending the traffic, make sure that Sonata is ready. You'll see 
+the message `System Ready`, when it is ready. 
+* Make sure you run the cleanup script before you reload Sonata. 
 * In case you see a `mysql-connector` not found error, follow the steps below to fix 
 this problem:
     * Install the missing package:

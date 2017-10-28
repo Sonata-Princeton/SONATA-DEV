@@ -103,6 +103,9 @@ class Map(StreamingQuery):
                 elif self.func[0] == 'div':
                     expr += '/'.join([str(elem) for elem in self.prev_values])
                     expr += ','
+                elif self.func[0] == 'diff':
+                    expr += '-'.join([str(elem) for elem in self.prev_values])
+                    expr += ','
                 else:
                     # TODO generalize for more mapping functions
                     pass
@@ -147,6 +150,11 @@ class Map(StreamingQuery):
                 elif self.func[0] == 'div':
                     assert len(self.prev_values) == 2
                     expr += 'float(str('+self.prev_values[0]+'))' + '/' + 'float(str('+self.prev_values[1]+'))'
+                    # expr += '/'.join([str(elem) for elem in self.prev_values])
+                    expr += ','
+                elif self.func[0] == 'diff':
+                    assert len(self.prev_values) == 2
+                    expr += 'float(str('+self.prev_values[0]+'))' + '-' + 'float(str('+self.prev_values[1]+'))'
                     # expr += '/'.join([str(elem) for elem in self.prev_values])
                     expr += ','
                 else:

@@ -17,7 +17,12 @@ def send_reduction_keys(rdd, op_handler_socket, start_time, qid='0'):
     reduction_str = ",".join([str(r) for r in list_rdd])
     reduction_socket = Client(tuple(op_handler_socket))
     reduction_socket.send_bytes("k," + qid + "," + reduction_str + "\n")
-    # print("StreamProcessor sending: ", qid, list_rdd, " at time", time.time() - start_time)
+    print("StreamProcessor sending: ", qid, list_rdd, " at time", time.time() - start_time)
+
+
+def print_rdd(rdd):
+    list_rdd = list(set(rdd.collect()))
+    print(list_rdd[:])
 
 
 def processLogLine(flow):
@@ -65,24 +70,30 @@ class StreamingDriver(object):
             query = queries[queryId]
 
             if not query.has_join and queryId not in join_queries:
-                query_str = "pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd.filter(lambda p : (p[1]==str('" + str(queryId) + "'))).map(lambda p : (p[2:]))." + query.compile() + ")).foreachRDD(lambda rdd:send_reduction_keys(rdd, " + str(self.op_handler_socket) + "," + str(self.start_time) + ",\'" + str(queryId) + "\'))"
+                query_str = "pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd.filter(lambda p : (p[1]==str('" + str(
+                    queryId) + "'))).map(lambda p : (p[2:]))." + query.compile() + ")).foreachRDD(lambda rdd:send_reduction_keys(rdd, " + str(
+                    self.op_handler_socket) + "," + str(self.start_time) + ",\'" + str(queryId) + "\'))"
                 print(query_str)
                 spark_queries[queryId] = eval(query_str)
             elif not query.has_join and queryId in join_queries:
-                query_str = "pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd.filter(lambda p : (p[1]==str('" + str(queryId) + "'))).map(lambda p : (p[2:]))." + query.compile() + "))" #.foreachRDD(lambda rdd:send_reduction_keys(rdd, " + str(self.op_handler_socket) + "," + str(self.start_time) + ",\'" + str(queryId) + "\'))"
+                query_str = "pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd.filter(lambda p : (p[1]==str('" + str(
+                    queryId) + "'))).map(lambda p : (p[2:]))." + query.compile() + "))"  # .foreachRDD(lambda rdd:send_reduction_keys(rdd, " + str(self.op_handler_socket) + "," + str(self.start_time) + ",\'" + str(queryId) + "\'))"
                 print(query_str)
                 spark_queries[queryId] = eval(query_str)
+                tmp_qry = query_str+'.foreachRDD(lambda rdd: print_rdd(rdd))'
+                eval(tmp_qry)
             else:
-                query_str = query.compile() + ".foreachRDD(lambda rdd:send_reduction_keys(rdd, " + str(self.op_handler_socket) + "," + str(self.start_time) + ",\'" + str(queryId) + "\'))"
+                query_str = query.compile() + ".foreachRDD(lambda rdd:send_reduction_keys(rdd, " + str(
+                    self.op_handler_socket) + "," + str(self.start_time) + ",\'" + str(queryId) + "\'))"
                 print(query_str)
                 all_join_queries.append(query_str)
-
 
         if all_join_queries:
             print(spark_queries.keys())
             for join_query in all_join_queries:
                 print(join_query)
                 eval(join_query)
+
 
 if __name__ == "__main__":
     with open('/home/vagrant/dev/sonata/config.json') as json_data_file:

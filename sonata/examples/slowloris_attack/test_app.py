@@ -36,7 +36,7 @@ if __name__ == '__main__':
 
     slowloris = (n_bytes.join(window='Same', new_qid=3, query=n_conns)
                  .map(map_values=('count2',), func=('div',))
-                 .filter(filter_keys=('count2',), func=('geq', T2))
+                 .filter(filter_vals=('count2',), func=('geq', T2))
                  .map(keys=('ipv4.dstIP',))
                  )
 
