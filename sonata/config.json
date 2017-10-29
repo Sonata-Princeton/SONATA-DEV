@@ -39,7 +39,7 @@
         "dp": "p4",
         "sp": "spark",
         "sm_conf": {
-          "batch_interval": 2,
+          "batch_interval": 4,
           "window_length": 4,
           "sliding_interval": 4,
           "sm_socket": ["0.0.0.0", 5555],
@@ -54,7 +54,7 @@
           "log_path": "/home/vagrant/dev/",
           "BMV2_CLI": "~/bmv2/tools/runtime_CLI.py",
           "thrift_port": 22222,
-          "read_timeout": 2,
+          "read_timeout": 4,
           "read_file": "/home/vagrant/dev/CLI_commands.txt",
           "write_file": "/home/vagrant/dev/CLI_write_commands.txt",
           "db": {
@@ -68,9 +68,9 @@
         },
         "fm_conf": {
           "fm_socket": ["localhost", 6666],
-          "log_file": "/home/vagrant/dev/sonata/examples/reflection_dns/graph/"
+          "log_file": "/home/vagrant/dev/"
         },
-        "base_folder": "/home/vagrant/dev/sonata/examples/reflection_dns/graph/",
+        "base_folder": "/home/vagrant/dev/",
         "internal_interfaces": {"m-veth-1": 11, "m-veth-2": 12, "m-veth-3": 13},
         "SENDER_PORT": 11,
         "RECIEVE_PORT": 13

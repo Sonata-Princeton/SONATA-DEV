@@ -84,17 +84,23 @@ class P4Query(object):
         out_header_name = 'out_header_%i' % self.id
         self.out_header = OutHeaders(out_header_name)
 
-        sonata_field_list = filter(lambda x: x not in self.payload_fields+['ts', 'count', 'index'], self.operators[-1].get_out_headers())
-        out_header_fields = [self.p4_raw_fields.get_target_field(x) for x in sonata_field_list]
+        sonata_field_list = filter(lambda x: x not in self.payload_fields + ['ts'], self.operators[-1].get_out_headers())
 
-        qid_field = P4Field(layer=self.out_header, target_name="qid", sonata_name="qid", size=QID_SIZE)
-        out_header_fields = [qid_field] + out_header_fields
-        if 'count' in self.operators[-1].get_out_headers():
-            out_header_fields.append(P4Field(layer=self.out_header, target_name="count", sonata_name="count",
-                                             size=COUNT_SIZE))
-        if 'index' in self.operators[-1].get_out_headers():
-            out_header_fields.append(P4Field(layer=self.out_header, target_name="index", sonata_name="index",
-                                             size=INDEX_SIZE))
+        sonata_field_list = ['qid'] + sonata_field_list
+
+        out_header_fields = list()
+
+        for fld in sonata_field_list:
+            if fld == 'qid':
+                out_header_fields.append(P4Field(layer=self.out_header, target_name="qid", sonata_name="qid", size=QID_SIZE))
+            elif fld == 'count':
+                out_header_fields.append(P4Field(layer=self.out_header, target_name="count", sonata_name="count",
+                                                 size=COUNT_SIZE))
+            elif fld == 'index':
+                out_header_fields.append(P4Field(layer=self.out_header, target_name="index", sonata_name="index",
+                                                 size=INDEX_SIZE))
+            else:
+                out_header_fields.append(self.p4_raw_fields.get_target_field(fld))
 
         for operator in self.operators:
             if operator.name == 'Reduce':
@@ -119,8 +125,9 @@ class P4Query(object):
         for operator in generic_operators:
             if operator.name in {'Filter', 'Map', 'Reduce', 'Distinct'}:
                 all_fields = all_fields.union(set(operator.get_init_keys()))
+        print "get_all_fields1: ", all_fields
         # TODO remove this
-        self.all_fields = filter(lambda x: x not in self.payload_fields+['ts', 'count'], all_fields)
+        self.all_fields = filter(lambda x: x not in self.payload_fields+['ts'], all_fields)
 
     def get_init_fields(self, generic_operators):
         # TODO: only select fields over which we perform any action
@@ -129,6 +136,7 @@ class P4Query(object):
             if operator.name in {'Map', 'Reduce', 'Distinct', 'Filter'}:
                 all_fields = all_fields.union(set(operator.get_init_keys()))
         # No need to filter out count field
+        print "get_all_fields: ", all_fields
         return filter(lambda x: x not in self.payload_fields+['ts'], all_fields)
 
     def init_operators(self, generic_operators):
@@ -175,6 +183,7 @@ class P4Query(object):
                                           self.meta_init_name,
                                           operator.keys,
                                           operator.map_keys,
+                                          operator.map_values,
                                           operator.func, self.p4_raw_fields))
 
             elif operator.name == 'Reduce':

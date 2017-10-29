@@ -331,6 +331,10 @@ class Runtime(object):
                 # print "*********************************************************************\n\n"
                 print "Sending delta commands: ", delta_config
                 self.send_to_dp_driver("delta", delta_config)
+            # else:
+            #     print "Sending empty delta commands: ", delta_config
+            #     self.send_to_dp_driver("delta", delta_config)
+
         return 0
 
     def start_dataplane_driver(self):

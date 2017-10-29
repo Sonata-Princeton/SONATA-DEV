@@ -145,7 +145,7 @@ class Map(StreamingQuery):
         if len(self.values) > 0 and len(self.func) > 0:
             expr += ',('
             for elem in self.map_values:
-                if self.func[0] == 'eq':
+                if self.func[0] in ['eq', 'set']:
                     expr += str(self.func[1])+','
                 elif self.func[0] == 'div':
                     assert len(self.prev_values) == 2
@@ -165,7 +165,7 @@ class Map(StreamingQuery):
         elif len(self.values) > 0 and len(self.func) == 0:
             expr += ',('
             for elem in self.values:
-                expr += elem+','
+                expr += 'float(' + elem + '),'
             expr = expr[:-1]
             expr += ')'
         expr += '))'

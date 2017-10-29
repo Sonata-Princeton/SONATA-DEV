@@ -37,17 +37,18 @@ def get_clean_application(application):
             if operator.name == 'Map':
                 new_o = Map()
                 # drop Map operators without a supported function
-                if len(operator.func) > 0:
-                    if isinstance(operator.map_keys, tuple):
-                        new_o.map_keys = tuple(operator.map_keys)
-                    else:
-                        new_o.map_keys = operator.map_keys
-                    new_o.keys = keys
-                    new_o.map_values = operator.map_values
-                    new_o.values = operator.values
-                    new_o.prev_keys = operator.prev_keys
-                    new_o.prev_values = operator.prev_values
-                    new_o.func = operator.func
+                # if len(operator.func) > 0:
+                if isinstance(operator.map_keys, tuple):
+                    new_o.map_keys = tuple(operator.map_keys)
+                else:
+                    new_o.map_keys = operator.map_keys
+                new_o.keys = keys
+                new_o.map_values = operator.map_values
+                new_o.values = operator.values
+                new_o.prev_keys = operator.prev_keys
+                new_o.prev_values = operator.prev_values
+                new_o.func = operator.func
+                print "Only Map: ", new_o
             elif operator.name == 'Distinct':
                 new_o = Distinct()
                 new_o.keys = keys
@@ -83,12 +84,13 @@ def get_clean_application(application):
                         filter_value = next_operator.func[1]
                         new_o.threshold = filter_value
                     else:
-                        logger.error('reduce operator without a following, valid filter')
+                        logger.info('reduce operator without a following, valid filter')
                 else:
-                    logger.error('reduce operator without a following, valid filter')
+                    logger.info('reduce operator without a following, valid filter')
             else:
                 print "Found a unsupported operator: %s" % (operator.name, )
             new_qo.operators.append(new_o)
         new_app[new_qo.id] = new_qo
 
+    print new_app
     return new_app

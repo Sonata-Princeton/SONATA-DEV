@@ -58,9 +58,14 @@ def get_concise_headers(query):
     for operator in query.operators:
         if operator.name in {"Distinct", "Map", "Reduce"}:
             concise_keys = concise_keys.union(set(operator.keys))
+            print concise_keys
             if operator.name == "Map":
+                if operator.map_keys:
+                    concise_keys = concise_keys.union(set(operator.map_keys))
                 if operator.values:
                     concise_keys = concise_keys.union(set(operator.values))
+                if operator.map_values:
+                    concise_keys = concise_keys.union(set(operator.map_values))
         elif operator.name in ["Filter"]:
             concise_keys = concise_keys.union(set(operator.filter_keys))
 

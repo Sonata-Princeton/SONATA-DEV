@@ -101,13 +101,15 @@ class P4Target(object):
     def update(self, filter_update):
         # self.logger.info('update')
         # Reset the data plane registers/tables before pushing the new delta config
-        self.dataplane.reset_switch_state()
+        print "reset dataplane"
+        # self.dataplane.reset_switch_state()
+        # self.dataplane.send_commands(self.JSON_P4_COMPILED, self.P4_COMMANDS)
 
         # Get the commands to add new filter flow rules
-        commands = self.app.get_update_commands(filter_update)
-        commands_string = "\n".join(commands)
-        print "Update Delta Commands: " + commands_string
-        write_to_file(self.P4_DELTA_COMMANDS, commands_string)
-        self.dataplane.send_commands(self.JSON_P4_COMPILED, self.P4_COMMANDS)
-        self.dataplane.send_commands(self.JSON_P4_COMPILED, self.P4_DELTA_COMMANDS)
+        if filter_update != {}:
+            commands = self.app.get_update_commands(filter_update)
+            commands_string = "\n".join(commands)
+            print "Update Delta Commands: " + commands_string
+            write_to_file(self.P4_DELTA_COMMANDS, commands_string)
+            self.dataplane.send_commands(self.JSON_P4_COMPILED, self.P4_DELTA_COMMANDS)
 

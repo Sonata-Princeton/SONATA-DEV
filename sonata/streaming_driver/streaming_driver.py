@@ -21,8 +21,8 @@ def send_reduction_keys(rdd, op_handler_socket, start_time, qid='0'):
 
 
 def print_rdd(rdd):
-    list_rdd = list(set(rdd.collect()))
-    print(list_rdd[:])
+    list_rdd = list(rdd.collect())
+    print(list_rdd)
 
 
 def processLogLine(flow):

@@ -16,8 +16,9 @@ if __name__ == '__main__':
 
     config = data["on_server"][data["is_on_server"]]["sonata"]
 
-    T1 = 10
-    T2 = 10
+    T1 = 5
+    T2 = 500
+    T3 = 90
     n_conns = (PacketStream(1)
                .filter(filter_keys=('ipv4.protocol',), func=('eq', 6))
                .map(keys=('ipv4.dstIP', 'ipv4.srcIP', 'tcp.sport',))
@@ -29,23 +30,21 @@ if __name__ == '__main__':
 
     n_bytes = (PacketStream(2)
                .filter(filter_keys=('ipv4.protocol',), func=('eq', 6))
-                #.map(keys=('ipv4.dstIP', 'ipv4.totalLen',))
                .map(keys=('ipv4.dstIP',), map_values=('ipv4.totalLen',))
                .reduce(keys=('ipv4.dstIP',), func=('sum',))
+               .filter(filter_vals=('ipv4.totalLen',), func=('geq', T2))
                )
 
     slowloris = (n_bytes.join(window='Same', new_qid=3, query=n_conns)
                  .map(map_values=('count2',), func=('div',))
-                 .filter(filter_vals=('count2',), func=('geq', T2))
+                 .filter(filter_vals=('count2',), func=('geq', T3))
                  .map(keys=('ipv4.dstIP',))
                  )
 
     queries = [slowloris]
-    queries = [n_bytes]
-    # config["final_plan"] = [(1, 24, 5), (1, 32, 5), (2, 24, 4), (2, 32, 4)]
-    config["final_plan"] = [(1, 24, 5), (1, 32, 5), (2, 24, 1), (2, 32, 1)]
-    config["final_plan"] = [(1, 32, 5), (2, 32, 3)]
-    config["final_plan"] = [(2, 32, 3)]
+    # queries = [n_bytes]
+    config["final_plan"] = [(1, 24, 6), (1, 32, 6), (2, 24, 4), (2, 32, 4)]
+    config["final_plan"] = [(1, 32, 5), (2, 32, 1)]
     print("*********************************************************************")
     print("*                   Receiving User Queries                          *")
     print("*********************************************************************\n\n")

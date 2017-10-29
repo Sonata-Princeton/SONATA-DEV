@@ -200,7 +200,7 @@ class P4Application(object):
 
         # TODO: get rid of this local fix. This won't be required after we fix the sonata query module
         # Start local fix
-        raw_fields = [x for x in raw_fields]
+        raw_fields = [x for x in raw_fields if x not in ['ts', 'count']]
         # End local fix
 
         raw_layers = self.p4_raw_fields.get_layers_for_fields(raw_fields)

@@ -9,7 +9,7 @@ from sonata.dataplane_driver.query_object import QueryObject as DP_QO
 from sonata.streaming_driver.query_object import PacketStream as SP_QO
 from sonata.query_engine.utils import copy_operators
 from sonata.core.utils import requires_payload_processing, copy_sonata_operators_to_sp_query, \
-    get_flattened_sub_queries, get_payload_fields, flatten_streaming_field_names, filter_payload_fields_append_to_end,\
+    get_flattened_sub_queries, get_payload_fields, flatten_streaming_field_names, filter_payload_fields_append_to_end, \
     filtering_in_payload
 from sonata.query_engine.sonata_queries import PacketStream
 
@@ -28,11 +28,10 @@ def get_dataplane_query(query, qid, sonata_fields, partition_plan):
             n_operators_dp += 1
             dp_query.read_register = True
         elif border_operator.name == "Filter":
-            if n_operators_dp >2:
+            if n_operators_dp > 2:
                 operator_before_border = query.operators[n_operators_dp - 2]
                 if operator_before_border.name == "Reduce":
                     dp_query.read_register = True
-
 
         dp_query.filter_payload, dp_query.filter_payload_str = filtering_in_payload(query)
 
@@ -40,7 +39,7 @@ def get_dataplane_query(query, qid, sonata_fields, partition_plan):
             # passing the operators as-is based on discussions with Rudy
             if operator.name != 'Filter':
                 dp_query.operators.append(operator)
-            elif not (len(set(['payload',]).intersection(set(operator.filter_vals))) > 0):
+            elif not (len(set(['payload', ]).intersection(set(operator.filter_vals))) > 0):
                 dp_query.operators.append(operator)
 
         dp_query.parse_payload = requires_payload_processing(query, sonata_fields)
@@ -57,7 +56,7 @@ Function also rearranges the payload fields to the end.
 def get_streaming_query(query, qid, sonata_fields, partition_plan):
     # number of operators in the data plane
     n_operators_dp = int(partition_plan)
-    n_operators_sp = int(len(query.operators)) - (n_operators_dp-1)
+    n_operators_sp = int(len(query.operators)) - (n_operators_dp - 1)
 
     if n_operators_sp > 0:
         # create a sp query object
@@ -65,8 +64,14 @@ def get_streaming_query(query, qid, sonata_fields, partition_plan):
         if n_operators_dp > 0:
             # update the basic headers
             # Add 'k' field to filter out garbled message received by the stream processor
-            tmp_basic_headers = list(query.operators[n_operators_dp - 1].keys) + list(
-                query.operators[n_operators_dp - 1].values)
+            border_operator = query.operators[n_operators_dp - 1]
+            if hasattr(border_operator, "map_values"):
+                tmp_basic_headers = list(border_operator.keys) + list(border_operator.map_values)
+            elif hasattr(border_operator, "filter_vals"):
+                tmp_basic_headers = list(border_operator.keys) + list(border_operator.filter_vals)
+            else:
+                tmp_basic_headers = list(border_operator.keys) + list(border_operator.values)
+
             basic_fields = filter_payload_fields_append_to_end(tmp_basic_headers, sonata_fields)
             sp_query.basic_headers = basic_fields
             sp_query.basic_headers = flatten_streaming_field_names(sp_query.basic_headers)
@@ -78,17 +83,23 @@ def get_streaming_query(query, qid, sonata_fields, partition_plan):
 
         # Filter step is added to map incoming packet streams from multiple dataflow pipelines
         # to their respective pipelines in the stream processor
-        dp_operator = query.operators[n_operators_dp - 1]
-        print "Split Operator", dp_operator
-        if hasattr(dp_operator, "map_values"):
+        border_operator = query.operators[n_operators_dp - 1]
+        print "Border Operator", border_operator
+        if hasattr(border_operator, "map_values"):
             sp_query.map(keys=flatten_streaming_field_names(
-                filter_payload_fields_append_to_end(list(dp_operator.keys), sonata_fields)),
-                     values=flatten_streaming_field_names(
-                         filter_payload_fields_append_to_end(dp_operator.map_values, sonata_fields)))
+                filter_payload_fields_append_to_end(list(border_operator.keys), sonata_fields)),
+                values=flatten_streaming_field_names(
+                    filter_payload_fields_append_to_end(border_operator.map_values, sonata_fields)))
+
+        elif hasattr(border_operator, "filter_vals"):
+            sp_query.map(keys=flatten_streaming_field_names(
+                filter_payload_fields_append_to_end(list(border_operator.keys), sonata_fields)),
+                values=flatten_streaming_field_names(
+                    filter_payload_fields_append_to_end(border_operator.filter_vals, sonata_fields)))
 
         else:
-            sp_query.map(keys=flatten_streaming_field_names(filter_payload_fields_append_to_end(dp_operator.keys, sonata_fields)),
-                         values=list())
+            sp_query.map(keys=flatten_streaming_field_names(
+                filter_payload_fields_append_to_end(border_operator.keys, sonata_fields)), values=list())
 
         # Update the remainder operators
         for operator in query.operators[n_operators_dp:]:

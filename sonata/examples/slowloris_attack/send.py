@@ -1,8 +1,8 @@
 from scapy.all import *
 import time
 
-NORMAL_PACKET_COUNT = 50
-ATTACK_PACKET_COUNT = 60
+NORMAL_PACKET_COUNT = 10
+ATTACK_PACKET_COUNT = 10
 
 IFACE = "out-veth-1"
 
@@ -45,21 +45,21 @@ def send_created_traffic():
     traffic_dict = {}
     attack = True
 
-    total_duration = 30
-    attack_duration = 10
+    total_duration = 60
+    attack_duration = 50
     attack_start_time = 5
 
     for i in range(0, total_duration):
         traffic_dict[i] = []
         traffic_dict[i].extend(create_normal_traffic())
-        if i >= attack_start_time and i < attack_start_time + attack_duration:
+        if attack_start_time <= i < attack_start_time + attack_duration:
             traffic_dict[i].extend(create_attack_traffic())
 
     print "******************** Sending Normal Traffic *************************"
     for i in range(0, total_duration):
         # print "Sending traffic for ts: " + str(i)
         start = time.time()
-        if i >= attack_start_time and i < attack_start_time + attack_duration and attack:
+        if attack_start_time <= i < attack_start_time + attack_duration and attack:
             attack = False
             print "******************** Sending Attack Traffic *************************"
         if i == attack_start_time + attack_duration:
@@ -72,6 +72,7 @@ def send_created_traffic():
         sendp(traffic_dict[i], iface=IFACE, verbose=0)
         total = time.time() - start
         sleep_time = 1 - total
+        print sleep_time
         if sleep_time > 0:
             time.sleep(sleep_time)
 
