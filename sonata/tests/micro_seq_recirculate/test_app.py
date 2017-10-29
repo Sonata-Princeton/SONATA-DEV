@@ -21,6 +21,7 @@ else:
     VETH_RECIEVE = "out-veth-3"
     dp_driver_conf = ('localhost', 6666)
 
+
 class Sender(threading.Thread):
     def __init__(self, duration, packets_per_second, veth):
         threading.Thread.__init__(self)
@@ -32,11 +33,12 @@ class Sender(threading.Thread):
     def run(self):
         send_created_traffic(self.duration, self.veth, self.packets_per_second)
 
+
 class Receiver(threading.Thread):
     def __init__(self, total_seconds, veth, type, queries, packet_per_second):
         threading.Thread.__init__(self)
         self.daemon = True
-        self.receiver_stats_file = "/sys/class/net/%s/statistics/rx_packets"%veth
+        self.receiver_stats_file = "/sys/class/net/%s/statistics/rx_packets" % veth
         self.monitoring_seconds = total_seconds
         self.extra_monitoring = 5
 
@@ -48,13 +50,13 @@ class Receiver(threading.Thread):
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)
         # create file handler which logs messages
-        self.fh = logging.FileHandler(BASE_PATH+"Receiver.log")
+        self.fh = logging.FileHandler(BASE_PATH + "Receiver.log")
         self.fh.setLevel(logging.INFO)
         self.logger.addHandler(self.fh)
 
     def run(self):
 
-        for second in range(0, self.monitoring_seconds+self.extra_monitoring):
+        for second in range(0, self.monitoring_seconds + self.extra_monitoring):
             with open(self.receiver_stats_file) as f:
                 for line in f:
                     in_stat = int(line)
@@ -62,26 +64,30 @@ class Receiver(threading.Thread):
             with open(self.receiver_stats_file) as f:
                 for line in f:
                     out_stat = int(line)
-            rate = (out_stat-in_stat)
+            rate = (out_stat - in_stat)
             print "Rate: ", rate, " per seconds\n"
-            logging_info = [self.type, str(self.packet_per_second), str(self.queries), str(self.monitoring_seconds), str(rate)]
+            logging_info = [self.type, str(self.packet_per_second), str(self.queries), str(self.monitoring_seconds),
+                            str(rate)]
             compose_line = ",".join(logging_info)
             self.logger.info(compose_line)
 
+
 class Switch(threading.Thread):
-    def __init__(self,p4_json_path, switch_path):
+    def __init__(self, p4_json_path, switch_path):
         threading.Thread.__init__(self)
         self.daemon = True
         self.switch_path = switch_path
         self.p4_json_path = p4_json_path
 
     def run(self):
-        COMMAND = "sudo %s %s -i 11@m-veth-1 -i 12@m-veth-2 -i 13@m-veth-3 --thrift-port 22222 &"%(self.switch_path, self.p4_json_path)
+        COMMAND = "sudo %s %s -i 11@m-veth-1 -i 12@m-veth-2 -i 13@m-veth-3 --thrift-port 22222 &" % (
+        self.switch_path, self.p4_json_path)
         print COMMAND
         os.system(COMMAND)
 
+
 def send_to_dp_driver(message_type, content, conf):
-    # Send compiled query expression to fabric manager
+    # Send compiled query expression to data-plane driver
     # start = time.time()
     message = {message_type: {0: content, 1: 1}}
     serialized_queries = pickle.dumps(message)
@@ -91,6 +97,7 @@ def send_to_dp_driver(message_type, content, conf):
     time.sleep(1)
     conn.close()
     return ''
+
 
 if __name__ == '__main__':
 
@@ -116,8 +123,7 @@ if __name__ == '__main__':
     for qid in range(0, NUMBER_OF_QUERIES):
         queries[qid] = dp_query
 
-
-    send_to_dp_driver('init',queries,dp_driver_conf)
+    send_to_dp_driver('init', queries, dp_driver_conf)
     time.sleep(3)
 
     if not SERVER:
@@ -130,5 +136,3 @@ if __name__ == '__main__':
 
         receiver.join()
         sender.join()
-
-

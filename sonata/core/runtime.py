@@ -26,9 +26,6 @@ from sonata.core.utils import copy_sonata_operators_to_sp_query, flatten_streami
 from sonata.core.utils import generated_source_path
 
 
-
-
-
 class Runtime(object):
     dp_queries = {}
     sp_queries = {}
@@ -72,17 +69,20 @@ class Runtime(object):
 
                 final_plan = conf["final_plan"]
                 # Account for an additional map (masking) operation for iterative refinement
-                final_plan = [(q,r,p+1) for (q,r,p) in final_plan]
+                final_plan = [(q, r, p + 1) for (q, r, p) in final_plan]
 
                 prev_r = 0
                 prev_qid = 0
-                has_join, final_qid, sp_queries, join_queries = self.query_has_join_in_same_window(query, self.sonata_fields, final_plan)
+                has_join, final_qid, sp_queries, join_queries = self.query_has_join_in_same_window(query,
+                                                                                                   self.sonata_fields,
+                                                                                                   final_plan)
 
                 for (q, r, p) in final_plan:
                     qry = refinement_object.qid_2_query[q]
                     refined_query_id = get_refined_query_id(qry, r)
 
-                    refined_sonata_query = refinement_object.get_refined_updated_query(qry.qid, r, prev_qid, prev_r, has_join, final_qid)
+                    refined_sonata_query = refinement_object.get_refined_updated_query(qry.qid, r, prev_qid, prev_r,
+                                                                                       has_join, final_qid)
                     print "Refined Query: ", refined_sonata_query
                     if not has_join:
                         if prev_r > 0:
@@ -98,14 +98,11 @@ class Runtime(object):
                     prev_r = r
                     prev_qid = q
 
-
                 if not has_join:
                     self.update_query_mappings(refinement_object, final_plan, has_join)
 
             with open('pickled_queries.pickle', 'w') as f:
                 pickle.dump({0: self.dp_queries, 1: self.sp_queries}, f)
-
-
 
         if has_join:
             for sp_query in sp_queries:
@@ -120,9 +117,8 @@ class Runtime(object):
         time.sleep(2)
         self.send_init_to_dp_driver('init', self.sonata_fields, self.dp_queries)
         print "*********************************************************************"
-        print "*                   Updating Dataplane Driver                       *"
+        print "*                   Updating data-plane driver                       *"
         print "*********************************************************************\n\n"
-
 
         # TODO:
         if self.sp_queries:
@@ -137,9 +133,11 @@ class Runtime(object):
             right_query_operator = query.right_child.operators[-1]
             left_query_operator = query.left_child.operators[-1]
 
-            ref_levels = list(set([r for (q, r, p) in final_plan if q == query.left_child.qid or q == query.right_child.qid]))
+            ref_levels = list(
+                set([r for (q, r, p) in final_plan if q == query.left_child.qid or q == query.right_child.qid]))
 
-            join_values = [val + '_right' for val in right_query_operator.values] + [val + '_left' for val in left_query_operator.values]
+            join_values = [val + '_right' for val in right_query_operator.values] + [val + '_left' for val in
+                                                                                     left_query_operator.values]
             query.operators[0].keys = right_query_operator.keys
             sp_queries = []
             join_queries = []
@@ -155,8 +153,8 @@ class Runtime(object):
                 sp_query.ref_level = curr_ref_level
                 sp_query.join_same_window(keys=(flatten_streaming_field_names(right_query_operator.keys)),
                                           values=tuple(flatten_streaming_field_names(join_values)),
-                                          left_qid=(query.right_child.qid*10000+curr_ref_level),
-                                          right_qid=(query.left_child.qid*10000+curr_ref_level))
+                                          left_qid=(query.right_child.qid * 10000 + curr_ref_level),
+                                          right_qid=(query.left_child.qid * 10000 + curr_ref_level))
 
                 for operator in query.operators:
                     copy_sonata_operators_to_sp_query(sp_query, operator, sonata_fields)
@@ -166,10 +164,11 @@ class Runtime(object):
                                  )
 
                 sp_queries.append(sp_query)
-                join_queries.append(query.right_child.qid*10000+curr_ref_level)
-                join_queries.append(query.left_child.qid*10000+curr_ref_level)
+                join_queries.append(query.right_child.qid * 10000 + curr_ref_level)
+                join_queries.append(query.left_child.qid * 10000 + curr_ref_level)
 
-                self.query_out_mappings[sp_query.qid] = [query.right_child.qid*10000+next_ref_level, query.left_child.qid*10000+next_ref_level]
+                self.query_out_mappings[sp_query.qid] = [query.right_child.qid * 10000 + next_ref_level,
+                                                         query.left_child.qid * 10000 + next_ref_level]
                 final_query_id = query.qid
 
             curr_ref_level = ref_levels[-1]
@@ -179,8 +178,8 @@ class Runtime(object):
             sp_query.ref_level = curr_ref_level
             sp_query.join_same_window(keys=(flatten_streaming_field_names(right_query_operator.keys)),
                                       values=tuple(flatten_streaming_field_names(join_values)),
-                                      left_qid=(query.right_child.qid*10000+curr_ref_level),
-                                      right_qid=(query.left_child.qid*10000+curr_ref_level))
+                                      left_qid=(query.right_child.qid * 10000 + curr_ref_level),
+                                      right_qid=(query.left_child.qid * 10000 + curr_ref_level))
 
             for operator in query.operators:
                 copy_sonata_operators_to_sp_query(sp_query, operator, sonata_fields)
@@ -190,9 +189,8 @@ class Runtime(object):
                              )
 
             sp_queries.append(sp_query)
-            join_queries.append(query.right_child.qid*10000+curr_ref_level)
-            join_queries.append(query.left_child.qid*10000+curr_ref_level)
-
+            join_queries.append(query.right_child.qid * 10000 + curr_ref_level)
+            join_queries.append(query.left_child.qid * 10000 + curr_ref_level)
 
             return True, final_query_id, sp_queries, join_queries
         else:
@@ -213,7 +211,9 @@ class Runtime(object):
             data = json.load(json_data_file)
 
         field_that_determines_child = None
-        if "field_that_determines_child" in data[INITIAL_LAYER][layer_2_target[INITIAL_LAYER]]: field_that_determines_child = data[INITIAL_LAYER][layer_2_target[INITIAL_LAYER]]["field_that_determines_child"]
+        if "field_that_determines_child" in data[INITIAL_LAYER][
+            layer_2_target[INITIAL_LAYER]]: field_that_determines_child = \
+        data[INITIAL_LAYER][layer_2_target[INITIAL_LAYER]]["field_that_determines_child"]
         layers = SonataLayer(INITIAL_LAYER,
                              data,
                              fields=data[INITIAL_LAYER][layer_2_target[INITIAL_LAYER]]["fields"],
@@ -247,7 +247,7 @@ class Runtime(object):
                     self.query_out_mappings[qid1] = []
                 self.query_out_mappings[qid1].append(qid2)
 
-                    # Update the queries whose o/p needs to be displayed to the network operators
+                # Update the queries whose o/p needs to be displayed to the network operators
             r = final_plan[-1][0]
             qid = get_refined_query_id(query1, r)
             self.query_out_final[qid] = 0
@@ -266,7 +266,7 @@ class Runtime(object):
         """
         # Start the output handler
         # It receives output for each query in SP
-        # It sends output of the coarser queries to the dataplane driver or
+        # It sends output of the coarser queries to the data-plane driver or
         # SM depending on where filter operation is applied (mostly DP)
         self.op_handler_socket = tuple(self.conf['sm_conf']['op_handler_socket'])
         self.op_handler_listener = Listener(self.op_handler_socket)
@@ -319,7 +319,7 @@ class Runtime(object):
                 queries_received = {}
 
             # TODO: Update the send_to_dp_driver function logic
-            # now send this delta config to fabric manager and update the filter tables
+            # now send this delta config to data-plane driver and update the filter tables
             if delta_config != {}:
                 IP = ""
                 for qid_key in delta_config.keys():
@@ -335,7 +335,7 @@ class Runtime(object):
 
     def start_dataplane_driver(self):
 
-        # Start the fabric managers local to each data plane element
+        # Start the data-plane drivers local to each data plane element
         dpd = DataplaneDriver(self.conf['fm_conf']['fm_socket'], self.conf["internal_interfaces"],
                               self.conf['fm_conf']['log_file'])
         self.dpd_thread = Thread(name='dp_driver', target=dpd.start)
@@ -385,7 +385,7 @@ class Runtime(object):
             for qid in self.sp_queries:
                 compiled_spark = str(self.sp_queries[qid])
                 if 'join' not in compiled_spark:
-                    f.write("spark_queries["+str(qid)+"] = " + compiled_spark + "\n\n")
+                    f.write("spark_queries[" + str(qid) + "] = " + compiled_spark + "\n\n")
                 else:
                     f.write(compiled_spark[4:] + "\n\n")
 
@@ -399,7 +399,7 @@ class Runtime(object):
         time.sleep(3)
 
     def send_init_to_dp_driver(self, message_type, sonata_fields, content):
-        # Send compiled query expression to data plane driver
+        # Send compiled query expression to data-plane driver
         start = "%.20f" % time.time()
 
         with open('dns_reflection.pickle', 'w') as f:
@@ -413,12 +413,12 @@ class Runtime(object):
         time.sleep(1)
         conn.close()
         print "*********************************************************************"
-        print "*                   Updating Dataplane Driver                       *"
+        print "*                   Updating data-plane driver                       *"
         print "*********************************************************************\n\n"
         return ''
 
     def send_to_dp_driver(self, message_type, content):
-        # Send compiled query expression to data plane driver
+        # Send compiled query expression to data-plane driver
         start = "%.20f" % time.time()
 
         # TODO: remove hardcoding
@@ -433,7 +433,7 @@ class Runtime(object):
         time.sleep(1)
         conn.close()
         # print "*********************************************************************"
-        # print "*                   Updating Dataplane Driver                       *"
+        # print "*                   Updating data-plane driver                       *"
         # print "*********************************************************************\n\n"
         return ''
 
