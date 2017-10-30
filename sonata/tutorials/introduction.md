@@ -21,10 +21,6 @@ processes the packet before emitting the intermediate result to the stream
 processor. Sonata's runtime then uses the result of each query to refine the 
 subsequent packet processing.
 
-Sonata offers three key contributions:
-1. Declarative Query Interface 
-2. Query Partitioning 
-3. Dynamic Refinement
 
 ## Declarative Query Interface
 It allows network operators to apply intuitive dataflow operators over 
@@ -83,7 +79,7 @@ n_conns = (PacketStream(qid=1)
            .filter(filter_keys=('ipv4.protocol',), func=('eq', 6))
            .map(keys=('ipv4.dstIP', 'ipv4.srcIP', 'tcp.sport',))
            .distinct(keys=('ipv4.dstIP', 'ipv4.srcIP', 'tcp.sport',))
-           .map(keys=('ipv4.dstIP',), map_values=('count',), func=('eq', 1,))
+           .map(keys=('ipv4.dstIP',), map_values=('count',), func=('set', 1,))
            .reduce(keys=('ipv4.dstIP',), func=('sum',))
            .filter(filter_vals=('count',), func=('geq', Th1))
            )
@@ -95,13 +91,34 @@ n_bytes = (PacketStream(qid=2)
            .reduce(keys=('ipv4.dstIP',), func=('sum',))
            )
 
-slowloris = (n_conns.join(window='Same', new_qid=3, query=n_bytes)
+slowloris = (n_conns.join(window='same', new_qid=3, query=n_bytes)
              .map(map_values=('count2',), func=('div',))
              .filter(filter_keys=('count2',), func=('leq', Th2))
              )
 ```
 
-## Query Partitioning
+## Sonata's Implementation
+For each query, the Sonata's core generates partitioned and refined queries
+and sends the partitioned queries to the respective *drivers*. The drivers then 
+compile the parts of each query to the appropriate target. When packets arrive 
+at a PISA target, it applies the packet-processing pipelines and mirrors the 
+appropriate packets to a monitoring port, where a software *emitter* parses the 
+packet and sends the corresponding tuples to the stream processor. The stream 
+processor reports the results of the queries to the runtime, which then updates 
+the data plane, via the data-plane driver, to perform refinement.
+
+<p align="center">
+<img width="300" height="200" src="https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/tutorials/arch.png">
+</p>
+
+### Core
+
+
+### Drivers
+
+### Emitter
+
+
 Reducing the workload on the stream processor requires
 determining how to partition input queries between the data-plane and the
 streaming  targets.  Sonata's query planner models the decision problem as 
