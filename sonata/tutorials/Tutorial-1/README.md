@@ -29,7 +29,7 @@ to only report the hosts for which the count exceeds the threshold `Th`. Finally
 it reports the hosts that satisfy this query. 
 
 ```python
-Q = (PacketStream(qid)
+Q = (PacketStream(qid=1)
      .filter(filter_keys=('tcp.flags',), func=('eq', 2))
      .map(keys=('ipv4.dstIP',), map_values=('count',), func=('set', 1,))
      .reduce(keys=('ipv4.dstIP',), func=('sum',))

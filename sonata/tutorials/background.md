@@ -96,12 +96,12 @@ observed for each host and reports the hosts for which this count exceeds
 threshold `Th`.
 
 ```python
-n_syn = (PacketStream(qid=1)
-         .filter(filter_keys=('tcp.flags',), func=('eq', 2))
-         .map(keys=('ipv4.dstIP',), map_values=('count',), func=('eq', 1,))
-         .reduce(keys=('ipv4.dstIP',), func=('sum',))
-         .filter(filter_vals=('count',), func=('geq', Th))
-         )
+victims = (PacketStream(qid=1)
+     .filter(filter_keys=('tcp.flags',), func=('eq', 2))
+     .map(keys=('ipv4.dstIP',), map_values=('count',), func=('set', 1,))
+     .reduce(keys=('ipv4.dstIP',), func=('sum',))
+     .filter(filter_vals=('count',), func=('geq', Th))
+     .map(keys=('ipv4.dstIP',)))
 ```
 
 Note: `tcp.flags` is a an eight bit field. Binary representation for 
