@@ -1,6 +1,7 @@
-# Expressing Queries for Telemetry Applications 
+# Expressing Sonata Queries for Telemetry Applications
 
-In this part, we will learn how to express and test queries that detect:
+In this tutorial/assignment, we will learn how to express and test 
+queries that detect:
 * Newly-opened tcp connections. 
 * DNS traffic asymmetry. 
 
@@ -9,7 +10,6 @@ Let us consider the case where a network operator may wish to detect hosts
 that have too many recently opened TCP connections, as might occur in a 
 [SYN flood attack](https://en.wikipedia.org/wiki/SYN_flood) or 
 during [flash crowd events](https://www.cs.princeton.edu/~mfreed/docs/flash-imc11.pdf).
- 
 
 ### Query
 Network operators can use Sonata to express a query that reports hosts for
@@ -216,10 +216,11 @@ $ sudo python sonata/tutorials/Tutorial-1/dns_assymetry/send.py
 
 #### Questions:
 ##### Question 5: 
-For each plan, report the number of tuples (i.e., number of lines) from 
+Report the number of tuples (i.e., number of lines) from 
 the `emitter.log` file.
+
 ##### Question 6: 
-For each plan, report the host(s) that satisfies the query.
+Report the host(s) that satisfies the query.
 
 ### Troubleshooting
 * Before sending the traffic, make sure that Sonata is ready. You'll see 
