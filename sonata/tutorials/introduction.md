@@ -8,7 +8,7 @@ analysis, producing either too much data to answer a general question, or too
 little data to answer a detailed question. 
 
 <p align="center">
-<img width="300" height="200" src="https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/tutorials/overview.png">
+<img width="400" height="200" src="https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/tutorials/overview.png">
 </p>
 
 Sonata is a streaming telemetry system that makes use of programmable data 
@@ -107,7 +107,7 @@ processor reports the results of the queries to the runtime, which then updates
 the data plane, via the data-plane driver, to perform refinement.
 
 <p align="center">
-<img width="300" height="200" src="https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/tutorials/arch.png">
+<img width="400" height="300" src="https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/tutorials/arch.png">
 </p>
 
 ### Core
