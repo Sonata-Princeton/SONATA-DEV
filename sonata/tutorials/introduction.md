@@ -7,6 +7,8 @@ they separate data collection (e.g., packet capture or flow monitoring) from
 analysis, producing either too much data to answer a general question, or too
 little data to answer a detailed question. 
 
+![Sonata's Overview](https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/tutorials/overview.png)
+
 Sonata is a streaming telemetry system that makes use of programmable data 
 plane and scalable stream processor for scalability. It allows operators to 
 directly express queries in a high-level declarative language without worrying 
