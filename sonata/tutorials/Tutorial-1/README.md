@@ -43,7 +43,8 @@ You can find the query for this application here:
 `sonata/examples/newly_opened_connections/test_app.py`.
  
 ### Query Plan
-As we described [earlier](), Sonata's core hast two major components:
+As we described 
+[earlier](https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/tutorials/introduction.md), Sonata's core hast two major components:
 (1) runtime, and (2) query planner. Query planner uses the input queries,
 data-plane target's constraints, and historical packet traces to determine
 the query plan for refining and partitioning the input queries to minimize
@@ -152,68 +153,73 @@ Note: Make sure you run the cleanup script before restarting Sonata.
 ##### Question 1: 
 For each plan, report the number of tuples (i.e., number of lines) from 
 the `emitter.log` file.
+
 ##### Question 2: 
 For each plan, report the host(s) that satisfies the query.
+
+#### Question 3:
+For each plan, report the fields for the header, `out_header_10032`.
+Note that `out_header_10032` is the header added to the cloned packet 
+sent to the emitter via the monitoring port for query with `qid=1` at 
+refinement level `/32`. 
 
 ## Detecting DNS Traffic Asymmetry
+Let us now consider the case where the operator may wish to detect 
+hosts for which the difference between the number of DNS responses 
+received is significantly greater than the number of DNS requests sent. 
+This might occur when the host is a victim of 
+[DNS reflection attack](https://blog.cloudflare.com/reflections-on-reflections/).
 
 ## Query
+Network operators can use Sonata to express two queries:
+(1) Counts the number of DNS response messages received per host
+(`n_resp` query), and (2) Counts the number of DNS request messages 
+sent per host (`n_req` query). Both these queries will first filter
+the DNS response and request packets, identified by the fields:
+`udp.sport` and `udp.dport` respectively. They will then
+use combination of `Map` and `Reduce` operators to count the
+number of responses and requests for each host, identified by
+the fields `ipv4.dstIP` and `ipv4.srcIP` respectively.
+
+It can then join these two queries, and find the difference between
+the number of responses and requests for each host. Finally, it
+reports hosts for which this difference exceeds the threshold `Th`.
+
+##### Question 4: 
+Use the description above, to write the missing operators for the
+`n_resp` and `n_req` queries in
+`sonata/tutorials/Tutorial-1/dns_assymetry/test_app.py`.
 
 ## Query Plan
+For this query, we will use the plan: 
+`config["final_plan"] = [(1,32,4), (2,32,4)]`, i.e. we run all the dataflow
+operators for the `n_resp` and `n_req` queries in the data plane at refinement
+level `/32`. Note that we support the `Join` operation (for `qid=3`) at the 
+stream processor. 
 
 ## Testing
+Follow the same instructions as above the set the environment variables and
+do cleanup before running Sonata for this application. 
+
+#### Terminal 1: Start Sonata
+After editing the `test_app.py` file, load the application with Sonata: 
+```bash
+$ sudo $SPARK_HOME/bin/spark-submit sonata/tutorials/Tutorial-1/dns_assymetry/test_app.py
+```
+
+#### Terminal 2: Send Traffic
+Once Sonata is ready, i.e. you see the `System Ready` message on
+`Terminal 1`, send traffic:
+```bash
+$ sudo python sonata/tutorials/Tutorial-1/dns_assymetry/send.py
+```
 
 #### Questions:
-##### Question 1: 
+##### Question 5: 
 For each plan, report the number of tuples (i.e., number of lines) from 
 the `emitter.log` file.
-##### Question 2: 
+##### Question 6: 
 For each plan, report the host(s) that satisfies the query.
-
-
-<!-- ### Detecting IoT Devices -->
-
-<!-- #### Background -->
-<!-- The DNS fingerprint for IoT devices is different from other  -->
-<!-- Internet-connected such as laptops, servers, and mobile devices etc. -->
-<!-- Most IoT devices query a limited number of unique domains. For example, -->
-<!-- a `Nest` thermostat mostly sends DNS queries for the domain `nest.com`. -->
-<!-- To identify IoT devices, one can write queries that count the total -->
-<!-- number of DNS responses received and total number of distinct resolved  -->
-<!-- IP addresses in the DNS response message for each host. It can report hosts  -->
-<!-- that receive more than `Th1` total responses but for which the number of  -->
-<!-- unique resolved IP addresses is less than `Th2`. -->
-
-<!-- #### Expressing the Query -->
-<!-- We will now describe a simple query one can express with Sonata to detect the presence of -->
-<!-- IoT devices.  -->
-<!-- * Identify hosts that receive **more** than `Th1` number of DNS responses. -->
-<!-- * Identify hosts for which the number of **unique** resolved IP addresses (`dns.an.rdata`) -->
- <!-- is **less** than `Th2`. -->
-
-<!-- #### Testing -->
-<!-- To test your query, follow the steps below: -->
-<!-- * Do cleanup -->
-<!-- ````bash -->
-<!-- $ cd ~/dev -->
-<!-- $ sudo sh cleanup.sh -->
-<!-- ```` -->
-
-<!-- * Load the new application -->
-<!-- ````bash -->
-<!-- $ cd ~/dev -->
-<!-- $ sudo $SPARK_HOME/bin/spark-submit sonata/tutorial/Part-2/sonata_app.py -->
-<!-- ```` -->
-
-<!-- * Use a separate terminal to send the traffic -->
-<!-- ````bash -->
-<!-- $ cd ~/dev	 -->
-<!-- $ sudo python sonata/tutorial/Part-2/send.py -->
-<!-- ```` -->
- <!--  -->
-<!-- Check the log files here: `sonata/tutorial/Part-2/logs`. `emitter.log` records the  -->
-<!-- tuple reported to the stream processor and `final_output` records the final output  -->
-<!-- of the query. -->
 
 ### Troubleshooting
 * Before sending the traffic, make sure that Sonata is ready. You'll see 
@@ -233,4 +239,3 @@ this problem:
     ```bash
     $ sudo mysql -e "CREATE TABLE indexStore( id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, qid INT(6),  tuple VARCHAR(200), indexLoc INT(6) );"
     ```
-    
