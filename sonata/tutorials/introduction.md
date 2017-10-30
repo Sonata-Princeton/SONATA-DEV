@@ -14,13 +14,12 @@ little data to answer a detailed question.
 Sonata is a streaming telemetry system that makes use of programmable data 
 plane and scalable stream processor for scalability. It allows operators to 
 directly express queries in a high-level declarative language without worrying 
-about how and where the query gets executed. Under the hood, it partitions 
+about how and where the queries gets executed. Under the hood, it partitions 
 each query into a portion that runs on the switch and another that runs on 
 the streaming analytics platform. For each query, the data plane first 
 processes the packet before emitting the intermediate result to the stream 
 processor. Sonata's runtime then uses the result of each query to refine the 
 subsequent packet processing.
-
 
 ## Declarative Query Interface
 It allows network operators to apply intuitive dataflow operators over 
@@ -133,9 +132,13 @@ tables for dynamic refinement at the end of every window. Sonata implementation
 has drivers for two PISA targets: the 
 [BMV2 P4 software switch](https://github.com/p4lang/behavioral-model), 
 the standard behavioral model for evaluating P4 code; and the 
-[Barefoot Wedge 100B-65X](https://barefootnetworks.com/products/brief-tofino/), 
+[Barefoot Tofino switch](https://barefootnetworks.com/products/brief-tofino/), 
 a 6.5 Tbps hardware switch. The data-plane driver interacts with the target using
 a [Thrift API](https://thrift.apache.org/).
+
+Note: For propriety reasons, we have not made the driver for the Tofino switch 
+public. Please reach out to us over [email](mailto:arpitg@cs.princeton.edu) to 
+learn more about our driver for the Barefoot's Tofino switch. 
  
 ### Emitter
 The emitter consumes raw packets from the data-plane's monitoring port, parses 
