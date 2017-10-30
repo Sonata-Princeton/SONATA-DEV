@@ -112,29 +112,39 @@ the data plane, via the data-plane driver, to perform refinement.
 </p>
 
 ### Core
-
+The core has a query planner and a runtime. When a new switch connects or when 
+re-training is required, the runtime interacts with the data-plane driver over 
+a network socket to determine which operators it can execute in the data plane 
+and the values of the data-plane constraints. It then passes these values to the 
+query planner which uses the [Gurobi](http://www.gurobi.com/) ILP solver to solve the query planning ILP 
+offline, generating partitioned and refined queries. The runtime sends partitioned 
+and refined queries to the drivers over a network socket. It also tells the emitter 
+the fields and their sizes to extract from packets for each query, identified by a 
+`qid`. After the targets begin processing packets, the runtime receives query 
+outputs from the stream processor at the end of every window. It then sends the 
+updates to the data-plane drivers, which update table entries according 
+to the dynamic refinement plan. 
 
 ### Drivers
-
+Data-plane and streaming drivers compile the queries from the runtime to 
+target-specific code. The data-plane drivers also interact with the target 
+to execute commands on behalf of the runtime such as updating `filter` 
+tables for dynamic refinement at the end of every window. Sonata implementation 
+has drivers for two PISA targets: the 
+[BMV2 P4 software switch](https://github.com/p4lang/behavioral-model), 
+the standard behavioral model for evaluating P4 code; and the 
+[Barefoot Wedge 100B-65X](https://barefootnetworks.com/products/brief-tofino/), 
+a 6.5 Tbps hardware switch. The data-plane driver interacts with the target using
+a [Thrift API](https://thrift.apache.org/).
+ 
 ### Emitter
+The emitter consumes raw packets from the data-plane's monitoring port, parses 
+the query-specific fields embedded in the packet, and sends the corresponding 
+tuples to the stream processor. The emitter uses 
+[Scapy](http://www.secdev.org/projects/scapy/) to extract the unique query 
+identifier (`qid`) from packets. It uses this identifier determine how to 
+parse the remainder of the query-specific fields embedded in the packet based 
+on the configuration that the runtime provides for the corresponding `qid`.
 
-
-Reducing the workload on the stream processor requires
-determining how to partition input queries between the data-plane and the
-streaming  targets.  Sonata's query planner models the decision problem as 
-an integer linear program (ILP), which it solves using historical packet 
-traces to minimize the load at the stream processor for a set of queries 
-subject to the constraints of PISA data-plane targets (e.g., the amount of 
-register memory in the switch).
-
-## Dynamic Refinement
-Data-plane targets should not waste limited resources, such as memory, on 
-portions of the traffic that do not satisfy the queries. By solving an extended 
-version of the original ILP for query partitioning, Sonata's query planner 
-determines how to progressively zero in on traffic over time (i.e., 
-window-by-window, for a fixed-size window duration). Dynamic refinement reduces 
-the load on the stream processor at the cost of additional delays of possibly 
-multiple time windows to identify the traffic that satisfies the queries.
-
-For more details, please reach out to [Arpit Gupta](arpitg@cs.princeton.edu) 
-to get a copy of the Sonata paper. 
+For more details, please reach out to 
+[Arpit Gupta](mailto:arpitg@cs.princeton.edu) to get a copy of the Sonata paper.
