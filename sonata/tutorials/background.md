@@ -21,36 +21,77 @@ processes the packet before emitting the intermediate result to the stream
 processor. Sonata's runtime then uses the result of each query to refine the 
 subsequent packet processing.
 
-## Declarative Query Interface
-It allows network operators to apply intuitive dataflow operators over 
-arbitrary combinations of packet fields. 
+## Sonata's Query Interface
+Sonata's query interface allows network operators to express the queries 
+for telemetry applications using familiar dataflow operators over 
+arbitrary combinations of packet fields without worrying about how
+and where the query gets executed.
 
-### Packet Fields
-You can find the set of supported packet fields for expressing Sonata queries
+### Extensible Packet Tuple Abstraction
+Packets carry not only information in their header fields and payload, 
+but also the meta information about the state of the underlying network, 
+such as the time when a packet arrives at a switch or number of hops it 
+traversed in the network. Sonata provides an intuitive interface for 
+expressing queries over the union of fields extracted either in the data 
+plane or in user space. This abstraction is inherently flexible because 
+the list of fields in the packet tuples can incorporate new header and meta 
+fields as the underlying data plane evolves, for example, reading the sizes 
+of queues the packet encountered en route 
+(see [INT](http://p4.org/wp-content/uploads/fixed/INT/INT-current-spec.pdf)).
+
+
+Sonata has an extensible 
+[parser](https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/sonata_layers.py) 
+that unifies the parsing capabilities of the available data-plane and 
+streaming targets. The parser extracts from 
+the raw packets all fields required to satisfy the set of input queries.
+Sonata seeks to perform parsing in the data plane whenever possible
+and directs packets to the stream processor for parsing only when 
+necessary. In user space, Sonata employs extensible, user-defined 
+parsing modules that extract fields for many standard protocols. You 
+can find the set of supported packet fields for expressing Sonata queries
 [here](https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/fields_mapping.json). 
 
 ### Dataflow Operators
+Network telemetry applications often require computing aggregate 
+statistics over a subset of traffic and joining the results from multiple 
+queries. Most of these tasks can be expressed using declarative queries 
+that compose dataflow operators. Sonata's query interface allows it to 
+abstract the details of *where* each query operator runs and *how* the 
+underlying targets perform those operations. Sonata's query planner 
+decides how and where to execute the input queries allowing Sonata to 
+run identical queries over different choices of streaming or data-plane 
+targets without modification. This feature ensures that the telemetry 
+system is flexible and easy to maintain.
 
 | Operator| Description|
 | ---------------------| -----------|
 | Map(keys, map_keys, map_values,func)| Transform each tuple with function `func` applied over tuples identified by key(`map_keys`) or value (`map_values`) fields.|
-| filter(filter_keys, filter_values,func)| Filter packets that satisfy predicate `func` applied over set of key (`filter_keys`) or value (`filter_vals`) fields|
-| reduce(keys,func)| Emit result of function `func` applied on key (`keys`) over the input stream.|
-| distinct(keys)| Emit tuples with unique combinations of key (`keys`) fields.|
-| join(window, new_qid, query)| Join the output of `query` and assign `new_qid` to the resulting joined query. Also, specify whether the `join` operation is applied over the same window interval or over rolling windows.|
+| Filter(filter_keys, filter_values,func)| Filter packets that satisfy predicate `func` applied over set of key (`filter_keys`) or value (`filter_vals`) fields|
+| Reduce(keys,func)| Emit result of function `func` applied on key (`keys`) over the input stream.|
+| Distinct(keys)| Emit tuples with unique combinations of key (`keys`) fields.|
+| Join(window, new_qid, query)| Join the output of `query` and assign `new_qid` to the resulting joined query. Also, specify whether the `join` operation is applied over the same window interval or over rolling windows.|
 
-
+Table above describes the operators that Sonata supports over a
+stream of packet tuples. Stateless operators such as `Filter` and 
+`Map` emit results immediately after operating on an input tuple. 
+Stateful operators such as `Reduce`, `Distinct`, and `Join` emit
+results at the end of a time window of `W` seconds configured 
+[here](https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/config.json#L42-L44).
 
 ### Example Queries
+Network operators can express various queries for telemetry applications
+using Sonata's query interface.
 
 #### Newly Opened TCP Connections
-To detect a large number of newly opened TCP connections,
-first applies a `filter` operation over the entire packet stream 
-identified by query id `1` to
-filter TCP packets with just the `SYN` flag set. It then counts the
-number of packets observed for each host and reports the hosts
-for which this count exceeds threshold `Th` in an epoch configured 
-[here](https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/config.json#L42-L44).
+A network operator may wish to detect hosts that have too many recently 
+opened TCP connections, as might occur in a SYN flood. To detect a large 
+number of newly opened TCP connections, first applies a `filter` operation 
+over the entire packet stream identified by query id `1` to filter TCP 
+packets with just the `SYN` flag set. It then counts the number of packets 
+observed for each host and reports the hosts for which this count exceeds 
+threshold `Th`.
+
 ```python
 n_syn = (PacketStream(qid=1)
          .filter(filter_keys=('tcp.flags',), func=('eq', 2))
@@ -66,13 +107,18 @@ Note: `tcp.flags` is a an eight bit field. Binary representation for
  will have `tcp.flags=16` and so on. 
 
 #### Slowloris Attacks
-The application to detect a slowloris attack has two sub-queries
-with query ids `1` and `2` respectively. One counts the number of unique 
-connections by applying a `distinct` followed by a `reduce` operation. 
-It only reports hosts for which the number of connections exceeds threshold 
-`Th1`. The other counts the total bytes transferred for each host. It then 
-joins these sub-queries to compute the average transmission rate per 
-connection and reports hosts with an average rate below a threshold `Th2`.
+A network operator may wish to detect victims of 
+[Slowloris attack](https://en.wikipedia.org/wiki/Slowloris_(computer_security)) 
+in the network. Detecting a Slowloris attack, requires counting the number 
+of unique connections and bytes transferred for each host and then 
+computing the average bytes per connection. The operator can express two 
+sub-queries with query ids `1` and `2` respectively. One counts the number 
+of unique connections by applying a `distinct` followed by a `reduce` 
+operation. It only reports hosts for which the number of connections 
+exceeds threshold `Th1`. The other counts the total bytes transferred for 
+each host. It then joins these sub-queries to compute the average
+connections per byte and reports hosts with an average connection 
+above a threshold `Th2`.
 ```python
 n_conns = (PacketStream(qid=1)
            .filter(filter_keys=('ipv4.protocol',), func=('eq', 6))
@@ -85,14 +131,13 @@ n_conns = (PacketStream(qid=1)
 
 n_bytes = (PacketStream(qid=2)
            .filter(filter_keys=('ipv4.protocol',), func=('eq', 6))
-           .map(keys=('ipv4.dstIP', 'ipv4.totalLen',))
            .map(keys=('ipv4.dstIP',), map_values=('ipv4.totalLen',))
            .reduce(keys=('ipv4.dstIP',), func=('sum',))
            )
 
-slowloris = (n_conns.join(window='same', new_qid=3, query=n_bytes)
-             .map(map_values=('count2',), func=('div',))
-             .filter(filter_keys=('count2',), func=('leq', Th2))
+slowloris = (n_bytes.join(window='same', new_qid=3, query=n_conns)
+             .map(map_values=('count1',), func=('div',))
+             .filter(filter_keys=('count1',), func=('geq', Th2))
              )
 ```
 
@@ -110,7 +155,7 @@ the data plane, via the data-plane driver, to perform refinement.
 <img width="400" height="300" src="https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/tutorials/arch.png">
 </p>
 
-### Core
+### [Core](https://github.com/Sonata-Princeton/SONATA-DEV/tree/tutorial/sonata/core)
 The core has a query planner and a runtime. When a new switch connects or when 
 re-training is required, the runtime interacts with the data-plane driver over 
 a network socket to determine which operators it can execute in the data plane 
@@ -122,9 +167,9 @@ the fields and their sizes to extract from packets for each query, identified by
 `qid`. After the targets begin processing packets, the runtime receives query 
 outputs from the stream processor at the end of every window. It then sends the 
 updates to the data-plane drivers, which update table entries according 
-to the dynamic refinement plan. 
+to the dynamic refinement plan.
 
-### Drivers
+### [Drivers](https://github.com/Sonata-Princeton/SONATA-DEV/tree/tutorial/sonata/dataplane_driver)
 Data-plane and streaming drivers compile the queries from the runtime to 
 target-specific code. The data-plane drivers also interact with the target 
 to execute commands on behalf of the runtime such as updating `filter` 
@@ -140,7 +185,7 @@ Note: For propriety reasons, we have not made the driver for the Tofino switch
 public. Please reach out to us over [email](mailto:arpitg@cs.princeton.edu) to 
 learn more about our driver for the Barefoot's Tofino switch. 
  
-### Emitter
+### [Emitter](https://github.com/Sonata-Princeton/SONATA-DEV/tree/tutorial/sonata/dataplane_driver/p4/emitter)
 The emitter consumes raw packets from the data-plane's monitoring port, parses 
 the query-specific fields embedded in the packet, and sends the corresponding 
 tuples to the stream processor. The emitter uses 
