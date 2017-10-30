@@ -157,7 +157,7 @@ the switch at initialization.
  mirroring_add 8001 12
 ```
 
-Here, `12` is the port id for the span port as shown in the figure above. 
+Here, `12` is the port id for the monitoring port as shown in the figure above. 
 
 #### Notes
 * For P4 language questions, please refer to the [P4 language specification](https://p4lang.github.io/p4-spec/p4-14/v1.0.4/tex/p4.pdf) for more details.
@@ -166,8 +166,8 @@ Here, `12` is the port id for the span port as shown in the figure above.
   each plan.
 
 #### Testing the Configured Pipeline
-After configuring the match-action pipeline to clone every packet and send it
-over a span port, we will now test this program.
+After configuring the match-action pipeline to clone every packet and 
+send it over a monitoring port, we will now test this program.
 
 For this part, we use the topology shown below:
 ```
