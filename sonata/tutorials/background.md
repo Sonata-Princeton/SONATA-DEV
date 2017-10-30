@@ -8,7 +8,7 @@ analysis, producing either too much data to answer a general question, or too
 little data to answer a detailed question. 
 
 <p align="center">
-<img width="400" height="200" src="https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/tutorials/overview.png">
+<img width="400" height="300" src="https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/tutorials/overview.png">
 </p>
 
 Sonata is a streaming telemetry system that makes use of programmable data 
@@ -81,7 +81,10 @@ results at the end of a time window of `W` seconds configured
 
 ### Example Queries
 Network operators can express various queries for telemetry applications
-using Sonata's query interface.
+using Sonata's query interface. We will describe the queries for
+two such applications here. You can check out the queries for various
+other applications 
+[here](https://github.com/Sonata-Princeton/SONATA-DEV/tree/tutorial/sonata/examples). 
 
 #### Newly Opened TCP Connections
 A network operator may wish to detect hosts that have too many recently 
