@@ -11,7 +11,7 @@ we will first provide an overview of Sonata describing its architecture and how
 simplifies it expressing a range of telemetry queries for the network operators. 
 
 ### Tutorial 1: Expressing Queries for Telemetry Applications
-#### [Assignment 3]https://github.com/Sonata-Princeton/SONATA-DEV/tree/tutorial/sonata/tutorials/Tutorial-1): COS 561
+#### [Assignment 3](https://github.com/Sonata-Princeton/SONATA-DEV/tree/tutorial/sonata/tutorials/Tutorial-1): COS 561
 In this [tutorial](https://github.com/Sonata-Princeton/SONATA-DEV/tree/tutorial/sonata/tutorials/Tutorial-1), 
 we will learn how to express queries for a range of telemetry applications with 
 Sonata. 
