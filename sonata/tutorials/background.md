@@ -93,8 +93,8 @@ results at the end of a time window of `W` seconds configured
 
 ### Example Queries
 Network operators can express various queries for telemetry applications
-using Sonata's query interface. We will describe the queries for
-two such applications here. You can check out the queries for various
+using Sonata's query interface. We will describe the query for
+one such application here. You can check out the queries for various
 other applications 
 [here](https://github.com/Sonata-Princeton/SONATA-DEV/tree/tutorial/sonata/examples). 
 
@@ -120,42 +120,6 @@ Note: `tcp.flags` is a an eight bit field. Binary representation for
 `tcp.flags` field for SYN packets is `00000010`, i.e. its decimal value
  is `2` Similarly, `FIN` packets will have `tcp.flags=1`, `ACK` packets 
  will have `tcp.flags=16` and so on. 
-
-#### Slowloris Attacks
-A network operator may wish to detect victims of 
-[Slowloris attack](https://en.wikipedia.org/wiki/Slowloris_(computer_security)) 
-in the network. Detecting a Slowloris attack, requires counting the number 
-of unique connections and bytes transferred for each host and then 
-computing the average bytes per connection. The operator can express two 
-sub-queries with query ids `1` and `2` respectively. One counts the number 
-of unique connections by applying a `distinct` followed by a `reduce` 
-operation. It only reports hosts for which the number of connections 
-exceeds threshold `Th1`. The other counts the total bytes transferred for 
-each host. It then joins these sub-queries to compute the average
-connections per byte and reports hosts with an average connection 
-above a threshold `Th2`.
-```python
-n_conns = (PacketStream(qid=1)
-           .filter(filter_keys=('ipv4.protocol',), func=('eq', 6))
-           .map(keys=('ipv4.dstIP', 'ipv4.srcIP', 'tcp.sport',))
-           .distinct(keys=('ipv4.dstIP', 'ipv4.srcIP', 'tcp.sport',))
-           .map(keys=('ipv4.dstIP',), map_values=('count',), func=('set', 1,))
-           .reduce(keys=('ipv4.dstIP',), func=('sum',))
-           .filter(filter_vals=('count',), func=('geq', Th1))
-           )
-
-n_bytes = (PacketStream(qid=2)
-           .filter(filter_keys=('ipv4.protocol',), func=('eq', 6))
-           .map(keys=('ipv4.dstIP',), map_values=('ipv4.totalLen',))
-           .reduce(keys=('ipv4.dstIP',), func=('sum',))
-           )
-
-slowloris = (n_bytes.join(window='same', new_qid=3, query=n_conns)
-             .map(map_values=('count1',), func=('div',))
-             .filter(filter_keys=('count1',), func=('geq', Th2))
-             )
-```
-
 
 ## Query Partitioning
 Sonata uses Protocol Independent Switch Architecture (PISA) targets to 
