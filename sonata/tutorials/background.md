@@ -207,6 +207,9 @@ queries. The specific levels of granularity chosen and the sequence in
 which they are applied constitute a refinement plan. To compute an optimal 
 refinement plan for a set of queries, Sonata's query planner estimates the 
 cost of executing different refinement plans using historical training data.
+It then solves an extended version of the query partitioning ILP that 
+determines both partitioning and refinement plans to minimize the traffic 
+at the stream processor.
 
 ## Sonata's Implementation
 For each query, the Sonata's core generates partitioned and refined queries
