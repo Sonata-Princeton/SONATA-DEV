@@ -91,7 +91,7 @@ Stateful operators such as `Reduce`, `Distinct`, and `Join` emit
 results at the end of a time window of `W` seconds configured 
 [here](https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/config.json#L42-L44).
 
-### Example Queries
+### Expressing Queries for Telemetry Applications
 Network operators can express various queries for telemetry applications
 using Sonata's query interface. We will describe the query for
 one such application here. You can check out the queries for various
