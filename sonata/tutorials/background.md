@@ -21,12 +21,17 @@ for the stream processor. It also allows operators to directly express
 queries in a high-level declarative language without worrying 
 about how and where the queries gets executed. 
 
-Under the hood, it partitions 
-each query into a portion that runs on the switch and another that runs on 
-the streaming analytics platform. For each query, the data plane first 
-processes the packet before emitting the intermediate result to the stream 
-processor. Sonata's runtime then uses the result of each query to refine the 
-subsequent packet processing.
+Under the hood, it *partitions* each query into a portion that runs on 
+the switch and another that runs on the streaming analytics platform. For 
+each query, the data plane first processes the packet before emitting the 
+intermediate result to the stream processor. Sonata's runtime then uses 
+the result of each query to *refine* the subsequent packet processing.
+
+We will now describe the following in greater details:
+* [Sonata's Query Interface](https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/tutorials/background.md#sonatas-query-interface)
+* [Query Partitioning](https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/tutorials/background.md#query-partitioning)
+* [Dynamic Query Refinement](https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/tutorials/background.md#dynamic-query-refinement)
+* [Sonata's Implementation](https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/tutorials/background.md#sonatas-implementation)
 
 ## Sonata's Query Interface
 Sonata's query interface allows network operators to express the queries 
