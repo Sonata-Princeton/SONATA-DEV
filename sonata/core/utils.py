@@ -104,9 +104,9 @@ def get_refinement_keys(query, refinement_keys_set):
     if query.left_child is not None:
 
         red_keys_left, _ = get_refinement_keys(query.left_child, refinement_keys_set)
-        print "left keys", red_keys_left, query.qid
+        # print "left keys", red_keys_left, query.qid
         red_keys_right, _ = get_refinement_keys(query.right_child, refinement_keys_set)
-        print "right keys", red_keys_right, query.qid
+        # print "right keys", red_keys_right, query.qid
 
         per_query_refinement[query.left_child.qid] = red_keys_left
         per_query_refinement[query.right_child.qid] = red_keys_right

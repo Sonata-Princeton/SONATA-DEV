@@ -96,7 +96,7 @@ class CleanIt(object):
 
         for key, value in cleaned_queries.iteritems():
             out = '%i: qid=%i, parse_payload=%s\n\t%s' % (key, value.id, str(value.parse_payload), value)
-            print out
+            # print out
 
         with open('dp_queries_clean.pickle', 'wb') as outfile:
             pickle.dump(cleaned_queries, outfile)

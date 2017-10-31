@@ -75,9 +75,9 @@ class Emitter(object):
                         start = time.time()
                         self.process_register_values(qid, register)
                         read_overhead += time.time()-start
-                        print "Register read took",read_overhead, "seconds"
+                        # print "Register read took",read_overhead, "seconds"
             sleep_interval = self.emitter_read_timeout - read_overhead
-            print "Sleep Interval", sleep_interval
+            # print "Sleep Interval", sleep_interval
             time.sleep(sleep_interval)
 
     def send_data(self, data):

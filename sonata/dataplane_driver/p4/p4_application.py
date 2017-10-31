@@ -38,7 +38,6 @@ class P4Application(object):
         # Define the root layer for raw packet
         # self.root_layer = Ethernet()
         # self.p4_raw_fields = P4RawFields(self.root_layer)
-
         self.root_layer = "ethernet"
         self.p4_raw_fields = sonata_fields
 

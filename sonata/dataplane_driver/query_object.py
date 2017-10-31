@@ -11,5 +11,5 @@ class QueryObject(object):
     def __repr__(self):
         out = 'In'
         for operator in self.operators:
-            out += operator.__repr__()
+            out += '\n\t'+operator.__repr__()
         return out

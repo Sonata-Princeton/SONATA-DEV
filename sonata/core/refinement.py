@@ -58,7 +58,7 @@ def get_concise_headers(query):
     for operator in query.operators:
         if operator.name in {"Distinct", "Map", "Reduce"}:
             concise_keys = concise_keys.union(set(operator.keys))
-            print concise_keys
+            # print concise_keys
             if operator.name == "Map":
                 if operator.map_keys:
                     concise_keys = concise_keys.union(set(operator.map_keys))
@@ -129,9 +129,7 @@ class Refinement(object):
             if prev_ref_level > 0:
                 out_query = PacketStream(tmp_query.qid)
                 out_query.basic_headers = get_concise_headers(tmp_query)
-
-
-                print (not has_join), prev_qid, prev_ref_level, qid, ref_level
+                # print (not has_join), prev_qid, prev_ref_level, qid, ref_level
                 if not has_join:
                     refined_qid_src = 10000 * prev_qid + prev_ref_level
                     out_query.filter(append_type=1, src=refined_qid_src, filter_keys=(self.per_query_refinement_key[qid], ),

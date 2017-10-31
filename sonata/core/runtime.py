@@ -83,7 +83,7 @@ class Runtime(object):
 
                     refined_sonata_query = refinement_object.get_refined_updated_query(qry.qid, r, prev_qid, prev_r,
                                                                                        has_join, final_qid)
-                    print "Refined Query: ", refined_sonata_query
+                    # print "Refined Query: ", refined_sonata_query
                     if not has_join:
                         if prev_r > 0:
                             p += 1
@@ -108,9 +108,15 @@ class Runtime(object):
             for sp_query in sp_queries:
                 self.sp_queries[sp_query.qid] = sp_query
 
-        print "Dataplane Queries", self.dp_queries
-        print "\n\n"
-        print "Streaming Queries", self.sp_queries
+        # print "Dataplane Queries:"
+        # for (qid,query) in self.dp_queries.items():
+        #     print "For", qid
+        #     print query
+        # print "\n\n"
+        # print "Streaming Queries:"
+        # for (qid,query) in self.sp_queries.items():
+        #     print "For", qid
+        #     print query
 
         # time.sleep(10)
         self.initialize_handlers()
@@ -279,7 +285,6 @@ class Runtime(object):
         while True:
             conn = self.op_handler_listener.accept()
             op_data = conn.recv_bytes()
-            print op_data
             op_data = op_data.strip('\n')
             received_data = op_data.split(",")
             src_qid = int(received_data[1])
@@ -293,7 +298,7 @@ class Runtime(object):
                 updateDeltaConfig = True
 
             delta_config = {}
-            print queries_received, self.query_out_mappings
+            # print queries_received, self.query_out_mappings
             if updateDeltaConfig:
                 start = "%.20f" % time.time()
                 for src_qid in queries_received:

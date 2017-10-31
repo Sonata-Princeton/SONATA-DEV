@@ -24,7 +24,6 @@ class P4Query(object):
     def __init__(self, query_id, parse_payload, payload_fields, read_register, filter_payload,
                  filter_payload_str, generic_operators, nop_name, drop_meta_field,
                  satisfied_meta_field, clone_meta_field, p4_raw_fields):
-
         # LOGGING
         log_level = logging.ERROR
         self.logger = get_logger('P4Query - %i' % query_id, 'DEBUG')
@@ -125,7 +124,7 @@ class P4Query(object):
         for operator in generic_operators:
             if operator.name in {'Filter', 'Map', 'Reduce', 'Distinct'}:
                 all_fields = all_fields.union(set(operator.get_init_keys()))
-        print "get_all_fields1: ", all_fields
+        # print "get_all_fields1: ", all_fields
         # TODO remove this
         self.all_fields = filter(lambda x: x not in self.payload_fields+['ts'], all_fields)
 
@@ -136,7 +135,7 @@ class P4Query(object):
             if operator.name in {'Map', 'Reduce', 'Distinct', 'Filter'}:
                 all_fields = all_fields.union(set(operator.get_init_keys()))
         # No need to filter out count field
-        print "get_all_fields: ", all_fields
+        # print "get_all_fields: ", all_fields
         return filter(lambda x: x not in self.payload_fields+['ts'], all_fields)
 
     def init_operators(self, generic_operators):

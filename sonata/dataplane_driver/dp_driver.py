@@ -63,7 +63,7 @@ class DataplaneDriver(object):
                     start = "%.20f" % time.time()
                     filter_update = message[key][0]
                     target_id = message[key][1]
-                    print "delta: dp_driver: ", filter_update
+                    # print "delta: dp_driver: ", filter_update
                     self.update_configuration(filter_update, target_id)
                     # self.metrics.info("delta" + ","+ str(len(filter_update)) +"," + start +",%.20f" % time.time())
                 elif key == 'is_supported':

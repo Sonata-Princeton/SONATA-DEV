@@ -40,7 +40,7 @@ class Counts(object):
         self.query_tree[query.qid] = get_query_tree(query)
         self.query_out = None
 
-        print self.qid_2_query, self.query_tree
+        # print self.qid_2_query, self.query_tree
 
         # Generate Spark queries for the composed & refined SONATA queries
         self.generate_refined_spark_queries()

@@ -48,7 +48,7 @@ def get_clean_application(application):
                 new_o.prev_keys = operator.prev_keys
                 new_o.prev_values = operator.prev_values
                 new_o.func = operator.func
-                print "Only Map: ", new_o
+                # print "Only Map: ", new_o
             elif operator.name == 'Distinct':
                 new_o = Distinct()
                 new_o.keys = keys
@@ -92,5 +92,4 @@ def get_clean_application(application):
             new_qo.operators.append(new_o)
         new_app[new_qo.id] = new_qo
 
-    print new_app
     return new_app

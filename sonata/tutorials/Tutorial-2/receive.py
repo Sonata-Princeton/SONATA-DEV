@@ -79,7 +79,7 @@ class Emitter(object):
         self.bmv2_cli = '/home/vagrant/bmv2/targets/simple_switch/sswitch_CLI'
         self.thrift_port = 22222
 
-        print self.queries #, self.emitter_read_timeout
+        # print self.queries #, self.emitter_read_timeout
 
         self.reader_thread = Thread(name='reader_thread', target=self.start_reader)
         self.reader_thread.start()
