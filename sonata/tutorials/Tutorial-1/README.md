@@ -18,13 +18,13 @@ which the number of newly opened TCP connections (identified by packets with
 `SYN` flags, it applies a `Filter` operator over the incoming packet stream
 identified by the `qid` to check whether the TCP flag field has the `SYN` bit 
 set to one. As the `tcp.flags` is a an eight bit field. So, the binary 
-representation for `tcp.flags` field for SYN packets is `00000010`(ie, its
+representation for `tcp.flags` field for SYN packets is `00000010`(i.e., its
 decimal value is `2`). After filtering the `SYN` packets, operator can count 
 the number of new connections for each host by using the two dataflow 
-operators: `map` and `reduce`. `Map` operator selects the field `ipv4.dstIP` 
+operators: `Map` and `Reduce`. `Map` operator selects the field `ipv4.dstIP` 
 as the key and sets the value for each key as one. `Reduce` operator sums the 
 value of all packets with the same key. After counting the number of newly 
-opened TCP connections for each host, operator can apply the `Filter` operator 
+opened TCP connections for each host, network operator can apply the `Filter` operator 
 to only report the hosts for which the count exceeds the threshold `Th`. Finally, 
 it reports the hosts that satisfy this query. 
 
@@ -139,8 +139,8 @@ $ sudo python sonata/examples/newly_opened_connections/send.py
 
 * You can check the tuples reported to the stream processor and
 the final output here:
-      * `sonata/examples/newly_opened_connections/logs/emitter.log`
-      * `sonata/examples/newly_opened_connections/logs/final_output`
+  * `sonata/examples/newly_opened_connections/logs/emitter.log` 
+  * `sonata/examples/newly_opened_connections/logs/final_output`
 
 * Finally, run the following command for clean up.
 ```bash
@@ -198,7 +198,7 @@ level `/32`. Note that we support the `Join` operation (for `qid=3`) at the
 stream processor. 
 
 ## Testing
-Follow the same instructions as above the set the environment variables and
+Follow the same instructions as above to set the environment variables and
 do cleanup before running Sonata for this application. 
 
 #### Terminal 1: Start Sonata

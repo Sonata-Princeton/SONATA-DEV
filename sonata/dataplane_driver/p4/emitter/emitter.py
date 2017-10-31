@@ -68,12 +68,17 @@ class Emitter(object):
 
     def start_reader(self):
         while True:
+            read_overhead = 0
             for qid in self.queries.keys():
                 if self.queries[qid]['registers']:
                     for register in self.queries[qid]['registers']:
+                        start = time.time()
                         self.process_register_values(qid, register)
-
-            time.sleep(self.emitter_read_timeout)
+                        read_overhead += time.time()-start
+                        print "Register read took",read_overhead, "seconds"
+            sleep_interval = self.emitter_read_timeout - read_overhead
+            print "Sleep Interval", sleep_interval
+            time.sleep(sleep_interval)
 
     def send_data(self, data):
         self.spark_conn.send_bytes(data)
