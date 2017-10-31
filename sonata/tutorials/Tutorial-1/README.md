@@ -1,4 +1,4 @@
-# Expressing Sonata Queries for Telemetry Applications
+# Expressing Queries for Telemetry Applications
 
 In this tutorial/assignment, we will learn how to express and test 
 queries that detect:
