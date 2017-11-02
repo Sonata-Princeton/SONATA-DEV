@@ -24,7 +24,6 @@ if __name__ == '__main__':
               .filter(filter_vals=('count',), func=('geq', T1))
               )
 
-    # Confirm the fin flag number here
     n_req = (PacketStream(2)
              # Add code here
              .filter(filter_vals=('count',), func=('geq', T2))
@@ -32,12 +31,13 @@ if __name__ == '__main__':
 
     q3 = (n_resp
           .join(window='Same', query=n_req, new_qid=3)
-          .map( map_values=('diff1',), func=('diff',))  # make output diff called 'diff3'
+          .map(map_values=('diff1',), func=('diff',))
           .filter(filter_vals=('diff1',), func=('geq', T3))
           .map(keys=('ipv4.dstIP',))
           )
 
     queries = [q3]
+
     config["final_plan"] = [(1, 32, 4), (2, 32, 4)]
     print("*********************************************************************")
     print("*                   Receiving User Queries                          *")

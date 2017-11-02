@@ -71,14 +71,14 @@ at level `/24` in the previous window interval. Also, for both refinement
 levels, Sonata will execute the first four operators in the data plane. 
 
 We will test this application for three query plans:
-* `config["final_plan"] = [(1,32,1)]`,
-* `config["final_plan"] = [(1,32,4)]`, and
-* `config["final_plan"] = [(1,24,4), (1,32,4)]`
-
-For each plan, we will see the: 
-* Generated P4 and Spark code, 
-* Number of tuples reported to the stream processor
-* Hosts that satisfy the query
+* `config["final_plan"] = [(1,32,1)]`, i.e. only first dataflow operator 
+(`Filter`) is executed in the data plane.
+* `config["final_plan"] = [(1,32,4)]`, i.e. first four dataflow operators are 
+executed in the data plane. 
+* `config["final_plan"] = [(1,24,4), (1,32,4)]`, i.e. the query is first
+executed at refinement level `/24` and the query at refinement level `/32`
+is only applied over traffic that satisfies the query at level `/24` in the
+previous window interval. 
 
 ### Testing
 For testing this query, open two terminals:
@@ -152,10 +152,12 @@ Note: Make sure you run the cleanup script before restarting Sonata.
 #### Questions:
 ##### Question 1: 
 For each plan, report the number of tuples (i.e., number of lines) from 
-the `emitter.log` file.
+the `emitter.log` file. Which plan reports least number of tuples to
+the stream processor?
 
 ##### Question 2: 
-For each plan, report the host(s) that satisfies the query.
+For each plan, report the host(s) that satisfies the query. Do different
+plans identify the same victim host(s)?
 
 #### Question 3:
 For each plan, report the fields for the header, `out_header_10032`.
@@ -225,18 +227,7 @@ Report the host(s) that satisfies the query.
 ### Troubleshooting
 * Before sending the traffic, make sure that Sonata is ready. You'll see 
 the message `System Ready`, when it is ready. 
-* Make sure you run the cleanup script before you reload Sonata. 
-* In case you see a `mysql-connector` not found error, follow the steps below to fix 
-this problem:
-    * Install the missing package:
-    ```bash
-    $ sudo -H pip install mysql-connector==2.1.4
-    ```
-    * Create a `sonata` database:
-    ```bash
-    $ sudo mysql -e "create database sonata;"
-    ```
-    * Add a table:
-    ```bash
-    $ sudo mysql -e "CREATE TABLE indexStore( id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY, qid INT(6),  tuple VARCHAR(200), indexLoc INT(6) );"
-    ```
+* Make sure you run the cleanup script before you reload Sonata.
+* Make sure you add `,` at the end of each attribute of the dataflow operators.
+For example, attribute `keys` should be defined as `keys=('ipv4.dstIP',)` and
+not `keys=('ipv4.dstIP')`. 

@@ -334,7 +334,7 @@ class Runtime(object):
                 # print "*                   IP " + IP[0] + " satisfies coarser query            *"
                 # print "*                   Reconfiguring Data Plane                        *"
                 # print "*********************************************************************\n\n"
-                print "Sending delta commands: ", delta_config
+                # print "Sending delta commands: ", delta_config
                 self.send_to_dp_driver("delta", delta_config)
             # else:
             #     print "Sending empty delta commands: ", delta_config

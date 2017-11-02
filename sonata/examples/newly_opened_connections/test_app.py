@@ -25,7 +25,9 @@ if __name__ == '__main__':
 
     queries = [n_syn]
 
-    config["final_plan"] = [(1, 32, 1)]
+    # config["final_plan"] = [(1, 32, 1)]
+    # config["final_plan"] = [(1, 32, 4)]
+    config["final_plan"] = [(1, 24, 4), (1, 32, 4)]
     print("*********************************************************************")
     print("*                   Receiving User Queries                          *")
     print("*********************************************************************\n\n")

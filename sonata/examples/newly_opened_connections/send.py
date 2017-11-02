@@ -52,9 +52,9 @@ def send_created_traffic():
     traffic_dict = {}
     attack = True
 
-    total_duration = 30
-    attack_duration = 25
-    attack_start_time = 1
+    total_duration = 60
+    attack_duration = 50
+    attack_start_time = 5
 
     for i in range(0, total_duration):
         traffic_dict[i] = []
@@ -79,6 +79,7 @@ def send_created_traffic():
         sendp(traffic_dict[i], iface=IFACE, verbose=0)
         total = time.time() - start
         sleep_time = 1 - total
+        print "Sending", len(traffic_dict[i]), "packets at T=", i, "before sleeping for", sleep_time, "seconds."
         if sleep_time > 0:
             time.sleep(sleep_time)
 
