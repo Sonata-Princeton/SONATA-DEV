@@ -24,16 +24,18 @@ def filtering_in_payload(query):
 
     for operator in query.operators:
         if operator.name == 'Filter':
-            if len(set(['payload',]).intersection(set(operator.filter_vals))) > 0:
+            if len(set(['payload', ]).intersection(set(operator.filter_vals))) > 0:
                 filter_payload = True
                 filter_payload_str = operator.func[1]
 
     return filter_payload, filter_payload_str
 
+
 def get_payload_fields(query, sonata_fields):
     payload_fields = set()
     for operator in query.operators[1:]:
-        payload_fields = payload_fields.union(set(sonata_fields.all_payload_fields.keys()).intersection(set(operator.keys)))
+        payload_fields = payload_fields.union(
+            set(sonata_fields.all_payload_fields.keys()).intersection(set(operator.keys)))
 
     return list(payload_fields)
 
@@ -53,61 +55,58 @@ def flatten_streaming_field_names(fields):
     return flattened_fields
 
 
+def generated_source_path(dir_path, create_directory):
+    import os
+    import shutil
+    generated_src_path = dir_path + create_directory
+    if os.path.isdir(generated_src_path):
+        # clean the directory
+        shutil.rmtree(generated_src_path)
+
+    # Now create a new directory
+    os.makedirs(generated_src_path)
+
+    return generated_src_path
+
+
 def copy_sonata_operators_to_sp_query(query, optr, sonata_fields):
     if optr.name == 'Filter':
-        query.filter(filter_keys=flatten_streaming_field_names(filter_payload_fields_append_to_end(optr.filter_keys, sonata_fields)),
-                     filter_vals=flatten_streaming_field_names(filter_payload_fields_append_to_end(optr.filter_vals, sonata_fields)),
+        query.filter(filter_keys=flatten_streaming_field_names(
+            filter_payload_fields_append_to_end(optr.filter_keys, sonata_fields)),
+                     filter_vals=flatten_streaming_field_names(
+                         filter_payload_fields_append_to_end(optr.filter_vals, sonata_fields)),
                      func=optr.func)
     elif optr.name == "Map":
         query.map(keys=flatten_streaming_field_names(filter_payload_fields_append_to_end(optr.keys, sonata_fields)),
                   values=flatten_streaming_field_names(filter_payload_fields_append_to_end(optr.values, sonata_fields)),
-                  map_keys=flatten_streaming_field_names(filter_payload_fields_append_to_end(optr.map_keys, sonata_fields)),
-                  map_values=flatten_streaming_field_names(filter_payload_fields_append_to_end(optr.map_values, sonata_fields)),
+                  map_keys=flatten_streaming_field_names(
+                      filter_payload_fields_append_to_end(optr.map_keys, sonata_fields)),
+                  map_values=flatten_streaming_field_names(
+                      filter_payload_fields_append_to_end(optr.map_values, sonata_fields)),
                   func=optr.func)
     elif optr.name == "Reduce":
         query.reduce(keys=flatten_streaming_field_names(filter_payload_fields_append_to_end(optr.keys, sonata_fields)),
                      func=optr.func)
 
     elif optr.name == "Distinct":
-        query.distinct(keys=flatten_streaming_field_names(filter_payload_fields_append_to_end(optr.keys, sonata_fields)))
+        query.distinct(
+            keys=flatten_streaming_field_names(filter_payload_fields_append_to_end(optr.keys, sonata_fields)))
 
 
 def filter_payload(keys):
     return filter(lambda x: x != 'payload', keys)
 
 
-def copy_sonata_operators_to_dp_query(query, optr):
-    keys = filter_payload(optr.keys)
-    if optr.name == 'Filter':
-        # TODO: get rid of this hardcoding
-        if optr.func[0] != 'geq':
-            query.filter(keys=keys,
-                         filter_keys=optr.filter_keys,
-                         func=optr.func,
-                         src=optr.src)
-    elif optr.name == "Map":
-        query.map(keys=keys,
-                  map_keys=optr.map_keys,
-                  func=optr.func)
-    elif optr.name == "Reduce":
-        query.reduce(keys=keys)
-
-    elif optr.name == "Distinct":
-        query.distinct(keys=keys)
-
-
 def get_refinement_keys(query, refinement_keys_set):
-    # print "Top Query", query
     per_query_refinement = {}
 
     red_keys = set([])
     if query.left_child is not None:
-        # print "left keys", query.left_child.qid
-        # print "right keys",query.right_child.qid
+
         red_keys_left, _ = get_refinement_keys(query.left_child, refinement_keys_set)
-        print "left keys", red_keys_left, query.qid
+        # print "left keys", red_keys_left, query.qid
         red_keys_right, _ = get_refinement_keys(query.right_child, refinement_keys_set)
-        print "right keys", red_keys_right, query.qid
+        # print "right keys", red_keys_right, query.qid
 
         per_query_refinement[query.left_child.qid] = red_keys_left
         per_query_refinement[query.right_child.qid] = red_keys_right
@@ -117,23 +116,21 @@ def get_refinement_keys(query, refinement_keys_set):
         for operator in query.operators:
             if operator.name in ['Distinct', 'Reduce']:
                 red_keys = red_keys.intersection(set(operator.keys))
-                print query.qid, operator.name, red_keys
 
         per_query_refinement[query.qid] = red_keys
         red_keys = red_keys.intersection(refinement_keys_set)
 
     else:
-        # print "Reached leaf node", query.qid
         red_keys = set(query.basic_headers)
         for operator in query.operators:
             # Extract reduction keys from first reduce/distinct operator
-            # print operator.name, operator.keys, red_keys
             if operator.name in ['Distinct', 'Reduce']:
                 red_keys = red_keys.intersection(set(operator.keys))
 
     red_keys = red_keys.intersection(refinement_keys_set)
-    # print "Reduction Key Search", query.qid, red_keys
+
     return red_keys, per_query_refinement
+
 
 def generate_composed_spark_queries(reduction_key, basic_headers, query_tree, qid_2_query, composed_queries={}):
     # print query_tree

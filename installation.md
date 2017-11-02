@@ -27,12 +27,32 @@ Change the directory to ```Sonata```:
 $ cd SONATA-DEV
 ```
 
+Checkout the `tutorial` branch:
+```bash
+$ git checkout tutorial
+```
+
 Now run the vagrant up command. This will read the Vagrantfile from the current directory and provision the VM accordingly:
 ```bash
 $ vagrant up
 ```
 
+Vagrant 
+
 The provisioning scripts will install all the required software (and their dependencies) to run the `Sonata` demo. Now ssh in to the VM:
 ```bash
 $ vagrant ssh
+```
+
+Notes:
+* Notice that the 
+[line](https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/Vagrantfile#L52)
+in the Vagrant file ensures that the files in your `SONATA-DEV` directory 
+are in sync with the ones in the `/home/vagrant/dev` directory of your VM. 
+This ensures that you can use any IDEs (editors) in your host 
+machine for development. If you prefer to edit files in the VM directly, 
+feel free to install any software using the `APT` software user interface. 
+For example, to install `vim` editor, you need to run the command:
+```bash
+$ sudo apt-get install vim
 ```

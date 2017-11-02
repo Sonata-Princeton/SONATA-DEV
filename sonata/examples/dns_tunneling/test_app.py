@@ -24,14 +24,14 @@ if __name__ == '__main__':
           # .filter(filter_keys=('ipv4.proto',), func=('eq', 17))
           .filter(filter_keys=('udp.sport',), func=('eq', 53))
           .filter(filter_keys=('dns.ancount',), func=('geq', 1))
-          .map(keys=('dns.an.rdata',), map_values=('count',), func=('eq', 1,))
+          .map(keys=('dns.an.rdata',), map_values=('count',), func=('set', 1,))
           .reduce(keys=('dns.an.rdata',), func=('sum',))
 
           )
 
     q2 = (PacketStream(2)
           .filter(filter_keys=('tcp.dport',), func=('eq', 80))
-          .map(keys=('ipv4.dstIP',), map_values=('count',), func=('eq', 1,))
+          .map(keys=('ipv4.dstIP',), map_values=('count',), func=('set', 1,))
           .reduce(keys=('ipv4.dstIP',), func=('sum',))
           )
 
@@ -44,7 +44,7 @@ if __name__ == '__main__':
           )
 
     queries = [q3]
-    config["final_plan"] = [(1, 32, 2, 1)]
+    config["final_plan"] = [(1, 32, 2)]
     print("*********************************************************************")
     print("*                   Receiving User Queries                          *")
     print("*********************************************************************\n\n")

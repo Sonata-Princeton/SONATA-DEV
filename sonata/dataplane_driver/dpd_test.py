@@ -24,7 +24,7 @@ class DPDTest(object):
         self.target_id = 1
 
         # LOGGING
-        log_level = logging.INFO
+        log_level = logging.DEBUG
         # add handler
         self.logger = logging.getLogger('DPDTest')
         self.logger.setLevel(log_level)

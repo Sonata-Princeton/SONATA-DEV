@@ -23,7 +23,7 @@ if __name__ == '__main__':
                    .filter(filter_keys=('udp.sport',), func=('eq', 53))
                    .map(keys=('dns.an.rdata', 'dns.an.rrname'))
                    .distinct(keys=('dns.an.rdata', 'dns.an.rrname'))
-                   .map(keys=('dns.an.rdata',), map_values=('count',), func=('eq', 1,))
+                   .map(keys=('dns.an.rdata',), map_values=('count',), func=('set', 1,))
                    .reduce(keys=('dns.an.rdata',), func=('sum',))
                    .filter(filter_vals=('count',), func=('geq', T))
                    .map(keys=('dns.an.rdata',))
@@ -35,14 +35,14 @@ if __name__ == '__main__':
                    .filter(filter_keys=('udp.sport',), func=('eq', 53))
                    .map(keys=('dns.an.rdata', 'dns.an.rrname'))
                    .distinct(keys=('dns.an.rdata', 'dns.an.rrname'))
-                   .map(keys=('dns.an.rrname',), map_values=('count',), func=('eq', 1,))
+                   .map(keys=('dns.an.rrname',), map_values=('count',), func=('set', 1,))
                    .reduce(keys=('dns.an.rrname',), func=('sum',))
                    .filter(filter_vals=('count',), func=('geq', T))
                    .map(keys=('dns.an.rrname',))
                    )
 
     queries = [ip_2_domain]
-    config["final_plan"] = [(1, 32, 2, 1)]
+    config["final_plan"] = [(1, 32, 2)]
     print("*********************************************************************")
     print("*                   Receiving User Queries                          *")
     print("*********************************************************************\n\n")

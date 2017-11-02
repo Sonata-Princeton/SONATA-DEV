@@ -6,7 +6,7 @@
 
 from sonata.query_engine.sonata_queries import *
 from sonata.core.runtime import Runtime
-import json
+import json, os
 
 if __name__ == '__main__':
     with open('/home/vagrant/dev/sonata/config.json') as json_data_file:
@@ -16,9 +16,8 @@ if __name__ == '__main__':
     T = 40
 
     n_syn = (PacketStream(1)
-             .filter(filter_keys=('ipv4.protocol',), func=('eq', 6))
              .filter(filter_keys=('tcp.flags',), func=('eq', 2))
-             .map(keys=('ipv4.dstIP',), map_values=('count',), func=('eq', 1,))
+             .map(keys=('ipv4.dstIP',), map_values=('count',), func=('set', 1,))
              .reduce(keys=('ipv4.dstIP',), func=('sum',))
              .filter(filter_vals=('count',), func=('geq', T))
              .map(keys=('ipv4.dstIP',))
@@ -26,8 +25,10 @@ if __name__ == '__main__':
 
     queries = [n_syn]
 
-    config["final_plan"] = [(1, 32, 5, 1)]
+    # config["final_plan"] = [(1, 32, 1)]
+    # config["final_plan"] = [(1, 32, 4)]
+    config["final_plan"] = [(1, 24, 4), (1, 32, 4)]
     print("*********************************************************************")
     print("*                   Receiving User Queries                          *")
     print("*********************************************************************\n\n")
-    runtime = Runtime(config, queries)
+    runtime = Runtime(config, queries, os.path.dirname(os.path.realpath(__file__)))

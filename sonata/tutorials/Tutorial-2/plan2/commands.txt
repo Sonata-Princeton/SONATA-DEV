@@ -1,0 +1,5 @@
+table_set_default report_packet do_report_packet
+table_set_default add_out_header do_add_out_header
+// Add command to set the default action for filter_1
+// Add command to set the action when tcp.flags==2
+mirroring_add 8001 12

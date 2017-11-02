@@ -58,9 +58,14 @@ def get_concise_headers(query):
     for operator in query.operators:
         if operator.name in {"Distinct", "Map", "Reduce"}:
             concise_keys = concise_keys.union(set(operator.keys))
+            # print concise_keys
             if operator.name == "Map":
+                if operator.map_keys:
+                    concise_keys = concise_keys.union(set(operator.map_keys))
                 if operator.values:
                     concise_keys = concise_keys.union(set(operator.values))
+                if operator.map_values:
+                    concise_keys = concise_keys.union(set(operator.map_values))
         elif operator.name in ["Filter"]:
             concise_keys = concise_keys.union(set(operator.filter_keys))
 
@@ -98,16 +103,13 @@ class Refinement(object):
         tmp_refinement_key, per_query_refinement = get_refinement_keys(self.query, refinement_keys_set)
 
         if tmp_refinement_key or per_query_refinement:
-            print "***************** Went into refinement **********************" + str([key for key, value in self.qid_2_query.items()])
-
             for key, query in self.qid_2_query.items():
                 tmp_refinement_key_qid,_ = get_refinement_keys(query, refinement_keys_set)
-                print tmp_refinement_key_qid
+
                 if tmp_refinement_key_qid: self.per_query_refinement_key[key] = list(tmp_refinement_key_qid)[0]
                 else: self.per_query_refinement_key[key] = None
-            print (self.per_query_refinement_key)
+
             self.is_refinement_enabled = True
-            # self.refinement_key = list(tmp_refinement_key)[0]
 
             # Add timestamp for each key
             self.add_timestamp_key()
@@ -118,7 +120,7 @@ class Refinement(object):
             self.is_refinement_enabled = False
             # refined_query_id = get_refined_query_id(GRAN_MAX)
 
-    def get_refined_updated_query(self, qid, ref_level, prev_qid=0, prev_ref_level=0, has_join=False):
+    def get_refined_updated_query(self, qid, ref_level, prev_qid=0, prev_ref_level=0, has_join=False, join_qid=None):
         # return query with updated threshold values and map operation---masking based on refinement level
         if self.is_refinement_enabled:
             iter_qids = self.refined_sonata_queries[qid][ref_level].keys()
@@ -127,15 +129,14 @@ class Refinement(object):
             if prev_ref_level > 0:
                 out_query = PacketStream(tmp_query.qid)
                 out_query.basic_headers = get_concise_headers(tmp_query)
-                refined_qid_src = 10000 * prev_qid + prev_ref_level
-
-                print (not has_join), prev_qid, prev_ref_level, qid, ref_level
+                # print (not has_join), prev_qid, prev_ref_level, qid, ref_level
                 if not has_join:
-
+                    refined_qid_src = 10000 * prev_qid + prev_ref_level
                     out_query.filter(append_type=1, src=refined_qid_src, filter_keys=(self.per_query_refinement_key[qid], ),
                                      func=('mask', prev_ref_level,))
                 else:
                     if prev_qid == qid:
+                        refined_qid_src = 10000 * join_qid + prev_ref_level
                         out_query.filter(append_type=1, src=refined_qid_src, filter_keys=(self.per_query_refinement_key[qid], ),
                                          func=('mask', prev_ref_level,))
 

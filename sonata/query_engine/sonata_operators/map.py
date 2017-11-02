@@ -44,6 +44,9 @@ class Map(Query):
         if "func" in map_dict:
             self.func = map_dict['func']
 
+    def get_init_keys(self):
+        return tuple(list(self.keys) + list(self.values) + list(self.map_keys) + list(self.map_values))
+
     def __repr__(self):
         return '.Map(keys=' + str(self.keys) + ', map_keys=' + str(self.map_keys) + \
                ', values=' + str(self.values) + ', map_values=' + str(self.map_values) + \

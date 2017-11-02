@@ -25,9 +25,11 @@ class PacketStream(StreamingQuery):
         self.has_join = False
 
     def __repr__(self):
-        out = 'In\n'
+        out = 'In\n\t'
         for operator in self.operators:
-            out += ''+operator.__repr__()+'\n'
+            out += ''+operator.compile()
+            out += '\n\t'
+
         return out
 
     def compile(self):

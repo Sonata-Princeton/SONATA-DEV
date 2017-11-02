@@ -139,7 +139,8 @@ def test():
         data = json.load(json_data_file)
 
     field_that_determines_child = None
-    if "field_that_determines_child" in data[INITIAL_LAYER][layer_2_target[INITIAL_LAYER]]: field_that_determines_child = data[INITIAL_LAYER][layer_2_target[INITIAL_LAYER]]["field_that_determines_child"]
+    if "field_that_determines_child" in data[INITIAL_LAYER][layer_2_target[INITIAL_LAYER]]:
+        field_that_determines_child = data[INITIAL_LAYER][layer_2_target[INITIAL_LAYER]]["field_that_determines_child"]
     layers = SonataLayer(INITIAL_LAYER,
                          data,
                          fields=data[INITIAL_LAYER][layer_2_target[INITIAL_LAYER]]["fields"],

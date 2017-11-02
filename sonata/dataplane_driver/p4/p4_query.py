@@ -24,10 +24,9 @@ class P4Query(object):
     def __init__(self, query_id, parse_payload, payload_fields, read_register, filter_payload,
                  filter_payload_str, generic_operators, nop_name, drop_meta_field,
                  satisfied_meta_field, clone_meta_field, p4_raw_fields):
-
         # LOGGING
         log_level = logging.ERROR
-        self.logger = get_logger('P4Query - %i' % query_id, 'INFO')
+        self.logger = get_logger('P4Query - %i' % query_id, 'DEBUG')
         self.logger.setLevel(log_level)
         self.logger.info('init')
         self.id = query_id
@@ -83,18 +82,24 @@ class P4Query(object):
     def create_out_header(self):
         out_header_name = 'out_header_%i' % self.id
         self.out_header = OutHeaders(out_header_name)
-        print "Last Operator", self.operators[-1], self.payload_fields+['ts', 'count']
-        sonata_field_list = filter(lambda x: x not in self.payload_fields+['ts', 'count', 'index'], self.operators[-1].get_out_headers())
-        out_header_fields = [self.p4_raw_fields.get_target_field(x) for x in sonata_field_list]
 
-        qid_field = P4Field(layer=self.out_header, target_name="qid", sonata_name="qid", size=QID_SIZE)
-        out_header_fields = [qid_field] + out_header_fields
-        if 'count' in self.operators[-1].get_out_headers():
-            out_header_fields.append(P4Field(layer=self.out_header, target_name="count", sonata_name="count",
-                                             size=COUNT_SIZE))
-        if 'index' in self.operators[-1].get_out_headers():
-            out_header_fields.append(P4Field(layer=self.out_header, target_name="index", sonata_name="index",
-                                             size=INDEX_SIZE))
+        sonata_field_list = filter(lambda x: x not in self.payload_fields + ['ts'], self.operators[-1].get_out_headers())
+
+        sonata_field_list = ['qid'] + sonata_field_list
+
+        out_header_fields = list()
+
+        for fld in sonata_field_list:
+            if fld == 'qid':
+                out_header_fields.append(P4Field(layer=self.out_header, target_name="qid", sonata_name="qid", size=QID_SIZE))
+            elif fld == 'count':
+                out_header_fields.append(P4Field(layer=self.out_header, target_name="count", sonata_name="count",
+                                                 size=COUNT_SIZE))
+            elif fld == 'index':
+                out_header_fields.append(P4Field(layer=self.out_header, target_name="index", sonata_name="index",
+                                                 size=INDEX_SIZE))
+            else:
+                out_header_fields.append(self.p4_raw_fields.get_target_field(fld))
 
         for operator in self.operators:
             if operator.name == 'Reduce':
@@ -119,18 +124,18 @@ class P4Query(object):
         for operator in generic_operators:
             if operator.name in {'Filter', 'Map', 'Reduce', 'Distinct'}:
                 all_fields = all_fields.union(set(operator.get_init_keys()))
+        # print "get_all_fields1: ", all_fields
         # TODO remove this
-        self.all_fields = filter(lambda x: x not in self.payload_fields+['ts', 'count'], all_fields)
+        self.all_fields = filter(lambda x: x not in self.payload_fields+['ts'], all_fields)
 
     def get_init_fields(self, generic_operators):
         # TODO: only select fields over which we perform any action
-        print "#DEBUG INIT FIELDS:", generic_operators
         all_fields = set()
         for operator in generic_operators:
             if operator.name in {'Map', 'Reduce', 'Distinct', 'Filter'}:
-                print "#DEBUG INIT FIELDS:", operator.name, operator.get_init_keys()
                 all_fields = all_fields.union(set(operator.get_init_keys()))
         # No need to filter out count field
+        # print "get_all_fields: ", all_fields
         return filter(lambda x: x not in self.payload_fields+['ts'], all_fields)
 
     def init_operators(self, generic_operators):
@@ -140,8 +145,6 @@ class P4Query(object):
         map_init_keys = ['qid'] + self.get_init_fields(generic_operators)
 
         if self.read_register: map_init_keys += ['index']
-
-        print "For Query", self.id, "MapInit fields", map_init_keys
 
         self.logger.debug('add map_init with keys: %s' % (', '.join(map_init_keys),))
         map_init_operator = P4MapInit(self.id, operator_id, map_init_keys, self.p4_raw_fields)
@@ -179,6 +182,7 @@ class P4Query(object):
                                           self.meta_init_name,
                                           operator.keys,
                                           operator.map_keys,
+                                          operator.map_values,
                                           operator.func, self.p4_raw_fields))
 
             elif operator.name == 'Reduce':
@@ -280,7 +284,7 @@ class P4Query(object):
         header_format['filter_payload'] = self.filter_payload
         header_format['filter_payload_str'] = self.filter_payload_str
         header_format['registers'] = self.registers_to_read
-        print "%%%% get_header_format %%%% :" + str(self.out_header)
+
         if self.out_header:
             header_format['headers'] = self.out_header
         else:

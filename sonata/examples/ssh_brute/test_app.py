@@ -21,7 +21,7 @@ if __name__ == '__main__':
                  .map(keys=('ipv4.dstIP', 'ipv4.srcIP', 'ipv4.totalLen'))
                  .distinct(keys=('ipv4.dstIP', 'ipv4.srcIP', 'ipv4.totalLen'))
                  .map(keys=('ipv4.dstIP', 'ipv4.totalLen'))
-                 .map(keys=('ipv4.dstIP', 'ipv4.totalLen'), map_values=('count',), func=('eq', 1,))
+                 .map(keys=('ipv4.dstIP', 'ipv4.totalLen'), map_values=('count',), func=('set', 1,))
                  .reduce(keys=('ipv4.dstIP', 'ipv4.totalLen'), func=('sum',))
                  .filter(filter_vals=('count',), func=('geq', 40))
                  .map(keys=('ipv4.dstIP',))
@@ -39,7 +39,7 @@ if __name__ == '__main__':
                      )
 
     queries = [zorro_attack]
-    config["final_plan"] = [(1, 8, 3, 1), (1, 32, 3, 1), (3, 32, 2, 1)]
+    config["final_plan"] = [(1, 8, 3), (1, 32, 3), (3, 32, 2)]
     print("*********************************************************************")
     print("*                   Receiving User Queries                          *")
     print("*********************************************************************\n\n")

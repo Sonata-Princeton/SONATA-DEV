@@ -82,7 +82,7 @@ class IPField(Field):
     size = 32
     format = 'BBBB'
 
-    def __init__(self, target_name, sonata_name, offset):
+    def __init__(self, target_name, sonata_name, offset=0):
         Field.__init__(self, target_name, sonata_name, self.size, self.format, offset)
         self.ctr = self.size / self.byte_size
 

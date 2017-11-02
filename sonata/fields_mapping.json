@@ -3,16 +3,16 @@
     "bmv2": {
       "in_payload": false,
       "fields": [
-        { "sonata_name": "srcPort", "target_name": "tcp.sport", "size": 16 },
-        { "sonata_name": "dstPort", "target_name": "tcp.dport", "size": 16 },
-        { "sonata_name": "seqNo", "target_name": "tcp.seqNo", "size": 32 },
-        { "sonata_name": "ackNo", "target_name": "tcp.ackNo", "size": 32 },
-        { "sonata_name": "dataOffset", "target_name": "tcp.dataOffset", "size": 4 },
-        { "sonata_name": "res", "target_name": "tcp.res", "size": 4 },
-        { "sonata_name": "flags", "target_name": "tcp.flags", "size": 8 },
-        { "sonata_name": "window", "target_name": "tcp.window", "size": 16 },
-        { "sonata_name": "checksum", "target_name": "tcp.checksum", "size": 16 },
-        { "sonata_name": "urgentPtr", "target_name": "tcp.urgentPtr", "size": 16 }
+        { "sonata_name": "tcp.sport", "target_name": "tcp.sport", "size": 16 },
+        { "sonata_name": "tcp.dport", "target_name": "tcp.dport", "size": 16 },
+        { "sonata_name": "tcp.seqNo", "target_name": "tcp.seqNo", "size": 32 },
+        { "sonata_name": "tcp.ackNo", "target_name": "tcp.ackNo", "size": 32 },
+        { "sonata_name": "tcp.dataOffset", "target_name": "tcp.dataOffset", "size": 4 },
+        { "sonata_name": "tcp.res", "target_name": "tcp.res", "size": 4 },
+        { "sonata_name": "tcp.flags", "target_name": "tcp.flags", "size": 8 },
+        { "sonata_name": "tcp.window", "target_name": "tcp.window", "size": 16 },
+        { "sonata_name": "tcp.checksum", "target_name": "tcp.checksum", "size": 16 },
+        { "sonata_name": "tcp.urgentPtr", "target_name": "tcp.urgentPtr", "size": 16 }
       ],
       "child_layers": {}
     },
@@ -22,18 +22,18 @@
     "bmv2": {
       "in_payload": false,
       "fields": [
-        { "sonata_name": "version", "target_name": "ipv4.version", "size": 4 },
-        { "sonata_name": "ihl", "target_name": "ipv4.ihl", "size": 4 },
-        { "sonata_name": "diffserv", "target_name": "ipv4.diffserv", "size": 8 },
-        { "sonata_name": "totalLen", "target_name": "ipv4.totalLen", "size": 16 },
-        { "sonata_name": "identification", "target_name": "ipv4.identification", "size": 16 },
-        { "sonata_name": "flags", "target_name": "ipv4.flags", "size": 3 },
-        { "sonata_name": "fragOffset", "target_name": "ipv4.fragOffset", "size": 13 },
-        { "sonata_name": "ttl", "target_name": "ipv4.ttl", "size": 8 },
-        { "sonata_name": "protocol", "target_name": "ipv4.protocol", "size": 8 },
-        { "sonata_name": "hdrChecksum", "target_name": "ipv4.hdrChecksum", "size": 16 },
-        { "sonata_name": "srcAddr", "target_name": "ipv4.srcIP", "size": 32 },
-        { "sonata_name": "dstAddr", "target_name": "ipv4.dstIP", "size": 32 }
+        { "sonata_name": "ipv4.version", "target_name": "ipv4.version", "size": 4 },
+        { "sonata_name": "ipv4.ihl", "target_name": "ipv4.ihl", "size": 4 },
+        { "sonata_name": "ipv4.diffserv", "target_name": "ipv4.diffserv", "size": 8 },
+        { "sonata_name": "ipv4.totalLen", "target_name": "ipv4.totalLen", "size": 16 },
+        { "sonata_name": "ipv4.identification", "target_name": "ipv4.identification", "size": 16 },
+        { "sonata_name": "ipv4.flags", "target_name": "ipv4.flags", "size": 3 },
+        { "sonata_name": "ipv4.fragOffset", "target_name": "ipv4.fragOffset", "size": 13 },
+        { "sonata_name": "ipv4.ttl", "target_name": "ipv4.ttl", "size": 8 },
+        { "sonata_name": "ipv4.protocol", "target_name": "ipv4.protocol", "size": 8 },
+        { "sonata_name": "ipv4.hdrChecksum", "target_name": "ipv4.hdrChecksum", "size": 16 },
+        { "sonata_name": "ipv4.srcIP", "target_name": "ipv4.srcIP", "size": 32 },
+        { "sonata_name": "ipv4.dstIP", "target_name": "ipv4.dstIP", "size": 32 }
       ],
       "field_that_determines_child": "-4",
       "child_layers": {"6": "tcp", "17": "udp", "18": "payload"}
@@ -44,10 +44,10 @@
     "bmv2": {
       "in_payload": false,
       "fields": [
-        { "sonata_name": "srcPort", "target_name": "udp.sport", "size": 16 },
-        { "sonata_name": "dstPort", "target_name": "udp.dport", "size": 16 },
-        { "sonata_name": "length_", "target_name": "udp.len", "size": 16 },
-        { "sonata_name": "checksum", "target_name": "udp.checksum", "size": 16 }
+        { "sonata_name": "udp.sport", "target_name": "udp.sport", "size": 16 },
+        { "sonata_name": "udp.dport", "target_name": "udp.dport", "size": 16 },
+        { "sonata_name": "udp.len", "target_name": "udp.len", "size": 16 },
+        { "sonata_name": "udp.checksum", "target_name": "udp.checksum", "size": 16 }
       ],
       "child_layers": {"0": "DNS"}
     }
@@ -56,9 +56,9 @@
     "bmv2": {
       "in_payload": false,
       "fields": [
-        { "sonata_name": "dstAddr", "target_name": "ethernet.dstMac", "size": 48 },
-        { "sonata_name": "srcAddr", "target_name": "ethernet.srcMac", "size": 48 },
-        { "sonata_name": "ethType", "target_name": "ethernet.ethType", "size": 16 }
+        { "sonata_name": "ethernet.dstMac", "target_name": "ethernet.dstMac", "size": 48 },
+        { "sonata_name": "ethernet.srcMac", "target_name": "ethernet.srcMac", "size": 48 },
+        { "sonata_name": "ethernet.ethType", "target_name": "ethernet.ethType", "size": 16 }
       ],
       "child_layers": { "0x0800": "ipv4"},
       "field_that_determines_child": "-1"

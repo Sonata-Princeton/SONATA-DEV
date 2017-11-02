@@ -13,11 +13,16 @@ import json
 
 
 def send_reduction_keys(rdd, op_handler_socket, start_time, qid='0'):
-    list_rdd = rdd.collect()
-    reduction_str = ",".join([r for r in list_rdd])
+    list_rdd = list(set(rdd.collect()))
+    reduction_str = ",".join([str(r) for r in list_rdd])
     reduction_socket = Client(tuple(op_handler_socket))
     reduction_socket.send_bytes("k," + qid + "," + reduction_str + "\n")
-    print("Sending P2: ", qid, list_rdd, reduction_str, " at time", time.time() - start_time)
+    print("For", qid, "stream processor sending ", list_rdd, " at time", time.time() - start_time)
+
+
+def print_rdd(rdd):
+    list_rdd = list(rdd.collect())
+    print(list_rdd)
 
 
 def processLogLine(flow):
@@ -46,14 +51,12 @@ class StreamingDriver(object):
     def start(self):
         lines = self.ssc.socketTextStream(self.spark_stream_address, self.spark_stream_port)
         pktstream = (lines.map(lambda line: processLogLine(line)))
-        print(self.window_length, self.sliding_interval)
+        # print(self.window_length, self.sliding_interval)
         self.process_pktstream(pktstream)
         self.ssc.start()
         self.ssc.awaitTermination()
 
     def process_pktstream(self, pktstream):
-        print("pktstream")
-
         spark_queries = {}
 
         conn = self.sm_listener.accept()
@@ -62,55 +65,33 @@ class StreamingDriver(object):
 
         queries = data['queries']
         join_queries = data['join_queries']
-
+        all_join_queries = []
         for queryId in queries:
             query = queries[queryId]
 
             if not query.has_join and queryId not in join_queries:
-                query_str = "pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd.filter(lambda p : (p[1]==str('" + str(queryId) + "'))).map(lambda p : (p[2:]))." + query.compile() + ")).foreachRDD(lambda rdd:send_reduction_keys(rdd, " + str(self.op_handler_socket) + "," + str(self.start_time) + ",\'" + str(queryId) + "\'))"
-                print(query_str)
+                query_str = "pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd.filter(lambda p : (p[1]==str('" + str(
+                    queryId) + "'))).map(lambda p : (p[2:]))." + query.compile() + ")).foreachRDD(lambda rdd:send_reduction_keys(rdd, " + str(
+                    self.op_handler_socket) + "," + str(self.start_time) + ",\'" + str(queryId) + "\'))"
+                # print(query_str)
                 spark_queries[queryId] = eval(query_str)
             elif not query.has_join and queryId in join_queries:
-                query_str = "pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd.filter(lambda p : (p[1]==str('" + str(queryId) + "'))).map(lambda p : (p[2:]))." + query.compile() + "))" #.foreachRDD(lambda rdd:send_reduction_keys(rdd, " + str(self.op_handler_socket) + "," + str(self.start_time) + ",\'" + str(queryId) + "\'))"
-                print(query_str)
+                query_str = "pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd.filter(lambda p : (p[1]==str('" + str(
+                    queryId) + "'))).map(lambda p : (p[2:]))." + query.compile() + "))"  # .foreachRDD(lambda rdd:send_reduction_keys(rdd, " + str(self.op_handler_socket) + "," + str(self.start_time) + ",\'" + str(queryId) + "\'))"
+                # print(query_str)
                 spark_queries[queryId] = eval(query_str)
+                tmp_qry = query_str+'.foreachRDD(lambda rdd: print_rdd(rdd))'
+                # eval(tmp_qry)
             else:
-                query_str = query.compile() + ".foreachRDD(lambda rdd: print(\"Join \" + str(rdd.take(5))))"
-                print(query_str)
-                spark_queries[queryId] = eval(query_str)
+                query_str = query.compile() + ".foreachRDD(lambda rdd:send_reduction_keys(rdd, " + str(
+                    self.op_handler_socket) + "," + str(self.start_time) + ",\'" + str(queryId) + "\'))"
+                # print(query_str)
+                all_join_queries.append(query_str)
 
-            # spark_queries[1210032] = pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd.filter(lambda p : (p[1]==str('1210032'))).map(lambda p : (p[2:])).map(lambda ((ipv4_dstIP,ipv4_srcIP,tcp_sport)): ((ipv4_dstIP,ipv4_srcIP,tcp_sport))).map(lambda ((ipv4_dstIP,ipv4_srcIP,tcp_sport)): ((ipv4_dstIP),(1))).reduceByKey(lambda x,y: x+y).filter(lambda ((ipv4_dstIP),(count)): ((float(count)>=10 ))))).foreachRDD(lambda rdd:send_reduction_keys(rdd, [u'localhost', 4949],1504476340.91,'1210032'))
-
-        # print(spark_queries)
-        # spark_queries[1220032].join(spark_queries[1210032]).map(lambda ((ipv4_dstIP),(ipv4_totalLen,count)): ((ipv4_dstIP),(ipv4_totalLen/count))).filter(lambda ((ipv4_dstIP),(count2)): ((float(count2)>=10 ))).foreachRDD(lambda rdd: print("Join " + str(rdd.take(5))))
-
-            # spark_queries['1220032'].join(spark_queries['1210032']).map(lambda ((ipv4_dstIP),(ipv4_totalLen,count)): ((ipv4_dstIP),(ipv4_totalLen/count))).filter(lambda ((ipv4_dstIP),(count2)): ((float(count2)>=10 ))).foreachRDD(lambda rdd: print("Join " + str(rdd.take(5))))
-            # spark_queries['1220032'].join(spark_queries['1210032']).map(lambda ((('ipv4.dstIP')),(ipv4.totalLen,count)): ((ipv4_dstIP),(ipv4.totalLen/count))).filter(lambda ((ipv4_dstIP),(count2)): ((float(count2)>=10 ))).foreachRDD(lambda rdd: print("Join " + str(rdd.take(5))))
-            # spark_queries['1220032'].join(spark_queries['1210032']).map(lambda (((ipv4_dstIP)),(ipv4_totalLen,count)): ((ipv4_dstIP),)).filter(lambda ((ipv4_dstIP),(count2)): ((float(count2)>=10 ))).foreachRDD(lambda rdd: print("Join " + str(rdd.take(5))))
-            # pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd.filter(lambda p : (p[1]== '10032')).map(lambda p : (p[2:]))).collect())
-            # pktstream.window(self.window_length, self.sliding_interval).transform(lambda rdd: (rdd.filter(lambda p : (p[1]==str('1210032'))).map(lambda p : (p[2:]))..map(lambda ((ipv4_dstIP,ipv4_srcIP,tcp_sport)): ((ipv4_dstIP,ipv4_srcIP,tcp_sport))).map(lambda ((ipv4_dstIP,ipv4_srcIP,tcp_sport)): ((ipv4_dstIP),(1))).reduceByKey(lambda x,y: x+y).filter(lambda ((ipv4_dstIP),(count)): ((float(count)>=10 ))))).foreachRDD(lambda rdd:send_reduction_keys(rdd, [u'localhost', 4949],1504474502.52,'1210032'))
-            # spark_queries['20032'] = pktstream.window(
-            #     self.window_length, self.sliding_interval) \
-            #     .transform(lambda rdd: (rdd
-            #                             .filter(lambda p: (p[1] == str('20032')))
-            #                             .map(lambda p: (p[2:]))
-            #                             .map(lambda ((ipv4_srcIP, udp_dport, count)): ((ipv4_srcIP, udp_dport), (count)))
-            #                             .reduceByKey(lambda x,y: x+y))
-            #                )
-            #
-            # spark_queries['10032'] = pktstream.window(self.window_length, self.sliding_interval)\
-            #     .transform(lambda rdd: (rdd
-            #                             .filter(lambda p: (p[1] == str('10032')))
-            #                             .map(lambda p: (p[2:]))
-            #                             .map(lambda ((ipv4_dstIP, udp_sport, count)): ((ipv4_dstIP, udp_sport), (count)))
-            #                             .reduceByKey(lambda x,y: x+y))
-            #                )
-            #
-            # spark_queries['10032'].join(spark_queries['20032'])\
-            #     .map(lambda s: (s[0], float(s[1][0])-float(s[1][1]))).foreachRDD(lambda rdd: print("Join " + str(rdd.take(5))))
-            # .filter(lambda s: s[1] > 1)\
-            # .map(lambda s: s[0][0])\
-            # .foreachRDD(lambda rdd: print("Join " + str(rdd.take(5))))
+        if all_join_queries:
+            for join_query in all_join_queries:
+                # print(join_query)
+                eval(join_query)
 
 
 if __name__ == "__main__":

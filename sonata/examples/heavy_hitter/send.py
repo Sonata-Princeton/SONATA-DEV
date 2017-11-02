@@ -34,10 +34,8 @@ def create_attack_traffic():
     for i in range(number_of_packets):
         sIPs.append(socket.inet_ntoa(struct.pack('>I', random.randint(1, 0xffffffff))))
 
-    ttl = 10
     for sIP in sIPs:
-        ttl += 1
-        p = Ether() / IP(dst=dIP, src=sIP, len=100) / UDP(sport=53) /DNS(qr=1, aa=1, ancount=1,an=DNSRR(rrname='www.thepacketgeek.com',  ttl=ttl, rdata='192.168.1.1'))
+        p = Ether() / IP(dst=dIP, src=sIP, len=40) / TCP() / "SONATA NORMAL"
         attack_packets.append(p)
 
     return attack_packets

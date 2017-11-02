@@ -22,15 +22,17 @@ if __name__ == '__main__':
     # first know how much is 99 percentile and then
     # use that 99 percentile as threshold
     heavy_hitter = (PacketStream(1)
-                    .map(keys=('ipv4.dstIP', 'ipv4.srcIP'), values=('ipv4.totalLen',))
+                    .map(keys=('ipv4.dstIP', 'ipv4.srcIP'), map_values=('ipv4.totalLen',))
                     .reduce(keys=('ipv4.dstIP', 'ipv4.srcIP',), func=('sum',))
-                    .filter(filter_vals=('ipv4.totalLen',), func=('geq', '40'))
+                    .filter(filter_vals=('ipv4.totalLen',), func=('geq', 40))
                     .map(keys=('ipv4.dstIP',))
                     )
 
     queries = [heavy_hitter]
-    config["final_plan"] = [(1, 32, 1, 1)]
+    config["final_plan"] = [(1, 32, 3)]
     print("*********************************************************************")
     print("*                   Receiving User Queries                          *")
     print("*********************************************************************\n\n")
-    runtime = Runtime(config, queries)
+    runtime = Runtime(config, queries,
+                      os.path.dirname(os.path.realpath(__file__))
+                      )

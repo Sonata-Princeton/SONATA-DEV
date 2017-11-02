@@ -172,7 +172,8 @@ class P4Distinct(P4Operator):
 
 
 class P4Reduce(P4Operator):
-    def __init__(self, qid, operator_id, meta_init_name, drop_action, keys, values, threshold, read_register, p4_raw_fields):
+    def __init__(self, qid, operator_id, meta_init_name, drop_action, keys, values, threshold, read_register,
+                 p4_raw_fields):
         super(P4Reduce, self).__init__('Reduce', qid, operator_id, keys, p4_raw_fields)
 
         if threshold == '-1':
@@ -231,13 +232,19 @@ class P4Reduce(P4Operator):
                                                          REGISTER_INSTANCE_COUNT))
         primitives.append(RegisterRead(self.value_field_name, self.register.get_name(), self.index_field_name))
 
+
         if self.values[0] == 'count':
-            self.threshold = '1'
+            if self.threshold <= 1:
+                self.threshold = '1'
+
             primitives.append(ModifyField(self.value_field_name, '%s + %i' % (self.value_field_name, 1)))
         else:
             target_fld = self.p4_raw_fields.get_target_field(self.values[0])
-            self.threshold = '%s.%s' % (meta_init_name, target_fld.target_name.replace(".", "_"))
-            primitives.append(ModifyField(self.value_field_name, '%s + %s' % (self.value_field_name, '%s.%s' % (meta_init_name, target_fld.target_name.replace(".", "_")))))
+            if self.threshold <= 1:
+                self.threshold = '%s.%s' % (meta_init_name, target_fld.target_name.replace(".", "_"))
+
+            primitives.append(ModifyField(self.value_field_name, '%s + %s' % (
+            self.value_field_name, '%s.%s' % (meta_init_name, target_fld.target_name.replace(".", "_")))))
 
         primitives.append(RegisterWrite(self.register.get_name(), self.index_field_name, self.value_field_name))
         self.init_action = Action('do_init_%s' % self.operator_name, primitives)
@@ -316,7 +323,8 @@ class P4Reduce(P4Operator):
         return out
 
     def get_init_keys(self):
-        return self.keys + ['count']
+
+        return self.keys + self.values
 
 
 class P4MapInit(P4Operator):
@@ -398,12 +406,13 @@ class P4MapInit(P4Operator):
 
 
 class P4Map(P4Operator):
-    def __init__(self, qid, operator_id, meta_init_name, keys, map_keys, func, p4_raw_fields):
+    def __init__(self, qid, operator_id, meta_init_name, keys, map_keys, map_values, func, p4_raw_fields):
         super(P4Map, self).__init__('Map', qid, operator_id, keys, p4_raw_fields)
 
         self.meta_init_name = meta_init_name
         self.map_keys = map_keys
         self.func = func
+        self.map_values = map_values
 
         # Add map init
         map_fields = list()
@@ -416,17 +425,32 @@ class P4Map(P4Operator):
                                           size=COUNT_SIZE))
             else:
                 map_fields.append(self.p4_raw_fields.get_target_field(fld))
+
+        map_fields_values = list()
+        for fld in self.map_values:
+            if fld == 'qid':
+                map_fields_values.append(P4Field(layer=None, target_name="qid", sonata_name="qid",
+                                          size=QID_SIZE))
+            elif fld == 'count':
+                map_fields_values.append(P4Field(layer=None, target_name="count", sonata_name="count",
+                                          size=COUNT_SIZE))
+            else:
+                map_fields_values.append(self.p4_raw_fields.get_target_field(fld))
+
         # create ACTION using the function
         primitives = list()
         if len(func) > 0:
             self.func = func
             if func[0] == 'mask' or not func[0]:
                 for field in map_fields:
-                    # print self.__repr__(), self.map_keys
                     mask_size = (func[1] / 4)
                     mask = '0x' + ('f' * mask_size) + ('0' * (HEADER_MASK_SIZE[field.target_name] - mask_size))
                     field_name = '%s.%s' % (self.meta_init_name, field.target_name.replace(".", "_"))
                     primitives.append(BitAnd(field_name, field_name, mask))
+            if func[0] == 'set' or not func[0]:
+                for field in map_fields_values:
+                    field_name = '%s.%s' % (self.meta_init_name, field.target_name.replace(".", "_"))
+                    primitives.append(ModifyField(field_name, func[1]))
 
         self.action = Action('do_%s' % self.operator_name, primitives)
 
@@ -434,7 +458,7 @@ class P4Map(P4Operator):
         self.table = Table(self.operator_name, self.action.get_name(), [], None, 1)
 
     def __repr__(self):
-        return '.Map(keys=' + str(self.keys) + ', map_keys=' + str(self.map_keys) + ', func=' + str(self.func) + ')'
+        return '.Map(keys=' + str(self.keys) + ', map_keys=' + str(self.map_keys) + ', map_values=' + str(self.map_values) + ', func=' + str(self.func) + ')'
 
     def get_code(self):
         out = ''
@@ -456,7 +480,10 @@ class P4Map(P4Operator):
         return out
 
     def get_init_keys(self):
-        return self.keys
+        return list(self.keys) + list(self.map_keys) + list(self.map_values)
+
+    def get_out_headers(self):
+        return list(self.keys) + list(self.map_keys) + list(self.map_values)
 
 
 class P4Filter(P4Operator):
@@ -486,14 +513,11 @@ class P4Filter(P4Operator):
 
         reads_fields = list()
         for filter_key in self.filter_keys:
-            print "Filter key: ", filter_key, self.func
-            print self.operator_specific_fields
-
             if self.func == 'mask':
                 reads_fields.append((filter_key, 'lpm'))
             else:
                 reads_fields.append((filter_key, 'exact'))
-        print "Debug P4Filter", self.operator_name, miss_action, (match_action,), reads_fields, TABLE_SIZE
+
         self.table = Table(self.operator_name, miss_action, (match_action,), reads_fields, TABLE_SIZE)
 
     def __repr__(self):

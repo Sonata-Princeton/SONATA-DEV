@@ -46,8 +46,8 @@ class P4Target(object):
         self.supported_operations = ['Map', 'Filter', 'Reduce', 'Distinct']
 
         # LOGGING
-        log_level = logging.INFO
-        self.logger = get_logger('P4Target', 'INFO')
+        log_level = logging.DEBUG
+        self.logger = get_logger('P4Target', 'DEBUG')
         self.logger.setLevel(log_level)
         self.logger.info('init')
 
@@ -61,7 +61,6 @@ class P4Target(object):
 
         # p4 app object
         self.app = None
-        print "P4 target initialized"
 
     def get_supported_operators(self):
         return self.supported_operations
@@ -78,7 +77,7 @@ class P4Target(object):
 
         p4_commands = self.app.get_commands()
         commands_string = "\n".join(p4_commands)
-        self.logger.info("Commands: " + commands_string)
+        # self.logger.info("Commands: " + commands_string)
         write_to_file(self.P4_COMMANDS, commands_string)
 
         # compile p4 to json
@@ -100,14 +99,17 @@ class P4Target(object):
             em_thread.start()
 
     def update(self, filter_update):
-        self.logger.info('update')
+        # self.logger.info('update')
         # Reset the data plane registers/tables before pushing the new delta config
-        # self.dataplane.reset_switch_state()
+        # print "reset dataplane"
+        self.dataplane.reset_switch_state()
+        self.dataplane.send_commands(self.JSON_P4_COMPILED, self.P4_COMMANDS)
 
         # Get the commands to add new filter flow rules
-        commands = self.app.get_update_commands(filter_update)
-        commands_string = "\n".join(commands)
-        write_to_file(self.P4_DELTA_COMMANDS, commands_string)
-        self.dataplane.send_commands(self.JSON_P4_COMPILED, self.P4_COMMANDS)
-        self.dataplane.send_commands(self.JSON_P4_COMPILED, self.P4_DELTA_COMMANDS)
+        if filter_update != {}:
+            commands = self.app.get_update_commands(filter_update)
+            commands_string = "\n".join(commands)
+            print "Update Filter Tables: " + commands_string
+            write_to_file(self.P4_DELTA_COMMANDS, commands_string)
+            self.dataplane.send_commands(self.JSON_P4_COMPILED, self.P4_DELTA_COMMANDS)
 
