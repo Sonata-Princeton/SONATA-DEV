@@ -185,7 +185,7 @@ def solve_sonata_lp(Q, query_2_tables, cost_matrix, qid_2_R, sigma_max, width_ma
                     All_BS[sid].append(BS[sid][qid][rid][tid])
         m.addConstr(sum(All_BS[sid]) <= bits_max)
 
-    # define the objective, i.e. minimize the total number of packets to send to stream processor
+    # define the objective, i.e., minimize the total number of packets to send to stream processor
     total_packets = []
     for qid in Q:
         for rid in qid_2_R[qid][1:]:
@@ -205,14 +205,14 @@ def solve_sonata_lp(Q, query_2_tables, cost_matrix, qid_2_R, sigma_max, width_ma
 
     elif mode in [3]:
         # deactivate all queries that run at coarser refinement level to zero,
-        # i.e. only partitioning at finest refinement level and no iterative refinement
+        # i.e., only partitioning at finest refinement level and no iterative refinement
         for qid in Q:
             for rid in qid_2_R[qid][1:-1]:
                 m.addConstr(I[qid][rid] == 0)
 
     elif mode in [4]:
         # activate all queries as all refinement levels to one,
-        # i.e. each query uses all possible refinement levels
+        # i.e., each query uses all possible refinement levels
         for qid in Q:
             for rid in qid_2_R[qid][1:]:
                 m.addConstr(I[qid][rid] == 1)

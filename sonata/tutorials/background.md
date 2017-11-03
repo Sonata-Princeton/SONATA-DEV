@@ -117,7 +117,7 @@ victims = (PacketStream(qid=1)
 ```
 
 Note: `tcp.flags` is a an eight bit field. Binary representation for 
-`tcp.flags` field for SYN packets is `00000010`, i.e. its decimal value
+`tcp.flags` field for SYN packets is `00000010`, i.e., its decimal value
  is `2` Similarly, `FIN` packets will have `tcp.flags=1`, `ACK` packets 
  will have `tcp.flags=16` and so on. 
 
@@ -158,7 +158,7 @@ processor enough. Sonata performs dynamic refinement to further reduce
 the load in these situations. 
 
 To perform refinement, Sonata's runtime needs to identify the
-key for refinement, i.e. refinement key. Any field that is hierarchical
+key for refinement, i.e., refinement key. Any field that is hierarchical
 and is used as a key in the stateful dataflow operations is a candidate
 refinement key. The hierarchical structure allows Sonata to replace a 
 more specific key with a coarser version without missing any traffic 

@@ -17,7 +17,7 @@ def send_reduction_keys(rdd, op_handler_socket, start_time, qid='0'):
     reduction_str = ",".join([str(r) for r in list_rdd])
     reduction_socket = Client(tuple(op_handler_socket))
     reduction_socket.send_bytes("k," + qid + "," + reduction_str + "\n")
-    print("For", qid, "stream processor sending ", list_rdd, " at time", time.time() - start_time)
+    print("For", qid, "stream processor sending ", [str(x) for x in list_rdd], " at time", time.time() - start_time)
 
 
 def print_rdd(rdd):

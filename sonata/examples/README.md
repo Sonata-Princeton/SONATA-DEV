@@ -1,7 +1,7 @@
 ## Telemetry Applications
 
 Some of the applications in this directory are described below:
-|#| Application Name  | Description (Identify)|
+|#| Application Name  | Description|
 | -|------------- | ------------- |
 | 1|TCP New Conn | Hosts for which the number of newly opened TCP connections exceeds threshold.|
 | 2|SSH Brute     | Hosts that receive similar-sized packets from more than threshold unique senders.|
