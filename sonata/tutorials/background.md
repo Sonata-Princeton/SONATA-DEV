@@ -28,12 +28,12 @@ intermediate result to the stream processor. Sonata's runtime then uses
 the result of each query to *refine* the subsequent packet processing.
 
 We will now describe the following in greater details:
-* [Sonata's Query Interface](https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/tutorials/background.md#sonatas-query-interface)
+* [Query Interface](https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/tutorials/background.md#sonatas-query-interface)
 * [Query Partitioning](https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/tutorials/background.md#query-partitioning)
 * [Dynamic Query Refinement](https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/tutorials/background.md#dynamic-query-refinement)
 * [Sonata's Implementation](https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/tutorials/background.md#sonatas-implementation)
 
-## Sonata's Query Interface
+## Query Interface
 Sonata's query interface allows network operators to express the queries 
 for telemetry applications using familiar dataflow operators over 
 arbitrary combinations of packet fields without worrying about how
