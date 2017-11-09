@@ -19,6 +19,6 @@ Sonata.
 ### Tutorial 2: Compiling Dataflow Queries for PISA Targets
 #### Not part of Assignment 3 for COS 561
 In this 
-[part](https://github.com/Sonata-Princeton/SONATA-DEV/tree/tutorial/sonata/tutorials/Tutorial-2), 
+[tutorial](https://github.com/Sonata-Princeton/SONATA-DEV/tree/tutorial/sonata/tutorials/Tutorial-2), 
 we will learn how to execute simple dataflow queries with PISA targets.
 
