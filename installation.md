@@ -4,7 +4,7 @@
 
 To get started install these softwares on your ```host``` machine:
 
-1. Install ***Vagrant***, it is a wrapper around virtualization softwares like VirtualBox, VMWare etc.: http://www.vagrantup.com/downloads
+1. Install ***Vagrant***, it is a wrapper around virtualization softwares like VirtualBox, VMWare etc.: https://www.vagrantup.com/downloads.html
 
 2. Install ***VirtualBox***, this would be your VM provider: https://www.virtualbox.org/wiki/Downloads
 
