@@ -162,17 +162,22 @@ Note: Make sure you run the cleanup script before restarting Sonata.
 ##### Question 1: 
 For each plan, report the number of tuples (i.e., number of lines) from 
 the `emitter.log` file. Which plan reports least number of tuples to
-the stream processor?
+the stream processor? Why does changing the query plan affects 
+the number of lines in the `emitter.log` file?
 
 ##### Question 2: 
 For each plan, report the host(s) that satisfies the query. Do different
-plans identify the same victim host(s)?
+plans identify the same victim host(s)? Why does changing the query plan 
+not affect the host(s) that satisfies the query? 
 
 #### Question 3:
-For each plan, report the fields for the header, `out_header_10032`.
-Note that `out_header_10032` is the header added to the cloned packet 
+For each plan, check the generated P4 code at
+`sonata/examples/newly_opened_connections/generated_src/compiled.p4`,
+and report the fields for the header, `out_header_10032`.
+Note that `out_header_10032` is the one added to the cloned packet 
 sent to the emitter via the monitoring port for query with `qid=1` at 
-refinement level `/32`. 
+refinement level `/32`. Why does changing the query plan affects the 
+`out_header_10032` fields?
 
 ## Detecting DNS Traffic Asymmetry
 Let us now consider the case where the operator may wish to detect 

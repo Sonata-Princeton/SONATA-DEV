@@ -28,12 +28,12 @@ intermediate result to the stream processor. Sonata's runtime then uses
 the result of each query to *refine* the subsequent packet processing.
 
 We will now describe the following in greater details:
-* [Sonata's Query Interface](https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/tutorials/background.md#sonatas-query-interface)
+* [Query Interface](https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/tutorials/background.md#sonatas-query-interface)
 * [Query Partitioning](https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/tutorials/background.md#query-partitioning)
 * [Dynamic Query Refinement](https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/tutorials/background.md#dynamic-query-refinement)
 * [Sonata's Implementation](https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/tutorials/background.md#sonatas-implementation)
 
-## Sonata's Query Interface
+## Query Interface
 Sonata's query interface allows network operators to express the queries 
 for telemetry applications using familiar dataflow operators over 
 arbitrary combinations of packet fields without worrying about how
@@ -69,7 +69,7 @@ Network telemetry applications often require computing aggregate
 statistics over a subset of traffic and joining the results from multiple 
 queries. Most of these tasks can be expressed using declarative queries 
 that compose dataflow operators. Sonata's query interface allows it to 
-abstract the details of *where* each query operator runs and *how* the 
+abstract the details of **where** each query operator runs and **how** the 
 underlying targets perform those operations. Sonata's query planner 
 decides how and where to execute the input queries allowing Sonata to 
 run identical queries over different choices of streaming or data-plane 
@@ -79,7 +79,7 @@ system is flexible and easy to maintain.
 | Operator| Description|
 | ---------------------| -----------|
 | Map(keys, map_keys, map_values,func)| Transform each tuple with function `func` applied over tuples identified by key(`map_keys`) or value (`map_values`) fields.|
-| Filter(filter_keys, filter_values,func)| Filter packets that satisfy predicate `func` applied over set of key (`filter_keys`) or value (`filter_vals`) fields|
+| Filter(filter_keys, filter_vals,func)| Filter packets that satisfy predicate `func` applied over set of key (`filter_keys`) or value (`filter_vals`) fields|
 | Reduce(keys,func)| Emit result of function `func` applied on key (`keys`) over the input stream.|
 | Distinct(keys)| Emit tuples with unique combinations of key (`keys`) fields.|
 | Join(window, new_qid, query)| Join the output of `query` and assign `new_qid` to the resulting joined query. Also, specify whether the `join` operation is applied over the same window interval or over rolling windows.|
