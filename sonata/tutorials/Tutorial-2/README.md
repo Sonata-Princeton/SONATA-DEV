@@ -14,7 +14,7 @@ Q = (PacketStream(qid=1)
 This query operates over packet fields, `tcp.flags` and `ipv4.dstIP`.
 
 As we discussed 
-[earlier](https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/tutorial/introduction.md#overview),
+[earlier](https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/tutorials/background.md#overview),
 Sonata partitions each query into a portion that runs on the switch (i.e., in data 
 plane) and another that runs on the streaming analytics platform (i.e., in 
 user-space). We will now consider four different plans for partitioning 
