@@ -202,13 +202,13 @@ Open three terminals
 
 SSH into the vagrant vm (`vagrant ssh`)
 ```bash
-$ cd ~/dev/sonata/tutorial
+$ cd ~/dev/sonata/tutorials
 ```
 
 Compile the P4 program to `plan.json`
 ```bash
 $ source scripts/env.sh
-$ $P4C_BM_SCRIPT Part-1/plan1/plan1.p4 --json Part-1/plan1/plan.json
+$ $P4C_BM_SCRIPT ./Tutorial-2/plan1/plan1.p4 --json Tutorial-2/plan1/plan.json
 ```
 
 You should see the following messages after compiling the P4 program:
@@ -216,7 +216,7 @@ You should see the following messages after compiling the P4 program:
 parsing successful
 semantic checking successful
 Header type standard_metadata_t not byte-aligned, adding padding
-Generating json output to /home/vagrant/dev/sonata/tutorial/Part-1/plan1/plan.json
+Generating json output to /home/vagrant/dev/sonata/tutorials/Tutorial-2/plan1/plan.json
 ```
 
 Always make sure that the compilation  message shows `parsing` and 
@@ -224,25 +224,25 @@ Always make sure that the compilation  message shows `parsing` and
 
 Start the switch
 ```bash
-$ sudo sh scripts/run_switch.sh Part-1/plan1
+$ sudo sh scripts/run_switch.sh Tutorial-2/plan1
 ```
 
 ##### Terminal 2: Receiver
 Start the receiver script
 ```bash
 $ cd ~/dev
-$ sudo python sonata/tutorial/Part-1/receive.py
+$ sudo python sonata/tutorials/Tutorial-2/receive.py
 ```
 
 ##### Terminal 3: Sender
 Start the sender script
 ```bash
 $ cd ~/dev
-$ sudo python sonata/tutorial/Part-1/send.py
+$ sudo python sonata/tutorials/Tutorial-2/send.py
 ```
 
 ##### Question 2: How many tuples (lines) were reported from the data plane?
-You can find the resulting output tuples in `~/dev/sonata/tutorial/Part-1/receiver.log` file.
+You can find the resulting output tuples in `~/dev/sonata/tutorials/Tutorial-2/receiver.log` file.
 
 ##### Cleanup
 Run the following command to clean up any stored results and any previously running processes.
