@@ -44,7 +44,8 @@ You can find the query for this application here:
  
 ### Query Plan
 As we described 
-[earlier](https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/tutorials/introduction.md), Sonata's core hast two major components:
+[earlier](https://github.com/Sonata-Princeton/SONATA-DEV/blob/tutorial/sonata/tutorials/background.md#overview), Sonata's core hast two major 
+components:
 (1) runtime, and (2) query planner. Query planner uses the input queries,
 data-plane target's constraints, and historical packet traces to determine
 the query plan for refining and partitioning the input queries to minimize
