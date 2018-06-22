@@ -15,20 +15,18 @@ sudo apt-get update
 sudo apt-get install -y build-essential fakeroot debhelper autoconf \
 automake libssl-dev graphviz python-all python-qt4 \
 python-twisted-conch libtool git tmux vim python-pip python-paramiko \
-python-sphinx mongodb dos2unix wireshark
+python-sphinx mongodb dos2unix
+sudo DEBIAN_FRONTEND=noninteractive apt-get -y install wireshark
 
-sudo pip install -U pip
-
-sudo pip install -r ~/dev/setup/pip-basic-requires
+sudo -H pip install -r ~/dev/setup/pip-basic-requires
 
 sudo apt-get install -y ssh git emacs sshfs graphviz feh
 sudo apt-get install -y libstring-crc32-perl
 
 echo 'Defaults    env_keep += "PYTHONPATH"' | sudo tee --append /etc/sudoers
-echo 'PATH=$PATH:~/iSDX/bin' >> ~/.profile
-echo 'export PYTHONPATH=$PYTHONPATH:/home/vagrant/dev' >> ~/.profile
-echo 'export PYTHONPATH=$PYTHONPATH:/home/vagrant/bmv2/mininet' >> ~/.profile
-echo 'export SPARK_HOME=/home/vagrant/spark/' >> ~/.profile
+echo 'export PYTHONPATH=$PYTHONPATH:/home/ubuntu/dev' >> ~/.profile
+echo 'export PYTHONPATH=$PYTHONPATH:/home/ubuntu/bmv2/mininet' >> ~/.profile
+echo 'export SPARK_HOME=/home/ubuntu/spark/' >> ~/.profile
 
 mkdir ~/.vim
 

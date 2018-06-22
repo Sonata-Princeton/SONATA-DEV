@@ -3,7 +3,7 @@
 # Install and configure 'pycapa'
 git clone https://github.com/mleef/pycapa.git;
 cd pycapa;
-sudo pip install -r requirements.txt;
+sudo -H pip install -r requirements.txt;
 sudo python setup.py install;
 cd ../;
 rm -rf pycapa;
