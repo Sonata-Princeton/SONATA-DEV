@@ -7,7 +7,6 @@
 def get_p4_layer(layer):
     p4_layer = P4Layer(layer.name, layer.fields, layer.offset, layer.parent_layer,
                        layer.child_layers, layer.field_that_determines_child)
-
     return p4_layer
 
 
@@ -80,15 +79,17 @@ class P4Layer(object):
 
 
 class OutHeaders(P4Layer):
-    def __init__(self, name="", fields=[], parent_layer=None, child_layer=None):
-        P4Layer.__init__(self, name)
+    def __init__(self, qid, fields=[], parent_layer=None, child_layer=None):
+        out_header_name = 'out_header_%s' % qid
+        P4Layer.__init__(self, out_header_name)
         self.parent_layer = parent_layer
         self.child_layers = {0: child_layer}
+        self.fields = fields
 
     def get_header_specification_code(self):
         out = "header_type " + self.name + "_t {\n\tfields {\n"
         for fld in self.fields:
-            out += "\t\t" + fld.target_name.replace(".", "_") + " : " + str(fld.size) + ";\n"
+            out += "\t\t" + fld.get_field() + " : " + str(fld.size) + ";\n"
         out += "\t}\n}\n"
         out += 'header %s_t %s;\n\n' % (self.name, self.name)
         return out
@@ -99,55 +100,45 @@ class OutHeaders(P4Layer):
     def __repr__(self):
         return "OutHeaders(layer=" +self.name+ ", fields=" + str(self.fields) + ")"
 
+# class P4RawFields(object):
+#     all_fields = None
+#     all_sonata_fields = None
 
-class P4RawFields(object):
-    all_fields = None
-    all_sonata_fields = None
+#     def __init__(self, root_layer):
+#         self.root_layer = root_layer
+#         self.layers = self.root_layer.get_all_child_layers()
+#         self.get_all_sonata_fields()
 
-    def __init__(self, root_layer):
-        self.root_layer = root_layer
-        self.layers = self.root_layer.get_all_child_layers()
-        self.get_all_fields()
-        self.get_all_sonata_fields()
+#     def get_all_sonata_fields(self):
+#         fields = dict()
+#         for layer in self.layers:
+#             for fld in layer.fields:
+#                 fields[fld.sonata_name] = fld
+#         self.all_sonata_fields = fields
 
-    def get_all_fields(self):
-        fields = dict()
-        for layer in self.layers:
-            prefix = layer.get_field_prefix()
-            for fld in layer.fields:
-                fields[prefix + "." + str(fld.target_name)] = fld
-        self.all_fields = fields
+#     def get_layers_for_fields(self, query_specific_fields):
+#         layers = []
+#         for field_name in query_specific_fields:
+#             fld = self.all_sonata_fields[field_name]
+#             curr_layer = fld.layer
+#             if curr_layer.parent_layer is None:
+#                 layers += [curr_layer]
+#             else:
+#                 layers += [curr_layer] + curr_layer.get_all_parent_layers()
 
-    def get_all_sonata_fields(self):
-        fields = dict()
-        for layer in self.layers:
-            for fld in layer.fields:
-                fields[fld.sonata_name] = fld
-        self.all_sonata_fields = fields
+#         return list(set(layers))
 
-    def get_layers_for_fields(self, query_specific_fields):
-        layers = []
-        for field_name in query_specific_fields:
-            fld = self.all_sonata_fields[field_name]
-            curr_layer = fld.layer
-            if curr_layer.parent_layer is None:
-                layers += [curr_layer]
-            else:
-                layers += [curr_layer] + curr_layer.get_all_parent_layers()
-
-        return list(set(layers))
-
-    def get_target_field(self, sonata_field_name):
-        return self.all_sonata_fields[sonata_field_name]
+#     def get_target_field(self, sonata_field_name):
+#         return self.all_sonata_fields[sonata_field_name]
 
 
-def test():
-    p4_fields = P4RawFields(Ethernet())
-    # query_specific_fields = ['ethernet.dstMac', 'udp.sport']
-    # layers = p4_fields.get_layers_for_fields(query_specific_fields)
-    # assert "udp" in [layer.name for layer in layers]
-    # assert "tcp" not in [layer.name for layer in layers]
+# def test():
+#     p4_fields = P4RawFields(Ethernet())
+#     # query_specific_fields = ['ethernet.dstMac', 'udp.sport']
+#     # layers = p4_fields.get_layers_for_fields(query_specific_fields)
+#     # assert "udp" in [layer.name for layer in layers]
+#     # assert "tcp" not in [layer.name for layer in layers]
 
 
-if __name__ == '__main__':
-    test()
+# if __name__ == '__main__':
+#     test()

@@ -7,7 +7,7 @@ from p4_elements import Action, Header, Table
 from p4_operators import P4Distinct, P4Filter, P4Map, P4MapInit, P4Reduce, QID_SIZE, COUNT_SIZE,INDEX_SIZE
 from p4_primitives import ModifyField, AddHeader
 from sonata.dataplane_driver.utils import get_logger
-from p4_field import P4Field
+from p4_field import P4Field, get_p4_field
 from p4_layer import P4Layer
 from p4_layer import OutHeaders
 import logging
@@ -27,9 +27,10 @@ class P4Query(object):
         # LOGGING
         log_level = logging.ERROR
         self.logger = get_logger('P4Query - %i' % query_id, 'DEBUG')
-        self.logger.setLevel(log_level)
+        # self.logger.setLevel(log_level)
         self.logger.info('init')
-        self.id = query_id
+        self.logger.info(p4_raw_fields)
+        self.qid = query_id
         self.parse_payload = parse_payload
         self.payload_fields = payload_fields
         self.read_register = read_register
@@ -43,8 +44,8 @@ class P4Query(object):
 
         self.nop_action = nop_name
 
-        self.drop_meta_field = '%s_%i' % (drop_meta_field, self.id)
-        self.satisfied_meta_field = '%s_%i' % (satisfied_meta_field, self.id)
+        self.drop_meta_field = '%s_%i' % (drop_meta_field, self.qid)
+        self.satisfied_meta_field = '%s_%i' % (satisfied_meta_field, self.qid)
         self.clone_meta_field = clone_meta_field
 
         self.p4_raw_fields = p4_raw_fields
@@ -58,10 +59,18 @@ class P4Query(object):
         self.mark_satisfied()
 
         # initialize operators
-        self.get_all_fields(generic_operators)
+        # self.get_all_fields(generic_operators)
 
-        self.operators = self.init_operators(generic_operators)
+        self.in_init_operator = None
+        self.out_init_operator = None
 
+        self.make_init_operators(generic_operators)
+
+        self.generic_meta_init_name = self.in_init_operator.get_meta_name().split("__")[0]
+
+        self.operators = self.get_operators(generic_operators)
+
+        # self.logger.info(generic_operators)
         # create an out header layer
         self.create_out_header()
 
@@ -72,16 +81,15 @@ class P4Query(object):
         primitives = list()
         primitives.append(ModifyField(self.satisfied_meta_field, 1))
         primitives.append(ModifyField(self.clone_meta_field, 1))
-        self.actions['satisfied'] = Action('do_mark_satisfied_%i' % self.id, primitives)
-        self.satisfied_table = Table('mark_satisfied_%i' % self.id, self.actions['satisfied'].get_name(), [], None, 1)
+        self.actions['satisfied'] = Action('do_mark_satisfied_%i' % self.qid, primitives)
+        self.satisfied_table = Table('mark_satisfied_%i' % self.qid, self.actions['satisfied'].get_name(), [], None, 1)
 
     def add_general_drop_action(self):
-        self.actions['drop'] = Action('drop_%i' % self.id, (ModifyField(self.drop_meta_field, 1)))
+        self.actions['drop'] = Action('drop_%i' % self.qid, (ModifyField(self.drop_meta_field, 1)))
         self.query_drop_action = self.actions['drop'].get_name()
 
     def create_out_header(self):
-        out_header_name = 'out_header_%i' % self.id
-        self.out_header = OutHeaders(out_header_name)
+        self.out_header = OutHeaders(self.qid)
 
         sonata_field_list = filter(lambda x: x not in self.payload_fields + ['ts'], self.operators[-1].get_out_headers())
 
@@ -91,15 +99,21 @@ class P4Query(object):
 
         for fld in sonata_field_list:
             if fld == 'qid':
-                out_header_fields.append(P4Field(layer=self.out_header, target_name="qid", sonata_name="qid", size=QID_SIZE))
+                out_header_fields.append(P4Field(target_name="qid", sonata_name="qid", size=QID_SIZE,
+                                                 other_name=self.out_header.get_name(),
+                                                 meta_name=self.generic_meta_init_name))
             elif fld == 'count':
-                out_header_fields.append(P4Field(layer=self.out_header, target_name="count", sonata_name="count",
-                                                 size=COUNT_SIZE))
+                out_header_fields.append(P4Field(target_name="count", sonata_name="count", size=COUNT_SIZE,
+                                                 other_name=self.out_header.get_name(),
+                                                 meta_name=self.generic_meta_init_name))
             elif fld == 'index':
-                out_header_fields.append(P4Field(layer=self.out_header, target_name="index", sonata_name="index",
-                                                 size=INDEX_SIZE))
+                out_header_fields.append(P4Field(target_name="index", sonata_name="index", size=INDEX_SIZE,
+                                                 other_name=self.out_header.get_name(),
+                                                 meta_name=self.generic_meta_init_name))
             else:
-                out_header_fields.append(self.p4_raw_fields.get_target_field(fld))
+                out_header_fields.append(get_p4_field(fld, self.p4_raw_fields,
+                                                      other_name=self.out_header.get_name(),
+                                                      meta_name=self.generic_meta_init_name))
 
         for operator in self.operators:
             if operator.name == 'Reduce':
@@ -112,21 +126,11 @@ class P4Query(object):
         primitives = list()
         primitives.append(AddHeader(self.out_header.get_name()))
         for fld in self.out_header.fields:
-            primitives.append(ModifyField('%s.%s' % (self.out_header.get_name(), fld.target_name.replace(".", "_")),
-                                          '%s.%s' % (self.meta_init_name, fld.target_name.replace(".", "_"))))
-        self.actions['append_out_header'] = Action('do_add_out_header_%i' % self.id, primitives)
-        self.out_header_table = Table('add_out_header_%i' % self.id, self.actions['append_out_header'].get_name(), [],
-                                      None, 1)
+            primitives.append(ModifyField(fld.get_other_field(), fld.get_meta_field()))
 
-    def get_all_fields(self, generic_operators):
-        # TODO: only select fields over which we perform any action
-        all_fields = set()
-        for operator in generic_operators:
-            if operator.name in {'Filter', 'Map', 'Reduce', 'Distinct'}:
-                all_fields = all_fields.union(set(operator.get_init_keys()))
-        # print "get_all_fields1: ", all_fields
-        # TODO remove this
-        self.all_fields = filter(lambda x: x not in self.payload_fields+['ts'], all_fields)
+        self.actions['append_out_header'] = Action('do_add_out_header_%i' % self.qid, primitives)
+        self.out_header_table = Table('add_out_header_%i' % self.qid, self.actions['append_out_header'].get_name(), [],
+                                      None, 1)
 
     def get_init_fields(self, generic_operators):
         # TODO: only select fields over which we perform any action
@@ -138,23 +142,39 @@ class P4Query(object):
         # print "get_all_fields: ", all_fields
         return filter(lambda x: x not in self.payload_fields+['ts'], all_fields)
 
-    def init_operators(self, generic_operators):
+    def make_init_operators(self, generic_operators):
+        map_init_keys = ['qid'] + self.get_init_fields(generic_operators)
+        self.logger.info(map_init_keys)
+        in_map_init_keys = []
+        out_map_init_keys = []
+
+        for key in map_init_keys:
+            if "__out" in key:
+                out_map_init_keys.append(key)
+            elif "__in" in key:
+                in_map_init_keys.append(key)
+            else:
+                in_map_init_keys.append(key)
+                if key not in ["qid", "count"]:
+                    out_map_init_keys.append(key)
+
+        if self.read_register:
+            in_map_init_keys += ['index']
+
+        self.logger.info(generic_operators)
+
+        self.in_init_operator = P4MapInit(self.qid, 0, in_map_init_keys, self.p4_raw_fields, is_ingress=True)
+        self.logger.debug('add in_map_init with keys: %s' % (', '.join(in_map_init_keys),))
+        
+        self.out_init_operator = P4MapInit(self.qid, 0, out_map_init_keys, self.p4_raw_fields, is_ingress=False)
+        self.logger.debug('add out_map_init with keys: %s' % (', '.join(out_map_init_keys),))
+
+    def get_operators(self, generic_operators):
         p4_operators = list()
         operator_id = 1
-
-        map_init_keys = ['qid'] + self.get_init_fields(generic_operators)
-
-        if self.read_register: map_init_keys += ['index']
-
-        self.logger.debug('add map_init with keys: %s' % (', '.join(map_init_keys),))
-        map_init_operator = P4MapInit(self.id, operator_id, map_init_keys, self.p4_raw_fields)
-        self.meta_init_name = map_init_operator.get_meta_name()
-        p4_operators.append(map_init_operator)
-
         # add all the other operators one after the other
         for operator in generic_operators:
             self.logger.debug('add %s operator' % (operator.name,))
-            operator_id += 1
 
             # TODO: Confirm if this is the right way
             keys = filter(lambda x: x != 'payload' and x != 'ts', operator.keys)
@@ -164,7 +184,7 @@ class P4Query(object):
             if operator.name == 'Filter':
                 match_action = self.nop_action
                 miss_action = self.query_drop_action
-                filter_operator = P4Filter(self.id,
+                filter_operator = P4Filter(self.qid,
                                            operator_id,
                                            operator.keys,
                                            operator.filter_keys,
@@ -177,18 +197,18 @@ class P4Query(object):
                 p4_operators.append(filter_operator)
 
             elif operator.name == 'Map':
-                p4_operators.append(P4Map(self.id,
+                p4_operators.append(P4Map(self.qid,
                                           operator_id,
-                                          self.meta_init_name,
+                                          self.generic_meta_init_name,
                                           operator.keys,
                                           operator.map_keys,
                                           operator.map_values,
                                           operator.func, self.p4_raw_fields))
 
             elif operator.name == 'Reduce':
-                p4_operators.append(P4Reduce(self.id,
+                p4_operators.append(P4Reduce(self.qid,
                                              operator_id,
-                                             self.meta_init_name,
+                                             self.generic_meta_init_name,
                                              self.query_drop_action,
                                              operator.keys,
                                              operator.values,
@@ -197,23 +217,38 @@ class P4Query(object):
                                              self.p4_raw_fields))
 
             elif operator.name == 'Distinct':
-                p4_operators.append(P4Distinct(self.id,
+                p4_operators.append(P4Distinct(self.qid,
                                                operator_id,
-                                               self.meta_init_name,
+                                               self.generic_meta_init_name,
                                                self.query_drop_action,
                                                self.nop_action,
                                                operator.keys, self.p4_raw_fields))
 
             else:
                 self.logger.error('tried to add an unsupported operator: %s' % operator.name)
+
+            operator_id += 1
+        # self.logger.info(p4_operators)
         return p4_operators
 
     def get_ingress_control_flow(self, indent_level):
         curr_indent_level = indent_level
-
         indent = '\t' * curr_indent_level
-        out = '%s// query %i\n' % (indent, self.id)
-        # apply one operator after another
+
+        out = '%s// query %i\n' % (indent, self.qid)
+
+        #TODO: first init operator
+        out += self.in_init_operator.get_control_flow(curr_indent_level)
+
+        return out
+
+    def get_egress_control_flow_process_query(self, indent_level):
+        curr_indent_level = indent_level
+        indent = '\t' * curr_indent_level
+
+        out = '%s// query %i\n' % (indent, self.qid)
+        out += self.out_init_operator.get_control_flow(curr_indent_level)
+
         for operator in self.operators:
             indent = '\t' * curr_indent_level
             curr_indent_level += 1
@@ -227,23 +262,25 @@ class P4Query(object):
         out += '%s}\n' % indent
 
         # close brackets
-        for _ in self.operators:
+        for _ in range(len(self.operators)):
             curr_indent_level -= 1
             indent = '\t' * curr_indent_level
             out += '%s}\n' % indent
 
         return out
 
-    def get_egress_control_flow(self, indent_level):
-        indent = '\t' * indent_level
+    def get_egress_control_flow_satisfied(self, indent_level):
+        curr_indent_level = indent_level
+        indent = '\t' * curr_indent_level
 
         out = '%sif (%s == 1) {\n' % (indent, self.satisfied_meta_field)
         out += '%s\tapply(%s);\n' % (indent, self.out_header_table.get_name())
         out += '%s}\n' % indent
+
         return out
 
     def get_code(self):
-        out = '// query %i\n' % self.id
+        out = '// query %i\n' % self.qid
 
         # out header
         out += self.out_header.get_header_specification_code()
@@ -257,12 +294,17 @@ class P4Query(object):
         out += self.satisfied_table.get_code()
 
         # operator code
+        out += self.in_init_operator.get_code()
+        out += self.out_init_operator.get_code()
+
         for operator in self.operators:
             out += operator.get_code()
         return out
 
     def get_commands(self):
         commands = list()
+        commands.extend(self.in_init_operator.get_commands())
+        commands.extend(self.out_init_operator.get_commands())
         for operator in self.operators:
             # print str(operator)
             commands.extend(operator.get_commands())
@@ -272,8 +314,9 @@ class P4Query(object):
 
         return commands
 
-    def get_metadata_name(self):
-        return self.meta_init_name
+    def get_metadata_names(self):
+
+        return [self.in_init_operator.get_meta_name(), self.out_init_operator.get_meta_name()]
 
     def get_header_format(self):
         # TODO: This will now change

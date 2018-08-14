@@ -126,21 +126,23 @@ class HashFields(P4Element):
 class MetaData(P4Element):
     def __init__(self, name, fields):
         super(MetaData, self).__init__('meta_%s' % name)
-        # list of tuples where the first element is the name and the second the length of the field
+        # list of tuples where the first element is the name and the second the size of the field
         self.fields = fields
 
     def get_code(self):
         out = ''
         out += 'header_type %s_t {\n' % self.name
         out += '\tfields {\n'
-        for field_name, length in self.fields:
-            out += '\t\t%s: %i;\n' % (field_name, length)
+        for field_name, size in self.fields:
+            out += '\t\t%s: %i;\n' % (field_name, size)
         out += '\t}\n'
         out += '}\n\n'
         out += 'metadata %s_t %s;\n\n' % (self.name, self.name)
 
         return out
 
+    def add_field(self, fld):
+        self.fields.append((fld.get_field(), fld.size))
 
 class Header(P4Element):
     def __init__(self, name, fields):

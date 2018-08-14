@@ -3,7 +3,7 @@
 
 
 from p4_elements import Action, MetaData, MirrorSession, FieldList, Table, Header
-from p4_primitives import NoOp, CloneIngressPktToEgress, AddHeader, ModifyField
+from p4_primitives import NoOp, CloneEgressPktToEgress, AddHeader, ModifyField
 from p4_query import P4Query
 from p4_layer import P4Layer, OutHeaders, get_p4_layer#, P4RawFields, Ethernet
 from p4_field import P4Field
@@ -69,7 +69,7 @@ class P4Application(object):
         # define final header
         # TODO: Use new p4 layer object
         tmp = OutHeaders("final_header")
-        tmp.fields = [P4Field(tmp, "delimiter", "delimiter", 32)]
+        tmp.fields = [P4Field(target_name="delimiter", sonata_name="delimiter", size=32)]
         self.final_header = tmp
 
         primitives = list()
@@ -93,12 +93,15 @@ class P4Application(object):
         meta_name = self.metadata.get_name()
 
         # action and table to init app metadata
+        # My new fields aren't really app metdata: they get initialized from the packet header.
         primitives = list()
         for field_name, _ in fields:
-            primitives.append(ModifyField('%s.%s' % (self.metadata.get_name(), field_name), 0))
+            primitives.append(ModifyField('%s.%s' % (meta_name, field_name), 0))
+
         self.init_action = Action('do_init_app_metadata', primitives)
 
         self.init_action_table = Table('init_app_metadata', self.init_action.get_name(), [], None, 1)
+
 
         # transforms queries
         for query_id in app:
@@ -128,10 +131,10 @@ class P4Application(object):
         # define report action that clones the packet and sends it to the stream processor
         fields = [self.metadata.get_name()]
         for query in queries.values():
-            fields.append(query.get_metadata_name())
+            fields.extend(query.get_metadata_names())
         self.field_list = FieldList('report_packet', fields)
 
-        self.report_action = Action('do_report_packet', CloneIngressPktToEgress(self.mirror_session.get_session_id(),
+        self.report_action = Action('do_report_packet', CloneEgressPktToEgress(self.mirror_session.get_session_id(),
                                                                                 self.field_list.get_name()))
 
         self.report_action_table = Table('report_packet', self.report_action.get_name(), [], None, 1)
@@ -194,15 +197,15 @@ class P4Application(object):
     def get_raw_layers(self):
         raw_fields = set()
         for qid in self.queries:
-            # all_fields.union(set(operator.get_init_keys()))
-            raw_fields = raw_fields.union(self.queries[qid].all_fields)
+            raw_fields = raw_fields.union(self.queries[qid].get_init_fields(self.queries[qid].operators))
 
         # TODO: get rid of this local fix. This won't be required after we fix the sonata query module
         # Start local fix
         raw_fields = [x for x in raw_fields if x not in ['ts', 'count']]
         # End local fix
 
-        raw_layers = self.p4_raw_fields.get_layers_for_fields(raw_fields)
+        raw_layers = self.p4_raw_fields.get_raw_layers_for_fields(raw_fields)
+        # self.logger.info(raw_layers)
         return raw_layers
 
     def get_out_header_parser(self):
@@ -265,17 +268,7 @@ table forward {
 
         # add the control flow of one query after the other
         for query in self.queries.values():
-            out += query.get_ingress_control_flow(2)
-
-        out += '\n'
-
-        # after processing all queries, determine whether the packet should be sent to the emitter as it satisfied at
-        # least one query
-        out += '\tif (%s.%s == 1) {\n' % (self.metadata.get_name(), self.clone_meta_field)
-        out += '\t\tapply(%s);\n' % self.report_action_table.get_name()
-        out += '\t}\n'
-
-        if ORIGINAL_PACKET: out += '\tapply(forward);\n'
+            out += query.get_ingress_control_flow(1)
 
         out += '}\n\n'
         return out
@@ -283,15 +276,29 @@ table forward {
     def get_egress_pipeline(self):
         out = ''
         out += 'control egress {\n'
-        # normal forwarding of the original packet
-        out += '\tif (standard_metadata.instance_type == 0) {\n'
-        out += '\t\t// original packet, apply forwarding\n'
-        out += '\t}\n\n'
 
-        # adding header to the report packet which is sent to the emitter
-        out += '\telse if (standard_metadata.instance_type == 1) {\n'
+        # normal forwarding of the original packet
+
+        # NORMAL BEHAVIOR
+        out += '\tif (standard_metadata.instance_type == 0) {\n'
+
+        out += '\t\t// original packet, apply forwarding\n'
+        if ORIGINAL_PACKET: out += '\tapply(forward);\n'
+
         for query in self.queries.values():
-            out += query.get_egress_control_flow(2)
+            out += query.get_egress_control_flow_process_query(2)
+
+        out += '\t\tif (%s.%s == 1) {\n' % (self.metadata.get_name(), self.clone_meta_field)
+        out += '\t\t\tapply(%s);\n' % self.report_action_table.get_name()
+        out += '\t\t}\n'
+        out += '\t}\n'
+
+        # CLONE, SUCCESSFULLY REPORTED
+        out += '\telse if (standard_metadata.instance_type == 2) {\n'
+
+        # ONE PER QUERY
+        for query in self.queries.values():
+            out += query.get_egress_control_flow_satisfied(2)
         out += '\t\tapply(%s);\n' % self.final_header_table.get_name()
         out += '\t}\n'
         out += '}\n\n'

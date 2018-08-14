@@ -17,7 +17,7 @@ class DataplaneDriver(object):
         self.internal_interfaces = internal_interfaces
 
         # LOGGING
-        log_level = logging.ERROR
+        log_level = logging.DEBUG
         # add handler
         self.logger = logging.getLogger('DataplaneDriver')
         self.logger.setLevel(log_level)

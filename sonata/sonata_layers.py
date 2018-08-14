@@ -122,7 +122,9 @@ class SonataRawFields(object):
         return list(set(layers))
 
     def get_target_field(self, sonata_field_name):
-        return self.all_sonata_fields[sonata_field_name]
+        split_field = sonata_field_name.split("__")
+        field = self.all_sonata_fields[split_field[0]]
+        return field
 
 def test():
     INITIAL_LAYER = "ethernet"

@@ -3,7 +3,7 @@
 
 
 from p4_elements import Register, HashFields, Table, MetaData, Action
-from p4_field import P4Field
+from p4_field import P4Field, get_p4_field
 from p4_primitives import BitAnd, ModifyField, ModifyFieldWithHashBasedOffset, RegisterRead, RegisterWrite, BitOr
 from sonata.dataplane_driver.utils import get_logger
 
@@ -24,7 +24,7 @@ INDEX_SIZE = 16
 
 
 class P4Operator(object):
-    operator_specific_fields = dict()
+    # operator_specific_fields = dict()
 
     def __init__(self, name, qid, operator_id, keys, p4_raw_fields):
         self.name = name
@@ -34,15 +34,17 @@ class P4Operator(object):
         self.keys = list(keys)
         self.out_headers = list(keys)
         self.p4_raw_fields = p4_raw_fields
-        self.create_operator_specific_fields()
+        # self.create_operator_specific_fields()
 
         # LOGGING
         self.logger = get_logger(name, 'DEBUG')
 
-    def create_operator_specific_fields(self):
-        for key in self.keys:
-            if key not in ['qid', 'count', 'index']: self.operator_specific_fields[
-                key] = self.p4_raw_fields.get_target_field(key)
+        # self.logger.info(self.operator_specific_fields)
+
+    # def create_operator_specific_fields(self):
+    #     for key in self.keys:
+    #         if key not in ['qid', 'count', 'index']:
+    #             self.operator_specific_fields[key] = self.p4_raw_fields.get_target_field(key)
 
     def get_out_headers(self):
         return self.out_headers
@@ -79,21 +81,23 @@ class P4Distinct(P4Operator):
         hash_init_fields = list()
         for fld in self.keys:
             if fld == 'qid':
-                hash_init_fields.append(P4Field(layer=None, target_name="qid", sonata_name="qid",
-                                                size=QID_SIZE))
+                hash_init_fields.append(P4Field(target_name="qid", sonata_name="qid", size=QID_SIZE,
+                                                meta_name=meta_init_name))
             elif fld == 'count':
-                hash_init_fields.append(P4Field(layer=None, target_name="count", sonata_name="count",
-                                                size=COUNT_SIZE))
+                hash_init_fields.append(P4Field(target_name="count", sonata_name="count", size=COUNT_SIZE,
+                                                meta_name=meta_init_name))
             else:
-                hash_init_fields.append(self.p4_raw_fields.get_target_field(fld))
+                hash_init_fields.append(get_p4_field(fld, self.p4_raw_fields, meta_name=meta_init_name))
+
         # create HASH for access to register
         hash_fields = list()
         for field in hash_init_fields:
-            if '/' in field.sonata_name:
+            if '/' in field.get_target_field():
                 self.logger.error('found a / in the key')
                 raise NotImplementedError
             else:
-                hash_fields.append('%s.%s' % (meta_init_name, field.target_name.replace(".", "_")))
+                hash_fields.append(field.get_meta_field())
+
         self.hash = HashFields(self.operator_name, hash_fields, 'crc16', REGISTER_NUM_INDEX_BITS)
 
         # name of metadata field where the index of the count within the register is stored
@@ -201,24 +205,25 @@ class P4Reduce(P4Operator):
         hash_init_fields = list()
         for fld in self.keys:
             if fld == 'qid':
-                hash_init_fields.append(P4Field(layer=None, target_name="qid", sonata_name="qid",
-                                                size=QID_SIZE))
+                hash_init_fields.append(P4Field(target_name="qid", sonata_name="qid", size=QID_SIZE,
+                                                meta_name=meta_init_name))
             elif fld == 'count':
-                hash_init_fields.append(P4Field(layer=None, target_name="count", sonata_name="count",
-                                                size=COUNT_SIZE))
+                hash_init_fields.append(P4Field(target_name="count", sonata_name="count", size=COUNT_SIZE,
+                                                meta_name=meta_init_name))
             elif fld == 'index':
-                hash_init_fields.append(P4Field(layer=None, target_name="index", sonata_name="index",
-                                                size=INDEX_SIZE))
+                hash_init_fields.append(P4Field(target_name="index", sonata_name="index", size=INDEX_SIZE,
+                                                meta_name=meta_init_name))
             else:
-                hash_init_fields.append(self.p4_raw_fields.get_target_field(fld))
+                hash_init_fields.append(get_p4_field(fld, self.p4_raw_fields, meta_name=meta_init_name))
+                # hash_init_fields.append(self.p4_raw_fields.get_target_field(fld))
         # create HASH for access to register
         hash_fields = list()
         for field in hash_init_fields:
-            if '/' in field.sonata_name:
+            if '/' in field.get_target_field():
                 self.logger.error('found a / in the key')
                 raise NotImplementedError
             else:
-                hash_fields.append('%s.%s' % (meta_init_name, field.target_name.replace(".", "_")))
+                hash_fields.append(field.get_meta_field())
         self.hash = HashFields(self.operator_name, hash_fields, 'crc16', REGISTER_NUM_INDEX_BITS)
 
         # name of metadata field where the index of the count within the register is stored
@@ -239,12 +244,12 @@ class P4Reduce(P4Operator):
 
             primitives.append(ModifyField(self.value_field_name, '%s + %i' % (self.value_field_name, 1)))
         else:
-            target_fld = self.p4_raw_fields.get_target_field(self.values[0])
+            target_fld = get_p4_field(self.values[0], p4_raw_fields, meta_name=meta_init_name)
             if self.threshold <= 1:
-                self.threshold = '%s.%s' % (meta_init_name, target_fld.target_name.replace(".", "_"))
+                self.threshold = target_fld.get_meta_field()
 
             primitives.append(ModifyField(self.value_field_name, '%s + %s' % (
-            self.value_field_name, '%s.%s' % (meta_init_name, target_fld.target_name.replace(".", "_")))))
+            self.value_field_name, target_fld.get_meta_field())))
 
         primitives.append(RegisterWrite(self.register.get_name(), self.index_field_name, self.value_field_name))
         self.init_action = Action('do_init_%s' % self.operator_name, primitives)
@@ -259,9 +264,9 @@ class P4Reduce(P4Operator):
         # if count == THRESHOLD, pass through with current count
         field_to_modified = None
         if not self.read_register:
-            field_to_modified = ModifyField('%s.count' % meta_init_name, self.value_field_name)
+            field_to_modified = ModifyField('%s.count' % (meta_init_name + "__in"), self.value_field_name)
         else:
-            field_to_modified = ModifyField('%s.index' % meta_init_name, self.index_field_name)
+            field_to_modified = ModifyField('%s.index' % (meta_init_name + "__in"), self.index_field_name)
 
         self.set_count_action = Action('set_count_%s' % self.operator_name,
                                        field_to_modified)
@@ -328,36 +333,48 @@ class P4Reduce(P4Operator):
 
 
 class P4MapInit(P4Operator):
-    def __init__(self, qid, operator_id, keys, p4_raw_fields):
+    def __init__(self, qid, operator_id, keys, p4_raw_fields, is_ingress=True):
         super(P4MapInit, self).__init__('MapInit', qid, operator_id, keys, p4_raw_fields)
-
         # Add map init
         map_init_fields = list()
+        meta_fields = list()
+
+        self.is_ingress = is_ingress
+
+        if self.is_ingress:
+            self.metadata = MetaData(self.operator_name + "__in", meta_fields)
+        else:
+            self.metadata = MetaData(self.operator_name + "__out", meta_fields)
+
+        self.generic_meta_init_name = self.metadata.get_name().split("__")[0]
+
+        if self.is_ingress:
+            self.modifier = "in"
+        else:
+            self.modifier = "out"
+
         for fld in self.keys:
             if fld == 'qid':
-                map_init_fields.append(P4Field(layer=None, target_name="qid", sonata_name="qid",
-                                               size=QID_SIZE))
+                map_init_fields.append(P4Field(target_name="qid", sonata_name="qid",
+                                               meta_name=self.generic_meta_init_name, size=QID_SIZE))
             elif fld == 'count':
-                map_init_fields.append(P4Field(layer=None, target_name="count", sonata_name="count",
-                                               size=COUNT_SIZE))
+                map_init_fields.append(P4Field(target_name="count", sonata_name="count",
+                                               meta_name=self.generic_meta_init_name, size=COUNT_SIZE))
             elif fld == 'index':
-                map_init_fields.append(P4Field(layer=None, target_name="index", sonata_name="index",
-                                               size=INDEX_SIZE))
+                map_init_fields.append(P4Field(target_name="index", sonata_name="index",
+                                               meta_name=self.generic_meta_init_name, size=INDEX_SIZE))
             else:
-                map_init_fields.append(self.p4_raw_fields.get_target_field(fld))
+                map_init_fields.append(get_p4_field(fld, p4_raw_fields, meta_name=self.generic_meta_init_name))
+                # map_init_fields.append(self.p4_raw_fields.get_target_field(fld))
         # create METADATA object to store data for all keys
-        meta_fields = list()
         for fld in map_init_fields:
-            meta_fields.append((fld.target_name.replace(".", "_"), fld.size))
-
-        self.metadata = MetaData(self.operator_name, meta_fields)
+            self.metadata.add_field(fld)
 
         # create ACTION to initialize the metadata
         primitives = list()
         for fld in map_init_fields:
-            sonata_name = fld.sonata_name
-            target_name = fld.target_name
-            meta_field_name = '%s.%s' % (self.metadata.get_name(), target_name.replace(".", "_"))
+            sonata_name = fld.get_target_field()
+            meta_field_name = fld.get_meta_field()
 
             if sonata_name == 'qid':
                 # Assign query id to this field
@@ -368,12 +385,17 @@ class P4MapInit(P4Operator):
                 primitives.append(ModifyField(meta_field_name, 0))
             else:
                 # Read data from raw header fields and assign them to these meta fields
-                primitives.append(ModifyField(meta_field_name, target_name))
+                primitives.append(ModifyField(meta_field_name, sonata_name))
+        if self.is_ingress:
+            action_name = 'do_%s' % self.operator_name + "__in"
+            table_name = self.operator_name + "__in"
+        else:
+            action_name = 'do_%s' % self.operator_name + "__out"
+            table_name = self.operator_name + "__out"
 
-        self.action = Action('do_%s' % self.operator_name, primitives)
-
+        self.action = Action(action_name, primitives)
         # create dummy TABLE to execute the action
-        self.table = Table(self.operator_name, self.action.get_name(), [], None, 1)
+        self.table = Table(table_name, self.action.get_name(), [], None, 1)
 
     def __repr__(self):
         return '.MapInit(keys=' + str(self.keys) + ')'
@@ -383,6 +405,10 @@ class P4MapInit(P4Operator):
 
     def get_code(self):
         out = ''
+
+        if len(self.keys) == 0:
+            return out
+
         out += '// MapInit of query %i\n' % self.query_id
         out += self.metadata.get_code()
         out += self.action.get_code()
@@ -398,6 +424,10 @@ class P4MapInit(P4Operator):
     def get_control_flow(self, indent_level):
         indent = '\t' * indent_level
         out = ''
+
+        if len(self.keys) == 0:
+            return ''
+
         out += '%sapply(%s);\n' % (indent, self.table.get_name())
         return out
 
@@ -408,8 +438,6 @@ class P4MapInit(P4Operator):
 class P4Map(P4Operator):
     def __init__(self, qid, operator_id, meta_init_name, keys, map_keys, map_values, func, p4_raw_fields):
         super(P4Map, self).__init__('Map', qid, operator_id, keys, p4_raw_fields)
-
-        self.meta_init_name = meta_init_name
         self.map_keys = map_keys
         self.func = func
         self.map_values = map_values
@@ -418,24 +446,26 @@ class P4Map(P4Operator):
         map_fields = list()
         for fld in self.map_keys:
             if fld == 'qid':
-                map_fields.append(P4Field(layer=None, target_name="qid", sonata_name="qid",
-                                          size=QID_SIZE))
+                map_fields.append(P4Field(target_name="qid", sonata_name="qid", size=QID_SIZE,
+                                          meta_name=meta_init_name + "__in"))
             elif fld == 'count':
-                map_fields.append(P4Field(layer=None, target_name="count", sonata_name="count",
-                                          size=COUNT_SIZE))
+                map_fields.append(P4Field(target_name="count", sonata_name="count",size=COUNT_SIZE,
+                                          meta_name=meta_init_name + "__in"))
             else:
-                map_fields.append(self.p4_raw_fields.get_target_field(fld))
+                map_fields.append(get_p4_field(fld, self.p4_raw_fields,
+                                               meta_name=meta_init_name))
 
         map_fields_values = list()
         for fld in self.map_values:
             if fld == 'qid':
-                map_fields_values.append(P4Field(layer=None, target_name="qid", sonata_name="qid",
-                                          size=QID_SIZE))
+                map_fields_values.append(P4Field(target_name="qid", sonata_name="qid", size=QID_SIZE,
+                                                 meta_name=meta_init_name))
             elif fld == 'count':
-                map_fields_values.append(P4Field(layer=None, target_name="count", sonata_name="count",
-                                          size=COUNT_SIZE))
+                map_fields_values.append(P4Field(target_name="count", sonata_name="count", size=COUNT_SIZE,
+                                                 meta_name=meta_init_name))
             else:
-                map_fields_values.append(self.p4_raw_fields.get_target_field(fld))
+                map_fields_values.append(get_p4_field(fld, self.p4_raw_fields,
+                                                      meta_name=meta_init_name))
 
         # create ACTION using the function
         primitives = list()
@@ -444,13 +474,13 @@ class P4Map(P4Operator):
             if func[0] == 'mask' or not func[0]:
                 for field in map_fields:
                     mask_size = (func[1] / 4)
-                    mask = '0x' + ('f' * mask_size) + ('0' * (HEADER_MASK_SIZE[field.target_name] - mask_size))
-                    field_name = '%s.%s' % (self.meta_init_name, field.target_name.replace(".", "_"))
-                    primitives.append(BitAnd(field_name, field_name, mask))
+                    mask = '0x' + ('f' * mask_size) + ('0' * (HEADER_MASK_SIZE[field.get_sonata_field()] - mask_size))
+                    map_name = field.get_meta_field()
+                    primitives.append(BitAnd(map_name, map_name, mask))
             if func[0] == 'set' or not func[0]:
                 for field in map_fields_values:
-                    field_name = '%s.%s' % (self.meta_init_name, field.target_name.replace(".", "_"))
-                    primitives.append(ModifyField(field_name, func[1]))
+                    value_name = field.get_meta_field()
+                    primitives.append(ModifyField(value_name, func[1]))
 
         self.action = Action('do_%s' % self.operator_name, primitives)
 
@@ -513,10 +543,11 @@ class P4Filter(P4Operator):
 
         reads_fields = list()
         for filter_key in self.filter_keys:
+            filter_key = get_p4_field(filter_key, p4_raw_fields)
             if self.func == 'mask':
-                reads_fields.append((filter_key, 'lpm'))
+                reads_fields.append((filter_key.get_target_field(), 'lpm'))
             else:
-                reads_fields.append((filter_key, 'exact'))
+                reads_fields.append((filter_key.get_target_field(), 'exact'))
 
         self.table = Table(self.operator_name, miss_action, (match_action,), reads_fields, TABLE_SIZE)
 
@@ -552,5 +583,4 @@ class P4Filter(P4Operator):
         return self.filter_mask
 
     def get_init_keys(self):
-
         return self.keys

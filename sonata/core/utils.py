@@ -118,19 +118,32 @@ def get_refinement_keys(query, refinement_keys_set):
                 red_keys = red_keys.intersection(set(operator.keys))
 
         per_query_refinement[query.qid] = red_keys
-        red_keys = red_keys.intersection(refinement_keys_set)
+        red_keys = split_intersection(red_keys, refinement_keys_set)
 
     else:
-        red_keys = set(query.basic_headers)
+        # ROOT NODE
+        basic_headers = set(sonata_fields.all_basic_fields.keys())
+        print(basic_headers)
         for operator in query.operators:
-            # Extract reduction keys from first reduce/distinct operator
             if operator.name in ['Distinct', 'Reduce']:
-                red_keys = red_keys.intersection(set(operator.keys))
+                red_keys = split_intersection(operator.keys, basic_headers)
 
-    red_keys = red_keys.intersection(refinement_keys_set)
-
+    red_keys = split_intersection(red_keys, refinement_keys_set)
     return red_keys, per_query_refinement
 
+def split_intersection(query_set, sonata_set):
+    print("sonata: " + str(sonata_set))
+    print("query: " + str(query_set))
+    new_query_keys = set()
+    for key in query_set:
+        new_key = key.split("__")[0]
+        if new_key in sonata_set:
+            new_query_keys.add(key)
+        elif key in sonata_set:
+            new_query_keys.add(key + "__in")
+        else:
+            print("???")
+    return new_query_keys
 
 def generate_composed_spark_queries(reduction_key, basic_headers, query_tree, qid_2_query, composed_queries={}):
     # print query_tree
