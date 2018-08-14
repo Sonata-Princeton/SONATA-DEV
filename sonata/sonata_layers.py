@@ -8,12 +8,13 @@ class SonataLayer(object):
     fields = []
 
     def __init__(self, name, conf, fields=[], offset=0, parent_layer=None, child_layers=None,
-                 field_that_determines_child=None, is_payload=False, layer_2_target=None):
+                 field_that_determines_child=None, has_parser=False, is_payload=False, layer_2_target=None):
 
         self.name = name
         self.conf = conf
         self.offset = offset
         self.parent_layer = parent_layer
+        self.has_parser = has_parser
         self.is_payload = is_payload
         self.layer_2_target = layer_2_target
         child_layers_tmp = {}
@@ -24,7 +25,7 @@ class SonataLayer(object):
                 fields_tmp.append(SonataField(layer=self,
                                                sonata_name=field["sonata_name"],
                                                target_name=field["target_name"],
-                                               size=field["size"]
+                                               size=field["size"],
                                                )
                                    )
         self.fields = fields_tmp
@@ -32,7 +33,8 @@ class SonataLayer(object):
             for key, layer_name in child_layers.items():
 
                 field_that_determines_child_tmp = None
-                if "field_that_determines_child" in conf[layer_name][layer_2_target[layer_name]]: field_that_determines_child_tmp = conf[layer_name][layer_2_target[layer_name]]["field_that_determines_child"]
+                if "field_that_determines_child" in conf[layer_name][layer_2_target[layer_name]]:
+                    field_that_determines_child_tmp = conf[layer_name][layer_2_target[layer_name]]["field_that_determines_child"]
 
                 child_layers_tmp[key] = SonataLayer(layer_name,
                                                     conf,
@@ -41,6 +43,7 @@ class SonataLayer(object):
                                                     parent_layer=self,
                                                     child_layers=conf[layer_name][layer_2_target[layer_name]]["child_layers"],
                                                     field_that_determines_child=field_that_determines_child_tmp,
+                                                    has_parser=conf[layer_name][layer_2_target[layer_name]]["parser"],
                                                     is_payload=conf[layer_name][layer_2_target[layer_name]]["in_payload"],
                                                     layer_2_target=self.layer_2_target)
 
@@ -77,27 +80,26 @@ class SonataRawFields(object):
     all_fields = None
     all_sonata_fields = None
     all_payload_fields = None
+    all_basic_fields = None
 
-    def __init__(self, root_layer):
+    def __init__(self, root_layer, metadata):
         self.root_layer = root_layer
+        self.metadata = metadata
         self.layers = self.root_layer.get_all_child_layers()
-        self.get_all_fields()
+        self.layers.extend(metadata)
+
         self.get_all_sonata_fields()
         self.get_payload_fields()
+        self.get_basic_fields()
 
-    def get_all_fields(self):
-        fields = dict()
         for layer in self.layers:
-            prefix = layer.get_field_prefix()
-            for fld in layer.fields:
-                fields[prefix + "." + str(fld.target_name)] = fld
-        self.all_fields = fields
+            print(layer.name, layer.has_parser)
 
     def get_all_sonata_fields(self):
         fields = dict()
         for layer in self.layers:
             for fld in layer.fields:
-                fields[fld.target_name] = fld
+                fields[fld.sonata_name] = fld
         self.all_sonata_fields = fields
 
     def get_payload_fields(self):
@@ -109,10 +111,19 @@ class SonataRawFields(object):
             # print fields
         self.all_payload_fields = fields
 
-    def get_layers_for_fields(self, query_specific_fields):
+    def get_basic_fields(self):
+        fields = dict()
+        for layer in self.layers:
+            if not layer.is_payload:
+                for fld in layer.fields:
+                    fields[fld.sonata_name] = fld
+        self.all_basic_fields = fields
+
+    def get_raw_layers_for_fields(self, query_specific_fields):
         layers = []
         for field_name in query_specific_fields:
-            fld = self.all_sonata_fields[field_name]
+            split_name = field_name.split("__")[0]
+            fld = self.all_sonata_fields[split_name]
             curr_layer = fld.layer
             if curr_layer.parent_layer is None:
                 layers += [curr_layer]

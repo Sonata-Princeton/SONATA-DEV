@@ -2,7 +2,7 @@ from scapy.all import *
 from multiprocessing.connection import Listener
 import time
 import logging
-from emitter_field import Field, IPField, MacField, PayloadField
+from emitter_field import Field, IPField, MacField, PayloadField, MetaField
 from scapy.config import conf
 import mysql.connector
 from threading import Thread
@@ -145,6 +145,7 @@ class Emitter(object):
                      "(qid, tuple, indexLoc) "
                      "VALUES (%s, %s, %s)")
         newTuple = ",".join(tuples[:-1])
+        print(newTuple)
         data_index = (int(qid), newTuple, int(index))
         # INSERT INTO DB
         cursor.execute(add_index, data_index)
@@ -187,6 +188,8 @@ class Emitter(object):
                             fld = IPField(fld_name, fld_name, offset)
                         elif 'Mac' in fld_name:
                             fld = MacField(fld_name, fld_name, offset)
+                        elif "metadata" in fld_name:
+                            fld = MetaField(fld_name, fld_name, offset)
                         else:
                             format = ''
                             if fld_size == 8:

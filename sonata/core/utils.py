@@ -97,15 +97,19 @@ def filter_payload(keys):
     return filter(lambda x: x != 'payload', keys)
 
 
-def get_refinement_keys(query, refinement_keys_set):
+def get_refinement_keys(query, refinement_keys_set, sonata_fields):
     per_query_refinement = {}
+    print("BLAH: " + str(query))
+    print(refinement_keys_set)
+
+    # print(query.basic_headers)
 
     red_keys = set([])
     if query.left_child is not None:
 
-        red_keys_left, _ = get_refinement_keys(query.left_child, refinement_keys_set)
+        red_keys_left, _ = get_refinement_keys(query.left_child, refinement_keys_set, sonata_fields)
         # print "left keys", red_keys_left, query.qid
-        red_keys_right, _ = get_refinement_keys(query.right_child, refinement_keys_set)
+        red_keys_right, _ = get_refinement_keys(query.right_child, refinement_keys_set, sonata_fields)
         # print "right keys", red_keys_right, query.qid
 
         per_query_refinement[query.left_child.qid] = red_keys_left

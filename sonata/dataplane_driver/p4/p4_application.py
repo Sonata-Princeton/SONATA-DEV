@@ -188,9 +188,12 @@ class P4Application(object):
         raw_layers = self.get_raw_layers()
         out = ""
         for layer in raw_layers:
-            p4_layer = get_p4_layer(layer)
-            out += p4_layer.get_header_specification_code()
-            out += p4_layer.get_parser_code(raw_layers)
+            print(layer.name, layer.has_parser)
+            if layer.has_parser:
+                p4_layer = get_p4_layer(layer)
+                print(p4_layer.get_header_specification_code())
+                out += p4_layer.get_header_specification_code()
+                out += p4_layer.get_parser_code(raw_layers)
 
         return out
 

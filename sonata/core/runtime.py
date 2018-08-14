@@ -61,7 +61,8 @@ class Runtime(object):
             for query in self.queries:
                 target = Target()
                 assert hasattr(target, 'costly_operators')
-                refinement_object = Refinement(query, target, self.GRAN_MAX, self.GRAN, self.refinement_keys)
+                refinement_object = Refinement(query, target, self.GRAN_MAX, self.GRAN, self.refinement_keys,
+                                               self.sonata_fields)
 
                 print "*********************************************************************"
                 print "*                   Generating Query Plan                           *"
@@ -209,6 +210,9 @@ class Runtime(object):
                           "tcp": "bmv2",
                           "ipv4": "bmv2",
                           "udp": "bmv2",
+                          "standard_metadata": "bmv2",
+                          "intrinsic_metadata": "bmv2",
+                          "queueing_metadata": "bmv2",
                           "DNS": "scapy",
                           "payload": "scapy"}
         import json
@@ -227,11 +231,30 @@ class Runtime(object):
                              parent_layer=None,
                              child_layers=data[INITIAL_LAYER][layer_2_target[INITIAL_LAYER]]["child_layers"],
                              field_that_determines_child=field_that_determines_child,
+                             has_parser=data[INITIAL_LAYER][layer_2_target[INITIAL_LAYER]]["parser"],
                              is_payload=data[INITIAL_LAYER][layer_2_target[INITIAL_LAYER]]["in_payload"],
                              layer_2_target=layer_2_target
                              )
 
-        sonataFields = SonataRawFields(layers)
+        metadata_types = ["standard_metadata", "intrinsic_metadata", "queueing_metadata"]
+        metadata_layers = []
+        for METADATA in metadata_types:
+            metadata_layer = SonataLayer(METADATA,
+                                         data,
+                                         fields=data[METADATA][layer_2_target[METADATA]]["fields"],
+                                         offset=data[METADATA][layer_2_target[METADATA]],
+                                         parent_layer=None,
+                                         child_layers=None,
+                                         field_that_determines_child=None,
+                                         has_parser=data[METADATA][layer_2_target[METADATA]]["parser"],
+                                         is_payload=data[METADATA][layer_2_target[METADATA]]["in_payload"],
+                                         layer_2_target=layer_2_target
+                                         )
+            metadata_layers.append(metadata_layer)
+
+        print(metadata_layers)
+
+        sonataFields = SonataRawFields(layers, metadata_layers)
 
         return sonataFields
 

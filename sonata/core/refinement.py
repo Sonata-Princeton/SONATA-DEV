@@ -93,18 +93,20 @@ class Refinement(object):
     filter_mappings = {}
     qid_2_refined_queries = {}
 
-    def __init__(self, query, target, GRAN_MAX, GRAN, refinement_keys_set):
+    def __init__(self, query, target, GRAN_MAX, GRAN, refinement_keys_set, sonata_fields):
         self.query = query
         self.target = target
         self.ref_levels = range(0, GRAN_MAX, GRAN)
         self.qid_2_query = get_qid_2_query(self.query)
+        self.sonata_fields = sonata_fields
+
 
         self.per_query_refinement_key = {}
-        tmp_refinement_key, per_query_refinement = get_refinement_keys(self.query, refinement_keys_set)
+        tmp_refinement_key, per_query_refinement = get_refinement_keys(self.query, refinement_keys_set, sonata_fields)
 
         if tmp_refinement_key or per_query_refinement:
             for key, query in self.qid_2_query.items():
-                tmp_refinement_key_qid,_ = get_refinement_keys(query, refinement_keys_set)
+                tmp_refinement_key_qid,_ = get_refinement_keys(query, refinement_keys_set, sonata_fields)
 
                 if tmp_refinement_key_qid: self.per_query_refinement_key[key] = list(tmp_refinement_key_qid)[0]
                 else: self.per_query_refinement_key[key] = None
@@ -150,7 +152,6 @@ class Refinement(object):
             for operator in self.query.operators:
                 copy_operators(out_query, operator)
             # out_query = self.query
-
         return out_query
 
     def add_timestamp_key(self):

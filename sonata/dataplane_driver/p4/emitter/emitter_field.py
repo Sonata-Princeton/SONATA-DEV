@@ -71,6 +71,7 @@ class Field(object):
     def extract_field(self, packet_as_string):
         # print self.sonata_name, self.target_name
         # print self.offset, self.offset, self.ctr
+        print(packet_as_string)
         return str(self.unpack_struct.unpack(packet_as_string[self.offset:self.offset + self.ctr])[0])
 
     def get_updated_offset(self):
@@ -95,6 +96,20 @@ class MacField(Field):
     byte_size = 8
     size = 48
     format = 'BBBBBB'
+
+    def __init__(self, target_name, sonata_name, offset):
+        Field.__init__(self, target_name, sonata_name, self.size, self.format, offset)
+        self.ctr = self.size / self.byte_size
+
+    def extract_field(self, packet_as_string):
+        return ".".join(
+            [str(x) for x in list(self.unpack_struct.unpack(packet_as_string[self.offset:self.offset + self.ctr]))])
+
+
+class MetaField(Field):
+    byte_size = 8
+    size = 48
+    format = ''
 
     def __init__(self, target_name, sonata_name, offset):
         Field.__init__(self, target_name, sonata_name, self.size, self.format, offset)

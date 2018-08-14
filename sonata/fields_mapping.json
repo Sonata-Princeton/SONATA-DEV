@@ -2,6 +2,7 @@
   "tcp": {
     "bmv2": {
       "in_payload": false,
+      "parser": true,
       "fields": [
         { "sonata_name": "tcp.sport", "target_name": "tcp.sport", "size": 16 },
         { "sonata_name": "tcp.dport", "target_name": "tcp.dport", "size": 16 },
@@ -21,6 +22,7 @@
   "ipv4": {
     "bmv2": {
       "in_payload": false,
+      "parser": true,
       "fields": [
         { "sonata_name": "ipv4.version", "target_name": "ipv4.version", "size": 4 },
         { "sonata_name": "ipv4.ihl", "target_name": "ipv4.ihl", "size": 4 },
@@ -43,6 +45,7 @@
   "udp":{
     "bmv2": {
       "in_payload": false,
+      "parser": true,
       "fields": [
         { "sonata_name": "udp.sport", "target_name": "udp.sport", "size": 16 },
         { "sonata_name": "udp.dport", "target_name": "udp.dport", "size": 16 },
@@ -55,6 +58,7 @@
   "ethernet": {
     "bmv2": {
       "in_payload": false,
+      "parser": true,
       "fields": [
         { "sonata_name": "ethernet.dstMac", "target_name": "ethernet.dstMac", "size": 48 },
         { "sonata_name": "ethernet.srcMac", "target_name": "ethernet.srcMac", "size": 48 },
@@ -67,6 +71,7 @@
   "payload": {
     "scapy": {
       "in_payload": true,
+      "parser": true,
       "fields": [
         { "sonata_name": "payload", "target_name": "payload", "size": 4 }
       ],
@@ -76,6 +81,7 @@
   "DNS": {
     "scapy": {
       "in_payload": true,
+      "parser": false,
       "fields": [
         { "sonata_name": "dns.id", "target_name": "dns.id", "size": 4 },
         { "sonata_name": "dns.qr", "target_name": "dns.qr", "size": 1 },
@@ -122,6 +128,52 @@
         { "sonata_name": "dns.ar.ttl", "target_name": "dns.ar.ttl", "size": 32 },
         { "sonata_name": "dns.ar.rdlen", "target_name": "dns.ar.rdlen", "size": 4 },
         { "sonata_name": "dns.ar.rdata", "target_name": "dns.ar.rdata", "size": 4 }
+      ],
+      "child_layers": {}
+    }
+  },
+  "standard_metadata": {
+    "bmv2": {
+      "in_payload": false,
+      "parser": false,
+      "fields": [
+        { "sonata_name": "standard_metadata.ingress_port", "target_name": "standard_metadata.ingress_port", "size": 9 },
+        { "sonata_name": "standard_metadata.packet_length", "target_name": "standard_metadata.packet_length", "size": 32 },
+        { "sonata_name": "standard_metadata.egress_spec", "target_name": "standard_metadata.egress_spec", "size": 9 },
+        { "sonata_name": "standard_metadata.egress_port", "target_name": "standard_metadata.egress_port", "size": 9 },
+        { "sonata_name": "standard_metadata.instance_type", "target_name": "standard_metadata.instance_type", "size": 32 },
+        { "sonata_name": "standard_metadata.drop", "target_name": "standard_metadata.drop", "size": 1 },
+        { "sonata_name": "standard_metadata.recirculate_port", "target_name": "standard_metadata.recirculate_port", "size": 16 },
+        { "sonata_name": "standard_metadata.packet_length", "target_name": "standard_metadata.packet_length", "size": 32 }
+      ],
+      "child_layers": {}
+    }
+  },
+  "intrinsic_metadata": {
+    "bmv2": {
+      "in_payload": false,
+      "parser": true,
+      "fields": [
+        { "sonata_name": "intrinsic_metadata.ingress_global_timestamp", "target_name": "intrinsic_metadata.ingress_global_timestamp", "size": 48 },
+        { "sonata_name": "intrinsic_metadata.egress_global_timestamp", "target_name": "intrinsic_metadata.enq_timestamp", "size": 48 },
+        { "sonata_name": "intrinsic_metadata.lf_field_list", "target_name": "intrinsic_metadata.lf_field_list", "size": 32 },
+        { "sonata_name": "intrinsic_metadata.mcast_grp", "target_name": "intrinsic_metadata.mcast_grp", "size": 16 },
+        { "sonata_name": "intrinsic_metadata.resubmit_flag", "target_name": "intrinsic_metadata.resubmit_flag", "size": 32 },
+        { "sonata_name": "intrinsic_metadata.egress_rid", "target_name": "intrinsic_metadata.egress_rid", "size": 16 },
+        { "sonata_name": "intrinsic_metadata.recirculate_flag", "target_name": "intrinsic_metadata.recirculate_flag", "size": 32 }
+      ],
+      "child_layers": {}
+    }
+  },
+  "queueing_metadata": {
+    "bmv2": {
+      "in_payload": false,
+      "parser": true,
+      "fields": [
+        {"sonata_name": "queueing_metadata.enq_timestamp", "target_name": "queueing_metadata.enq_timestamp", "size": 32},
+        {"sonata_name": "queueing_metadata.enq_qdepth", "target_name": "queueing_metadata.enq_qdepth", "size": 19},
+        {"sonata_name": "queueing_metadata.deq_timedelta", "target_name": "queueing_metadata.deq_timedelta", "size": 32},
+        {"sonata_name": "queueing_metadata.deq_qdepth", "target_name": "queueing_metadata.deq_qdepth",  "size": 19}
       ],
       "child_layers": {}
     }
