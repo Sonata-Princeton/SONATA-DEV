@@ -2,7 +2,7 @@ from scapy.all import *
 from multiprocessing.connection import Listener
 import time
 import logging
-from emitter_field import Field, IPField, MacField, PayloadField, MetaField
+from emitter_field import Field, IPField, MacField, PayloadField
 from scapy.config import conf
 import mysql.connector
 from threading import Thread
@@ -182,29 +182,23 @@ class Emitter(object):
                 output_tuple = list()
                 if out_headers is not None:
                     for fld in out_headers.fields[1:]:
-                        fld_name = fld.target_name
+                        fld_name = fld.get_target_field()
                         fld_size = fld.size
                         if 'IP' in fld_name:
                             fld = IPField(fld_name, fld_name, offset)
                         elif 'Mac' in fld_name:
                             fld = MacField(fld_name, fld_name, offset)
-                        elif "metadata" in fld_name:
-                            fld = MetaField(fld_name, fld_name, offset)
                         else:
-                            format = ''
-                            if fld_size == 8:
-                                format = 'B'
-                            elif fld_size == 16:
-                                format = '>H'
-                            fld = Field(fld_name, fld_name, fld_size, format, offset)
-
+                            fld = Field(fld_name, fld_name, fld_size, offset=offset)
                         offset = fld.get_updated_offset()
                         ctr += fld.ctr
                         field_value = fld.extract_field(p_str)
+                        print(field_value)
                         output_tuple.append(field_value)
 
                 payload_fields = query['payload_fields']
                 if query['parse_payload'] and payload_fields != ['payload']:
+                    print("What is this function?!?!?")
                     conf.l3types.register_num2layer(3, Ether)
                     ctr += 4
                     new_raw_packet = conf.l3types[3](p_str[ctr:])
