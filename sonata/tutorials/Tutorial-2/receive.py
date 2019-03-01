@@ -88,7 +88,7 @@ class Emitter(object):
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)
         # create file handler which logs messages
-        self.fh = logging.FileHandler('/home/vagrant/dev/sonata/tutorial/Part-1/' + "receiver.log")
+        self.fh = logging.FileHandler('/home/vagrant/dev/sonata/tutorials/Tutorial-2/' + "receiver.log")
         self.fh.setLevel(logging.INFO)
         self.logger.addHandler(self.fh)
 
