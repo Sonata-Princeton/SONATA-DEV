@@ -129,8 +129,10 @@ class Emitter(object):
             if success:
                 write_register_cmds = ""
                 for line in out.split('\n'):
-                    if line:
-                        m = re.search('.*\[(.*)\]\=\s+(.*)', out)
+                    # Each line except the first line is of type
+                    # reduce_1[index] = value
+                    m = re.search('.*\[(.*)\]\=\s+(.*)', line)
+                    if m:
                         output[m.group(1)] = m.group(2)
                         write_register_cmds += "register_write "+register+" " + str(m.group(1)) + " 0\n"
 
