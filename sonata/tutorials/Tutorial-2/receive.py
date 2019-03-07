@@ -88,7 +88,7 @@ class Emitter(object):
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)
         # create file handler which logs messages
-        self.fh = logging.FileHandler('/home/vagrant/dev/sonata/tutorial/Part-1/' + "receiver.log")
+        self.fh = logging.FileHandler('/home/vagrant/dev/sonata/tutorials/Tutorial-2/' + "receiver.log")
         self.fh.setLevel(logging.INFO)
         self.logger.addHandler(self.fh)
 
@@ -129,8 +129,10 @@ class Emitter(object):
             if success:
                 write_register_cmds = ""
                 for line in out.split('\n'):
-                    if line:
-                        m = re.search('.*\[(.*)\]\=\s+(.*)', out)
+                    # Each line except the first line is of type
+                    # reduce_1[index] = value
+                    m = re.search('.*\[(.*)\]\=\s+(.*)', line)
+                    if m:
                         output[m.group(1)] = m.group(2)
                         write_register_cmds += "register_write "+register+" " + str(m.group(1)) + " 0\n"
 
