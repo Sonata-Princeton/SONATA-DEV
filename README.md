@@ -4,4 +4,4 @@
 
 #### [Example Applications](https://github.com/Sonata-Princeton/SONATA-DEV/tree/master/sonata/examples)
 
-#### [Tutorials](https://github.com/Sonata-Princeton/SONATA-DEV/tree/tutorial/sonata/tutorials)
+#### [Tutorials](https://github.com/Sonata-Princeton/SONATA-DEV/tree/master/sonata/tutorials)
