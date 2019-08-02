@@ -88,7 +88,7 @@ class Emitter(object):
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)
         # create file handler which logs messages
-        self.fh = logging.FileHandler('/home/vagrant/dev/sonata/tutorial/Part-1/' + "receiver.log")
+        self.fh = logging.FileHandler('/home/vagrant/dev/sonata/tutorials/Tutorial-2/' + "receiver.log")
         self.fh.setLevel(logging.INFO)
         self.logger.addHandler(self.fh)
 
@@ -116,13 +116,13 @@ class Emitter(object):
 
     def process_register_values(self, read_qid, register):
         store = {}
+        qid = str(read_qid)
 
-        if self.tuple_dict.keys():
+        if qid in self.tuple_dict.keys():
             read_register_cmds = ""
-            for indexLoc in self.tuple_dict.keys():
-                store[indexLoc] = self.tuple_dict[indexLoc]['tuple']
-                read_register_cmds +="register_read "+register+" " + str(indexLoc) + "\n"
-
+            for indexLoc in self.tuple_dict[qid].keys():
+                store[indexLoc] = self.tuple_dict[qid][indexLoc]
+                read_register_cmds += "register_read " + register + " " + str(indexLoc) + "\n"
             success, out = get_out("echo \"" + read_register_cmds + "\" | " + self.bmv2_cli + " --thrift-port " + str(self.thrift_port) + " | grep -o -e \"$1.*[1-9][0-9]*$\"")
 
             output = {}
@@ -130,17 +130,21 @@ class Emitter(object):
                 write_register_cmds = ""
                 for line in out.split('\n'):
                     if line:
-                        m = re.search('.*\[(.*)\]\=\s+(.*)', out)
-                        output[m.group(1)] = m.group(2)
-                        write_register_cmds += "register_write "+register+" " + str(m.group(1)) + " 0\n"
+                        m = re.search('.*\[(.*)\]\=\s+(.*)', line)
+                        if m:
+                            print "index = ", m.group(1), "value = ", m.group(2)
+                            output[m.group(1)] = m.group(2)
+                            write_register_cmds += "register_write " + register + " " + str(m.group(1)) + " 0\n"
 
                 success3, out3 = get_out("echo \"" + write_register_cmds + "\" | " + self.bmv2_cli + " --thrift-port " + str(self.thrift_port))
 
             for indexLoc in store.keys():
                 if str(indexLoc) in output.keys():
-                    out = store[indexLoc] + ","+output[str(indexLoc)]
+                    out = store[indexLoc] + "," + output[str(indexLoc)]
                     self.logger.info(out)
-                    self.tuple_dict.pop(indexLoc, None)
+                    self.tuple_dict[qid].pop(indexLoc, None)
+                    if not self.tuple_dict[qid].keys():
+                        self.tuple_dict.pop(qid)
 
     def store_tuple_to_dict(self, tuple):
 
@@ -149,12 +153,13 @@ class Emitter(object):
         qid = tuples[1]
         newTuple = ",".join(tuples[:-1])
 
-        data_index = {'tuple': newTuple, 'id': qid }
+        if qid not in self.tuple_dict:
+            self.tuple_dict[qid] = {}
 
-        if index not in self.tuple_dict:
-            self.tuple_dict[index] = {}
+        if index not in self.tuple_dict[qid]:
+            self.tuple_dict[qid][index] = {}
 
-        self.tuple_dict[index] = data_index
+        self.tuple_dict[qid][index] = newTuple
 
     def sniff_packets(self):
         print "Interface confirming: ", self.sniff_interface
