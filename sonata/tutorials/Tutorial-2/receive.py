@@ -132,7 +132,6 @@ class Emitter(object):
                     if line:
                         m = re.search('.*\[(.*)\]\=\s+(.*)', line)
                         if m:
-                            print "index = ", m.group(1), "value = ", m.group(2)
                             output[m.group(1)] = m.group(2)
                             write_register_cmds += "register_write " + register + " " + str(m.group(1)) + " 0\n"
 
