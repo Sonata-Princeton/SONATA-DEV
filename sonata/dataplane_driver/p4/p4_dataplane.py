@@ -1,5 +1,4 @@
 import logging
-import sys
 
 from time import sleep
 
@@ -7,7 +6,8 @@ import subprocess
 
 from interfaces import Interfaces
 from sonata.dataplane_driver.utils import get_out, get_in
-import threading,os
+import os
+import threading
 
 class Switch(threading.Thread):
     def __init__(self, p4_json_path, switch_path, internal_interfaces):
@@ -95,4 +95,9 @@ class P4DataPlane(object):
     def compile_p4(self, p4_compiled, json_p4_compiled):
         self.logger.info('compile p4 to json')
         CMD = self.bm_script + " " + p4_compiled + " --json " + json_p4_compiled
-        get_out(CMD)
+        (success, error) = get_out(CMD)
+        if not success:
+            print("***************************************************\n")
+            print("ERROR! YOUR P4 CODE COULD NOT COMPILE SUCCESSFULLY.\n")
+            print("***************************************************\n")
+            os._exit(1)

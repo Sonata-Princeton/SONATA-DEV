@@ -70,7 +70,8 @@ class Runtime(object):
 
                 final_plan = conf["final_plan"]
                 # Account for an additional map (masking) operation for iterative refinement
-                final_plan = [(q, r, p + 1) for (q, r, p) in final_plan]
+                if len(final_plan) > 1:
+                    final_plan = [(q, r, p + 1) for (q, r, p) in final_plan]
 
                 prev_r = 0
                 prev_qid = 0

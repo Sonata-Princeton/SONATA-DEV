@@ -19,12 +19,25 @@ with open('/home/vagrant/dev/sonata/config.json') as json_data_file:
 config = data["on_server"][data["is_on_server"]]["sonata"]
 
 ORIGINAL_PACKET = False
+CUSTOM_P4_LOGIC = False
 
 SENDER_PORT = config["SENDER_PORT"]
 RECIEVE_PORT = config["RECIEVE_PORT"]
 
+INGRESS_END_FIELDS = ['egress_spec']
+EGRESS_START_FIELDS = ['queueing_metadata.enq_timestamp, queueing_metadata.deq_qdepth, queueing_metadata.deq_timedelta,'
+                       'intrinsic_metadata.egress_rid', 'intrinsic_metadata.mcast_grp',
+                       'intrinsic_metadata.egress_global_timestamp', 'egress_port']
+
+INGRESS_START = 0
+INGRESS_END = 1
+EGRESS_START = 2
+EGRESS_END = 3
+
 SESSION_ID = 8001
 SPAN_PORT = 12
+
+
 
 
 class P4Application(object):
@@ -61,6 +74,14 @@ class P4Application(object):
         self.nop_action = None
         self.metadata = None
         self.queries = self.init_application(app)
+
+        self.optimal_processing_point = INGRESS_START
+        # 0: start of ingress
+        # 1: end of ingress
+        # 2: start of egress
+        # 3: end of egress
+
+        self.find_optimal_processing_point()
 
     # INIT THE DATASTRUCTURE
     def init_application(self, app):
@@ -139,6 +160,17 @@ class P4Application(object):
 
         self.report_action_table = Table('report_packet', self.report_action.get_name(), [], None, 1)
         return queries
+
+    def find_optimal_processing_point(self):
+
+        for query in self.queries.values():
+            for operator in query.operators:
+                if operator in EGRESS_START_FIELDS:
+                    self.optimal_processing_point = EGRESS_START
+                    return
+                if operator in INGRESS_END_FIELDS:
+                    self.optimal_processing_point = INGRESS_END
+
 
     # COMPILE THE CODE
     def get_p4_code(self):
@@ -270,38 +302,63 @@ table forward {
         out += '\tapply(%s);\n' % self.init_action_table.get_name()
 
         # add the control flow of one query after the other
+        # currently just map init
+
+        out += '\tif (standard_metadata.instance_type == 0) {\n'
+
         for query in self.queries.values():
-            out += query.get_ingress_control_flow(1)
+            out += query.get_in_init_control_flow(2)
+
+        if self.optimal_processing_point == INGRESS_START:
+            for query in self.queries.values():
+                out += query.get_query_processing_control_flow(2)
+            # for query in self.queries.values():
+            #     out += query.get_query_satisfied_control_flow(2)
+            out += '\t\tif (%s.%s == 1) {\n' % (self.metadata.get_name(), self.clone_meta_field)
+            out += '\t\t\tapply(%s);\n' % self.report_action_table.get_name()
+
+        if ORIGINAL_PACKET:
+            out += '\t\t// original packet, apply forwarding\n'
+            out += '\t\tapply(forward);\n'
+
+        if self.optimal_processing_point == INGRESS_END:
+        #     for query in self.queries.values():
+        #         out += query.get_query_processing_control_flow(2)
+            out += '\t\tif (%s.%s == 1) {\n' % (self.metadata.get_name(), self.clone_meta_field)
+            out += '\t\t\tapply(%s);\n' % self.report_action_table.get_name()
+
+        out += '\t\t}\n'
+        out += '\t}\n'
 
         out += '}\n\n'
+        # out += '}\n'
         return out
 
     def get_egress_pipeline(self):
         out = ''
         out += 'control egress {\n'
 
-        # normal forwarding of the original packet
+        # TODO normal forwarding of the original packet
 
-        # NORMAL BEHAVIOR
-        out += '\tif (standard_metadata.instance_type == 0) {\n'
+        print("OPTIMAL PROCESING POINT == {}".format(self.optimal_processing_point))
+        if self.optimal_processing_point == EGRESS_START:
+            out += '\tif (standard_metadata.instance_type == 0) {\n'
+            for query in self.queries.values():
+                out += query.get_query_processing_control_flow(2)
+            for query in self.queries.values():
+                out += query.get_query_satisfied_control_flow(2)
+            out += '\t\tif (%s.%s == 1) {\n' % (self.metadata.get_name(), self.clone_meta_field)
+            out += '\t\t\tapply(%s);\n' % self.report_action_table.get_name()
 
-        out += '\t\t// original packet, apply forwarding\n'
-        if ORIGINAL_PACKET: out += '\tapply(forward);\n'
-
-        for query in self.queries.values():
-            out += query.get_egress_control_flow_process_query(2)
-
-        out += '\t\tif (%s.%s == 1) {\n' % (self.metadata.get_name(), self.clone_meta_field)
-        out += '\t\t\tapply(%s);\n' % self.report_action_table.get_name()
-        out += '\t\t}\n'
-        out += '\t}\n'
+            out += '\t\t}\n'
+            out += '\t}\n'
 
         # CLONE, SUCCESSFULLY REPORTED
-        out += '\telse if (standard_metadata.instance_type == 2) {\n'
+        out += '\tif (standard_metadata.instance_type == 2) {\n'
 
         # ONE PER QUERY
         for query in self.queries.values():
-            out += query.get_egress_control_flow_satisfied(2)
+            out += query.get_query_satisfied_control_flow(2)
         out += '\t\tapply(%s);\n' % self.final_header_table.get_name()
         out += '\t}\n'
         out += '}\n\n'

@@ -155,6 +155,7 @@ class P4Query(object):
                 in_map_init_keys.append(key)
             else:
                 in_map_init_keys.append(key)
+                # if not specified, capture both
                 if key not in ["qid", "count"]:
                     out_map_init_keys.append(key)
 
@@ -231,7 +232,7 @@ class P4Query(object):
         # self.logger.info(p4_operators)
         return p4_operators
 
-    def get_ingress_control_flow(self, indent_level):
+    def get_in_init_control_flow(self, indent_level):
         curr_indent_level = indent_level
         indent = '\t' * curr_indent_level
 
@@ -242,7 +243,7 @@ class P4Query(object):
 
         return out
 
-    def get_egress_control_flow_process_query(self, indent_level):
+    def get_query_processing_control_flow(self, indent_level):
         curr_indent_level = indent_level
         indent = '\t' * curr_indent_level
 
@@ -269,7 +270,7 @@ class P4Query(object):
 
         return out
 
-    def get_egress_control_flow_satisfied(self, indent_level):
+    def get_query_satisfied_control_flow(self, indent_level):
         curr_indent_level = indent_level
         indent = '\t' * curr_indent_level
 
