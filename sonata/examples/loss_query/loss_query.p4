@@ -18,7 +18,7 @@ const bit<32> I2E_CLONE_SESSION_ID = 11;
 const bit<32> NUM_COUNTERS_PER_STAGE = 0x8000; // 2^15
 const bit<4> INDEX_SIZE = 15; // ~32MB
 
-const bit<3> EPOCH_LEN = 5; // >> 6 = 2^64 milliseconds
+const bit<5> EPOCH_POWER = 0; // ~2^N seconds. SET TO MATCH CONTROLLER.PY!
 
 const bit<32> HASH_0 = 0xDEADBEEF;
 const bit<32> HASH_1 = 0xABCABCAB;
@@ -69,10 +69,14 @@ header tcp_t {
 }
 
 struct keys_t {
-    bit<32> key0;
-    bit<32> key1;
-    bit<32> key2;
-    bit<32> key3;
+    bit<32> in_key0;
+    bit<32> in_key1;
+    bit<32> in_key2;
+    bit<32> in_key3;
+    bit<32> out_key0;
+    bit<32> out_key1;
+    bit<32> out_key2;
+    bit<32> out_key3;
 }
 
 struct ipdata_t {
@@ -82,10 +86,12 @@ struct ipdata_t {
 }
 
 header out_header_t {
+    bit<48> pkt_timestamp;
     bit<8> ingress_stage;
     bit<32> ingress_key;
     bit<8> egress_stage;
     bit<32> egress_key;
+    bit<8> epoch;
 }
 
 struct metadata {
@@ -96,6 +102,7 @@ struct metadata {
     bit<4>      curr_stage;
     bit<1>      inserted;
     bit<1>      new;
+    bit<1>      reset;
 
     ipdata_t    ip_data;
     bit<56>     ip_data_raw;
@@ -156,6 +163,9 @@ control MyVerifyChecksum(inout headers hdr, inout metadata meta) {
 
 // 0xfffff = 2^20 = 1048576
 
+register<bit<48>>(1) start_timestamp;
+register<bit<32>>(88) test;
+
 register<bit<56>>(NUM_COUNTERS_PER_STAGE) counts_0;
 register<bit<56>>(NUM_COUNTERS_PER_STAGE) counts_1;
 register<bit<56>>(NUM_COUNTERS_PER_STAGE) counts_2;
@@ -183,29 +193,38 @@ control Stage0(inout headers hdr,
     }
 
     action hit_0() {
+        hdr.out_header.ingress_key = meta.keys.in_key0;
         hdr.out_header.ingress_stage = 0;
-        hdr.out_header.ingress_key = meta.keys.key0;
         meta.inserted = 1;
+    }
+
+    action replace() {
+        meta.ip_data.epoch = meta.epoch;
+        meta.ip_data.count = 1;
+        meta.ip_data.ip = hdr.ipv4.srcAddr;
+        compile_reg();
+        counts_0.write(meta.keys.in_key0, meta.ip_data_raw);
+        hit_0();
+        meta.new = 1;
+    }
+
+    action update() {
+        meta.ip_data.count = meta.ip_data.count + 1;
+        compile_reg();
+        counts_0.write(meta.keys.in_key0, meta.ip_data_raw);
+        hit_0();
     }
 
     apply {
         set_current_stage_0();
 
-        counts_0.read(meta.ip_data_raw, meta.keys.key0);
+        counts_0.read(meta.ip_data_raw, meta.keys.in_key0);
         extract_reg();
 
-        if (meta.epoch - meta.ip_data.epoch > 0) { // old epoch, replace
-            meta.ip_data.epoch = meta.epoch;
-            meta.ip_data.count = 1;
-            meta.ip_data.ip = hdr.ipv4.srcAddr;
-            compile_reg();
-            counts_0.write(meta.keys.key0, meta.ip_data_raw);
-            hit_0();
+        if (meta.epoch - meta.ip_data.epoch > 1) { // old epoch, replace
+            replace();
         } else if (hdr.ipv4.srcAddr == meta.ip_data.ip) { // same IP, count
-            meta.ip_data.count = meta.ip_data.count + 1;
-            compile_reg();
-            counts_0.write(meta.keys.key0, meta.ip_data_raw);
-            hit_0();
+            update();
         } else {
             meta.inserted = 0;
         }
@@ -222,7 +241,7 @@ control Stage1(inout headers hdr,
 
     action hit_1() {
         hdr.out_header.ingress_stage = 1;
-        hdr.out_header.ingress_key = meta.keys.key1;
+        hdr.out_header.ingress_key = meta.keys.in_key1;
         meta.inserted = 1;
     }
 
@@ -238,24 +257,34 @@ control Stage1(inout headers hdr,
         meta.ip_data_raw[31:0] = meta.ip_data.ip;
     }
 
+    action replace() {
+        meta.ip_data.epoch = meta.epoch;
+        meta.ip_data.count = 1;
+        meta.ip_data.ip = hdr.ipv4.srcAddr;
+        compile_reg();
+        counts_1.write(meta.keys.in_key1, meta.ip_data_raw);
+        hit_1();
+        meta.new = 1;
+    }
+
+    action update() {
+        meta.ip_data.count = meta.ip_data.count + 1;
+        compile_reg();
+        counts_1.write(meta.keys.in_key1, meta.ip_data_raw);
+        hit_1();
+    }
+
+
     apply {
         set_current_stage_1();
 
-        counts_1.read(meta.ip_data_raw, meta.keys.key1);
+        counts_1.read(meta.ip_data_raw, meta.keys.in_key1);
         extract_reg();
 
-        if (meta.epoch - meta.ip_data.epoch > 0) { // old epoch, replace
-            meta.ip_data.epoch = meta.epoch;
-            meta.ip_data.count = 1;
-            meta.ip_data.ip = hdr.ipv4.srcAddr;
-            compile_reg();
-            counts_1.write(meta.keys.key1, meta.ip_data_raw);
-            hit_1();
+        if (meta.epoch - meta.ip_data.epoch > 1) { // old epoch, replace
+            replace();
         } else if (hdr.ipv4.srcAddr == meta.ip_data.ip) { // same IP, count
-            meta.ip_data.count = meta.ip_data.count + 1;
-            compile_reg();
-            counts_1.write(meta.keys.key1, meta.ip_data_raw);
-            hit_1();
+            update();
         } else {
             meta.inserted = 0;
         }
@@ -272,7 +301,7 @@ control Stage2(inout headers hdr,
 
     action hit_2() {
         hdr.out_header.ingress_stage = 2;
-        hdr.out_header.ingress_key = meta.keys.key2;
+        hdr.out_header.ingress_key = meta.keys.in_key2;
         meta.inserted = 1;
     }
 
@@ -288,27 +317,36 @@ control Stage2(inout headers hdr,
         meta.ip_data_raw[31:0] = meta.ip_data.ip;
     }
 
+    action replace() {
+        meta.ip_data.epoch = meta.epoch;
+        meta.ip_data.count = 1;
+        meta.ip_data.ip = hdr.ipv4.srcAddr;
+        compile_reg();
+        counts_2.write(meta.keys.in_key2, meta.ip_data_raw);
+        hit_2();
+        meta.new = 1;
+    }
+
+    action update() {
+        meta.ip_data.count = meta.ip_data.count + 1;
+        compile_reg();
+        counts_2.write(meta.keys.in_key2, meta.ip_data_raw);
+        hit_2();
+    }
+
     apply {
 
         // # PER STAGE
         set_current_stage_2();
 
         // #4: check register value
-        counts_2.read(meta.ip_data_raw, meta.keys.key2);
+        counts_2.read(meta.ip_data_raw, meta.keys.in_key2);
         extract_reg();
 
-        if (meta.epoch - meta.ip_data.epoch > 0) { // old epoch, replace
-            meta.ip_data.epoch = meta.epoch;
-            meta.ip_data.count = 1;
-            meta.ip_data.ip = hdr.ipv4.srcAddr;
-            compile_reg();
-            counts_2.write(meta.keys.key2, meta.ip_data_raw);
-            hit_2();
+        if (meta.epoch - meta.ip_data.epoch > 1) { // old epoch, replace
+            replace();
         } else if (hdr.ipv4.srcAddr == meta.ip_data.ip) { // same IP, count
-            meta.ip_data.count = meta.ip_data.count + 1;
-            compile_reg();
-            counts_2.write(meta.keys.key2, meta.ip_data_raw);
-            hit_2();
+            update();
         } else {
             meta.inserted = 0;
         }
@@ -325,7 +363,7 @@ control Stage3(inout headers hdr,
 
     action hit_3() {
         hdr.out_header.ingress_stage = 3;
-        hdr.out_header.ingress_key = meta.keys.key3;
+        hdr.out_header.ingress_key = meta.keys.in_key3;
         meta.inserted = 1;
     }
 
@@ -341,6 +379,23 @@ control Stage3(inout headers hdr,
         meta.ip_data_raw[31:0] = meta.ip_data.ip;
     }
 
+    action replace() {
+        meta.ip_data.epoch = meta.epoch;
+        meta.ip_data.count = 1;
+        meta.ip_data.ip = hdr.ipv4.srcAddr;
+        compile_reg();
+        counts_3.write(meta.keys.in_key3, meta.ip_data_raw);
+        hit_3();
+        meta.new = 1;
+    }
+
+    action update() {
+        meta.ip_data.count = meta.ip_data.count + 1;
+        compile_reg();
+        counts_3.write(meta.keys.in_key3, meta.ip_data_raw);
+        hit_3();
+    }
+
     apply {
         // # GLOBAL FOR ALL STAGES
         // #1: get epoch ID
@@ -348,21 +403,13 @@ control Stage3(inout headers hdr,
 
 
         // #4: check register value
-        counts_3.read(meta.ip_data_raw, meta.keys.key3);
+        counts_3.read(meta.ip_data_raw, meta.keys.in_key3);
         extract_reg();
 
-        if (meta.epoch - meta.ip_data.epoch > 0) { // old epoch, replace
-            meta.ip_data.epoch = meta.epoch;
-            meta.ip_data.count = 1;
-            meta.ip_data.ip = hdr.ipv4.srcAddr;
-            compile_reg();
-            counts_3.write(meta.keys.key3, meta.ip_data_raw);
-            hit_3();
+        if (meta.epoch - meta.ip_data.epoch > 1) { // old epoch, replace
+            replace();
         } else if (hdr.ipv4.srcAddr == meta.ip_data.ip) { // same IP, count
-            meta.ip_data.count = meta.ip_data.count + 1;
-            compile_reg();
-            counts_3.write(meta.keys.key3, meta.ip_data_raw);
-            hit_3();
+            update();
         } else {
             meta.inserted = 0;
         }
@@ -395,14 +442,19 @@ control Stage4_Collisions(inout headers hdr,
         meta.ip_data_raw[31:0] = meta.ip_data.ip;
     }
 
-    apply {
-        set_current_stage_4();
-
-        // count per epoch for collided packets
+    action update() {
         collision_counts.read(meta.collision_count, (bit<32>) meta.epoch);
         meta.collision_count = meta.collision_count + 1;
         collision_counts.write((bit<32>) meta.epoch, meta.collision_count);
-        hit_4();
+    }
+
+    apply {
+        set_current_stage_4();
+
+        update();
+        if (meta.inserted != 1) {
+            hit_4();
+        }
     }
 }
 
@@ -411,58 +463,108 @@ control MyIngress(inout headers hdr,
   inout standard_metadata_t standard_metadata) {
 
   action get_hashes() {
-      hash(meta.keys.key0,
+      hash(meta.keys.in_key0,
           HashAlgorithm.crc32,
           (bit<32>) 0,
           {hdr.ipv4.srcAddr,
+              meta.epoch,
               HASH_0},
-          (bit<16>) 0xffff); // matches NUM_COUNTERS_PER_STAGE = 2^15
+          (bit<16>) 0x8fff); // matches NUM_COUNTERS_PER_STAGE = 2^15
 
-      hash(meta.keys.key1,
+      hash(meta.keys.out_key0,
           HashAlgorithm.crc32,
           (bit<32>) 0,
           {hdr.ipv4.srcAddr,
+              meta.epoch,
+              HASH_0},
+          (bit<16>) 0x8fff); // matches NUM_COUNTERS_PER_STAGE = 2^15
+
+      hash(meta.keys.in_key1,
+          HashAlgorithm.crc32,
+          (bit<32>) 0,
+          {hdr.ipv4.srcAddr,
+              meta.epoch,
               HASH_1},
-          (bit<16>) 0xffff); // matches NUM_COUNTERS_PER_STAGE = 2^15
+          (bit<16>) 0x8fff); // matches NUM_COUNTERS_PER_STAGE = 2^15
 
-      hash(meta.keys.key2,
+      hash(meta.keys.out_key1,
           HashAlgorithm.crc32,
           (bit<32>) 0,
           {hdr.ipv4.srcAddr,
+              meta.epoch,
+              HASH_1},
+          (bit<16>) 0x8fff); // matches NUM_COUNTERS_PER_STAGE = 2^15
+
+      hash(meta.keys.in_key2,
+          HashAlgorithm.crc32,
+          (bit<32>) 0,
+          {hdr.ipv4.srcAddr,
+              meta.epoch,
               HASH_2},
-          (bit<16>) 0xffff); // matches NUM_COUNTERS_PER_STAGE = 2^15
+          (bit<16>) 0x8fff); // matches NUM_COUNTERS_PER_STAGE = 2^15
 
-      hash(meta.keys.key3,
+      hash(meta.keys.out_key2,
           HashAlgorithm.crc32,
           (bit<32>) 0,
           {hdr.ipv4.srcAddr,
+              meta.epoch,
+              HASH_2},
+          (bit<16>) 0x8fff); // matches NUM_COUNTERS_PER_STAGE = 2^15
+
+      hash(meta.keys.in_key3,
+          HashAlgorithm.crc32,
+          (bit<32>) 0,
+          {hdr.ipv4.srcAddr,
+              meta.epoch,
               HASH_3},
-          (bit<16>) 0xffff); // matches NUM_COUNTERS_PER_STAGE = 2^15
+          (bit<16>) 0x8fff); // matches NUM_COUNTERS_PER_STAGE = 2^15
+
+      hash(meta.keys.out_key3,
+          HashAlgorithm.crc32,
+          (bit<32>) 0,
+          {hdr.ipv4.srcAddr,
+              meta.epoch,
+              HASH_3},
+          (bit<16>) 0x8fff); // matches NUM_COUNTERS_PER_STAGE = 2^15
   }
 
   action set_epoch() {
-        meta.epoch = standard_metadata.ingress_global_timestamp[17:10] >> EPOCH_LEN;
+        start_timestamp.read(hdr.out_header.pkt_timestamp, 0);
+        meta.epoch = (standard_metadata.ingress_global_timestamp[27:20] - hdr.out_header.pkt_timestamp[27:20]) >> EPOCH_POWER;
+        hdr.out_header.pkt_timestamp = standard_metadata.ingress_global_timestamp;
+    }
+
+    action start_experiment() {
+        meta.reset = 1;
+        start_timestamp.write(0, standard_metadata.ingress_global_timestamp);
     }
 
     apply {
-        set_epoch();
-        get_hashes();
-        if (hdr.ipv4.isValid()) {
-            Stage0.apply(hdr, meta, standard_metadata);
-            if (meta.inserted != 1) {
-                Stage1.apply(hdr, meta, standard_metadata);
-            }
-            if (meta.inserted != 1) {
-                Stage2.apply(hdr, meta, standard_metadata);
-            }
-            if (meta.inserted != 1) {
-                Stage3.apply(hdr, meta, standard_metadata);
-            }
-            if (meta.inserted != 1) {
+
+        meta.reset = 0;
+
+        if (hdr.ipv4.version == 0) { // begin simulation
+            start_experiment();
+        }
+        if (meta.reset != 1) {
+            set_epoch();
+            get_hashes();
+            if (hdr.ipv4.isValid()) {
+                Stage0.apply(hdr, meta, standard_metadata);
+                if (meta.inserted != 1) {
+                    Stage1.apply(hdr, meta, standard_metadata);
+                }
+                if (meta.inserted != 1) {
+                    Stage2.apply(hdr, meta, standard_metadata);
+                }
+                if (meta.inserted != 1) {
+                    Stage3.apply(hdr, meta, standard_metadata);
+                }
                 Stage4_Collisions.apply(hdr, meta, standard_metadata);
             }
-            standard_metadata.egress_spec = 12;
         }
+        standard_metadata.egress_spec = 12;
+        hdr.out_header.setValid();
     }
 }
 
@@ -486,7 +588,7 @@ control Egress_Stage5(inout headers hdr,
 
     action hit_5() {
         hdr.out_header.egress_stage = 5;
-        hdr.out_header.egress_key = meta.keys.key0;
+        hdr.out_header.egress_key = meta.keys.out_key0;
         meta.inserted = 1;
     }
 
@@ -502,24 +604,33 @@ control Egress_Stage5(inout headers hdr,
         meta.ip_data_raw[31:0] = meta.ip_data.ip;
     }
 
+    action replace() {
+        meta.ip_data.epoch = meta.epoch;
+        meta.ip_data.count = 1;
+        meta.ip_data.ip = hdr.ipv4.srcAddr;
+        compile_reg();
+        egress_counts_5.write(meta.keys.out_key0, meta.ip_data_raw);
+        hit_5();
+        meta.new = 1;
+    }
+
+    action update() {
+        meta.ip_data.count = meta.ip_data.count + 1;
+        compile_reg();
+        egress_counts_5.write(meta.keys.out_key0, meta.ip_data_raw);
+        hit_5();
+    }
+
     apply {
         set_current_stage_5();
 
-        egress_counts_5.read(meta.ip_data_raw, meta.keys.key0);
+        egress_counts_5.read(meta.ip_data_raw, meta.keys.out_key0);
         extract_reg();
 
-        if (meta.epoch - meta.ip_data.epoch > 0) { // old epoch, replace
-            meta.ip_data.epoch = meta.epoch;
-            meta.ip_data.count = 1;
-            meta.ip_data.ip = hdr.ipv4.srcAddr;
-            compile_reg();
-            egress_counts_5.write(meta.keys.key0, meta.ip_data_raw);
-            hit_5();
+        if (meta.epoch - meta.ip_data.epoch > 1) { // old epoch, replace
+            replace();
         } else if (hdr.ipv4.srcAddr == meta.ip_data.ip) { // same IP, count
-            meta.ip_data.count = meta.ip_data.count + 1;
-            compile_reg();
-            egress_counts_5.write(meta.keys.key0, meta.ip_data_raw);
-            hit_5();
+            update();
         } else {
             meta.inserted = 0;
         }
@@ -536,7 +647,7 @@ control Egress_Stage6(inout headers hdr,
 
     action hit_6() {
         hdr.out_header.egress_stage = 6;
-        hdr.out_header.egress_key = meta.keys.key1;
+        hdr.out_header.egress_key = meta.keys.out_key1;
         meta.inserted = 1;
     }
 
@@ -552,24 +663,33 @@ control Egress_Stage6(inout headers hdr,
         meta.ip_data_raw[31:0] = meta.ip_data.ip;
     }
 
+    action replace() {
+        meta.ip_data.epoch = meta.epoch;
+        meta.ip_data.count = 1;
+        meta.ip_data.ip = hdr.ipv4.srcAddr;
+        compile_reg();
+        egress_counts_6.write(meta.keys.out_key1, meta.ip_data_raw);
+        hit_6();
+        meta.new = 1;
+    }
+
+    action update() {
+        meta.ip_data.count = meta.ip_data.count + 1;
+        compile_reg();
+        egress_counts_6.write(meta.keys.out_key1, meta.ip_data_raw);
+        hit_6();
+    }
+
     apply {
         set_current_stage_6();
 
-        egress_counts_6.read(meta.ip_data_raw, meta.keys.key1);
+        egress_counts_6.read(meta.ip_data_raw, meta.keys.out_key1);
         extract_reg();
 
-        if (meta.epoch - meta.ip_data.epoch > 0) { // old epoch, replace
-            meta.ip_data.epoch = meta.epoch;
-            meta.ip_data.count = 1;
-            meta.ip_data.ip = hdr.ipv4.srcAddr;
-            compile_reg();
-            egress_counts_6.write(meta.keys.key1, meta.ip_data_raw);
-            hit_6();
+        if (meta.epoch - meta.ip_data.epoch > 1) { // old epoch, replace
+            replace();
         } else if (hdr.ipv4.srcAddr == meta.ip_data.ip) { // same IP, count
-            meta.ip_data.count = meta.ip_data.count + 1;
-            compile_reg();
-            egress_counts_6.write(meta.keys.key1, meta.ip_data_raw);
-            hit_6();
+            update();
         } else {
             meta.inserted = 0;
         }
@@ -586,7 +706,7 @@ control Egress_Stage7(inout headers hdr,
 
     action hit_7() {
         hdr.out_header.egress_stage = 7;
-        hdr.out_header.egress_key = meta.keys.key2;
+        hdr.out_header.egress_key = meta.keys.out_key2;
         meta.inserted = 1;
     }
 
@@ -602,24 +722,33 @@ control Egress_Stage7(inout headers hdr,
         meta.ip_data_raw[31:0] = meta.ip_data.ip;
     }
 
+    action replace() {
+        meta.ip_data.epoch = meta.epoch;
+        meta.ip_data.count = 1;
+        meta.ip_data.ip = hdr.ipv4.srcAddr;
+        compile_reg();
+        egress_counts_7.write(meta.keys.out_key2, meta.ip_data_raw);
+        hit_7();
+        meta.new = 1;
+    }
+
+    action update() {
+        meta.ip_data.count = meta.ip_data.count + 1;
+        compile_reg();
+        egress_counts_7.write(meta.keys.out_key2, meta.ip_data_raw);
+        hit_7();
+    }
+
     apply {
         set_current_stage_7();
 
-        egress_counts_7.read(meta.ip_data_raw, meta.keys.key2);
+        egress_counts_7.read(meta.ip_data_raw, meta.keys.out_key2);
         extract_reg();
 
-        if (meta.epoch - meta.ip_data.epoch > 0) { // old epoch, replace
-            meta.ip_data.epoch = meta.epoch;
-            meta.ip_data.count = 1;
-            meta.ip_data.ip = hdr.ipv4.srcAddr;
-            compile_reg();
-            egress_counts_7.write(meta.keys.key2, meta.ip_data_raw);
-            hit_7();
+        if (meta.epoch - meta.ip_data.epoch > 1) { // old epoch, replace
+            replace();
         } else if (hdr.ipv4.srcAddr == meta.ip_data.ip) { // same IP, count
-            meta.ip_data.count = meta.ip_data.count + 1;
-            compile_reg();
-            egress_counts_7.write(meta.keys.key2, meta.ip_data_raw);
-            hit_7();
+            update();
         } else {
             meta.inserted = 0;
         }
@@ -636,7 +765,7 @@ control Egress_Stage8(inout headers hdr,
 
     action hit_8() {
         hdr.out_header.egress_stage = 8;
-        hdr.out_header.egress_key = meta.keys.key3;
+        hdr.out_header.egress_key = meta.keys.out_key3;
         meta.inserted = 1;
     }
 
@@ -652,24 +781,33 @@ control Egress_Stage8(inout headers hdr,
         meta.ip_data_raw[31:0] = meta.ip_data.ip;
     }
 
+    action replace() {
+        meta.ip_data.epoch = meta.epoch;
+        meta.ip_data.count = 1;
+        meta.ip_data.ip = hdr.ipv4.srcAddr;
+        compile_reg();
+        egress_counts_8.write(meta.keys.out_key3, meta.ip_data_raw);
+        hit_8();
+        meta.new = 1;
+    }
+
+    action update() {
+        meta.ip_data.count = meta.ip_data.count + 1;
+        compile_reg();
+        egress_counts_8.write(meta.keys.out_key3, meta.ip_data_raw);
+        hit_8();
+    }
+
     apply {
         set_current_stage_8();
 
-        egress_counts_8.read(meta.ip_data_raw, meta.keys.key3);
+        egress_counts_8.read(meta.ip_data_raw, meta.keys.out_key3);
         extract_reg();
 
-        if (meta.epoch - meta.ip_data.epoch > 0) { // old epoch, replace
-            meta.ip_data.epoch = meta.epoch;
-            meta.ip_data.count = 1;
-            meta.ip_data.ip = hdr.ipv4.srcAddr;
-            compile_reg();
-            egress_counts_8.write(meta.keys.key3, meta.ip_data_raw);
-            hit_8();
+        if (meta.epoch - meta.ip_data.epoch > 1) { // old epoch, replace
+            replace();
         } else if (hdr.ipv4.srcAddr == meta.ip_data.ip) { // same IP, count
-            meta.ip_data.count = meta.ip_data.count + 1;
-            compile_reg();
-            egress_counts_8.write(meta.keys.key3, meta.ip_data_raw);
-            hit_8();
+            update();
         } else {
             meta.inserted = 0;
         }
@@ -690,14 +828,20 @@ control Egress_Stage9_Collisions(inout headers hdr,
         meta.inserted = 1;
     }
 
-    apply {
-        set_current_stage_9();
-
-        // count per epoch for collided packets
+    action update() {
         egress_collision_counts.read(meta.collision_count, (bit<32>) meta.epoch);
         meta.collision_count = meta.collision_count + 1;
         collision_counts.write((bit<32>) meta.epoch, meta.collision_count);
-        hit_9();
+    }
+
+    apply {
+        set_current_stage_9();
+
+        update();
+
+        if (meta.inserted != 1) {
+            hit_9();
+        }
     }
 }
 
@@ -709,12 +853,13 @@ control MyEgress(inout headers hdr,
         meta.inserted = 0;
     }
 
+    action epoch_header() {
+        hdr.out_header.epoch = meta.epoch;
+    }
+
     apply {
         clear_inserted();
-
-        if (hdr.out_header.ingress_stage == 4) { // was collision
-            Egress_Stage9_Collisions.apply(hdr, meta, standard_metadata);
-        } else {
+        if (meta.reset != 1) {
             Egress_Stage5.apply(hdr, meta, standard_metadata);
             if (meta.inserted != 1) {
                 Egress_Stage6.apply(hdr, meta, standard_metadata);
@@ -725,11 +870,16 @@ control MyEgress(inout headers hdr,
             if (meta.inserted != 1) {
                 Egress_Stage8.apply(hdr, meta, standard_metadata);
             }
-            if (meta.inserted != 1) {
-                Egress_Stage9_Collisions.apply(hdr, meta, standard_metadata);
+            Egress_Stage9_Collisions.apply(hdr, meta, standard_metadata);
+            if (meta.new != 1) {
+                mark_to_drop(standard_metadata);
             }
         }
-     }
+        test.write(0, meta.keys.in_key0);
+        test.write(1, meta.keys.out_key0);
+        test.write(2, hdr.out_header.ingress_key);
+        test.write(3, hdr.out_header.egress_key);
+    }
 }
 
 /*************************************************************************
@@ -762,10 +912,10 @@ control MyComputeChecksum(inout headers  hdr, inout metadata meta) {
 
 control MyDeparser(packet_out packet, in headers hdr) {
     apply {
+        packet.emit(hdr.out_header);
         packet.emit(hdr.ethernet);
         packet.emit(hdr.ipv4);
         packet.emit(hdr.tcp);
-        packet.emit(hdr.out_header);
     }
 }
 
