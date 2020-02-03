@@ -879,6 +879,8 @@ control MyEgress(inout headers hdr,
         test.write(1, meta.keys.out_key0);
         test.write(2, hdr.out_header.ingress_key);
         test.write(3, hdr.out_header.egress_key);
+        test.write(4, (bit<32>) meta.epoch);
+        test.write(5, (bit<32>) hdr.out_header.epoch);
     }
 }
 

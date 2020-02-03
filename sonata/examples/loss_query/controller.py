@@ -8,7 +8,7 @@ from interfaces import get_out
 
 EPOCH_LEN = {}
 for p in range(10):
-    EPOCH_LEN[p] = float(2 ** (20 + p)) / 10 ** 6
+    EPOCH_LEN[p] = float(2 ** (20 + p)) / float(10 ** 6)
 
 EPOCH_POWER = 0  # SET TO MATCH LOSS_QUERY.P4!
 
