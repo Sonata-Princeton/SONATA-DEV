@@ -31,16 +31,16 @@ Vagrant.configure(2) do |config|
     # If you are starting a new vm, uncomment the lines above that
     # start with sudo.
      sudo apt-get install -y software-properties-common
-     sudo add-apt-repository ppa:webupd8team/java
+     sudo add-apt-repository ppa:openjdk-r/ppa
      sudo apt-get update
      sudo apt-get install -y python-dateutil
      sudo -H pip install test_helper netaddr
      sudo -H pip install coloredlogs
+     pip install --user mysql-connector-python
      pip install --user scipy
      sudo apt-get install -y python-matplotlib
      sudo apt-get install -y mininet
-     echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | sudo /usr/bin/debconf-set-selections
-     sudo apt-get install -y -q oracle-java8-installer
+     sudo apt-get install -y openjdk-8-jre
      wget http://d3kbcqa49mib13.cloudfront.net/spark-1.6.1-bin-hadoop2.6.tgz
      tar xvf spark-1.6.1-bin-hadoop2.6.tgz
      mv spark-1.6.1-bin-hadoop2.6 spark
