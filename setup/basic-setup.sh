@@ -15,7 +15,7 @@ sudo apt-get update
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential fakeroot debhelper autoconf \
 automake libssl-dev graphviz python-all python-qt4 \
 python-twisted-conch libtool git tmux vim python-pip python-paramiko \
-python-sphinx mongodb dos2unix wireshark mysql-server
+python-sphinx mongodb dos2unix wireshark mysql-server libmysqlclient-dev
 
 sudo -H pip install -U pip
 sudo pip install --upgrade scipy
@@ -23,7 +23,7 @@ sudo -H pip install -r ~/dev/setup/pip-basic-requires
 
 sudo apt-get install -y ssh git emacs sshfs graphviz feh Protobuf
 sudo apt-get install -y libstring-crc32-perl xterm
-sudo -H pip install mysql-connector==2.1.4
+sudo -H pip install mysql-connector==2.1.7
 
 echo 'Defaults    env_keep += "PYTHONPATH"' | sudo tee --append /etc/sudoers
 echo 'PATH=$PATH:~/iSDX/bin' >> ~/.profile
