@@ -155,7 +155,7 @@ level `/32`.
 * Finally, run the following command for clean up.
 ```bash
 $ cd ~/dev
-$ sudo sh cleanup.sh
+$ sudo ./cleanup.sh
 ```
 Note: Make sure you run the cleanup script before restarting Sonata.
 
