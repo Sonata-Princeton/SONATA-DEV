@@ -17,6 +17,7 @@ sudo  ./install_deps.sh
 ./configure
 make
 sudo make install
+sed -i 's/python/python3/g' ./targets/simple_switch/sswitch_CLI
 
 cd ~
 sudo apt-get install mininet
