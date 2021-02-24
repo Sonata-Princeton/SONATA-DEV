@@ -17,7 +17,6 @@ automake libssl-dev graphviz python-all python-qt4 \
 python-twisted-conch libtool git tmux vim python-pip python-paramiko \
 python-sphinx mongodb dos2unix wireshark mysql-server libmysqlclient-dev
 
-sudo -H pip install -U pip
 sudo pip install --upgrade scipy
 sudo -H pip install -r ~/dev/setup/pip-basic-requires
 

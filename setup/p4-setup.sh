@@ -20,4 +20,5 @@ sudo make install
 
 cd ~
 sudo apt-get install mininet
-sudo -H pip install scapy thrift networkx
+sudo -H pip install scapy networkx
+sudo -H pip install thrift --ignore-installed six

@@ -19,11 +19,9 @@ Vagrant.configure(2) do |config|
   ## Provisioning
   config.vm.provision "shell", inline: <<-SHELL
     sudo apt-get update
+    sudo apt-get install python-setuptools
+    sudo easy_install-2.7 pip==20.3.4
     sudo apt-get install -y python-dev
-    #sudo apt-get install -y python-pip
-    wget https://bootstrap.pypa.io/get-pip.py 
-    sudo python ./get-pip.py
-    sudo apt-get install -y python-pip
     sudo apt-get install -y apache2-utils
     sudo apt-get install -y git
     # The commands below are for assignment 2. We expect that the
